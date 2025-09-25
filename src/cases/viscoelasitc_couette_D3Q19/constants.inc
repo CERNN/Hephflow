@@ -1,4 +1,5 @@
 #define FENE_P
+#define TREAT_DATA_INCLUDE
 
 constexpr dfloat RE = 1;
 
@@ -20,7 +21,7 @@ constexpr dfloat VISC = BETA * SUM_VISC;
 constexpr dfloat TAU = 0.5 + 3.0*VISC;     // relaxation time
 constexpr dfloat t_c = L/U_C;
 constexpr int CONFORMATION_SWITCH = 0;
-constexpr int N_STEPS = 40000;
+constexpr int N_STEPS = 8*20*t_c;
 
 constexpr dfloat FX = 0.0;        // force in x
 constexpr dfloat FY = 0.0;        // force in y
@@ -75,10 +76,10 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
     #define COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
 
-    constexpr dfloat CONF_ZERO = (dfloat)(10.0);
+    constexpr dfloat CONF_ZERO = (dfloat)(2.0);
 
     constexpr dfloat nu_p = SUM_VISC - VISC;
-    constexpr dfloat Weissenberg_number = 1.0;
+    constexpr dfloat Weissenberg_number = 8.0;
 
     constexpr dfloat LAMBDA = Weissenberg_number*t_c;
     constexpr dfloat inv_lambda = 1.0/LAMBDA;
