@@ -700,7 +700,7 @@ std::string getSimInfoString(int step,dfloat MLUPS)
 
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif// THERMAL_MODEL
-    #ifdef FENE_P 
+    #if defined(FENE_P) || defined(OLDROYD_B)
     strSimInfo << "\n------------------------------ VISCOELASTIC -----------------------------\n";
         strSimInfo << std::scientific << std::setprecision(4);
     strSimInfo << " Weissenberg Number: " << Weissenberg_number << "\n";
@@ -709,8 +709,6 @@ std::string getSimInfoString(int step,dfloat MLUPS)
     strSimInfo << "  Solvent Viscosity: " << VISC << "\n";
     strSimInfo << "  Polymer Viscosity: " << nu_p << "\n";
     strSimInfo << "             Lambda: " << LAMBDA << "\n";
-    strSimInfo << "           FENE-P A: " << 1 << "\n"; //todo fix when fenep
-    strSimInfo << "           FENE-P B: " << 1 << "\n"; //todo fix when fenep
     strSimInfo << "          FENE-P Re: " << fenep_re << "\n";
     strSimInfo << "\n                                                                         \n";
         strSimInfo << std::scientific << std::setprecision(4);
