@@ -111,6 +111,7 @@ void saveParticlesInfo(ParticlesSoA *particles, unsigned int step, std::atomic<b
                 outFilePNodes << strColumnNames << strValuesMesh.str();
             } 
         }
+        savingMacrParticle = false;
     });
     saveThread.join();
 }

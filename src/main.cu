@@ -348,6 +348,7 @@ int main() {
             if (particleSave){
                 printf("\n------------------------- Saving particles %06d -------------------------\n", step);
                 if(console_flush){fflush(stdout);}
+                while (savingMacrParticle) std::this_thread::yield();
                 saveParticlesInfo(&particlesSoA, step, savingMacrParticle);
             }
         #endif //PARTICLE_MODEL
@@ -445,7 +446,9 @@ int main() {
     saveSimInfo(step,MLUPS);
 
     while (savingMacrVtk) std::this_thread::yield();
+    #ifdef PARTICLE_MODEL
     while (savingMacrParticle) std::this_thread::yield();
+    #endif
     for (size_t i = 0; i < savingMacrBin.size(); ++i) {
         while (savingMacrBin[i]) std::this_thread::yield();
     }
