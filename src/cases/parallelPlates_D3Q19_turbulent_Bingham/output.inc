@@ -10,7 +10,7 @@
 #define NODE_TYPE_SAVE (false) //save the bc conditions, usefull for drawing the surface
 #define ONLY_FINAL_MACRO (false) //save only the last time step macroscopic
 #define MACR_SAVE (5000)
-#define REPORT_SAVE (false)
+#define REPORT_SAVE (340)
 #define VTK_SAVE (true)
 #define BIN_SAVE (false)
 

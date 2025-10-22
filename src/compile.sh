@@ -21,6 +21,7 @@ else
     echo "sh compile.sh D3Q27 202"
 fi
 
+rm -f ./../bin/*.exp ./../bin/*.lib
 
 #--ptxas-options=-v
 # 39,179 suppress division by false in the mods
