@@ -28,8 +28,6 @@
 #include "auxFunctions.cuh"
 #include "treatData.cuh"
 
-
-
 #ifdef PARTICLE_MODEL
     #include "./particles/class/Particle.cuh"
     #include "./particles/utils/particlesReport.cuh"
@@ -780,162 +778,165 @@ void allocateDeviceMemory(
     printf("Device Memory Allocated for Bulk flow: %.2f MB \n", (float)memAllocated /(1024.0 * 1024.0));
 }
 
-/**
- * @brief Initialize the simulation domain, including random numbers, LBM distributions, node types, and ghost interfaces.
- * @param ghostInterface Reference to the ghost interface data structure
- * @param d_fMom Pointer to device memory for distribution functions
- * @param h_fMom Pointer to host memory for distribution functions
- * @param m_fMom Pointer to device memory for mean flow distribution functions (if MEAN_FLOW is enabled)
- * @param hNodeType Pointer to host memory for node types
- * @param dNodeType Pointer to device memory for node types
- * @param randomNumbers Pointer to array of pointers for random number storage
- * @param step Pointer to the current simulation step
- * @param gridBlock CUDA grid dimensions for kernel launches
- * @param threadBlock CUDA thread block dimensions for kernel launches
- */
-__host__
-void initializeDomain(
-    GhostInterfaceData &ghostInterface, 
-    dfloat *&d_fMom, dfloat *&h_fMom, 
-    #if MEAN_FLOW
-    dfloat *&m_fMom, 
-    #endif //MEAN_FLOW
-    unsigned int *&hNodeType, unsigned int *&dNodeType, dfloat **&randomNumbers,
-    BC_FORCES_PARAMS_DECLARATION(&d_)
-    DENSITY_CORRECTION_PARAMS_DECLARATION(&h_)
-    DENSITY_CORRECTION_PARAMS_DECLARATION(&d_)
-    int *step, dim3 gridBlock, dim3 threadBlock
-    ){
+// /**
+//  * @brief Initialize the simulation domain, including random numbers, LBM distributions, node types, and ghost interfaces.
+//  * @param ghostInterface Reference to the ghost interface data structure
+//  * @param d_fMom Pointer to device memory for distribution functions
+//  * @param h_fMom Pointer to host memory for distribution functions
+//  * @param m_fMom Pointer to device memory for mean flow distribution functions (if MEAN_FLOW is enabled)
+//  * @param hNodeType Pointer to host memory for node types
+//  * @param dNodeType Pointer to device memory for node types
+//  * @param randomNumbers Pointer to array of pointers for random number storage
+//  * @param step Pointer to the current simulation step
+//  * @param gridBlock CUDA grid dimensions for kernel launches
+//  * @param threadBlock CUDA thread block dimensions for kernel launches
+//  */
+// __host__
+// void initializeDomain(
+//     GhostInterfaceData &ghostInterface, 
+//     hostField hostField,
+//     deviceField deviceField,
+//     // dfloat *&d_fMom, dfloat *&h_fMom, 
+//     // #if MEAN_FLOW
+//     // dfloat *&m_fMom, 
+//     // #endif //MEAN_FLOW
+//     // unsigned int *&hNodeType, unsigned int *&dNodeType, 
+//     dfloat **&randomNumbers,
+//     BC_FORCES_PARAMS_DECLARATION(&d_)
+//     DENSITY_CORRECTION_PARAMS_DECLARATION(&h_)
+//     DENSITY_CORRECTION_PARAMS_DECLARATION(&d_)
+//     int *step, dim3 gridBlock, dim3 threadBlock
+//     ){
     
-    // Random numbers initialization
-    #ifdef RANDOM_NUMBERS 
-        if(console_flush) fflush(stdout);
-        checkCudaErrors(cudaMallocManaged((void**)&randomNumbers[0], sizeof(dfloat) * NUMBER_LBM_NODES));
-        initializationRandomNumbers(randomNumbers[0], CURAND_SEED);
-        checkCudaErrors(cudaDeviceSynchronize());
-        getLastCudaError("random numbers transfer error");
-        printf("Random numbers initialized - Seed used: %u\n", CURAND_SEED); 
-        printf("Device memory allocated for random numbers: %.2f MB\n", (float)(sizeof(dfloat) * NUMBER_LBM_NODES) / (1024.0 * 1024.0));
-        if(console_flush) fflush(stdout);
-    #endif //RANDOM_NUMBERS
+//     // Random numbers initialization
+//     #ifdef RANDOM_NUMBERS 
+//         if(console_flush) fflush(stdout);
+//         checkCudaErrors(cudaMallocManaged((void**)&randomNumbers[0], sizeof(dfloat) * NUMBER_LBM_NODES));
+//         initializationRandomNumbers(randomNumbers[0], CURAND_SEED);
+//         checkCudaErrors(cudaDeviceSynchronize());
+//         getLastCudaError("random numbers transfer error");
+//         printf("Random numbers initialized - Seed used: %u\n", CURAND_SEED); 
+//         printf("Device memory allocated for random numbers: %.2f MB\n", (float)(sizeof(dfloat) * NUMBER_LBM_NODES) / (1024.0 * 1024.0));
+//         if(console_flush) fflush(stdout);
+//     #endif //RANDOM_NUMBERS
 
-    int checkpoint_state = 0;
-    // LBM Initialization
-    if (LOAD_CHECKPOINT) {
+//     int checkpoint_state = 0;
+//     // LBM Initialization
+//     if (LOAD_CHECKPOINT) {
 
-        printf("Loading checkpoint\n");
-        checkpoint_state = loadSimCheckpoint(h_fMom, ghostInterface, step);
+//         printf("Loading checkpoint\n");
+//         checkpoint_state = loadSimCheckpoint(hostField.h_fMom, ghostInterface, step);
 
-        if (checkpoint_state != 0){
-            checkCudaErrors(cudaMemcpy(d_fMom, h_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyHostToDevice));
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.fGhost, ghostInterface.h_fGhost, cudaMemcpyHostToDevice, QF);
+//         if (checkpoint_state != 0){
+//             checkCudaErrors(cudaMemcpy(deviceField.d_fMom, hostField.h_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyHostToDevice));
+//             interfaceCudaMemcpy(ghostInterface, ghostInterface.fGhost, ghostInterface.h_fGhost, cudaMemcpyHostToDevice, QF);
 
-            #ifdef SECOND_DIST
-                interfaceCudaMemcpy(ghostInterface, ghostInterface.g_fGhost, ghostInterface.g_h_fGhost, cudaMemcpyHostToDevice, GF);
-            #endif //SECOND_DIST
+//             #ifdef SECOND_DIST
+//                 interfaceCudaMemcpy(ghostInterface, ghostInterface.g_fGhost, ghostInterface.g_h_fGhost, cudaMemcpyHostToDevice, GF);
+//             #endif //SECOND_DIST
 
-            #ifdef A_XX_DIST
-                interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx_fGhost, ghostInterface.Axx_h_fGhost, cudaMemcpyHostToDevice, GF);
-            #endif //A_XX_DIST
-            #ifdef A_XY_DIST
-                interfaceCudaMemcpy(ghostInterface, ghostInterface.Axy_fGhost, ghostInterface.Axy_h_fGhost, cudaMemcpyHostToDevice, GF);
-            #endif //A_XY_DIST
-            #ifdef A_XZ_DIST
-                interfaceCudaMemcpy(ghostInterface, ghostInterface.Axz_fGhost, ghostInterface.Axz_h_fGhost, cudaMemcpyHostToDevice, GF);
-            #endif //A_XZ_DIST
-            #ifdef A_YY_DIST
-                interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayy_fGhost, ghostInterface.Ayy_h_fGhost, cudaMemcpyHostToDevice, GF);
-            #endif //A_YY_DIST
-            #ifdef A_YZ_DIST
-                interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayz_fGhost, ghostInterface.Ayz_h_fGhost, cudaMemcpyHostToDevice, GF);
-            #endif //A_YZ_DIST
-            #ifdef A_ZZ_DIST
-                interfaceCudaMemcpy(ghostInterface, ghostInterface.Azz_fGhost, ghostInterface.Azz_h_fGhost, cudaMemcpyHostToDevice, GF);
-            #endif //A_ZZ_DIST
-        }
-    } 
-    if (!checkpoint_state) {
-        if (LOAD_FIELD) {
-            // Implement LOAD_FIELD logic if needed
-        } else {
-            gpuInitialization_mom<<<gridBlock, threadBlock>>>(d_fMom, randomNumbers[0]);
-        }
-        gpuInitialization_pop<<<gridBlock, threadBlock>>>(d_fMom, ghostInterface);
-    }
+//             #ifdef A_XX_DIST
+//                 interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx_fGhost, ghostInterface.Axx_h_fGhost, cudaMemcpyHostToDevice, GF);
+//             #endif //A_XX_DIST
+//             #ifdef A_XY_DIST
+//                 interfaceCudaMemcpy(ghostInterface, ghostInterface.Axy_fGhost, ghostInterface.Axy_h_fGhost, cudaMemcpyHostToDevice, GF);
+//             #endif //A_XY_DIST
+//             #ifdef A_XZ_DIST
+//                 interfaceCudaMemcpy(ghostInterface, ghostInterface.Axz_fGhost, ghostInterface.Axz_h_fGhost, cudaMemcpyHostToDevice, GF);
+//             #endif //A_XZ_DIST
+//             #ifdef A_YY_DIST
+//                 interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayy_fGhost, ghostInterface.Ayy_h_fGhost, cudaMemcpyHostToDevice, GF);
+//             #endif //A_YY_DIST
+//             #ifdef A_YZ_DIST
+//                 interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayz_fGhost, ghostInterface.Ayz_h_fGhost, cudaMemcpyHostToDevice, GF);
+//             #endif //A_YZ_DIST
+//             #ifdef A_ZZ_DIST
+//                 interfaceCudaMemcpy(ghostInterface, ghostInterface.Azz_fGhost, ghostInterface.Azz_h_fGhost, cudaMemcpyHostToDevice, GF);
+//             #endif //A_ZZ_DIST
+//         }
+//     } 
+//     if (!checkpoint_state) {
+//         if (LOAD_FIELD) {
+//             // Implement LOAD_FIELD logic if needed
+//         } else {
+//             gpuInitialization_mom<<<gridBlock, threadBlock>>>(deviceField.d_fMom, randomNumbers[0]);
+//         }
+//         gpuInitialization_pop<<<gridBlock, threadBlock>>>(deviceField.d_fMom, ghostInterface);
+//     }
 
-    // Mean flow initialization
-    #if MEAN_FLOW
-        checkCudaErrors(cudaMemcpy(m_fMom, d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToDevice));
-    #endif //MEAN_FLOW
+//     // Mean flow initialization
+//     #if MEAN_FLOW
+//         checkCudaErrors(cudaMemcpy(hostField.m_fMom, deviceField.d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToDevice));
+//     #endif //MEAN_FLOW
 
-    // Node type initialization
-    checkCudaErrors(cudaMallocHost((void**)&hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
-    #if NODE_TYPE_SAVE
-        checkCudaErrors(cudaMallocHost((void**)&dNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
-    #endif //NODE_TYPE_SAVE
+//     // Node type initialization
+//     checkCudaErrors(cudaMallocHost((void**)&hostField.hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
+//     #if NODE_TYPE_SAVE
+//         checkCudaErrors(cudaMallocHost((void**)&deviceField.dNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
+//     #endif //NODE_TYPE_SAVE
 
-    #ifndef VOXEL_FILENAME
-        hostInitialization_nodeType(hNodeType);
-        checkCudaErrors(cudaMemcpy(dNodeType, hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyHostToDevice));  
-        checkCudaErrors(cudaDeviceSynchronize());
-    #else
-        hostInitialization_nodeType_bulk(hNodeType); 
-        read_xyz_file(VOXEL_FILENAME, hNodeType);
-        hostInitialization_nodeType(hNodeType);
-        checkCudaErrors(cudaMemcpy(dNodeType, hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyHostToDevice));  
-        checkCudaErrors(cudaDeviceSynchronize());
-        define_voxel_bc<<<gridBlock, threadBlock>>>(dNodeType); 
-        checkCudaErrors(cudaMemcpy(hNodeType, dNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyDeviceToHost)); 
-    #endif //!VOXEL_FILENAME
+//     #ifndef VOXEL_FILENAME
+//         hostInitialization_nodeType(hostField.hNodeType);
+//         checkCudaErrors(cudaMemcpy(deviceField.dNodeType, hostField.hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyHostToDevice));  
+//         checkCudaErrors(cudaDeviceSynchronize());
+//     #else
+//         hostInitialization_nodeType_bulk(hostField.hNodeType); 
+//         read_xyz_file(VOXEL_FILENAME, hostField.hNodeType);
+//         hostInitialization_nodeType(hostField.hNodeType);
+//         checkCudaErrors(cudaMemcpy(deviceField.dNodeType, hostField.hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyHostToDevice));  
+//         checkCudaErrors(cudaDeviceSynchronize());
+//         define_voxel_bc<<<gridBlock, threadBlock>>>(deviceField.dNodeType); 
+//         checkCudaErrors(cudaMemcpy(hostField.hNodeType, deviceField.dNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyDeviceToHost)); 
+//     #endif //!VOXEL_FILENAME
 
-    // Boundary condition forces initialization
-    #ifdef BC_FORCES
-        gpuInitialization_force<<<gridBlock, threadBlock>>>(d_BC_Fx, d_BC_Fy, d_BC_Fz);
-    #endif //BC_FORCES
+//     // Boundary condition forces initialization
+//     #ifdef BC_FORCES
+//         gpuInitialization_force<<<gridBlock, threadBlock>>>(d_BC_Fx, d_BC_Fy, d_BC_Fz);
+//     #endif //BC_FORCES
 
-    // Interface population initialization
-    interfaceCudaMemcpy(ghostInterface, ghostInterface.gGhost, ghostInterface.fGhost, cudaMemcpyDeviceToDevice, QF);
-    #ifdef SECOND_DIST
-        interfaceCudaMemcpy(ghostInterface, ghostInterface.g_gGhost, ghostInterface.g_fGhost, cudaMemcpyDeviceToDevice, GF);
-        printf("Interface pop copied \n"); if(console_flush) fflush(stdout);
-    #endif //SECOND_DIST
-    #ifdef A_XX_DIST
-        interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx_gGhost, ghostInterface.Axx_fGhost, cudaMemcpyDeviceToDevice, GF);
-    #endif //A_XX_DIST
-    #ifdef A_XY_DIST
-        interfaceCudaMemcpy(ghostInterface, ghostInterface.Axy_gGhost, ghostInterface.Axy_fGhost, cudaMemcpyDeviceToDevice, GF);
-    #endif //A_XY_DIST
-    #ifdef A_XZ_DIST
-        interfaceCudaMemcpy(ghostInterface, ghostInterface.Axz_gGhost, ghostInterface.Axz_fGhost, cudaMemcpyDeviceToDevice, GF);
-    #endif //A_XZ_DIST
-    #ifdef A_YY_DIST
-        interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayy_gGhost, ghostInterface.Ayy_fGhost, cudaMemcpyDeviceToDevice, GF);
-    #endif //A_YY_DIST
-    #ifdef A_YZ_DIST
-        interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayz_gGhost, ghostInterface.Ayz_fGhost, cudaMemcpyDeviceToDevice, GF);
-    #endif //A_YZ_DIST
-    #ifdef A_ZZ_DIST
-        interfaceCudaMemcpy(ghostInterface, ghostInterface.Azz_gGhost, ghostInterface.Azz_fGhost, cudaMemcpyDeviceToDevice, GF);
-    #endif //A_ZZ_DIST
+//     // Interface population initialization
+//     interfaceCudaMemcpy(ghostInterface, ghostInterface.gGhost, ghostInterface.fGhost, cudaMemcpyDeviceToDevice, QF);
+//     #ifdef SECOND_DIST
+//         interfaceCudaMemcpy(ghostInterface, ghostInterface.g_gGhost, ghostInterface.g_fGhost, cudaMemcpyDeviceToDevice, GF);
+//         printf("Interface pop copied \n"); if(console_flush) fflush(stdout);
+//     #endif //SECOND_DIST
+//     #ifdef A_XX_DIST
+//         interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx_gGhost, ghostInterface.Axx_fGhost, cudaMemcpyDeviceToDevice, GF);
+//     #endif //A_XX_DIST
+//     #ifdef A_XY_DIST
+//         interfaceCudaMemcpy(ghostInterface, ghostInterface.Axy_gGhost, ghostInterface.Axy_fGhost, cudaMemcpyDeviceToDevice, GF);
+//     #endif //A_XY_DIST
+//     #ifdef A_XZ_DIST
+//         interfaceCudaMemcpy(ghostInterface, ghostInterface.Axz_gGhost, ghostInterface.Axz_fGhost, cudaMemcpyDeviceToDevice, GF);
+//     #endif //A_XZ_DIST
+//     #ifdef A_YY_DIST
+//         interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayy_gGhost, ghostInterface.Ayy_fGhost, cudaMemcpyDeviceToDevice, GF);
+//     #endif //A_YY_DIST
+//     #ifdef A_YZ_DIST
+//         interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayz_gGhost, ghostInterface.Ayz_fGhost, cudaMemcpyDeviceToDevice, GF);
+//     #endif //A_YZ_DIST
+//     #ifdef A_ZZ_DIST
+//         interfaceCudaMemcpy(ghostInterface, ghostInterface.Azz_gGhost, ghostInterface.Azz_fGhost, cudaMemcpyDeviceToDevice, GF);
+//     #endif //A_ZZ_DIST
     
-    // Synchronize after all initializations
-    checkCudaErrors(cudaDeviceSynchronize());
+//     // Synchronize after all initializations
+//     checkCudaErrors(cudaDeviceSynchronize());
 
 
-    // Synchronize and transfer data back to host if needed
-    checkCudaErrors(cudaDeviceSynchronize());
-    checkCudaErrors(cudaMemcpy(h_fMom, d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaDeviceSynchronize());
-    printf("Synchorizing data back to host \n"); if(console_flush) fflush(stdout);
+//     // Synchronize and transfer data back to host if needed
+//     checkCudaErrors(cudaDeviceSynchronize());
+//     checkCudaErrors(cudaMemcpy(hostField.h_fMom, deviceField.d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
+//     checkCudaErrors(cudaDeviceSynchronize());
+//     printf("Synchorizing data back to host \n"); if(console_flush) fflush(stdout);
 
-    // Free random numbers if initialized
-    #ifdef RANDOM_NUMBERS
-        checkCudaErrors(cudaSetDevice(GPU_INDEX));
-        cudaFree(randomNumbers[0]);
-        free(randomNumbers);
-        printf("Random numbers free \n"); if(console_flush) fflush(stdout);
-    #endif //RANDOM_NUMBERS
-}
+//     // Free random numbers if initialized
+//     #ifdef RANDOM_NUMBERS
+//         checkCudaErrors(cudaSetDevice(GPU_INDEX));
+//         cudaFree(randomNumbers[0]);
+//         free(randomNumbers);
+//         printf("Random numbers free \n"); if(console_flush) fflush(stdout);
+//     #endif //RANDOM_NUMBERS
+// }
 
 
 #ifdef PARTICLE_MODEL

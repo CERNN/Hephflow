@@ -32,10 +32,10 @@ int main() {
     hostField.allocateHostMemoryHostField();
     
     /* -------------- ALLOCATION FOR GPU ------------- */
-    deviceField.allocateHostMemoryDeviceField(ghostInterface);
+    deviceField.allocateDeviceMemoryDeviceField(ghostInterface);
     #ifdef DENSITY_CORRECTION
         checkCudaErrors(cudaMallocHost((void**)&(hostField.h_mean_rho), sizeof(dfloat)));
-        cudaMalloc((void**)&d_mean_rho, sizeof(dfloat));  
+        cudaMalloc((void**)&deviceField.d_mean_rho, sizeof(dfloat));  
     #endif //DENSITY_CORRECTION
 
     // Setup Streams
@@ -52,22 +52,12 @@ int main() {
     //declaration of atomic flags to safely control the state of data saving in multiple threads.
     std::atomic<bool> savingMacrVtk(false);
     std::atomic<bool> savingMacrParticle(false);
-    int NThread = hostField.getFieldCount();
-    std::vector<std::atomic<bool>> savingMacrBin(NThread);
+    std::vector<std::atomic<bool>> savingMacrBin(hostField.NThread);
 
-    for (int i = 0; i < NThread; i++)
+    for (int i = 0; i < hostField.NThread; i++)
         savingMacrBin[i].store(false);
 
-    initializeDomain(ghostInterface,     
-                     deviceField.d_fMom, hostField.h_fMom, 
-                     #if MEAN_FLOW
-                     hostField.m_fMom,
-                     #endif //MEAN_FLOW
-                     hostField.hNodeType, deviceField.dNodeType, randomNumbers, 
-                     BC_FORCES_PARAMS(d_)
-                     DENSITY_CORRECTION_PARAMS(h_)
-                     DENSITY_CORRECTION_PARAMS(d_)
-                     &step, gridBlock, threadBlock);
+    deviceField.initializeDomain(ghostInterface, hostField, randomNumbers, &step, gridBlock, threadBlock);
 
     int ini_step = step;
 
@@ -112,7 +102,7 @@ int main() {
         bool checkpoint = false;
 
         #ifdef DENSITY_CORRECTION
-        mean_rho(deviceField.d_fMom,step,d_mean_rho);
+        mean_rho(deviceField.d_fMom,step,deviceField.d_mean_rho);
         #endif //DENSITY_CORRECTION
 
         bool save =false;
@@ -175,7 +165,7 @@ int main() {
             step); 
         }
         if(macrSave){
-            hostField.saveBcForces();
+            deviceField.saveBcForces(hostField);
             //if (!(step%((int)turn_over_time/10))){
             //if((step>N_STEPS-80*(int)(MACR_SAVE))){ 
             //if((step%((int)(turn_over_time/2))) == 0){
@@ -219,7 +209,7 @@ int main() {
     /* ------------------------------ POST ------------------------------ */
     checkCudaErrors(cudaMemcpy(hostField.h_fMom, deviceField.d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
 
-    hostField.saveBcForces();
+    deviceField.saveBcForces(hostField);
 
     if(console_flush){fflush(stdout);}
     hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin);
@@ -260,6 +250,6 @@ int main() {
     free(particles);
     particlesSoA.freeNodesAndCenters();
     #endif //PARTICLE_MODEL
-    
+
     return 0;
 }

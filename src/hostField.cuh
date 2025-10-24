@@ -12,40 +12,54 @@ typedef struct hostField{
     dfloat* ux;
     dfloat* uy;
     dfloat* uz;
-
+    
     unsigned int* hNodeType;
 
+    int NThread = 4;
+
+    #if NODE_TYPE_SAVE
+    NThread++;
+    unsigned int* nodeTypeSave; 
+    #endif //NODE_TYPE_SAVE
+
     #ifdef OMEGA_FIELD
+    NThread++;
     dfloat* omega;
     #endif //OMEGA_FIELD
 
     #ifdef SECOND_DIST
+    NThread++;
     dfloat* C;
     #endif //SECOND_DIST
 
     #ifdef A_XX_DIST
+    NThread++;
     dfloat* Axx;
     #endif //A_XX_DIST
     #ifdef A_XY_DIST
+    NThread++;
     dfloat* Axy;
     #endif //A_XY_DIST
     #ifdef A_XZ_DIST
+    NThread++;
     dfloat* Axz;
     #endif //A_XZ_DIST
     #ifdef A_YY_DIST
+    NThread++;
     dfloat* Ayy;
     #endif //A_YY_DIST
     #ifdef A_YZ_DIST
+    NThread++;
     dfloat* Ayz;
     #endif //A_YZ_DIST
     #ifdef A_ZZ_DIST
+    NThread++;
     dfloat* Azz;
     #endif //A_ZZ_DIST
 
     
     #ifdef DENSITY_CORRECTION
     dfloat* h_mean_rho;
-    dfloat* d_mean_rho;
     #endif //DENSITY_CORRECTION
 
     #if MEAN_FLOW
@@ -61,14 +75,11 @@ typedef struct hostField{
 
     #ifdef BC_FORCES
         #ifdef SAVE_BC_FORCES
+        NThread += 3;
         dfloat* h_BC_Fx;
         dfloat* h_BC_Fy;
         dfloat* h_BC_Fz;
         #endif //SAVE_BC_FORCES
-
-        dfloat* d_BC_Fx;
-        dfloat* d_BC_Fy;
-        dfloat* d_BC_Fz;
     #endif //_BC_FORCES
 
     void allocateHostMemoryHostField(){
@@ -89,100 +100,6 @@ typedef struct hostField{
             #endif //NODE_TYPE_SAVE
             BC_FORCES_PARAMS_PTR(h_)
         );
-    
-    }
-
-    inline int getFieldCount() {
-        int n = 4;
-    
-        #if NODE_TYPE_SAVE
-        n++;
-        #endif //NODE_TYPE_SAVE
-    
-        #ifdef OMEGA_FIELD
-        n++;
-        #endif
-    
-        #ifdef SECOND_DIST
-        n++;
-        #endif
-    
-        #ifdef A_XX_DIST
-        n++;
-        #endif
-        #ifdef A_XY_DIST
-        n++;
-        #endif
-        #ifdef A_XZ_DIST
-        n++;
-        #endif
-        #ifdef A_YY_DIST
-        n++;
-        #endif
-        #ifdef A_YZ_DIST
-        n++;
-        #endif
-        #ifdef A_ZZ_DIST
-        n++;
-        #endif
-    
-        #ifdef BC_FORCES
-        #ifdef SAVE_BC_FORCES
-        n += 3;
-        #endif
-        #endif
-    
-        return n;
-    }
-
-    void freeHostField() {
-        cudaFree(h_fMom);
-        cudaFree(rho);
-        cudaFree(ux);
-        cudaFree(uy);
-        cudaFree(uz);
-        
-        cudaFree(hNodeType);
-        
-        #ifdef SECOND_DIST 
-        cudaFree(C);
-        #endif //SECOND_DIST
-        #ifdef A_XX_DIST 
-        cudaFree(Axx);
-        #endif //A_XX_DIST
-        #ifdef A_XY_DIST 
-        cudaFree(Axy);
-        #endif //A_XY_DIST
-        #ifdef A_XZ_DIST 
-        cudaFree(Axz);
-        #endif //A_XZ_DIST
-        #ifdef A_YY_DIST 
-        cudaFree(Ayy);
-        #endif //A_YY_DIST
-        #ifdef A_YZ_DIST 
-        cudaFree(Ayz);
-        #endif //A_YZ_DIST
-        #ifdef A_ZZ_DIST 
-        cudaFree(Azz);
-        #endif //A_ZZ_DIST
-    
-        #if MEAN_FLOW
-            cudaFree(m_fMom);
-            cudaFree(m_rho);
-            cudaFree(m_ux);
-            cudaFree(m_uy);
-            cudaFree(m_uz);
-            #ifdef SECOND_DIST
-            cudaFree(m_c);
-            #endif //MEAN_FLOW
-        #endif //MEAN_FLOW
-    
-    
-    
-        #ifdef DENSITY_CORRECTION
-            cudaFree(d_mean_rho);
-            free(h_mean_rho);
-        #endif //DENSITY_CORRECTION
     }
 
     void saveMacrHostField(unsigned int nSteps, std::atomic<bool>& savingMacrVtk, std::vector<std::atomic<bool>>& savingMacrBin){
@@ -261,13 +178,63 @@ typedef struct hostField{
         #endif //A_ZZ_DIST
     }
 
-    void saveBcForces(){
-        #if defined BC_FORCES && defined SAVE_BC_FORCES
-        checkCudaErrors(cudaDeviceSynchronize()); 
-        checkCudaErrors(cudaMemcpy(h_BC_Fx, d_BC_Fx, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
-        checkCudaErrors(cudaMemcpy(h_BC_Fy, d_BC_Fy, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
-        checkCudaErrors(cudaMemcpy(h_BC_Fz, d_BC_Fz, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
-        #endif //BC_FORCES && SAVE_BC_FORCES
+    void freeHostField() {
+        cudaFree(h_fMom);
+        cudaFree(rho);
+        cudaFree(ux);
+        cudaFree(uy);
+        cudaFree(uz);
+        
+        cudaFree(hNodeType);
+
+        #if NODE_TYPE_SAVE
+        cudaFree(nodeTypeSave);
+        #endif //NODE_TYPE_SAVE
+        
+        #ifdef SECOND_DIST 
+        cudaFree(C);
+        #endif //SECOND_DIST
+        #ifdef A_XX_DIST 
+        cudaFree(Axx);
+        #endif //A_XX_DIST
+        #ifdef A_XY_DIST 
+        cudaFree(Axy);
+        #endif //A_XY_DIST
+        #ifdef A_XZ_DIST 
+        cudaFree(Axz);
+        #endif //A_XZ_DIST
+        #ifdef A_YY_DIST 
+        cudaFree(Ayy);
+        #endif //A_YY_DIST
+        #ifdef A_YZ_DIST 
+        cudaFree(Ayz);
+        #endif //A_YZ_DIST
+        #ifdef A_ZZ_DIST 
+        cudaFree(Azz);
+        #endif //A_ZZ_DIST
+    
+        #if MEAN_FLOW
+            cudaFree(m_fMom);
+            cudaFree(m_rho);
+            cudaFree(m_ux);
+            cudaFree(m_uy);
+            cudaFree(m_uz);
+            #ifdef SECOND_DIST
+            cudaFree(m_c);
+            #endif //MEAN_FLOW
+        #endif //MEAN_FLOW
+    
+        #ifdef BC_FORCES
+            #ifdef SAVE_BC_FORCES
+            cudaFree(h_BC_Fx);
+            cudaFree(h_BC_Fy);
+            cudaFree(h_BC_Fz);
+            #endif //SAVE_BC_FORCES
+        #endif //_BC_FORCES
+    
+        #ifdef DENSITY_CORRECTION
+            free(h_mean_rho);
+        #endif //DENSITY_CORRECTION
     }
 
 } HostField;
