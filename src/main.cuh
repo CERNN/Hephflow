@@ -29,6 +29,7 @@
 #include "treatData.cuh"
 
 
+
 #ifdef PARTICLE_MODEL
     #include "./particles/class/Particle.cuh"
     #include "./particles/utils/particlesReport.cuh"
