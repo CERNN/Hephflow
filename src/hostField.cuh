@@ -107,7 +107,7 @@ typedef struct hostField{
             #if MEAN_FLOW
                 saveMacr(m_fMom,m_rho,m_ux,m_uy,m_uz, NodeType, OMEGA_FIELD_PARAMS
                     #ifdef SECOND_DIST 
-                    hostField.m_c,
+                    m_c,
                     #endif  //SECOND_DIST
                     NODE_TYPE_SAVE_PARAMS BC_FORCES_PARAMS(h_) nSteps, savingMacrVtk, savingMacrBin);
             #endif //MEAN_FLOW
