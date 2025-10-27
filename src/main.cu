@@ -176,7 +176,7 @@ int main() {
                 if(console_flush){fflush(stdout);}
                 //if(step > N_STEPS - 14000){
                 if(!ONLY_FINAL_MACRO){
-                    hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin);
+                    hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
                 }
             //}
 
@@ -212,7 +212,7 @@ int main() {
     deviceField.saveBcForces(hostField);
 
     if(console_flush){fflush(stdout);}
-    hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin);
+    hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
 
     /*if(CHECKPOINT_SAVE){
         printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);fflush(stdout);
@@ -222,11 +222,7 @@ int main() {
     }*/
     checkCudaErrors(cudaDeviceSynchronize());
     #if MEAN_FLOW
-            saveMacr(hostField.m_fMom,hostField.m_rho,hostField.m_ux,hostField.m_uy,hostField.m_uz, hostField.hNodeType, OMEGA_FIELD_PARAMS
-            #ifdef SECOND_DIST 
-            hostField.m_c,
-            #endif  //SECOND_DIST
-            NODE_TYPE_SAVE_PARAMS BC_FORCES_PARAMS(h_) INT_MAX, savingMacrVtk, savingMacrBin);
+            hostField.saveMacrHostField(INT_MAX, savingMacrVtk, savingMacrBin, true);
     #endif //MEAN_FLOW
     
     //save info file

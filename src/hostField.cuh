@@ -102,30 +102,40 @@ typedef struct hostField{
         );
     }
 
-    void saveMacrHostField(unsigned int nSteps, std::atomic<bool>& savingMacrVtk, std::vector<std::atomic<bool>>& savingMacrBin){
-        saveMacr(h_fMom,rho,ux,uy,uz, hNodeType, OMEGA_FIELD_PARAMS
-            #ifdef SECOND_DIST 
-            C,
-            #endif //SECOND_DIST
-            #ifdef A_XX_DIST 
-            Axx,
-            #endif //A_XX_DIST
-            #ifdef A_XY_DIST 
-            Axy,
-            #endif //A_XY_DIST
-            #ifdef A_XY_DIST 
-            Axz,
-            #endif //A_XY_DIST
-            #ifdef A_YY_DIST 
-            Ayy,
-            #endif //A_YY_DIST
-            #ifdef A_YZ_DIST 
-            Ayz,
-            #endif //A_YY_DIST
-            #ifdef A_ZZ_DIST 
-            Azz,
-            #endif //A_ZZ_DIST
-            NODE_TYPE_SAVE_PARAMS BC_FORCES_PARAMS(h_) nSteps, savingMacrVtk, savingMacrBin);
+    void saveMacrHostField(unsigned int nSteps, std::atomic<bool>& savingMacrVtk, std::vector<std::atomic<bool>>& savingMacrBin, bool meanFlow){
+        if(meanFlow){
+            #if MEAN_FLOW
+                saveMacr(m_fMom,m_rho,m_ux,m_uy,m_uz, NodeType, OMEGA_FIELD_PARAMS
+                    #ifdef SECOND_DIST 
+                    hostField.m_c,
+                    #endif  //SECOND_DIST
+                    NODE_TYPE_SAVE_PARAMS BC_FORCES_PARAMS(h_) nSteps, savingMacrVtk, savingMacrBin);
+            #endif //MEAN_FLOW
+        } else {
+            saveMacr(h_fMom,rho,ux,uy,uz, hNodeType, OMEGA_FIELD_PARAMS
+                #ifdef SECOND_DIST 
+                C,
+                #endif //SECOND_DIST
+                #ifdef A_XX_DIST 
+                Axx,
+                #endif //A_XX_DIST
+                #ifdef A_XY_DIST 
+                Axy,
+                #endif //A_XY_DIST
+                #ifdef A_XY_DIST 
+                Axz,
+                #endif //A_XY_DIST
+                #ifdef A_YY_DIST 
+                Ayy,
+                #endif //A_YY_DIST
+                #ifdef A_YZ_DIST 
+                Ayz,
+                #endif //A_YY_DIST
+                #ifdef A_ZZ_DIST 
+                Azz,
+                #endif //A_ZZ_DIST
+                NODE_TYPE_SAVE_PARAMS BC_FORCES_PARAMS(h_) nSteps, savingMacrVtk, savingMacrBin);
+        }
     }
 
     void interfaceCudaMemcpyLoop(ghostInterfaceData ghostInterface) {
