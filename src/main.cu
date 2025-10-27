@@ -181,7 +181,7 @@ int main() {
             //}
 
             #ifdef BC_FORCES
-                totalBcDrag(d_hostField._Fx, hostField.d_BC_Fy, hostField.d_BC_Fz, step);
+                totalBcDrag(deviceField.d_BC_Fx, deviceField.d_BC_Fy, deviceField.d_BC_Fz, step);
             #endif //BC_FORCES
         }
 
