@@ -102,6 +102,7 @@ int main() {
         bool checkpoint = false;
 
         #ifdef DENSITY_CORRECTION
+        //TODO: mean_rho(deviceField);
         mean_rho(deviceField.d_fMom,step,deviceField.d_mean_rho);
         #endif //DENSITY_CORRECTION
 
@@ -123,27 +124,34 @@ int main() {
         }
 #pragma warning(pop)
 
+        //TODO: gpuMomCollisionStream << <gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>> >(deviceField, step, save);
+        // ghost interface should be inside the deviceField struct
         gpuMomCollisionStream << <gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>> >(deviceField.d_fMom, deviceField.dNodeType,ghostInterface, DENSITY_CORRECTION_PARAMS(d_) BC_FORCES_PARAMS(d_) step, save);
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
             printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
         }
         //swap interface pointers
+        //TODO: swapGhostInterfaces(deviceField.ghostInterface);
         swapGhostInterfaces(ghostInterface);
         
         #ifdef LOCAL_FORCES
+            //TODO: gpuResetMacroForces<<<gridBlock, threadBlock>>>(deviceField);
             gpuResetMacroForces<<<gridBlock, threadBlock>>>(deviceField.d_fMom);
         #endif //LOCAL_FORCES
 
         #ifdef PARTICLE_MODEL
+            //TODO: particleSimulation(&particlesSoA, deviceField, streamsPart, step);
             particleSimulation(&particlesSoA,deviceField.d_fMom,streamsPart,step);
         #endif //PARTICLE_MODEL
 
         if(checkpoint){
             printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);fflush(stdout);
             // throwing a warning for being used without being initialized. But does not matter since we are overwriting it;
+            //TODO: the line below should be a function call, something like hostField.deviceMemCpy(deviceField);
             checkCudaErrors(cudaMemcpy(hostField.h_fMom, deviceField.d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
             hostField.interfaceCudaMemcpyLoop(ghostInterface);       
+            //TODO: saveSimCheckpoint(hostField, deviceField, &step);
             saveSimCheckpoint(hostField.h_fMom, ghostInterface, &step);
             
             #ifdef PARTICLE_MODEL
@@ -158,6 +166,7 @@ int main() {
         //if (N_STEPS - step < 4*((int)turn_over_time)){
         if(reportSave){
             printf("\n--------------------------- Saving report %06d ---------------------------\n", step);
+            //TODO: treatData(hostField, deviceField,step);
             treatData(hostField.h_fMom,deviceField.d_fMom,
             #if MEAN_FLOW
             hostField.m_fMom,
@@ -170,6 +179,7 @@ int main() {
             //if((step>N_STEPS-80*(int)(MACR_SAVE))){ 
             //if((step%((int)(turn_over_time/2))) == 0){
                 checkCudaErrors(cudaDeviceSynchronize()); 
+                //TODO: the line below should be a function call, something like hostField.deviceMemCpy(deviceField);
                 checkCudaErrors(cudaMemcpy(hostField.h_fMom, deviceField.d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
 
                 printf("\n--------------------------- Saving macro %06d ---------------------------\n", step);
@@ -181,6 +191,7 @@ int main() {
             //}
 
             #ifdef BC_FORCES
+                //TODO: totalBcDrag(deviceField, step);
                 totalBcDrag(deviceField.d_BC_Fx, deviceField.d_BC_Fy, deviceField.d_BC_Fz, step);
             #endif //BC_FORCES
         }
@@ -207,6 +218,7 @@ int main() {
     printf("MLUPS: %f\n",MLUPS);
     
     /* ------------------------------ POST ------------------------------ */
+    //TODO: the line below should be a function call, something like hostField.deviceMemCpy(deviceField);
     checkCudaErrors(cudaMemcpy(hostField.h_fMom, deviceField.d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
 
     deviceField.saveBcForces(hostField);
