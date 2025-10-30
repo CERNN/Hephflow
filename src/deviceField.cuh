@@ -6,6 +6,8 @@
 #include "hostField.cuh"
 
 typedef struct deviceField{
+    ghostInterfaceData ghostInterface;
+
     dfloat* d_fMom;
     unsigned int* dNodeType;
 
@@ -19,150 +21,110 @@ typedef struct deviceField{
         dfloat* d_BC_Fz;
     #endif //_BC_FORCES
 
-    void allocateDeviceMemoryDeviceField(ghostInterfaceData& ghostInterface) {
+    
+
+    void allocateDeviceMemoryDeviceField() {
         allocateDeviceMemory(
             &d_fMom, &dNodeType, &ghostInterface
             BC_FORCES_PARAMS_PTR(d_)
         );
     }
 
-    void initializeDomain(
-        GhostInterfaceData &ghostInterface, 
-        hostField &hostField, 
-        dfloat **&randomNumbers,
-        DENSITY_CORRECTION_PARAMS_DECLARATION(&h_)
-        DENSITY_CORRECTION_PARAMS_DECLARATION(&d_)
-        int *step, dim3 gridBlock, dim3 threadBlock
-        ){
-        
-        // Random numbers initialization
-        #ifdef RANDOM_NUMBERS 
-            if(console_flush) fflush(stdout);
-            checkCudaErrors(cudaMallocManaged((void**)&randomNumbers[0], sizeof(dfloat) * NUMBER_LBM_NODES));
-            initializationRandomNumbers(randomNumbers[0], CURAND_SEED);
-            checkCudaErrors(cudaDeviceSynchronize());
-            getLastCudaError("random numbers transfer error");
-            printf("Random numbers initialized - Seed used: %u\n", CURAND_SEED); 
-            printf("Device memory allocated for random numbers: %.2f MB\n", (float)(sizeof(dfloat) * NUMBER_LBM_NODES) / (1024.0 * 1024.0));
-            if(console_flush) fflush(stdout);
-        #endif //RANDOM_NUMBERS
+    void initializeDomainDeviceField(hostField &hostField, dfloat **&randomNumbers, int &step, dim3 gridBlock, dim3 threadBlock){
+        initializeDomain(ghostInterface,     
+            d_fMom, hostField.h_fMom, 
+            #if MEAN_FLOW
+            hostField.m_fMom,
+            #endif //MEAN_FLOW
+            hostField.hNodeType, dNodeType, randomNumbers, 
+            BC_FORCES_PARAMS(d_)
+            DENSITY_CORRECTION_PARAMS(h_)
+            DENSITY_CORRECTION_PARAMS(d_)
+            &step, gridBlock, threadBlock);
+    }
 
-        int checkpoint_state = 0;
-        // LBM Initialization
-        if (LOAD_CHECKPOINT) {
+    void mean_rhoDeviceField(size_t step){
+        #ifdef DENSITY_CORRECTION
+        mean_rho(d_fMom,step,d_mean_rho);
+        #endif //DENSITY_CORRECTION
 
-            printf("Loading checkpoint\n");
-            checkpoint_state = loadSimCheckpoint(hostField.h_fMom, ghostInterface, step);
+    }
 
-            if (checkpoint_state != 0){
-                checkCudaErrors(cudaMemcpy(d_fMom, hostField.h_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyHostToDevice));
-                interfaceCudaMemcpy(ghostInterface, ghostInterface.fGhost, ghostInterface.h_fGhost, cudaMemcpyHostToDevice, QF);
+    void gpuMomCollisionStreamDeviceField(dim3 gridBlock, dim3 threadBlock, unsigned int step, bool save){
+            gpuMomCollisionStream << <gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>> >(d_fMom, dNodeType,ghostInterface, DENSITY_CORRECTION_PARAMS(d_) BC_FORCES_PARAMS(d_) step, save);
+    }
 
-                #ifdef SECOND_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.g_fGhost, ghostInterface.g_h_fGhost, cudaMemcpyHostToDevice, GF);
-                #endif //SECOND_DIST
+    void swapGhostInterfacesDeviceField(){
+        swapGhostInterfaces(ghostInterface);
+    }
 
-                #ifdef A_XX_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx_fGhost, ghostInterface.Axx_h_fGhost, cudaMemcpyHostToDevice, GF);
-                #endif //A_XX_DIST
-                #ifdef A_XY_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Axy_fGhost, ghostInterface.Axy_h_fGhost, cudaMemcpyHostToDevice, GF);
-                #endif //A_XY_DIST
-                #ifdef A_XZ_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Axz_fGhost, ghostInterface.Axz_h_fGhost, cudaMemcpyHostToDevice, GF);
-                #endif //A_XZ_DIST
-                #ifdef A_YY_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayy_fGhost, ghostInterface.Ayy_h_fGhost, cudaMemcpyHostToDevice, GF);
-                #endif //A_YY_DIST
-                #ifdef A_YZ_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayz_fGhost, ghostInterface.Ayz_h_fGhost, cudaMemcpyHostToDevice, GF);
-                #endif //A_YZ_DIST
-                #ifdef A_ZZ_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Azz_fGhost, ghostInterface.Azz_h_fGhost, cudaMemcpyHostToDevice, GF);
-                #endif //A_ZZ_DIST
-            }
-        } 
-        if (!checkpoint_state) {
-            if (LOAD_FIELD) {
-                // Implement LOAD_FIELD logic if needed
-            } else {
-                gpuInitialization_mom<<<gridBlock, threadBlock>>>(d_fMom, randomNumbers[0]);
-            }
-            gpuInitialization_pop<<<gridBlock, threadBlock>>>(d_fMom, ghostInterface);
+    void gpuResetMacroForcesDeviceField(dim3 gridBlock, dim3 threadBlock){
+        #ifdef LOCAL_FORCES
+        gpuResetMacroForces<<<gridBlock, threadBlock>>>(d_fMom);
+        #endif //LOCAL_FORCES
+
+    }
+
+    void particleSimulationDeviceField(ParticlesSoA &particlesSoA, cudaStream_t *streamsPart, unsigned int step){
+         #ifdef PARTICLE_MODEL
+            particleSimulation(&particlesSoA,d_fMom,streamsPart,step);
+        #endif //PARTICLE_MODEL
+    }
+
+    void interfaceCudaMemcpyDeviceField(bool fGhost){
+        if (fGhost) {
+            interfaceCudaMemcpy(ghostInterface, ghostInterface.h_fGhost, ghostInterface.fGhost, cudaMemcpyDeviceToHost, QF);
+        } else {
+            interfaceCudaMemcpy(ghostInterface, ghostInterface.h_fGhost, ghostInterface.gGhost, cudaMemcpyDeviceToHost, QF);
+            
         }
-
-        // Mean flow initialization
-        #if MEAN_FLOW
-            checkCudaErrors(cudaMemcpy(hostField.m_fMom, d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToDevice));
-        #endif //MEAN_FLOW
-
-        // Node type initialization
-        checkCudaErrors(cudaMallocHost((void**)&hostField.hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
-        #if NODE_TYPE_SAVE
-            checkCudaErrors(cudaMallocHost((void**)&dNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
-        #endif //NODE_TYPE_SAVE
-
-        #ifndef VOXEL_FILENAME
-            hostInitialization_nodeType(hostField.hNodeType);
-            checkCudaErrors(cudaMemcpy(dNodeType, hostField.hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyHostToDevice));  
-            checkCudaErrors(cudaDeviceSynchronize());
-        #else
-            hostInitialization_nodeType_bulk(hostField.hNodeType); 
-            read_xyz_file(VOXEL_FILENAME, hostField.hNodeType);
-            hostInitialization_nodeType(hostField.hNodeType);
-            checkCudaErrors(cudaMemcpy(dNodeType, hostField.hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyHostToDevice));  
-            checkCudaErrors(cudaDeviceSynchronize());
-            define_voxel_bc<<<gridBlock, threadBlock>>>(dNodeType); 
-            checkCudaErrors(cudaMemcpy(hostField.hNodeType, dNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyDeviceToHost)); 
-        #endif //!VOXEL_FILENAME
-
-        // Boundary condition forces initialization
-        #ifdef BC_FORCES
-            gpuInitialization_force<<<gridBlock, threadBlock>>>(d_BC_Fx, d_BC_Fy, d_BC_Fz);
-        #endif //BC_FORCES
-
-        // Interface population initialization
-        interfaceCudaMemcpy(ghostInterface, ghostInterface.gGhost, ghostInterface.fGhost, cudaMemcpyDeviceToDevice, QF);
-        #ifdef SECOND_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.g_gGhost, ghostInterface.g_fGhost, cudaMemcpyDeviceToDevice, GF);
-            printf("Interface pop copied \n"); if(console_flush) fflush(stdout);
+        #ifdef SECOND_DIST 
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.g_h_fGhost,ghostInterface.g_fGhost,cudaMemcpyDeviceToHost,GF);
         #endif //SECOND_DIST
-        #ifdef A_XX_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx_gGhost, ghostInterface.Axx_fGhost, cudaMemcpyDeviceToDevice, GF);
-        #endif //A_XX_DIST
-        #ifdef A_XY_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.Axy_gGhost, ghostInterface.Axy_fGhost, cudaMemcpyDeviceToDevice, GF);
-        #endif //A_XY_DIST
-        #ifdef A_XZ_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.Axz_gGhost, ghostInterface.Axz_fGhost, cudaMemcpyDeviceToDevice, GF);
+        #ifdef A_XX_DIST 
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.Axx_h_fGhost,ghostInterface.Axx_fGhost,cudaMemcpyDeviceToHost,GF);
+        #endif //A_XX_DIST     
+        #ifdef A_XY_DIST 
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.Axy_h_fGhost,ghostInterface.Axy_fGhost,cudaMemcpyDeviceToHost,GF);
+        #endif //A_XX_DIST        
+        #ifdef A_XZ_DIST 
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.Axz_h_fGhost,ghostInterface.Axz_fGhost,cudaMemcpyDeviceToHost,GF);
         #endif //A_XZ_DIST
-        #ifdef A_YY_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayy_gGhost, ghostInterface.Ayy_fGhost, cudaMemcpyDeviceToDevice, GF);
-        #endif //A_YY_DIST
-        #ifdef A_YZ_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayz_gGhost, ghostInterface.Ayz_fGhost, cudaMemcpyDeviceToDevice, GF);
-        #endif //A_YZ_DIST
-        #ifdef A_ZZ_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.Azz_gGhost, ghostInterface.Azz_fGhost, cudaMemcpyDeviceToDevice, GF);
+        #ifdef A_YY_DIST 
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.Ayy_h_fGhost,ghostInterface.Ayy_fGhost,cudaMemcpyDeviceToHost,GF);
+        #endif //A_YY_DIST        
+        #ifdef A_YZ_DIST 
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.Ayz_h_fGhost,ghostInterface.Ayz_fGhost,cudaMemcpyDeviceToHost,GF);
+        #endif //A_YZ_DIST      
+        #ifdef A_ZZ_DIST 
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.Azz_h_fGhost,ghostInterface.Azz_fGhost,cudaMemcpyDeviceToHost,GF);
         #endif //A_ZZ_DIST
-        
-        // Synchronize after all initializations
-        checkCudaErrors(cudaDeviceSynchronize());
+    }
 
+    void cudaMemcpyDeviceField(hostField &hostField){
+        checkCudaErrors(cudaMemcpy(hostField.h_fMom, d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
+    }
 
-        // Synchronize and transfer data back to host if needed
-        checkCudaErrors(cudaDeviceSynchronize());
-        checkCudaErrors(cudaMemcpy(hostField.h_fMom, d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
-        checkCudaErrors(cudaDeviceSynchronize());
-        printf("Synchorizing data back to host \n"); if(console_flush) fflush(stdout);
+    void saveSimCheckpointHostDeviceField(hostField &hostField, int &step){
+        saveSimCheckpoint(hostField.h_fMom, ghostInterface, &step);
+    }
 
-        // Free random numbers if initialized
-        #ifdef RANDOM_NUMBERS
-            checkCudaErrors(cudaSetDevice(GPU_INDEX));
-            cudaFree(randomNumbers[0]);
-            free(randomNumbers);
-            printf("Random numbers free \n"); if(console_flush) fflush(stdout);
-        #endif //RANDOM_NUMBERS
+    void saveSimCheckpointDeviceField( int &step){
+        saveSimCheckpoint(d_fMom,ghostInterface,&step);
+    }
+
+    void treatDataDeviceField(hostField &hostField, int step){
+        treatData(hostField.h_fMom, d_fMom,
+        #if MEAN_FLOW
+        hostField.m_fMom,
+        #endif //MEAN_FLOW
+        step);
+    }
+
+    void totalBcDragDeviceField(size_t step){
+        #ifdef BC_FORCES
+        totalBcDrag(d_BC_Fx, d_BC_Fy, d_BC_Fz, step);
+        #endif //BC_FORCES
     }
 
     void saveBcForces(hostField &hostField){
@@ -175,6 +137,8 @@ typedef struct deviceField{
     }
 
     void freeDeviceField() {
+        interfaceFree(ghostInterface);
+
         cudaFree(d_fMom);
         cudaFree(dNodeType);
 
