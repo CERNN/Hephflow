@@ -2,7 +2,7 @@
 dfloat y_visc = 6.59, ub_f = 15.6, uc_f = 18.2;
 // logaritimic velocity profile
 dfloat uz_log;
-pos = (y < NY/2 ? y + 0.5 : NY - (y + 0.5));
+dfloat pos = (y < NY/2 ? y + 0.5 : NY - (y + 0.5));
 uz_log = (uc_f*U_TAU)*(pos/del)*(pos/del);
 
 uz = uz_log;

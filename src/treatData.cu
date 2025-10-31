@@ -382,113 +382,127 @@ void velocityProfile(
     int dir_index,
     unsigned int step
 ){
-
-    std::ostringstream strDataInfo("");
+    std::ostringstream strDataInfo;
     strDataInfo << std::scientific;
     strDataInfo << std::setprecision(6);
-    strDataInfo <<"step "<< step;
+    strDataInfo << "step " << step;
 
-    int x_loc,y_loc,z_loc;
-    dfloat* ux;
-    dfloat* uy;
-    dfloat* uz;
+    int x_loc, y_loc, z_loc;
+    dfloat hostVal; // use a stack host variable for single-element copies
+
     switch (dir_index)
     {
-    case 1: //ux on y-direction
-        
-        checkCudaErrors(cudaMallocHost((void**)&(ux), sizeof(dfloat)));
-
+    case 1: // ux on y-direction
         x_loc = NX/2;
         z_loc = NZ/2;
-        
-        for (y_loc = 0; y_loc < NY ; y_loc++){
-
-            checkCudaErrors(cudaMemcpy(ux, fMom + idxMom(x_loc%BLOCK_NX,y_loc%BLOCK_NY, z_loc%BLOCK_NZ, 1, x_loc/BLOCK_NX, y_loc/BLOCK_NY, z_loc/BLOCK_NZ),
-            sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo <<"\t"<< *ux;
+        for (y_loc = 0; y_loc < NY; ++y_loc) {
+            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                             1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            // optional: validate idx if you have TOTAL_SIZE available
+            checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
         }
-        saveTreatData("_ux_dy",strDataInfo.str(),step);
-
-        cudaFree(ux);
+        saveTreatData("velProfile_ux_dy", strDataInfo.str(), step);
         break;
-    case 2: //uy on y-direction
-        checkCudaErrors(cudaMallocHost((void**)&(uy), sizeof(dfloat)));
 
+    case 2: // uy on y-direction
         x_loc = NX/2;
         z_loc = NZ/2;
-        
-        for (y_loc = 0; y_loc < NY ; y_loc++){
-
-            checkCudaErrors(cudaMemcpy(uy, fMom + idxMom(x_loc%BLOCK_NX,y_loc%BLOCK_NY, z_loc%BLOCK_NZ, 2, x_loc/BLOCK_NX, y_loc/BLOCK_NY, z_loc/BLOCK_NZ),
-            sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo <<"\t"<< *uy;
+        for (y_loc = 0; y_loc < NY; ++y_loc) {
+            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                             2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
         }
-        saveTreatData("_uy_dy",strDataInfo.str(),step);
-
-        cudaFree(uy);
+        saveTreatData("velProfile_uy_dy", strDataInfo.str(), step);
         break;
-    case 3: //uz on y-direction
-        checkCudaErrors(cudaMallocHost((void**)&(uz), sizeof(dfloat)));
 
+    case 3: // uz on y-direction
         x_loc = NX/2;
         z_loc = NZ/2;
-        
-        for (y_loc = 0; y_loc < NY ; y_loc++){
-
-            checkCudaErrors(cudaMemcpy(uz, fMom + idxMom(x_loc%BLOCK_NX,y_loc%BLOCK_NY, z_loc%BLOCK_NZ, 3, x_loc/BLOCK_NX, y_loc/BLOCK_NY, z_loc/BLOCK_NZ),
-            sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo <<"\t"<< *uz;
+        for (y_loc = 0; y_loc < NY; ++y_loc) {
+            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                             3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
         }
-        saveTreatData("_uz_dy",strDataInfo.str(),step);
-
-        cudaFree(uz);
+        saveTreatData("velProfile_uz_dy", strDataInfo.str(), step);
         break;
-    case 4: //ux on x-direction
-        checkCudaErrors(cudaMallocHost((void**)&(ux), sizeof(dfloat)));
 
+    case 4: // ux on x-direction
         y_loc = NY/2;
         z_loc = NZ/2;
-        for (x_loc = 0; x_loc < NX ; x_loc++){
-
-            checkCudaErrors(cudaMemcpy(ux, fMom + idxMom(x_loc%BLOCK_NX,y_loc%BLOCK_NY, z_loc%BLOCK_NZ, 1, x_loc/BLOCK_NX, y_loc/BLOCK_NY, z_loc/BLOCK_NZ),
-            sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo <<"\t"<< *ux;
+        for (x_loc = 0; x_loc < NX; ++x_loc) {
+            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                             1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
         }
-        saveTreatData("_ux_dx",strDataInfo.str(),step);
-
-        cudaFree(ux);
+        saveTreatData("velProfile_ux_dx", strDataInfo.str(), step);
         break;
-    case 5: //uy on x-direction
-        checkCudaErrors(cudaMallocHost((void**)&(uy), sizeof(dfloat)));
 
+    case 5: // uy on x-direction
         y_loc = NY/2;
         z_loc = NZ/2;
-        for (x_loc = 0; x_loc < NX ; x_loc++){
-
-            checkCudaErrors(cudaMemcpy(uy, fMom + idxMom(x_loc%BLOCK_NX,y_loc%BLOCK_NY, z_loc%BLOCK_NZ, 2, x_loc/BLOCK_NX, y_loc/BLOCK_NY, z_loc/BLOCK_NZ),
-            sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo <<"\t"<< *uy;
+        for (x_loc = 0; x_loc < NX; ++x_loc) {
+            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                             2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
         }
-        saveTreatData("_uy_dx",strDataInfo.str(),step);
-
-        cudaFree(uy);
+        saveTreatData("velProfile_uy_dx", strDataInfo.str(), step);
         break;
-    case 6: //uz on x-direction
-        checkCudaErrors(cudaMallocHost((void**)&(uz), sizeof(dfloat)));
 
+    case 6: // uz on x-direction
         y_loc = NY/2;
         z_loc = NZ/2;
-        for (x_loc = 0; x_loc < NX ; x_loc++){
-
-            checkCudaErrors(cudaMemcpy(uz, fMom + idxMom(x_loc%BLOCK_NX,y_loc%BLOCK_NY, z_loc%BLOCK_NZ, 3, x_loc/BLOCK_NX, y_loc/BLOCK_NY, z_loc/BLOCK_NZ),
-            sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo <<"\t"<< *ux;
+        for (x_loc = 0; x_loc < NX; ++x_loc) {
+            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                             3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal; // fixed: use hostVal
         }
-        saveTreatData("_uz_dx",strDataInfo.str(),step);
-
-        cudaFree(uz);
+        saveTreatData("velProfile_uz_dx", strDataInfo.str(), step);
         break;
+
+    case 7: // ux on z-direction
+        y_loc = NY/2;
+        x_loc = NX/2;
+        for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
+            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                             1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        saveTreatData("velProfile_ux_dz", strDataInfo.str(), step);
+        break;
+
+    case 8: // uy on z-direction
+        y_loc = NY/2;
+        x_loc = NX/2;
+        for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
+            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                             2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        saveTreatData("velProfile_uy_dz", strDataInfo.str(), step);
+        break;
+
+    case 9: // uz on z-direction
+        y_loc = NY/2;
+        x_loc = NX/2;
+        for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
+            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                             3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal; // fixed: use hostVal
+        }
+        saveTreatData("velProfile_uz_dz", strDataInfo.str(), step);
+        break;
+
     default:
+        std::cerr << "velocityProfile: unknown dir_index " << dir_index << std::endl;
         break;
     }
 }

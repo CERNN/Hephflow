@@ -1,7 +1,7 @@
 //#define BINGHAM
 #define TREAT_DATA_INCLUDE
 
-constexpr int N_STEPS = 10000;
+constexpr int N_STEPS = 1360000;
 
 constexpr dfloat U_TAU = 0.00579;     // friction velocity
 constexpr int del = 96;               // integral lenght scale
