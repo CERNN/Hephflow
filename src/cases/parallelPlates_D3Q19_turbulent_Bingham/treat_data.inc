@@ -285,12 +285,12 @@ for(int y = 0; y< NY/2;y++){
     strDataInfo_uy_4  << "," << uy_4[y];
     strDataInfo_uz_4  << "," << uz_4[y];
 
-    strDataInfo_ux_ux  << "," << SGxx[y];
-    strDataInfo_uy_uy  << "," << SGyy[y];
-    strDataInfo_uz_uz  << "," << SGzz[y];
-    strDataInfo_ux_uy  << "," << SGxy[y];
-    strDataInfo_ux_uz  << "," << SGxz[y];
-    strDataInfo_uy_uz  << "," << SGyz[y];
+    strDataInfo_SGxx  << "," << SGxx[y];
+    strDataInfo_SGyy  << "," << SGyy[y];
+    strDataInfo_SGzz  << "," << SGzz[y];
+    strDataInfo_SGxy  << "," << SGxy[y];
+    strDataInfo_SGxz  << "," << SGxz[y];
+    strDataInfo_SGyz  << "," << SGyz[y];
 
     strDataInfo_yield_prob << "," << yield_prob[y_wall];
     strDataInfo_inv_omega  << "," << inv_omega[y_wall];
