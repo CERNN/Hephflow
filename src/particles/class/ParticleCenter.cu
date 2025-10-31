@@ -103,8 +103,6 @@ ParticleCenter::ParticleCenter() {
     movable = false;
 }
 
-//TODO: in addition to make set and get for dfloat3, also make for each individual component
-
 __host__ __device__  dfloat3 ParticleCenter::getPos() const { return this->pos; }
 __host__ __device__  dfloat ParticleCenter::getPosX() const { return this->pos.x; }
 __host__ __device__  dfloat ParticleCenter::getPosY() const { return this->pos.y; }

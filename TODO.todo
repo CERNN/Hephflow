@@ -5,7 +5,7 @@ Projects:
     This can be done by storing the populations in the same location where it was retrived. 
     This will lead to performance decrease since is not coaslesced write.
      however it will reduce the memory ussage
-  ☐  there is some bug on it for now with parallel reduction, trying to figure out what is wrong
+  ☐ There is some bug on it for now with parallel reduction, trying to figure out what is wrong
   ☐ Eliminate memory allocation for solid nodes (problem, a index array is necessary 10.1016/j.jocs.2022.101723)
   ☐ Multi Block Implementation (Multi GPU) Nvidia NCCL implementation https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31880/
   ☐ Test the performance if instead of storing the populations in the shared memory, store the moments, which can be pulled and used to reconstructed the populations
@@ -18,9 +18,8 @@ Projects:
   ☐ Moving boudnary conditions (e.g. moving particles using voxels)
   ☐ Implementation of DDF-Shift (density is done)
   ☐ Verify checkpoint for IBM
-  ☐ Decouple save data from the simulation (i.e device copies to device memory, continues operation, meanwhile host is saving on disk, operation is halted if call for save is called again and still didnt finalize the previous save)
   ☐ Change collision tracking so it a linked list instead a fixed array. (need evaluate performance)
-  ☐ Simplify function declaration (specially the host variables, create a class to store the pointers for each host moment field)
+
 
 Archive:\
 Async call to python script to convert bin files into vtr files -- no need anymore, saves directly in vtk
@@ -94,3 +93,5 @@ Completed:\
   ✔ Update description for newely created functions @done(25-09-17 16:29)
   ✔ Update authorship heades in the files @done(25-09-17 16:29)
   ✔ all #endif have to have comment on what define it ends @done(25-09-17 17:17)
+    ✔ Simplify function declaration (specially the host variables, create a class to store the pointers for each host moment field) @done(25-10-31 08:25)
+    ✔ Decouple save data from the simulation (i.e device copies to device memory, continues operation, meanwhile host is saving on disk, operation is halted if call for save is called again and still didnt finalize the previous save) @done(25-10-31 08:25)
