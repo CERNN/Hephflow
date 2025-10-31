@@ -1,3 +1,14 @@
+/**
+ *  @file var.h
+ *  Contributors history:
+ *  @author Waine Jr. (waine@alunos.utfpr.edu.br)
+ *  @author Marco Aurelio Ferrari (e.marcoferrari@utfpr.edu.br)
+ *  @brief Global variables
+ *  @version 0.4.0
+ *  @date 01/09/2025
+ */
+
+
 #ifndef __VAR_H
 #define __VAR_H
 
@@ -14,17 +25,27 @@
 #ifdef SINGLE_PRECISION
     typedef float dfloat;      // single precision
     #define VTK_DFLOAT_TYPE "float"
-#endif
+#endif //SINGLE_PRECISION
 #ifdef DOUBLE_PRECISION
     typedef double dfloat;      // double precision
     #define VTK_DFLOAT_TYPE "double"
-#endif
+#endif //DOUBLE_PRECISION
+
+// Pow function to use
+#ifdef SINGLE_PRECISION
+    #define POW_FUNCTION powf 
+#else
+    #define POW_FUNCTION pow
+#endif //SINGLE_PRECISION
 
 
+#define CELLDATA_SAVE false
 
 /* ----------------------------- PROBLEM DEFINE ---------------------------- */
 
-#define BC_PROBLEM benchmark
+
+#define BC_PROBLEM benchmark_ibm
+
                                 
 constexpr bool console_flush = false;
 
@@ -32,6 +53,8 @@ constexpr bool console_flush = false;
 
 
 /* --------------------------  SIMULATION DEFINES -------------------------- */
+constexpr unsigned int N_GPUS = 1;    // Number of GPUS to use
+constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};    // Which GPUs to use
 
 #define STR_IMPL(A) #A
 #define STR(A) STR_IMPL(A)
@@ -79,15 +102,17 @@ constexpr bool console_flush = false;
 #define COLREC_AZZ_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision.inc)
 
 
+#define CASE_PARTICLE_CREATE STR(../../CASE_DIRECTORY/BC_PROBLEM/particleCreation.inc)
+
 // Some compiler timer functions and auxiliaty compute macros
 
 #ifndef myMax
 #define myMax(a,b)            (((a) > (b)) ? (a) : (b))
-#endif
+#endif //!myMax
 
 #ifndef myMin
 #define myMin(a,b)            (((a) < (b)) ? (a) : (b))
-#endif
+#endif //!myMin
 
 
 constexpr dfloat constexprSqrt(dfloat x, dfloat curr, dfloat prev) {
@@ -108,6 +133,26 @@ constexpr dfloat invSqrtt(dfloat x) {
     return (x > 0 && x < std::numeric_limits<dfloat>::infinity())
         ? invSqrtNewton(x, 1.0 / x, 0)
         : std::numeric_limits<dfloat>::quiet_NaN();
+}
+
+
+constexpr dfloat constexprLnHelper(dfloat y, int n, dfloat sum) {
+    if (n > 10) {
+        return sum;
+    }
+    dfloat term = y;
+    for (int i = 0; i < n - 1; ++i) {
+        term *= y * y;
+    }
+    return constexprLnHelper(y, n + 1, sum + term / (2.0 * n - 1.0));
+}
+
+constexpr dfloat constexprLn(dfloat x) {
+    if (x <= 0.0) {
+        return std::numeric_limits<dfloat>::quiet_NaN();
+    }
+    dfloat y = (x - 1.0) / (x + 1.0);
+    return 2.0 * constexprLnHelper(y, 1, 0.0);
 }
 
 // Compile-time power of 2 checker
@@ -160,7 +205,7 @@ constexpr BlockDim findOptimalBlockDimensions(size_t maxElements) {
     return {bestX, bestY, bestZ};
 }
 
-// swap 32‐bit word
+// swap 32-bit word
 static inline uint32_t swap32(uint32_t v) {
     return  (v<<24) | 
            ((v<<8)&0x00FF0000) |
@@ -168,7 +213,7 @@ static inline uint32_t swap32(uint32_t v) {
             (v>>24);
 }
 
-// swap 64‐bit word
+// swap 64-bit word
 static inline uint64_t swap64(uint64_t v) {
     return  (v<<56) |
            ((v<<40)&0x00FF000000000000ULL) |
@@ -181,12 +226,19 @@ static inline uint64_t swap64(uint64_t v) {
 }
 
 
-#include CASE_MODEL
 #include CASE_CONSTANTS
+#include CASE_MODEL
 #include CASE_OUTPUTS
 
 
 #include "definitions.h"
 #include "nnf.h"
+
+
+// --- compile-time checks ---
+static_assert(NX >= BLOCK_NX, "NX must be >= BLOCK_NX, Update block size in definitions.h or increase domain in constants.inc");
+static_assert(NY >= BLOCK_NY, "NY must be >= BLOCK_NY, Update block size in definitions.h or increase domain in constants.inc");
+static_assert(NZ >= BLOCK_NZ, "NZ must be >= BLOCK_NZ, Update block size in definitions.h or increase domain in constants.inc");
+
 
 #endif //__VAR_H

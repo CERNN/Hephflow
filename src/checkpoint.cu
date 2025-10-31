@@ -40,10 +40,43 @@ void createFolder(std::string foldername)
     {
         std::cout << "Error creating folder '" << foldername << "'.\n";
     }
-    #endif
+    #endif //_WIN32
 }
 
 
+std::filesystem::path getExecutablePathCheckpoint() {
+    #if defined(_WIN32)
+        char result[MAX_PATH];
+        DWORD count = GetModuleFileNameA(NULL, result, MAX_PATH);
+        if (count == 0) throw std::runtime_error("Error obtaining path to executable (Windows).");
+        return std::filesystem::path(std::string(result, count));
+    #elif defined(__linux__)
+        char result[1024];
+        ssize_t count = readlink("/proc/self/exe", result, sizeof(result));
+        if (count == -1) throw std::runtime_error("Error obtaining path to executable (Linux).");
+        return std::filesystem::path(std::string(result, count));
+    #elif defined(__APPLE__)
+        char result[1024];
+        uint32_t size = sizeof(result);
+        if (_NSGetExecutablePath(result, &size) != 0)
+            throw std::runtime_error("Error obtaining path to executable  (macOS).");
+        return std::filesystem::path(result);
+    #else
+        #error "Platform not supported"
+    #endif
+}
+
+std::filesystem::path folderCheckpoint()
+{
+    std::filesystem::path exePath = getExecutablePathCheckpoint();   
+    std::filesystem::path binDir = exePath.parent_path();
+
+    std::filesystem::path foldername = binDir / PATH_FILES / ID_SIM / "checkpoint";
+
+    std::filesystem::create_directories(foldername);
+
+    return foldername;
+}
 
 size_t getFileSize(
     std::string filename
@@ -101,6 +134,21 @@ void writeFileIntoArray(void* arr, const std::string filename, const size_t arr_
     fclose(file);
 }
 
+__host__ 
+void writeFilesIntoDfloat3SoA(dfloat3SoA arr, const std::string foldername, const size_t arr_size_bytes, void* tmp){
+    // Write x, y and z to files
+    createFolder(foldername);
+    #ifdef _WIN32
+    writeFileIntoArray(arr.x, foldername + "\\\\x", arr_size_bytes, tmp);
+    writeFileIntoArray(arr.y, foldername + "\\\\y", arr_size_bytes, tmp);
+    writeFileIntoArray(arr.z, foldername + "\\\\z", arr_size_bytes, tmp);
+    #else
+    writeFileIntoArray(arr.x, foldername + "/x", arr_size_bytes, tmp);
+    writeFileIntoArray(arr.y, foldername + "/y", arr_size_bytes, tmp);
+    writeFileIntoArray(arr.z, foldername + "/z", arr_size_bytes, tmp);
+    #endif //_WIN32
+}
+
 __host__
 std::string getCheckpointFilenameRead(std::string name){
     std::string filename = SIMULATION_FOLDER_LOAD_CHECKPOINT;
@@ -110,7 +158,21 @@ std::string getCheckpointFilenameRead(std::string name){
     #else
     return filename + "/" + ID_SIM + "/checkpoint/" + 
         "_" + name;
-    #endif
+    #endif //_WIN32
+}
+
+__host__
+void readFilesIntoDfloat3SoA(dfloat3SoA arr, const std::string foldername, const size_t arr_size_bytes, void* tmp){
+    // Read to x, y and z in dfloat3SoA
+    #ifdef _WIN32
+    readFileIntoArray(arr.x, foldername + "\\\\x", arr_size_bytes, tmp);
+    readFileIntoArray(arr.y, foldername + "\\\\y", arr_size_bytes, tmp);
+    readFileIntoArray(arr.z, foldername + "\\\\z", arr_size_bytes, tmp);
+    #else
+    readFileIntoArray(arr.x, foldername + "/x", arr_size_bytes, tmp);
+    readFileIntoArray(arr.y, foldername + "/y", arr_size_bytes, tmp);
+    readFileIntoArray(arr.z, foldername + "/z", arr_size_bytes, tmp);
+    #endif //_WIN32
 }
 
 __host__
@@ -122,7 +184,7 @@ std::string getCheckpointFilenameWrite(std::string name){
     #else
     return filename + "/" + ID_SIM + "/checkpoint/" + 
         "_" + name;
-    #endif
+    #endif //_WIN32
 }
 
 __host__
@@ -198,7 +260,7 @@ void operateSimCheckpoint(
         printf("Saved checkpoint: g_pop \n");
     }
 
-    #endif
+    #endif //SECOND_DIST
 
     #ifdef A_XX_DIST 
     f_arr(ghostInterface.Axx_h_fGhost.X_0, f_filename("Axx_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
@@ -213,7 +275,7 @@ void operateSimCheckpoint(
         printf("Saved checkpoint: Axx_pop \n");
     }
 
-    #endif
+    #endif //A_XX_DIST
 
     #ifdef A_XY_DIST 
     f_arr(ghostInterface.Axy_h_fGhost.X_0, f_filename("Axy_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
@@ -228,7 +290,7 @@ void operateSimCheckpoint(
         printf("Saved checkpoint: Axy_pop \n");
     }
 
-    #endif
+    #endif //A_XY_DIST
 
     #ifdef A_XZ_DIST 
     f_arr(ghostInterface.Axz_h_fGhost.X_0, f_filename("Axz_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
@@ -243,7 +305,7 @@ void operateSimCheckpoint(
         printf("Saved checkpoint: Axz_pop \n");
     }
 
-    #endif
+    #endif //A_XZ_DIST
 
     #ifdef A_YY_DIST 
     f_arr(ghostInterface.Ayy_h_fGhost.X_0, f_filename("Ayy_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
@@ -258,7 +320,7 @@ void operateSimCheckpoint(
         printf("Saved checkpoint: Ayy_pop \n");
     }
 
-    #endif
+    #endif //A_YY_DIST
 
     #ifdef A_YZ_DIST 
     f_arr(ghostInterface.Ayz_h_fGhost.X_0, f_filename("Ayz_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
@@ -273,7 +335,7 @@ void operateSimCheckpoint(
         printf("Saved checkpoint: Ayz_pop \n");
     }
 
-    #endif
+    #endif //A_YZ_DIST
 
     #ifdef A_ZZ_DIST 
     f_arr(ghostInterface.Azz_h_fGhost.X_0, f_filename("Ayz_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
@@ -288,32 +350,12 @@ void operateSimCheckpoint(
         printf("Saved checkpoint: Azz_pop \n");
     }
 
-    #endif
-    /*
-    #ifdef COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
-
-        f_arr(ghostInterface.f_uGhost.X_0, f_filename("f_uGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * 3, tmp);
-        f_arr(ghostInterface.f_uGhost.X_1, f_filename("f_uGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * 3, tmp);
-        f_arr(ghostInterface.f_uGhost.Y_0, f_filename("f_uGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * 3, tmp);
-        f_arr(ghostInterface.f_uGhost.Y_1, f_filename("f_uGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * 3, tmp);
-        f_arr(ghostInterface.f_uGhost.Z_0, f_filename("f_uGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * 3, tmp);
-        f_arr(ghostInterface.f_uGhost.Z_1, f_filename("f_uGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * 3, tmp);        
-    #endif
-    
-    #ifdef COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
-
-        f_arr(ghostInterface.conf_fGhost.X_0, f_filename("conf_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * 6, tmp);
-        f_arr(ghostInterface.conf_fGhost.X_1, f_filename("conf_fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * 6, tmp);
-        f_arr(ghostInterface.conf_fGhost.Y_0, f_filename("conf_fGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * 6, tmp);
-        f_arr(ghostInterface.conf_fGhost.Y_1, f_filename("conf_fGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * 6, tmp);
-        f_arr(ghostInterface.conf_fGhost.Z_0, f_filename("conf_fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * 6, tmp);
-        f_arr(ghostInterface.conf_fGhost.Z_1, f_filename("conf_fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * 6, tmp);        
-    #endif
-    */
-
+    #endif //A_ZZ_DIST
 
     free(tmp);
 }
+
+
 
 __host__
 int getStep(){
@@ -368,16 +410,112 @@ int loadSimCheckpoint(
     return 1;
 }
 
+
 __host__
 void saveSimCheckpoint( 
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
     int *step
     ){
-    std::string foldername = PATH_FILES; 
-    foldername += "\\\\";
-    foldername += ID_SIM;
-    foldername += "\\\\checkpoint";
-    createFolder(foldername);
+    folderCheckpoint();
+
     operateSimCheckpoint(__SAVE_CHECKPOINT, fMom,ghostInterface, step);
 }
+
+#ifdef PARTICLE_MODEL
+
+__host__
+void operateSimCheckpointParticle( 
+    int oper,
+    ParticlesSoA& particlesSoA,
+    int* step
+    )
+{
+    // Defining what functions to use (read or write to files)
+    void (*f_arr)(void*, const std::string, size_t, void*);
+    void (*f_dfloat3SoA)(dfloat3SoA, const std::string, size_t, void*);
+    std::string (*f_filename)(std::string);
+
+    if(oper == __LOAD_CHECKPOINT){
+        f_arr = &readFileIntoArray;
+        f_dfloat3SoA = &readFilesIntoDfloat3SoA;
+        f_filename = &getCheckpointFilenameRead;
+    }else if(oper == __SAVE_CHECKPOINT){
+        f_arr = &writeFileIntoArray;
+        f_dfloat3SoA = &writeFilesIntoDfloat3SoA;
+        f_filename = &getCheckpointFilenameWrite;
+    }else{
+        std::cout << "Invalid operation. Exiting\n";
+        exit(-1);
+    }
+
+    // Everything will fit in this array
+    dfloat* tmp = (dfloat*)malloc(MEM_SIZE_POP);
+
+    // Load/save current step
+    f_arr(step, f_filename("curr_step_particle"), sizeof(int), tmp);
+    
+    ParticleMethod* methodArray = particlesSoA.getPMethod();
+    ParticleMethod& method = methodArray[GPU_INDEX];
+
+    if(method == IBM){
+        // Load particles centers positions
+        checkCudaErrors(cudaSetDevice(GPU_INDEX));
+        f_arr(particlesSoA.getPCenterArray(), f_filename("IBM_particles_centers"), 
+            NUM_PARTICLES*sizeof(ParticleCenter), tmp);
+    }
+    
+    checkCudaErrors(cudaSetDevice(GPU_INDEX));
+
+    if(method == IBM){
+
+        IbmNodesSoA* nodesArray = particlesSoA.getNodesSoA();
+        IbmNodesSoA& nSoA = nodesArray[GPU_INDEX];
+
+        // IBM nodes bytes size
+        if(oper == __LOAD_CHECKPOINT){
+            size_t filesize = getFileSize(f_filename("IBM_nodes_centers_idx.bin"));
+            nSoA.setNumNodes(filesize / sizeof(unsigned int));
+        }
+        size_t ibm_nodes_arr_size = nSoA.getNumNodes() * sizeof(dfloat);
+        size_t ibm_nodes_arr_size_uint = nSoA.getNumNodes() * sizeof(unsigned int);
+        // Load/save IBM nodes values
+        f_arr(nSoA.getParticleCenterIdx(), f_filename("IBM_nodes_centers_idx"), ibm_nodes_arr_size_uint, tmp);
+        f_dfloat3SoA(nSoA.getPos(), f_filename("IBM_nodes_pos"), ibm_nodes_arr_size, tmp);
+        f_dfloat3SoA(nSoA.getVel(), f_filename("IBM_nodes_vel"), ibm_nodes_arr_size, tmp);
+        f_dfloat3SoA(nSoA.getVelOld(), f_filename("IBM_nodes_vel_old"), ibm_nodes_arr_size, tmp);
+        f_dfloat3SoA(nSoA.getF(), f_filename("IBM_nodes_f"), ibm_nodes_arr_size, tmp);
+        f_dfloat3SoA(nSoA.getDeltaF(), f_filename("IBM_nodes_deltaF"), ibm_nodes_arr_size, tmp);
+        f_arr(nSoA.getS(), f_filename("IBM_nodes_S"), ibm_nodes_arr_size, tmp);
+    }
+    
+    free(tmp);
+    
+}
+__host__
+int loadSimCheckpointParticle( 
+    ParticlesSoA& particlesSoA,
+    int *step
+    ){
+    step[0] = getStep();
+
+    if(step[0] < INI_STEP)
+        step[0]=INI_STEP;
+
+    if (step[0]<=0){
+        std::cerr << "Starting from step " << step[0] << std::endl;
+        return 0;
+    }
+    operateSimCheckpointParticle(__LOAD_CHECKPOINT, particlesSoA, step);
+    return 1;
+}
+__host__
+void saveSimCheckpointParticle( 
+    ParticlesSoA& particlesSoA,
+    int *step
+    ){
+    folderCheckpoint();
+
+    operateSimCheckpointParticle(__SAVE_CHECKPOINT, particlesSoA, step);
+}
+#endif //PARTICLE_MODEL
