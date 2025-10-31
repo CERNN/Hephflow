@@ -11,7 +11,7 @@ typedef struct saveField{
     bool macrSave;
     bool particleSave;
    
-    void atualizarFlags(int step) {
+    void flagsUpdate(int step) {
         aux = step - INI_STEP;
         checkpoint = false;
         save = false;

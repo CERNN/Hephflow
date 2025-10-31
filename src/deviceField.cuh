@@ -43,12 +43,11 @@ typedef struct deviceField{
             &step, gridBlock, threadBlock);
     }
 
+    #ifdef DENSITY_CORRECTION
     void mean_rhoDeviceField(size_t step){
-        #ifdef DENSITY_CORRECTION
         mean_rho(d_fMom,step,d_mean_rho);
-        #endif //DENSITY_CORRECTION
-
     }
+    #endif //DENSITY_CORRECTION
 
     void gpuMomCollisionStreamDeviceField(dim3 gridBlock, dim3 threadBlock, unsigned int step, bool save){
             gpuMomCollisionStream << <gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>> >(d_fMom, dNodeType,ghostInterface, DENSITY_CORRECTION_PARAMS(d_) BC_FORCES_PARAMS(d_) step, save);
@@ -57,19 +56,18 @@ typedef struct deviceField{
     void swapGhostInterfacesDeviceField(){
         swapGhostInterfaces(ghostInterface);
     }
-
+    
+    #ifdef LOCAL_FORCES
     void gpuResetMacroForcesDeviceField(dim3 gridBlock, dim3 threadBlock){
-        #ifdef LOCAL_FORCES
         gpuResetMacroForces<<<gridBlock, threadBlock>>>(d_fMom);
-        #endif //LOCAL_FORCES
-
     }
+    #endif //LOCAL_FORCES
 
+    #ifdef PARTICLE_MODEL
     void particleSimulationDeviceField(ParticlesSoA &particlesSoA, cudaStream_t *streamsPart, unsigned int step){
-         #ifdef PARTICLE_MODEL
-            particleSimulation(&particlesSoA,d_fMom,streamsPart,step);
-        #endif //PARTICLE_MODEL
+        particleSimulation(&particlesSoA,d_fMom,streamsPart,step);
     }
+    #endif //PARTICLE_MODEL
 
     void interfaceCudaMemcpyDeviceField(bool fGhost){
         if (fGhost) {
@@ -121,20 +119,20 @@ typedef struct deviceField{
         step);
     }
 
+    #ifdef BC_FORCES
     void totalBcDragDeviceField(size_t step){
-        #ifdef BC_FORCES
         totalBcDrag(d_BC_Fx, d_BC_Fy, d_BC_Fz, step);
-        #endif //BC_FORCES
     }
+    #endif //BC_FORCES
 
+    #if defined BC_FORCES && defined SAVE_BC_FORCES
     void saveBcForces(hostField &hostField){
-        #if defined BC_FORCES && defined SAVE_BC_FORCES
         checkCudaErrors(cudaDeviceSynchronize()); 
         checkCudaErrors(cudaMemcpy(hostField.h_BC_Fx, d_BC_Fx, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
         checkCudaErrors(cudaMemcpy(hostField.h_BC_Fy, d_BC_Fy, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
         checkCudaErrors(cudaMemcpy(hostField.h_BC_Fz, d_BC_Fz, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
-        #endif //BC_FORCES && SAVE_BC_FORCES
     }
+    #endif //BC_FORCES && SAVE_BC_FORCES
 
     void freeDeviceField() {
         interfaceFree(ghostInterface);
