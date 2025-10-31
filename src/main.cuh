@@ -28,7 +28,6 @@
 #include "auxFunctions.cuh"
 #include "treatData.cuh"
 
-
 #ifdef PARTICLE_MODEL
     #include "./particles/class/Particle.cuh"
     #include "./particles/utils/particlesReport.cuh"
@@ -799,7 +798,8 @@ void initializeDomain(
     #if MEAN_FLOW
     dfloat *&m_fMom, 
     #endif //MEAN_FLOW
-    unsigned int *&hNodeType, unsigned int *&dNodeType, dfloat **&randomNumbers,
+    unsigned int *&hNodeType, unsigned int *&dNodeType, 
+    dfloat **&randomNumbers,
     BC_FORCES_PARAMS_DECLARATION(&d_)
     DENSITY_CORRECTION_PARAMS_DECLARATION(&h_)
     DENSITY_CORRECTION_PARAMS_DECLARATION(&d_)
