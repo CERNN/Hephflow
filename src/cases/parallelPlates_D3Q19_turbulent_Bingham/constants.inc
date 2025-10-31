@@ -1,7 +1,7 @@
-#define BINGHAM
+//#define BINGHAM
 #define TREAT_DATA_INCLUDE
 
-constexpr int N_STEPS = 10000;
+constexpr int N_STEPS = 1360000;
 
 constexpr dfloat U_TAU = 0.00579;     // friction velocity
 constexpr int del = 96;               // integral lenght scale
@@ -26,7 +26,7 @@ constexpr dfloat L = N;
 
 constexpr dfloat FX = 0.0;        // force in x
 constexpr dfloat FY = 0.0;        // force in y
-constexpr dfloat FZ = U_TAU*U_TAU/del;;        // force in z (flow direction in most cases)
+constexpr dfloat FZ = U_TAU*U_TAU/del;        // force in z (flow direction in most cases)
 
 // value for the velocity initial condition in the domain
 constexpr dfloat U_0_X = 0.0;

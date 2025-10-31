@@ -35,17 +35,16 @@ dfloat aa, bb;
 
 #ifdef FENE_P
     //trace of A
-    dfloat trA = AxxVar + AyyVar + 0;
-    aa = -inv_lambda/(1-trA/(fenep_re*fenep_re));
-    bb = -inv_lambda/(1-3.0/(fenep_re*fenep_re));
-    #ifdef OLDROYD_B
+    dfloat trA = AxxVar + AyyVar + AzzVar;
+    aa = 1.0 / (1 - trA/(fenep_re*fenep_re));
+    bb = 1.0 / (1 - 3.0/(fenep_re*fenep_re));
+#endif 
+
+#ifdef OLDROYD_B
     aa = 1.0;
     bb = 1.0;
-    #endif
 #endif
 
-aa = 1.0;
-bb = 1.0;
 
 //compute source term for the conformation transport
 // G = (1/lambda)*(I-A) + (A . div U + div U^T . A) * 3.0

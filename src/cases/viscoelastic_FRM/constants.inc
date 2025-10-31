@@ -4,14 +4,14 @@
 constexpr dfloat RE = 1;
 
 constexpr int SCALE = 1;
-constexpr int N = 128 * SCALE;
+constexpr int N = 256 * SCALE;
 constexpr int NX = N;        // size x of the grid 
 constexpr int NY = N;        // size y of the grid
 constexpr int NZ = 4;        // size z of the grid in one GPU
 constexpr int NZ_TOTAL = NZ;       // size z of the grid
 
 constexpr dfloat K_const = 2.0*M_PI/(dfloat)N;
-constexpr dfloat U_MAX = 0.004908875*2;  
+constexpr dfloat U_MAX = 0.004908875;  
 constexpr dfloat SUM_VISC = U_MAX/(RE*K_const);
 constexpr dfloat BETA = 2.0/3.0;  //solution (sum) = 1,2, solver = 0.8  so ratio is 0.8/1.2 //Thomases2007
 constexpr dfloat VISC = BETA * SUM_VISC;
@@ -20,8 +20,8 @@ constexpr dfloat TAU = 0.5 + 3.0*VISC;     // relaxation time
 constexpr dfloat F_0 = 2*U_MAX*VISC*K_const*K_const;
 constexpr dfloat t_c = 2*VISC*K_const/F_0;
 
-constexpr int CONFORMATION_SWITCH = 10*(int)t_c;
-constexpr int N_STEPS = CONFORMATION_SWITCH + 50*(int)t_c;
+constexpr int CONFORMATION_SWITCH = 0*(int)t_c;
+constexpr int N_STEPS = CONFORMATION_SWITCH + 200*(int)t_c;
 
 constexpr dfloat FX = 0.0;        // force in x
 constexpr dfloat FY = 0.0;        // force in y
@@ -95,7 +95,7 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
     constexpr dfloat fenep_re = 10.0;
 
     //ADVECTION-DIFFUSIONS CONSTANTS
-    constexpr dfloat CONF_DIFFUSIVITY_RATIO = 1000; //OR Pr in malaspinas
+    constexpr dfloat CONF_DIFFUSIVITY_RATIO = 100; //OR Pr in malaspinas
     constexpr dfloat CONF_DIFFUSIVITY = VISC/CONF_DIFFUSIVITY_RATIO; // a0lpha
 
     constexpr dfloat CONF_DIFF_REF = (1.0/6);

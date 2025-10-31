@@ -110,7 +110,6 @@ int main() {
 
         // ghost interface should be inside the deviceField struct
         deviceField.gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save);
-
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
             printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
