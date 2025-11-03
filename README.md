@@ -1,6 +1,7 @@
-# MR-LBM for GPU
+# Hephflow
 
-This repository contains a moment-based implementation of the Lattice Boltzmann Method (LBM), where the collision is performed across moments from 0th to 2nd order. The method is designed for GPU acceleration using CUDA. 
+This repository contains **Hephflow**, a moment-based implementation of the Lattice Boltzmann Method (LBM) for GPU acceleration using CUDA.  
+Hephflow is the successor to the previous project **MR-LBM**, and builds upon its concepts and codebase, introducing new features and improvements.
 
 ## Table of Contents
 
@@ -8,7 +9,7 @@ This repository contains a moment-based implementation of the Lattice Boltzmann 
 - [Installation Guide](#installation-guide)
 - [Simulation](#simulation)
 - [Post Processing](#post-processing)
-- [File Structure](#file-structure)
+- [File Structure](#file-file-structure)
 - [Creating a Boundary Case](#creating-a-boundary-case)
 - [Using Voxels Immersed Bodies](#using-voxels-immersed-bodies)
 - [Benchmark](#benchmark)
@@ -20,10 +21,11 @@ This repository contains a moment-based implementation of the Lattice Boltzmann 
 
 ## Project Overview
 
-The MR-LBM for GPU implements the moment-based Lattice Boltzmann method, where the collision is carried out across moments from the 0th to the 2nd order. This project is intended primarily as a proof of concept, with many features still under development.
+**Hephflow** implements the moment-based Lattice Boltzmann method, where the collision is carried out across moments from the 0th to the 2nd order.  
+This project is intended primarily as a proof of concept, with many features still under development.
 
+Hephflow is heavily based on the previous version [VISCOPLASTIC-LBM](https://github.com/CERNN/VISCOPLASTIC-LBM), and therefore shares similar licensing terms and design philosophy.  
 
-This code is heavily based on the LBM implementation from [VISCOPLASTIC-LBM](https://github.com/CERNN/VISCOPLASTIC-LBM) and therefore, shares similar licensing terms.
 
 ## Installation Guide
 
@@ -113,7 +115,7 @@ To define a new boundary case, you need to create files within the `cases` folde
 5. `model`: Defines model parameters (e.g., velocity set, collision model).
 6. `output`: Defines output parameters for data export.
 
-Additional modelels like thermal or viscoelastic will require additional files.
+Additional models like thermal or viscoelastic will require additional files.
 
 ## Using Voxels Immersed Bodies
 
@@ -168,10 +170,14 @@ Currently tested speed using benchmark case FP32, differences may occur due to f
 - [DOI: 10.1016/j.jnnfm.2023.105030](https://doi.org/10.1016/j.jnnfm.2023.105030)
 - [DOI: 10.1002/fld.5185](https://doi.org/10.1002/fld.5185)
 
+## Previous Version: MR-LBM
+
+Hephflow is a direct evolution of the MR-LBM project.  
+If you are looking for the original MR-LBM implementation, see [MR-LBM on GitHub](https://github.com/CERNN/MR-LBM).  
+
 ## TODO
 
-The [TODO.todo](./TODO.todo) file contains list of other objectives that may or not may be implemented. Either contain items to improve performance or enchance the capabilities of the model.
-
+The [TODO.todo](./TODO.todo) file contains list of other objectives that may or may not be implemented. Either contain items to improve performance or enhance the capabilities of the model.
 
 ## License
 
@@ -181,4 +187,4 @@ This software is provided under the [GPLv2 license](./LICENSE.txt).
 
 For bug reports or issues, please use the GitHub issue tracker for better visibility. You can also contact the maintainers via email at:
 
-- _marcoferrari@alunos.utfpr.edu.br_
+- _e.marcoferrari@utfpr.edu.br_
