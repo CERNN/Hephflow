@@ -465,7 +465,7 @@ void sphereSphereCollision(const CollisionContext& ctx){
     dfloat f_n = vector_length(f_normal);
 
     // Relative tangential velocity
-    dfloat3 G_ct = G + r_i * cross_product(w_i, n) - dot_product(G, n) * n;
+    dfloat3 G_ct = G + r_i * cross_product(w_i, n) + r_j * cross_product(w_j, n) - dot_product(G, n) * n;
     dfloat mag = vector_length(G_ct);
     dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0}; //tangential velocity vector
 
@@ -599,7 +599,7 @@ void ellipsoidEllipsoidCollision(const CollisionContext& ctx,dfloat3 closestOnA[
     // Tangential force
     dfloat3 rri = pos_i - pos_c_i;
     dfloat3 rrj = pos_j - pos_c_j;
-    dfloat3 G_ct = G + r_i * cross_product(w_i, n + rri) - dot_product(G, n) * n;
+    dfloat3 G_ct = G + r_i * cross_product(w_i, n + rri) + r_j * cross_product(w_j, n + rrj) - dot_product(G, n) * n;
     dfloat mag = vector_length(G_ct);
     dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0};
 
