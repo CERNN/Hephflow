@@ -23,37 +23,29 @@ typedef struct hostField{
     #endif //NODE_TYPE_SAVE
 
     #ifdef OMEGA_FIELD
-    NThread++;
     dfloat* omega;
     #endif //OMEGA_FIELD
 
     #ifdef SECOND_DIST
-    NThread++;
     dfloat* C;
     #endif //SECOND_DIST
 
     #ifdef A_XX_DIST
-    NThread++;
     dfloat* Axx;
     #endif //A_XX_DIST
     #ifdef A_XY_DIST
-    NThread++;
     dfloat* Axy;
     #endif //A_XY_DIST
     #ifdef A_XZ_DIST
-    NThread++;
     dfloat* Axz;
     #endif //A_XZ_DIST
     #ifdef A_YY_DIST
-    NThread++;
     dfloat* Ayy;
     #endif //A_YY_DIST
     #ifdef A_YZ_DIST
-    NThread++;
     dfloat* Ayz;
     #endif //A_YZ_DIST
     #ifdef A_ZZ_DIST
-    NThread++;
     dfloat* Azz;
     #endif //A_ZZ_DIST
 
@@ -81,6 +73,87 @@ typedef struct hostField{
         dfloat* h_BC_Fz;
         #endif //SAVE_BC_FORCES
     #endif //_BC_FORCES
+
+    // Constructor: initialize pointers and compute NThread based on compile-time flags
+    hostField()
+        : h_fMom(nullptr), rho(nullptr), ux(nullptr), uy(nullptr), uz(nullptr),
+          hNodeType(nullptr)
+        #if NODE_TYPE_SAVE
+        , nodeTypeSave(nullptr)
+        #endif
+        #ifdef OMEGA_FIELD
+        , omega(nullptr)
+        #endif
+        #ifdef SECOND_DIST
+        , C(nullptr)
+        #endif
+        #ifdef A_XX_DIST
+        , Axx(nullptr)
+        #endif
+        #ifdef A_XY_DIST
+        , Axy(nullptr)
+        #endif
+        #ifdef A_XZ_DIST
+        , Axz(nullptr)
+        #endif
+        #ifdef A_YY_DIST
+        , Ayy(nullptr)
+        #endif
+        #ifdef A_YZ_DIST
+        , Ayz(nullptr)
+        #endif
+        #ifdef A_ZZ_DIST
+        , Azz(nullptr)
+        #endif
+        #ifdef DENSITY_CORRECTION
+        , h_mean_rho(nullptr)
+        #endif
+        #if MEAN_FLOW
+        , m_fMom(nullptr), m_rho(nullptr), m_ux(nullptr), m_uy(nullptr), m_uz(nullptr)
+            #ifdef SECOND_DIST
+            , m_c(nullptr)
+            #endif
+        #endif
+        #ifdef BC_FORCES
+            #ifdef SAVE_BC_FORCES
+            , h_BC_Fx(nullptr), h_BC_Fy(nullptr), h_BC_Fz(nullptr)
+            #endif
+        #endif
+    {
+        NThread = 4;
+        #if NODE_TYPE_SAVE
+        NThread++;
+        #endif
+        #ifdef OMEGA_FIELD
+        NThread++;
+        #endif
+        #ifdef SECOND_DIST
+        NThread++;
+        #endif
+        #ifdef A_XX_DIST
+        NThread++;
+        #endif
+        #ifdef A_XY_DIST
+        NThread++;
+        #endif
+        #ifdef A_XZ_DIST
+        NThread++;
+        #endif
+        #ifdef A_YY_DIST
+        NThread++;
+        #endif
+        #ifdef A_YZ_DIST
+        NThread++;
+        #endif
+        #ifdef A_ZZ_DIST
+        NThread++;
+        #endif
+        #ifdef BC_FORCES
+            #ifdef SAVE_BC_FORCES
+            NThread += 3;
+            #endif
+        #endif
+    }
 
     void allocateHostMemoryHostField(){
         allocateHostMemory(
