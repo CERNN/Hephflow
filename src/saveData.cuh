@@ -45,6 +45,7 @@
 #include <builtin_types.h>
 #include "errorDef.h"
 #include "globalStructs.h"
+#include <atomic>
 
 __host__
 std::filesystem::path getExecutablePath();
