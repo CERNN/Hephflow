@@ -178,7 +178,7 @@ typedef struct hostField{
     void saveMacrHostField(unsigned int nSteps, std::atomic<bool>& savingMacrVtk, std::vector<std::atomic<bool>>& savingMacrBin, bool meanFlow){
         if(meanFlow){
             #if MEAN_FLOW
-                saveMacr(m_fMom,m_rho,m_ux,m_uy,m_uz, NodeType, OMEGA_FIELD_PARAMS
+                saveMacr(m_fMom,m_rho,m_ux,m_uy,m_uz, hNodeType, OMEGA_FIELD_PARAMS
                     #ifdef SECOND_DIST 
                     m_c,
                     #endif  //SECOND_DIST
