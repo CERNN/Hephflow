@@ -136,7 +136,7 @@ dfloat3 getOrUpdateTangentialDisplacement(
     bool isWall, //true if wall, false if particle-particle collision
     int step,
     const dfloat3& G_ct,
-    const dfloat3& G,
+    const dfloat3& G_cn,
     int& tang_index_out,
     const dfloat3& wallNormal // only used for wall
 ) {
@@ -161,7 +161,7 @@ dfloat3 getOrUpdateTangentialDisplacement(
             tang_index = startCollision(pc_i->getCollision(), identifier, isWall, wallNormal, step); //start collision and retrive collision index
             tang_disp = G_ct;
         } else {
-            tang_disp = updateTangentialDisplacement(pc_i->getCollision(), tang_index, G, step);
+            tang_disp = updateTangentialDisplacement(pc_i->getCollision(), tang_index, G_ct, step);
         }
     }
     //return the index by address
@@ -216,7 +216,7 @@ void sphereWallCollision(const CollisionContext& ctx){
 
     //retrive and update tangential displacement
     int tang_index = calculateWallIndex(n); //wall can be directly computed
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G, tang_index, n);
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, dot_product(G,n), tang_index, n);
 
     // Compute tangential force
     dfloat3 f_tang = computeTangentialForce(
@@ -251,10 +251,11 @@ void capsuleWallCollisionCap(const CollisionContext& ctx) {
     dfloat3 wall_speed = dfloat3(0, 0, 0);          // Wall velocity (assumed zero)
     dfloat3 n = wallData.normal * -1.0f;            // Invert normal: collision from sphere to wall
 
-    
     // Relative velocity
-    dfloat3 rr = cap_pos - center_pos;              // Vector from center to cap
-    dfloat3 G = v_i - wall_speed;                   // Relative velocity
+    dfloat3 rri = cap_pos - center_pos; 
+    dfloat3 G = (v_i + cross_product(w_i,r_i*n + rri)) - (wall_speed);
+    dfloat3 G_cn = dot_product(G,n) * n;
+    dfloat3 G_ct = G - G_cn;
 
     //Collision constants
     const dfloat STIFFNESS_NORMAL = SPHERE_WALL_STIFFNESS_NORMAL_CONST * sqrt(abs(r_i));
@@ -262,19 +263,19 @@ void capsuleWallCollisionCap(const CollisionContext& ctx) {
     const dfloat DAMPING_NORMAL = SPHERE_WALL_DAMPING_CONST * sqrt(m_i * STIFFNESS_NORMAL);
     const dfloat DAMPING_TANGENTIAL = SPHERE_WALL_DAMPING_CONST * sqrt(m_i * STIFFNESS_TANGENTIAL);
 
+
     // Normal force
     dfloat3 f_normal = computeNormalForce(n, G, displacement, STIFFNESS_NORMAL, DAMPING_NORMAL);
     dfloat f_n = vector_length(f_normal);
 
     // Relative tangential velocity
-    dfloat3 G_ct = G + r_i * cross_product(w_i, n + rr) - dot_product(G, n) * n;
     dfloat mag = vector_length(G_ct);
     dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0}; // Tangential velocity vector
 
     // Tangential displacement tracking
     //retrive and update tangential displacement
     int tang_index = calculateWallIndex(n); //wall can be directly computed
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G, tang_index, n);
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G_cn, tang_index, n);
 
 
     // Compute tangential force
@@ -285,7 +286,7 @@ void capsuleWallCollisionCap(const CollisionContext& ctx) {
 
     //Total forces and torque in the particle
     dfloat3 f_dirs = f_normal + f_tang;
-    dfloat3 m_dirs = cross_product((n * r_i) + rr, f_dirs);
+    dfloat3 m_dirs = cross_product((n * r_i) + rri, f_dirs);
 
     //Save data in the particle information
     accumulateForceAndTorque(pc_i, f_dirs, m_dirs);
@@ -311,9 +312,10 @@ void ellipsoidWallCollision(const CollisionContext& ctx, dfloat cr[1]) {
     dfloat3 n = wallData.normal * -1.0f; //invert collision direction since is from sphere to wall
 
     //vector center-> contact 
-    dfloat3 rr = pos_c_i - pos_i;
-    dfloat3 G = v_i - wall_speed;
-
+    dfloat3 rri = pos_c_i - pos_i;
+    dfloat3 G = (v_i + cross_product(w_i,rri)) - (wall_speed);
+    dfloat3 G_cn = dot_product(G,n) * n;
+    dfloat3 G_ct = G - G_cn;
 
     //collision constants
     const dfloat STIFFNESS_NORMAL = SPHERE_WALL_STIFFNESS_NORMAL_CONST * sqrt(abs(cr[0]));
@@ -326,14 +328,13 @@ void ellipsoidWallCollision(const CollisionContext& ctx, dfloat cr[1]) {
     dfloat f_n = vector_length(f_normal);
 
     // Relative tangential velocity
-    dfloat3 G_ct = G + r_i * cross_product(w_i, n + rr) - dot_product(G, n) * n;
     dfloat mag = vector_length(G_ct);
     dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0}; // Tangential velocity vector
 
 
     //retrive and update tangential displacement
     int tang_index = calculateWallIndex(n); //wall can be directly computed
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G, tang_index, n);
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G_cn, tang_index, n);
 
     // Compute tangential force
     dfloat3 f_tang = computeTangentialForce(
@@ -345,7 +346,7 @@ void ellipsoidWallCollision(const CollisionContext& ctx, dfloat cr[1]) {
     dfloat3 f_dirs = f_normal + f_tang;
 
     //calculate moments
-    dfloat3 m_dirs = cross_product(rr,f_dirs);
+    dfloat3 m_dirs = cross_product(rri,f_dirs);
 
     //save date in the particle information
     accumulateForceAndTorque(pc_i, f_dirs, m_dirs);
@@ -515,7 +516,7 @@ void capsuleCapsuleCollision(const CollisionContext& ctx, dfloat3 closestOnA[1],
     // Use normal direction from context (set in wall.normal)
     const dfloat3 n = ctx.wall.normal;
     // Relative velocity
-    dfloat3 G = v_i - v_j;
+    dfloat3 G = v_i - v_j;   
 
     // Hertz contact theory
     dfloat effective_radius = 1.0 / ((r_i + r_j) / (r_i * r_j));
@@ -535,7 +536,7 @@ void capsuleCapsuleCollision(const CollisionContext& ctx, dfloat3 closestOnA[1],
     dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0};
 
     int tang_index = -1;
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, G, tang_index, dfloat3(0, 0, 0));
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, dot_product(G,n), tang_index, dfloat3(0, 0, 0));
 
     // Compute tangential force
     dfloat3 f_tang = computeTangentialForce(
@@ -580,7 +581,11 @@ void ellipsoidEllipsoidCollision(const CollisionContext& ctx,dfloat3 closestOnA[
     // Use normal direction from context (set in wall.normal)
     const dfloat3 n = ctx.wall.normal;
     // Relative velocity
-    dfloat3 G = v_i - v_j;
+    dfloat3 rri = pos_i - pos_c_i;
+    dfloat3 rrj = pos_j - pos_c_j;
+    dfloat3 G = (v_i + cross_product(w_i,rri)) - (v_j + cross_product(w_j,rrj));
+    dfloat3 G_cn = dot_product(G,n) * n;
+    dfloat3 G_ct = G - G_cn;
 
     // Hertz contact theory
     dfloat effective_radius = 1.0 / ((cr1[0] + cr2[0]) / (cr1[0] * cr2[0]));
@@ -596,15 +601,12 @@ void ellipsoidEllipsoidCollision(const CollisionContext& ctx,dfloat3 closestOnA[
     dfloat3 f_normal = computeNormalForce(n, G, displacement, STIFFNESS_NORMAL, DAMPING_NORMAL);
     dfloat f_n = vector_length(f_normal);
 
-    // Tangential force
-    dfloat3 rri = pos_i - pos_c_i;
-    dfloat3 rrj = pos_j - pos_c_j;
-    dfloat3 G_ct = G + r_i * cross_product(w_i, n + rri) + r_j * cross_product(w_j, n + rrj) - dot_product(G, n) * n;
+    // Relative tangential velocity
     dfloat mag = vector_length(G_ct);
     dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0};
 
     int tang_index = -1;
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, G, tang_index, dfloat3(0, 0, 0));
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, G_cn, tang_index, dfloat3(0, 0, 0));
 
     dfloat3 f_tang = computeTangentialForce(
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
