@@ -1,0 +1,33 @@
+    multiplyTerm = rhoVar * W0;
+    pop[ 0] = multiplyTerm * (##########);
+    multiplyTerm = rhoVar * W1;
+    pop[ 1] = multiplyTerm * (##########);
+    pop[ 2] = multiplyTerm * (##########);
+    pop[ 3] = multiplyTerm * (##########);
+    pop[ 4] = multiplyTerm * (##########);
+    pop[ 5] = multiplyTerm * (##########);
+    pop[ 6] = multiplyTerm * (##########);
+    multiplyTerm = rhoVar * W2;
+    pop[ 7] = multiplyTerm * (##########);
+    pop[ 8] = multiplyTerm * (##########);
+    pop[ 9] = multiplyTerm * (##########);
+    pop[10] = multiplyTerm * (##########);
+    pop[11] = multiplyTerm * (##########);
+    pop[12] = multiplyTerm * (##########);
+    pop[13] = multiplyTerm * (##########);
+    pop[14] = multiplyTerm * (##########);
+    pop[15] = multiplyTerm * (##########);
+    pop[16] = multiplyTerm * (##########);
+    pop[17] = multiplyTerm * (##########);
+    pop[18] = multiplyTerm * (##########);
+    #ifdef D3Q27
+    multiplyTerm = rhoVar * W3;
+    pop[19] = multiplyTerm * (##########);
+    pop[20] = multiplyTerm * (##########);
+    pop[21] = multiplyTerm * (##########);
+    pop[22] = multiplyTerm * (##########);
+    pop[23] = multiplyTerm * (##########);
+    pop[24] = multiplyTerm * (##########);
+    pop[25] = multiplyTerm * (##########);
+    pop[26] = multiplyTerm * (##########);
+    #endif //D3Q27
