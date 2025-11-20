@@ -116,9 +116,11 @@ const size_t BLOCK_GHOST_SIZE = BLOCK_FACE_XY + BLOCK_FACE_XZ + BLOCK_FACE_YZ;
 const size_t BLOCK_SIZE = BLOCK_LBM_SIZE + BLOCK_GHOST_SIZE;
 //const size_t BLOCK_SIZE = (BLOCK_NX + 1) * (BLOCK_NY + 1) * (BLOCK_NZ + 1);
 
-const size_t NUM_BLOCK_X = NX / BLOCK_NX;
-const size_t NUM_BLOCK_Y = NY / BLOCK_NY;
-const size_t NUM_BLOCK_Z = NZ / BLOCK_NZ;
+//TODO: in order to support domains with size that are not multiple of the block size need fix the index function where the transfer populations occur for periodic domains. 
+const size_t NUM_BLOCK_X = (NX / BLOCK_NX) + (NX % BLOCK_NX > 0 ? 1 : 0);
+const size_t NUM_BLOCK_Y = (NY / BLOCK_NY) + (NY % BLOCK_NY > 0 ? 1 : 0);
+const size_t NUM_BLOCK_Z = (NZ / BLOCK_NZ) + (NZ % BLOCK_NZ > 0 ? 1 : 0);
+
 const size_t NUM_BLOCK = NUM_BLOCK_X * NUM_BLOCK_Y * NUM_BLOCK_Z;
 
 const size_t NUMBER_LBM_NODES = NUM_BLOCK * BLOCK_LBM_SIZE;

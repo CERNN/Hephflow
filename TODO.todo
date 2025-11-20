@@ -19,6 +19,9 @@ Projects:
   ☐ Implementation of DDF-Shift (density is done)
   ☐ Verify checkpoint for IBM
   ☐ Change collision tracking so it a linked list instead a fixed array. (need evaluate performance)
+  ☐ Support domains with size that is not multiple of the block size. 
+    ☐ Fix index function and popSave to save value from the middle of the block and not just from the first and last thread.
+
 
 
 Archive:\
