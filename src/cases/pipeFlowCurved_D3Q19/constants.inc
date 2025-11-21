@@ -3,11 +3,11 @@
 constexpr dfloat RE = 10;
 
 constexpr int SCALE = 1;
-constexpr int N_STEPS = 200000;
-constexpr int N = 128 * SCALE;
+constexpr int N_STEPS = 5000;
+constexpr int N = 64 * SCALE;
 constexpr int NX = N;        // size x of the grid 
 constexpr int NY = N;        // size y of the grid
-constexpr int NZ = 2*N;        // size z of the grid in one GPU
+constexpr int NZ = 8;        // size z of the grid in one GPU
 constexpr int NZ_TOTAL = NZ;       // size z of the grid
 
 constexpr dfloat U_MAX = 0.0;  
@@ -34,7 +34,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 #define BC_Y_WALL
 #define BC_Z_PERIODIC
 
-constexpr dfloat VISC = 0.8;
+constexpr dfloat VISC = 0.1;
 constexpr dfloat TAU = 0.5 + 3.0*VISC;     // relaxation time
 constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
 
@@ -60,7 +60,7 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
 #define DUCT_CENTER_Y (((NY-1)/2.0)+0.5)
 
 #ifdef EXTERNAL_DUCT_BC 
-    #define OUTER_RADIUS (NY/2.0-1.5)
+    #define OUTER_RADIUS (NY/2.0-3.5)
     #define EXTERNAL_DUCT_BC_RADIUS OUTER_RADIUS
     #define OUTER_VELOCITY 0.0
     #define OUTER_ROTATION 0.0 //(U_MAX/OUTER_RADIUS)    
