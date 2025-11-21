@@ -918,17 +918,30 @@ __host__ void hostInitialization_nodeType_bulk(
 }
 
 __host__ void hostInitialization_nodeType(
-    unsigned int *hNodeType)
-{
+    unsigned int *hNodeType
+    #ifdef CURVED_BOUNDARY_CONDITION
+    , unsigned int* numberCurvedBoundaryNodes
+    #endif
+){
     int x,y,z;
     unsigned int nodeType;
 
     for (x = 0; x<NX;x++){
         for (y = 0; y<NY;y++){
             for (z = 0; z<NZ_TOTAL;z++){
+                
                 #include CASE_BC_INIT
-                if (nodeType != BULK)
+
+                if (nodeType != BULK){
                     hNodeType[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] = (unsigned int)nodeType;
+
+                    #ifdef CURVED_BOUNDARY_CONDITION
+                    if ( (nodeType & (0b111 << 8)) == (0b101 << 8) ){ //mask bits 8,9,10 then compare with BC_CURVED_BC
+                        numberCurvedBoundaryNodes[0]++;
+                    }
+                    #endif
+                }
+
             }
         }
     }
@@ -951,6 +964,25 @@ __global__ void gpuInitialization_force(
     d_BC_Fy[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0;
     d_BC_Fz[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0; 
 }
+
+
+#ifdef CURVED_BOUNDARY_CONDITION
+__global__ void deviceInitializeCurvedBC(
+    unsigned int *dNodeType, 
+    CurvedBoundary** d_curvedBC
+){
+    int x = threadIdx.x + blockDim.x * blockIdx.x;
+    int y = threadIdx.y + blockDim.y * blockIdx.y;
+    int z = threadIdx.z + blockDim.z * blockIdx.z;
+    if (x >= NX || y >= NY || z >= NZ)
+        return;
+    
+     d_curvedBC[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = nullptr;
+}
+#endif
+
+
+
 
 void read_xyz_file(
     const std::string& filename,
@@ -1028,6 +1060,11 @@ void define_voxel_bc(
     unsigned int index = idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ);
     if(dNodeType[index] == MISSING_DEFINITION){
         dNodeType[index] = bc_id(dNodeType,x,y,z);
+        #ifdef CURVED_BOUNDARY_CONDITION //TODO: this only works if is the only boundary conditiond being made, if there is an obstacle will stop working
+            if((dNodeType[index] != BULK )&& (dNodeType[index] != SOLID_NODE)){
+                dNodeType[index] += BC_CURVED_BC;
+            }
+        #endif
     }
 }
 

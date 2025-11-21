@@ -354,4 +354,17 @@ typedef struct wall{
 } Wall;
 
 
+typedef struct curvedBoundary{
+    dfloat3 b;
+    dfloat3 w;
+    dfloat3 pf1;
+    dfloat3 pf2;
+    dfloat3 pf3;
+
+    dfloat delta;
+    dfloat theta;
+}CurvedBoundary;
+
+
+
 #endif //__GLOBAL_STRUCTS_H

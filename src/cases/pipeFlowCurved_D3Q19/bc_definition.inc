@@ -11,10 +11,9 @@ dfloat m_zz_I;
 dfloat rho;
 dfloat inv_rho;
 
-
 switch (nodeType)
 {
-case 0b00000001:
+case 0b0000010100000001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -45,7 +44,7 @@ case 0b00000001:
     #endif //_BC_FORCES 
 
     break;
-case 0b00000010:
+case 0b0000010100000010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -76,7 +75,7 @@ case 0b00000010:
     #endif //_BC_FORCES 
 
     break;
-case 0b00000011:
+case 0b0000010100000011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -107,7 +106,7 @@ case 0b00000011:
     #endif //_BC_FORCES 
 
     break;
-case 0b00000100:
+case 0b0000010100000100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -138,7 +137,7 @@ case 0b00000100:
     #endif //_BC_FORCES 
 
     break;
-case 0b00000101:
+case 0b0000010100000101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -169,7 +168,7 @@ case 0b00000101:
     #endif //_BC_FORCES 
 
     break;
-case 0b00000110:
+case 0b0000010100000110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -200,7 +199,7 @@ case 0b00000110:
     #endif //_BC_FORCES 
 
     break;
-case 0b00000111:
+case 0b0000010100000111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -231,7 +230,7 @@ case 0b00000111:
     #endif //_BC_FORCES 
 
     break;
-case 0b00001000:
+case 0b0000010100001000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -262,7 +261,7 @@ case 0b00001000:
     #endif //_BC_FORCES 
 
     break;
-case 0b00001001:
+case 0b0000010100001001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -293,7 +292,7 @@ case 0b00001001:
     #endif //_BC_FORCES 
 
     break;
-case 0b00001010:
+case 0b0000010100001010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -324,7 +323,7 @@ case 0b00001010:
     #endif //_BC_FORCES 
 
     break;
-case 0b00001011:
+case 0b0000010100001011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -355,7 +354,7 @@ case 0b00001011:
     #endif //_BC_FORCES 
 
     break;
-case 0b00001100:
+case 0b0000010100001100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -386,7 +385,7 @@ case 0b00001100:
     #endif //_BC_FORCES 
 
     break;
-case 0b00001101:
+case 0b0000010100001101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -417,7 +416,7 @@ case 0b00001101:
     #endif //_BC_FORCES 
 
     break;
-case 0b00001110:
+case 0b0000010100001110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -448,7 +447,7 @@ case 0b00001110:
     #endif //_BC_FORCES 
 
     break;
-case 0b00001111:
+case 0b0000010100001111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -479,7 +478,7 @@ case 0b00001111:
     #endif //_BC_FORCES 
 
     break;
-case 0b00010000:
+case 0b0000010100010000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -510,7 +509,7 @@ case 0b00010000:
     #endif //_BC_FORCES 
 
     break;
-case 0b00010001:
+case 0b0000010100010001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -541,7 +540,7 @@ case 0b00010001:
     #endif //_BC_FORCES 
 
     break;
-case 0b00010010:
+case 0b0000010100010010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -572,7 +571,7 @@ case 0b00010010:
     #endif //_BC_FORCES 
 
     break;
-case 0b00010011:
+case 0b0000010100010011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -603,7 +602,7 @@ case 0b00010011:
     #endif //_BC_FORCES 
 
     break;
-case 0b00010100:
+case 0b0000010100010100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -634,7 +633,7 @@ case 0b00010100:
     #endif //_BC_FORCES 
 
     break;
-case 0b00010101:
+case 0b0000010100010101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -665,7 +664,7 @@ case 0b00010101:
     #endif //_BC_FORCES 
 
     break;
-case 0b00010110:
+case 0b0000010100010110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -696,7 +695,7 @@ case 0b00010110:
     #endif //_BC_FORCES 
 
     break;
-case 0b00010111:
+case 0b0000010100010111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -727,7 +726,7 @@ case 0b00010111:
     #endif //_BC_FORCES 
 
     break;
-case 0b00011000:
+case 0b0000010100011000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -758,7 +757,7 @@ case 0b00011000:
     #endif //_BC_FORCES 
 
     break;
-case 0b00011001:
+case 0b0000010100011001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -789,7 +788,7 @@ case 0b00011001:
     #endif //_BC_FORCES 
 
     break;
-case 0b00011010:
+case 0b0000010100011010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -820,7 +819,7 @@ case 0b00011010:
     #endif //_BC_FORCES 
 
     break;
-case 0b00011011:
+case 0b0000010100011011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -851,7 +850,7 @@ case 0b00011011:
     #endif //_BC_FORCES 
 
     break;
-case 0b00011100:
+case 0b0000010100011100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -882,7 +881,7 @@ case 0b00011100:
     #endif //_BC_FORCES 
 
     break;
-case 0b00011101:
+case 0b0000010100011101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -913,7 +912,7 @@ case 0b00011101:
     #endif //_BC_FORCES 
 
     break;
-case 0b00011110:
+case 0b0000010100011110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -944,7 +943,7 @@ case 0b00011110:
     #endif //_BC_FORCES 
 
     break;
-case 0b00011111:
+case 0b0000010100011111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -975,7 +974,7 @@ case 0b00011111:
     #endif //_BC_FORCES 
 
     break;
-case 0b00100000:
+case 0b0000010100100000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1006,7 +1005,7 @@ case 0b00100000:
     #endif //_BC_FORCES 
 
     break;
-case 0b00100001:
+case 0b0000010100100001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1037,7 +1036,7 @@ case 0b00100001:
     #endif //_BC_FORCES 
 
     break;
-case 0b00100010:
+case 0b0000010100100010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1068,7 +1067,7 @@ case 0b00100010:
     #endif //_BC_FORCES 
 
     break;
-case 0b00100011:
+case 0b0000010100100011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1099,7 +1098,7 @@ case 0b00100011:
     #endif //_BC_FORCES 
 
     break;
-case 0b00100100:
+case 0b0000010100100100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1130,7 +1129,7 @@ case 0b00100100:
     #endif //_BC_FORCES 
 
     break;
-case 0b00100101:
+case 0b0000010100100101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1161,7 +1160,7 @@ case 0b00100101:
     #endif //_BC_FORCES 
 
     break;
-case 0b00100110:
+case 0b0000010100100110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1192,7 +1191,7 @@ case 0b00100110:
     #endif //_BC_FORCES 
 
     break;
-case 0b00100111:
+case 0b0000010100100111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1223,7 +1222,7 @@ case 0b00100111:
     #endif //_BC_FORCES 
 
     break;
-case 0b00101000:
+case 0b0000010100101000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1254,7 +1253,7 @@ case 0b00101000:
     #endif //_BC_FORCES 
 
     break;
-case 0b00101001:
+case 0b0000010100101001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1285,7 +1284,7 @@ case 0b00101001:
     #endif //_BC_FORCES 
 
     break;
-case 0b00101010:
+case 0b0000010100101010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1316,7 +1315,7 @@ case 0b00101010:
     #endif //_BC_FORCES 
 
     break;
-case 0b00101011:
+case 0b0000010100101011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1347,7 +1346,7 @@ case 0b00101011:
     #endif //_BC_FORCES 
 
     break;
-case 0b00101100:
+case 0b0000010100101100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1378,7 +1377,7 @@ case 0b00101100:
     #endif //_BC_FORCES 
 
     break;
-case 0b00101101:
+case 0b0000010100101101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1409,7 +1408,7 @@ case 0b00101101:
     #endif //_BC_FORCES 
 
     break;
-case 0b00101110:
+case 0b0000010100101110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1440,7 +1439,7 @@ case 0b00101110:
     #endif //_BC_FORCES 
 
     break;
-case 0b00101111:
+case 0b0000010100101111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1471,7 +1470,7 @@ case 0b00101111:
     #endif //_BC_FORCES 
 
     break;
-case 0b00110000:
+case 0b0000010100110000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1502,7 +1501,7 @@ case 0b00110000:
     #endif //_BC_FORCES 
 
     break;
-case 0b00110001:
+case 0b0000010100110001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1533,7 +1532,7 @@ case 0b00110001:
     #endif //_BC_FORCES 
 
     break;
-case 0b00110010:
+case 0b0000010100110010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1564,7 +1563,7 @@ case 0b00110010:
     #endif //_BC_FORCES 
 
     break;
-case 0b00110011:
+case 0b0000010100110011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1595,7 +1594,7 @@ case 0b00110011:
     #endif //_BC_FORCES 
 
     break;
-case 0b00110100:
+case 0b0000010100110100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1626,7 +1625,7 @@ case 0b00110100:
     #endif //_BC_FORCES 
 
     break;
-case 0b00110101:
+case 0b0000010100110101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1657,7 +1656,7 @@ case 0b00110101:
     #endif //_BC_FORCES 
 
     break;
-case 0b00110110:
+case 0b0000010100110110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1688,7 +1687,7 @@ case 0b00110110:
     #endif //_BC_FORCES 
 
     break;
-case 0b00110111:
+case 0b0000010100110111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1719,7 +1718,7 @@ case 0b00110111:
     #endif //_BC_FORCES 
 
     break;
-case 0b00111000:
+case 0b0000010100111000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1750,7 +1749,7 @@ case 0b00111000:
     #endif //_BC_FORCES 
 
     break;
-case 0b00111001:
+case 0b0000010100111001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1781,7 +1780,7 @@ case 0b00111001:
     #endif //_BC_FORCES 
 
     break;
-case 0b00111010:
+case 0b0000010100111010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1812,7 +1811,7 @@ case 0b00111010:
     #endif //_BC_FORCES 
 
     break;
-case 0b00111011:
+case 0b0000010100111011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1843,7 +1842,7 @@ case 0b00111011:
     #endif //_BC_FORCES 
 
     break;
-case 0b00111100:
+case 0b0000010100111100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1874,7 +1873,7 @@ case 0b00111100:
     #endif //_BC_FORCES 
 
     break;
-case 0b00111101:
+case 0b0000010100111101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1905,7 +1904,7 @@ case 0b00111101:
     #endif //_BC_FORCES 
 
     break;
-case 0b00111110:
+case 0b0000010100111110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1936,7 +1935,7 @@ case 0b00111110:
     #endif //_BC_FORCES 
 
     break;
-case 0b00111111:
+case 0b0000010100111111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1967,7 +1966,7 @@ case 0b00111111:
     #endif //_BC_FORCES 
 
     break;
-case 0b01000000:
+case 0b0000010101000000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -1998,7 +1997,7 @@ case 0b01000000:
     #endif //_BC_FORCES 
 
     break;
-case 0b01000001:
+case 0b0000010101000001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2029,7 +2028,7 @@ case 0b01000001:
     #endif //_BC_FORCES 
 
     break;
-case 0b01000010:
+case 0b0000010101000010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2060,7 +2059,7 @@ case 0b01000010:
     #endif //_BC_FORCES 
 
     break;
-case 0b01000011:
+case 0b0000010101000011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2091,7 +2090,7 @@ case 0b01000011:
     #endif //_BC_FORCES 
 
     break;
-case 0b01000100:
+case 0b0000010101000100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2122,7 +2121,7 @@ case 0b01000100:
     #endif //_BC_FORCES 
 
     break;
-case 0b01000101:
+case 0b0000010101000101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2153,7 +2152,7 @@ case 0b01000101:
     #endif //_BC_FORCES 
 
     break;
-case 0b01000110:
+case 0b0000010101000110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2184,7 +2183,7 @@ case 0b01000110:
     #endif //_BC_FORCES 
 
     break;
-case 0b01000111:
+case 0b0000010101000111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2215,7 +2214,7 @@ case 0b01000111:
     #endif //_BC_FORCES 
 
     break;
-case 0b01001000:
+case 0b0000010101001000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2246,7 +2245,7 @@ case 0b01001000:
     #endif //_BC_FORCES 
 
     break;
-case 0b01001001:
+case 0b0000010101001001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2277,7 +2276,7 @@ case 0b01001001:
     #endif //_BC_FORCES 
 
     break;
-case 0b01001010:
+case 0b0000010101001010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2308,7 +2307,7 @@ case 0b01001010:
     #endif //_BC_FORCES 
 
     break;
-case 0b01001011:
+case 0b0000010101001011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2339,7 +2338,7 @@ case 0b01001011:
     #endif //_BC_FORCES 
 
     break;
-case 0b01001100:
+case 0b0000010101001100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2370,7 +2369,7 @@ case 0b01001100:
     #endif //_BC_FORCES 
 
     break;
-case 0b01001101:
+case 0b0000010101001101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2401,7 +2400,7 @@ case 0b01001101:
     #endif //_BC_FORCES 
 
     break;
-case 0b01001110:
+case 0b0000010101001110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2432,7 +2431,7 @@ case 0b01001110:
     #endif //_BC_FORCES 
 
     break;
-case 0b01001111:
+case 0b0000010101001111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2463,7 +2462,7 @@ case 0b01001111:
     #endif //_BC_FORCES 
 
     break;
-case 0b01010000:
+case 0b0000010101010000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2494,7 +2493,7 @@ case 0b01010000:
     #endif //_BC_FORCES 
 
     break;
-case 0b01010001:
+case 0b0000010101010001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2525,7 +2524,7 @@ case 0b01010001:
     #endif //_BC_FORCES 
 
     break;
-case 0b01010010:
+case 0b0000010101010010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2556,7 +2555,7 @@ case 0b01010010:
     #endif //_BC_FORCES 
 
     break;
-case 0b01010011:
+case 0b0000010101010011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2587,7 +2586,7 @@ case 0b01010011:
     #endif //_BC_FORCES 
 
     break;
-case 0b01010100:
+case 0b0000010101010100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2618,7 +2617,7 @@ case 0b01010100:
     #endif //_BC_FORCES 
 
     break;
-case 0b01010101:
+case 0b0000010101010101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2649,7 +2648,7 @@ case 0b01010101:
     #endif //_BC_FORCES 
 
     break;
-case 0b01010110:
+case 0b0000010101010110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2680,7 +2679,7 @@ case 0b01010110:
     #endif //_BC_FORCES 
 
     break;
-case 0b01010111:
+case 0b0000010101010111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2711,7 +2710,7 @@ case 0b01010111:
     #endif //_BC_FORCES 
 
     break;
-case 0b01011000:
+case 0b0000010101011000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2742,7 +2741,7 @@ case 0b01011000:
     #endif //_BC_FORCES 
 
     break;
-case 0b01011001:
+case 0b0000010101011001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2773,7 +2772,7 @@ case 0b01011001:
     #endif //_BC_FORCES 
 
     break;
-case 0b01011010:
+case 0b0000010101011010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2804,7 +2803,7 @@ case 0b01011010:
     #endif //_BC_FORCES 
 
     break;
-case 0b01011011:
+case 0b0000010101011011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2835,7 +2834,7 @@ case 0b01011011:
     #endif //_BC_FORCES 
 
     break;
-case 0b01011100:
+case 0b0000010101011100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2866,7 +2865,7 @@ case 0b01011100:
     #endif //_BC_FORCES 
 
     break;
-case 0b01011101:
+case 0b0000010101011101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2897,7 +2896,7 @@ case 0b01011101:
     #endif //_BC_FORCES 
 
     break;
-case 0b01011110:
+case 0b0000010101011110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2928,7 +2927,7 @@ case 0b01011110:
     #endif //_BC_FORCES 
 
     break;
-case 0b01011111:
+case 0b0000010101011111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2959,7 +2958,7 @@ case 0b01011111:
     #endif //_BC_FORCES 
 
     break;
-case 0b01100000:
+case 0b0000010101100000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -2990,7 +2989,7 @@ case 0b01100000:
     #endif //_BC_FORCES 
 
     break;
-case 0b01100001:
+case 0b0000010101100001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3021,7 +3020,7 @@ case 0b01100001:
     #endif //_BC_FORCES 
 
     break;
-case 0b01100010:
+case 0b0000010101100010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3052,7 +3051,7 @@ case 0b01100010:
     #endif //_BC_FORCES 
 
     break;
-case 0b01100011:
+case 0b0000010101100011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3083,7 +3082,7 @@ case 0b01100011:
     #endif //_BC_FORCES 
 
     break;
-case 0b01100100:
+case 0b0000010101100100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3114,7 +3113,7 @@ case 0b01100100:
     #endif //_BC_FORCES 
 
     break;
-case 0b01100101:
+case 0b0000010101100101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3145,7 +3144,7 @@ case 0b01100101:
     #endif //_BC_FORCES 
 
     break;
-case 0b01100110:
+case 0b0000010101100110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3176,7 +3175,7 @@ case 0b01100110:
     #endif //_BC_FORCES 
 
     break;
-case 0b01100111:
+case 0b0000010101100111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3207,7 +3206,7 @@ case 0b01100111:
     #endif //_BC_FORCES 
 
     break;
-case 0b01101000:
+case 0b0000010101101000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3238,7 +3237,7 @@ case 0b01101000:
     #endif //_BC_FORCES 
 
     break;
-case 0b01101001:
+case 0b0000010101101001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3269,7 +3268,7 @@ case 0b01101001:
     #endif //_BC_FORCES 
 
     break;
-case 0b01101010:
+case 0b0000010101101010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3300,7 +3299,7 @@ case 0b01101010:
     #endif //_BC_FORCES 
 
     break;
-case 0b01101011:
+case 0b0000010101101011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3331,7 +3330,7 @@ case 0b01101011:
     #endif //_BC_FORCES 
 
     break;
-case 0b01101100:
+case 0b0000010101101100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3362,7 +3361,7 @@ case 0b01101100:
     #endif //_BC_FORCES 
 
     break;
-case 0b01101101:
+case 0b0000010101101101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3393,7 +3392,7 @@ case 0b01101101:
     #endif //_BC_FORCES 
 
     break;
-case 0b01101110:
+case 0b0000010101101110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3424,7 +3423,7 @@ case 0b01101110:
     #endif //_BC_FORCES 
 
     break;
-case 0b01101111:
+case 0b0000010101101111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3455,7 +3454,7 @@ case 0b01101111:
     #endif //_BC_FORCES 
 
     break;
-case 0b01110000:
+case 0b0000010101110000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3486,7 +3485,7 @@ case 0b01110000:
     #endif //_BC_FORCES 
 
     break;
-case 0b01110001:
+case 0b0000010101110001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3517,7 +3516,7 @@ case 0b01110001:
     #endif //_BC_FORCES 
 
     break;
-case 0b01110010:
+case 0b0000010101110010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3548,7 +3547,7 @@ case 0b01110010:
     #endif //_BC_FORCES 
 
     break;
-case 0b01110011:
+case 0b0000010101110011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3579,7 +3578,7 @@ case 0b01110011:
     #endif //_BC_FORCES 
 
     break;
-case 0b01110100:
+case 0b0000010101110100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3610,7 +3609,7 @@ case 0b01110100:
     #endif //_BC_FORCES 
 
     break;
-case 0b01110101:
+case 0b0000010101110101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3641,7 +3640,7 @@ case 0b01110101:
     #endif //_BC_FORCES 
 
     break;
-case 0b01110110:
+case 0b0000010101110110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3672,7 +3671,7 @@ case 0b01110110:
     #endif //_BC_FORCES 
 
     break;
-case 0b01110111:
+case 0b0000010101110111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3703,7 +3702,7 @@ case 0b01110111:
     #endif //_BC_FORCES 
 
     break;
-case 0b01111000:
+case 0b0000010101111000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3734,7 +3733,7 @@ case 0b01111000:
     #endif //_BC_FORCES 
 
     break;
-case 0b01111001:
+case 0b0000010101111001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3765,7 +3764,7 @@ case 0b01111001:
     #endif //_BC_FORCES 
 
     break;
-case 0b01111010:
+case 0b0000010101111010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3796,7 +3795,7 @@ case 0b01111010:
     #endif //_BC_FORCES 
 
     break;
-case 0b01111011:
+case 0b0000010101111011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3827,7 +3826,7 @@ case 0b01111011:
     #endif //_BC_FORCES 
 
     break;
-case 0b01111100:
+case 0b0000010101111100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3858,7 +3857,7 @@ case 0b01111100:
     #endif //_BC_FORCES 
 
     break;
-case 0b01111101:
+case 0b0000010101111101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3889,7 +3888,7 @@ case 0b01111101:
     #endif //_BC_FORCES 
 
     break;
-case 0b01111110:
+case 0b0000010101111110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3920,7 +3919,7 @@ case 0b01111110:
     #endif //_BC_FORCES 
 
     break;
-case 0b01111111:
+case 0b0000010101111111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3951,7 +3950,7 @@ case 0b01111111:
     #endif //_BC_FORCES 
 
     break;
-case 0b10000000:
+case 0b0000010110000000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -3982,7 +3981,7 @@ case 0b10000000:
     #endif //_BC_FORCES 
 
     break;
-case 0b10000001:
+case 0b0000010110000001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4013,7 +4012,7 @@ case 0b10000001:
     #endif //_BC_FORCES 
 
     break;
-case 0b10000010:
+case 0b0000010110000010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4044,7 +4043,7 @@ case 0b10000010:
     #endif //_BC_FORCES 
 
     break;
-case 0b10000011:
+case 0b0000010110000011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4075,7 +4074,7 @@ case 0b10000011:
     #endif //_BC_FORCES 
 
     break;
-case 0b10000100:
+case 0b0000010110000100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4106,7 +4105,7 @@ case 0b10000100:
     #endif //_BC_FORCES 
 
     break;
-case 0b10000101:
+case 0b0000010110000101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4137,7 +4136,7 @@ case 0b10000101:
     #endif //_BC_FORCES 
 
     break;
-case 0b10000110:
+case 0b0000010110000110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4168,7 +4167,7 @@ case 0b10000110:
     #endif //_BC_FORCES 
 
     break;
-case 0b10000111:
+case 0b0000010110000111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4199,7 +4198,7 @@ case 0b10000111:
     #endif //_BC_FORCES 
 
     break;
-case 0b10001000:
+case 0b0000010110001000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4230,7 +4229,7 @@ case 0b10001000:
     #endif //_BC_FORCES 
 
     break;
-case 0b10001001:
+case 0b0000010110001001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4261,7 +4260,7 @@ case 0b10001001:
     #endif //_BC_FORCES 
 
     break;
-case 0b10001010:
+case 0b0000010110001010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4292,7 +4291,7 @@ case 0b10001010:
     #endif //_BC_FORCES 
 
     break;
-case 0b10001011:
+case 0b0000010110001011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4323,7 +4322,7 @@ case 0b10001011:
     #endif //_BC_FORCES 
 
     break;
-case 0b10001100:
+case 0b0000010110001100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4354,7 +4353,7 @@ case 0b10001100:
     #endif //_BC_FORCES 
 
     break;
-case 0b10001101:
+case 0b0000010110001101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4385,7 +4384,7 @@ case 0b10001101:
     #endif //_BC_FORCES 
 
     break;
-case 0b10001110:
+case 0b0000010110001110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4416,7 +4415,7 @@ case 0b10001110:
     #endif //_BC_FORCES 
 
     break;
-case 0b10001111:
+case 0b0000010110001111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4447,7 +4446,7 @@ case 0b10001111:
     #endif //_BC_FORCES 
 
     break;
-case 0b10010000:
+case 0b0000010110010000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4478,7 +4477,7 @@ case 0b10010000:
     #endif //_BC_FORCES 
 
     break;
-case 0b10010001:
+case 0b0000010110010001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4509,7 +4508,7 @@ case 0b10010001:
     #endif //_BC_FORCES 
 
     break;
-case 0b10010010:
+case 0b0000010110010010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4540,7 +4539,7 @@ case 0b10010010:
     #endif //_BC_FORCES 
 
     break;
-case 0b10010011:
+case 0b0000010110010011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4571,7 +4570,7 @@ case 0b10010011:
     #endif //_BC_FORCES 
 
     break;
-case 0b10010100:
+case 0b0000010110010100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4602,7 +4601,7 @@ case 0b10010100:
     #endif //_BC_FORCES 
 
     break;
-case 0b10010101:
+case 0b0000010110010101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4633,7 +4632,7 @@ case 0b10010101:
     #endif //_BC_FORCES 
 
     break;
-case 0b10010110:
+case 0b0000010110010110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4664,7 +4663,7 @@ case 0b10010110:
     #endif //_BC_FORCES 
 
     break;
-case 0b10010111:
+case 0b0000010110010111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4695,7 +4694,7 @@ case 0b10010111:
     #endif //_BC_FORCES 
 
     break;
-case 0b10011000:
+case 0b0000010110011000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4726,7 +4725,7 @@ case 0b10011000:
     #endif //_BC_FORCES 
 
     break;
-case 0b10011001:
+case 0b0000010110011001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4757,7 +4756,7 @@ case 0b10011001:
     #endif //_BC_FORCES 
 
     break;
-case 0b10011010:
+case 0b0000010110011010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4788,7 +4787,7 @@ case 0b10011010:
     #endif //_BC_FORCES 
 
     break;
-case 0b10011011:
+case 0b0000010110011011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4819,7 +4818,7 @@ case 0b10011011:
     #endif //_BC_FORCES 
 
     break;
-case 0b10011100:
+case 0b0000010110011100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4850,7 +4849,7 @@ case 0b10011100:
     #endif //_BC_FORCES 
 
     break;
-case 0b10011101:
+case 0b0000010110011101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4881,7 +4880,7 @@ case 0b10011101:
     #endif //_BC_FORCES 
 
     break;
-case 0b10011110:
+case 0b0000010110011110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4912,7 +4911,7 @@ case 0b10011110:
     #endif //_BC_FORCES 
 
     break;
-case 0b10011111:
+case 0b0000010110011111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4943,7 +4942,7 @@ case 0b10011111:
     #endif //_BC_FORCES 
 
     break;
-case 0b10100000:
+case 0b0000010110100000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -4974,7 +4973,7 @@ case 0b10100000:
     #endif //_BC_FORCES 
 
     break;
-case 0b10100001:
+case 0b0000010110100001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5005,7 +5004,7 @@ case 0b10100001:
     #endif //_BC_FORCES 
 
     break;
-case 0b10100010:
+case 0b0000010110100010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5036,7 +5035,7 @@ case 0b10100010:
     #endif //_BC_FORCES 
 
     break;
-case 0b10100011:
+case 0b0000010110100011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5067,7 +5066,7 @@ case 0b10100011:
     #endif //_BC_FORCES 
 
     break;
-case 0b10100100:
+case 0b0000010110100100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5098,7 +5097,7 @@ case 0b10100100:
     #endif //_BC_FORCES 
 
     break;
-case 0b10100101:
+case 0b0000010110100101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5129,7 +5128,7 @@ case 0b10100101:
     #endif //_BC_FORCES 
 
     break;
-case 0b10100110:
+case 0b0000010110100110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5160,7 +5159,7 @@ case 0b10100110:
     #endif //_BC_FORCES 
 
     break;
-case 0b10100111:
+case 0b0000010110100111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5191,7 +5190,7 @@ case 0b10100111:
     #endif //_BC_FORCES 
 
     break;
-case 0b10101000:
+case 0b0000010110101000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5222,7 +5221,7 @@ case 0b10101000:
     #endif //_BC_FORCES 
 
     break;
-case 0b10101001:
+case 0b0000010110101001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5253,7 +5252,7 @@ case 0b10101001:
     #endif //_BC_FORCES 
 
     break;
-case 0b10101010:
+case 0b0000010110101010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5284,7 +5283,7 @@ case 0b10101010:
     #endif //_BC_FORCES 
 
     break;
-case 0b10101011:
+case 0b0000010110101011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5315,7 +5314,7 @@ case 0b10101011:
     #endif //_BC_FORCES 
 
     break;
-case 0b10101100:
+case 0b0000010110101100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5346,7 +5345,7 @@ case 0b10101100:
     #endif //_BC_FORCES 
 
     break;
-case 0b10101101:
+case 0b0000010110101101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5377,7 +5376,7 @@ case 0b10101101:
     #endif //_BC_FORCES 
 
     break;
-case 0b10101110:
+case 0b0000010110101110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5408,7 +5407,7 @@ case 0b10101110:
     #endif //_BC_FORCES 
 
     break;
-case 0b10101111:
+case 0b0000010110101111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5439,7 +5438,7 @@ case 0b10101111:
     #endif //_BC_FORCES 
 
     break;
-case 0b10110000:
+case 0b0000010110110000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5470,7 +5469,7 @@ case 0b10110000:
     #endif //_BC_FORCES 
 
     break;
-case 0b10110001:
+case 0b0000010110110001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5501,7 +5500,7 @@ case 0b10110001:
     #endif //_BC_FORCES 
 
     break;
-case 0b10110010:
+case 0b0000010110110010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5532,7 +5531,7 @@ case 0b10110010:
     #endif //_BC_FORCES 
 
     break;
-case 0b10110011:
+case 0b0000010110110011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5563,7 +5562,7 @@ case 0b10110011:
     #endif //_BC_FORCES 
 
     break;
-case 0b10110100:
+case 0b0000010110110100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5594,7 +5593,7 @@ case 0b10110100:
     #endif //_BC_FORCES 
 
     break;
-case 0b10110101:
+case 0b0000010110110101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5625,7 +5624,7 @@ case 0b10110101:
     #endif //_BC_FORCES 
 
     break;
-case 0b10110110:
+case 0b0000010110110110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5656,7 +5655,7 @@ case 0b10110110:
     #endif //_BC_FORCES 
 
     break;
-case 0b10110111:
+case 0b0000010110110111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5687,7 +5686,7 @@ case 0b10110111:
     #endif //_BC_FORCES 
 
     break;
-case 0b10111000:
+case 0b0000010110111000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5718,7 +5717,7 @@ case 0b10111000:
     #endif //_BC_FORCES 
 
     break;
-case 0b10111001:
+case 0b0000010110111001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5749,7 +5748,7 @@ case 0b10111001:
     #endif //_BC_FORCES 
 
     break;
-case 0b10111010:
+case 0b0000010110111010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5780,7 +5779,7 @@ case 0b10111010:
     #endif //_BC_FORCES 
 
     break;
-case 0b10111011:
+case 0b0000010110111011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5811,7 +5810,7 @@ case 0b10111011:
     #endif //_BC_FORCES 
 
     break;
-case 0b10111100:
+case 0b0000010110111100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5842,7 +5841,7 @@ case 0b10111100:
     #endif //_BC_FORCES 
 
     break;
-case 0b10111101:
+case 0b0000010110111101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5873,7 +5872,7 @@ case 0b10111101:
     #endif //_BC_FORCES 
 
     break;
-case 0b10111110:
+case 0b0000010110111110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5904,7 +5903,7 @@ case 0b10111110:
     #endif //_BC_FORCES 
 
     break;
-case 0b10111111:
+case 0b0000010110111111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5935,7 +5934,7 @@ case 0b10111111:
     #endif //_BC_FORCES 
 
     break;
-case 0b11000000:
+case 0b0000010111000000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5966,7 +5965,7 @@ case 0b11000000:
     #endif //_BC_FORCES 
 
     break;
-case 0b11000001:
+case 0b0000010111000001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -5997,7 +5996,7 @@ case 0b11000001:
     #endif //_BC_FORCES 
 
     break;
-case 0b11000010:
+case 0b0000010111000010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6028,7 +6027,7 @@ case 0b11000010:
     #endif //_BC_FORCES 
 
     break;
-case 0b11000011:
+case 0b0000010111000011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6059,7 +6058,7 @@ case 0b11000011:
     #endif //_BC_FORCES 
 
     break;
-case 0b11000100:
+case 0b0000010111000100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6090,7 +6089,7 @@ case 0b11000100:
     #endif //_BC_FORCES 
 
     break;
-case 0b11000101:
+case 0b0000010111000101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6121,7 +6120,7 @@ case 0b11000101:
     #endif //_BC_FORCES 
 
     break;
-case 0b11000110:
+case 0b0000010111000110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6152,7 +6151,7 @@ case 0b11000110:
     #endif //_BC_FORCES 
 
     break;
-case 0b11000111:
+case 0b0000010111000111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6183,7 +6182,7 @@ case 0b11000111:
     #endif //_BC_FORCES 
 
     break;
-case 0b11001000:
+case 0b0000010111001000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6214,7 +6213,7 @@ case 0b11001000:
     #endif //_BC_FORCES 
 
     break;
-case 0b11001001:
+case 0b0000010111001001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6245,7 +6244,7 @@ case 0b11001001:
     #endif //_BC_FORCES 
 
     break;
-case 0b11001010:
+case 0b0000010111001010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6276,7 +6275,7 @@ case 0b11001010:
     #endif //_BC_FORCES 
 
     break;
-case 0b11001011:
+case 0b0000010111001011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6307,7 +6306,7 @@ case 0b11001011:
     #endif //_BC_FORCES 
 
     break;
-case 0b11001100:
+case 0b0000010111001100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6338,7 +6337,7 @@ case 0b11001100:
     #endif //_BC_FORCES 
 
     break;
-case 0b11001101:
+case 0b0000010111001101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6369,7 +6368,7 @@ case 0b11001101:
     #endif //_BC_FORCES 
 
     break;
-case 0b11001110:
+case 0b0000010111001110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6400,7 +6399,7 @@ case 0b11001110:
     #endif //_BC_FORCES 
 
     break;
-case 0b11001111:
+case 0b0000010111001111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6431,7 +6430,7 @@ case 0b11001111:
     #endif //_BC_FORCES 
 
     break;
-case 0b11010000:
+case 0b0000010111010000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6462,7 +6461,7 @@ case 0b11010000:
     #endif //_BC_FORCES 
 
     break;
-case 0b11010001:
+case 0b0000010111010001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6493,7 +6492,7 @@ case 0b11010001:
     #endif //_BC_FORCES 
 
     break;
-case 0b11010010:
+case 0b0000010111010010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6524,7 +6523,7 @@ case 0b11010010:
     #endif //_BC_FORCES 
 
     break;
-case 0b11010011:
+case 0b0000010111010011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6555,7 +6554,7 @@ case 0b11010011:
     #endif //_BC_FORCES 
 
     break;
-case 0b11010100:
+case 0b0000010111010100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6586,7 +6585,7 @@ case 0b11010100:
     #endif //_BC_FORCES 
 
     break;
-case 0b11010101:
+case 0b0000010111010101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6617,7 +6616,7 @@ case 0b11010101:
     #endif //_BC_FORCES 
 
     break;
-case 0b11010110:
+case 0b0000010111010110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6648,7 +6647,7 @@ case 0b11010110:
     #endif //_BC_FORCES 
 
     break;
-case 0b11010111:
+case 0b0000010111010111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6679,7 +6678,7 @@ case 0b11010111:
     #endif //_BC_FORCES 
 
     break;
-case 0b11011000:
+case 0b0000010111011000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6710,7 +6709,7 @@ case 0b11011000:
     #endif //_BC_FORCES 
 
     break;
-case 0b11011001:
+case 0b0000010111011001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6741,7 +6740,7 @@ case 0b11011001:
     #endif //_BC_FORCES 
 
     break;
-case 0b11011010:
+case 0b0000010111011010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6772,7 +6771,7 @@ case 0b11011010:
     #endif //_BC_FORCES 
 
     break;
-case 0b11011011:
+case 0b0000010111011011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6803,7 +6802,7 @@ case 0b11011011:
     #endif //_BC_FORCES 
 
     break;
-case 0b11011100:
+case 0b0000010111011100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6834,7 +6833,7 @@ case 0b11011100:
     #endif //_BC_FORCES 
 
     break;
-case 0b11011101:
+case 0b0000010111011101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6865,7 +6864,7 @@ case 0b11011101:
     #endif //_BC_FORCES 
 
     break;
-case 0b11011110:
+case 0b0000010111011110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6896,7 +6895,7 @@ case 0b11011110:
     #endif //_BC_FORCES 
 
     break;
-case 0b11011111:
+case 0b0000010111011111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6927,7 +6926,7 @@ case 0b11011111:
     #endif //_BC_FORCES 
 
     break;
-case 0b11100000:
+case 0b0000010111100000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6958,7 +6957,7 @@ case 0b11100000:
     #endif //_BC_FORCES 
 
     break;
-case 0b11100001:
+case 0b0000010111100001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -6989,7 +6988,7 @@ case 0b11100001:
     #endif //_BC_FORCES 
 
     break;
-case 0b11100010:
+case 0b0000010111100010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7020,7 +7019,7 @@ case 0b11100010:
     #endif //_BC_FORCES 
 
     break;
-case 0b11100011:
+case 0b0000010111100011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7051,7 +7050,7 @@ case 0b11100011:
     #endif //_BC_FORCES 
 
     break;
-case 0b11100100:
+case 0b0000010111100100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7082,7 +7081,7 @@ case 0b11100100:
     #endif //_BC_FORCES 
 
     break;
-case 0b11100101:
+case 0b0000010111100101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7113,7 +7112,7 @@ case 0b11100101:
     #endif //_BC_FORCES 
 
     break;
-case 0b11100110:
+case 0b0000010111100110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7144,7 +7143,7 @@ case 0b11100110:
     #endif //_BC_FORCES 
 
     break;
-case 0b11100111:
+case 0b0000010111100111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7175,7 +7174,7 @@ case 0b11100111:
     #endif //_BC_FORCES 
 
     break;
-case 0b11101000:
+case 0b0000010111101000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7206,7 +7205,7 @@ case 0b11101000:
     #endif //_BC_FORCES 
 
     break;
-case 0b11101001:
+case 0b0000010111101001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7237,7 +7236,7 @@ case 0b11101001:
     #endif //_BC_FORCES 
 
     break;
-case 0b11101010:
+case 0b0000010111101010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7268,7 +7267,7 @@ case 0b11101010:
     #endif //_BC_FORCES 
 
     break;
-case 0b11101011:
+case 0b0000010111101011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7299,7 +7298,7 @@ case 0b11101011:
     #endif //_BC_FORCES 
 
     break;
-case 0b11101100:
+case 0b0000010111101100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7330,7 +7329,7 @@ case 0b11101100:
     #endif //_BC_FORCES 
 
     break;
-case 0b11101101:
+case 0b0000010111101101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7361,7 +7360,7 @@ case 0b11101101:
     #endif //_BC_FORCES 
 
     break;
-case 0b11101110:
+case 0b0000010111101110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7392,7 +7391,7 @@ case 0b11101110:
     #endif //_BC_FORCES 
 
     break;
-case 0b11101111:
+case 0b0000010111101111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7423,7 +7422,7 @@ case 0b11101111:
     #endif //_BC_FORCES 
 
     break;
-case 0b11110000:
+case 0b0000010111110000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7454,7 +7453,7 @@ case 0b11110000:
     #endif //_BC_FORCES 
 
     break;
-case 0b11110001:
+case 0b0000010111110001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7485,7 +7484,7 @@ case 0b11110001:
     #endif //_BC_FORCES 
 
     break;
-case 0b11110010:
+case 0b0000010111110010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7516,7 +7515,7 @@ case 0b11110010:
     #endif //_BC_FORCES 
 
     break;
-case 0b11110011:
+case 0b0000010111110011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7547,7 +7546,7 @@ case 0b11110011:
     #endif //_BC_FORCES 
 
     break;
-case 0b11110100:
+case 0b0000010111110100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7578,7 +7577,7 @@ case 0b11110100:
     #endif //_BC_FORCES 
 
     break;
-case 0b11110101:
+case 0b0000010111110101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7609,7 +7608,7 @@ case 0b11110101:
     #endif //_BC_FORCES 
 
     break;
-case 0b11110110:
+case 0b0000010111110110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7640,7 +7639,7 @@ case 0b11110110:
     #endif //_BC_FORCES 
 
     break;
-case 0b11110111:
+case 0b0000010111110111:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7671,7 +7670,7 @@ case 0b11110111:
     #endif //_BC_FORCES 
 
     break;
-case 0b11111000:
+case 0b0000010111111000:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7702,7 +7701,7 @@ case 0b11111000:
     #endif //_BC_FORCES 
 
     break;
-case 0b11111001:
+case 0b0000010111111001:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7733,7 +7732,7 @@ case 0b11111001:
     #endif //_BC_FORCES 
 
     break;
-case 0b11111010:
+case 0b0000010111111010:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7764,7 +7763,7 @@ case 0b11111010:
     #endif //_BC_FORCES 
 
     break;
-case 0b11111011:
+case 0b0000010111111011:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7795,7 +7794,7 @@ case 0b11111011:
     #endif //_BC_FORCES 
 
     break;
-case 0b11111100:
+case 0b0000010111111100:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7826,7 +7825,7 @@ case 0b11111100:
     #endif //_BC_FORCES 
 
     break;
-case 0b11111101:
+case 0b0000010111111101:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;
@@ -7857,7 +7856,7 @@ case 0b11111101:
     #endif //_BC_FORCES 
 
     break;
-case 0b11111110:
+case 0b0000010111111110:
     ux_t30 = 0;
     uy_t30 = 0;
     uz_t30 = 0;

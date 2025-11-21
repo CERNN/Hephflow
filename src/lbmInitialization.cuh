@@ -75,7 +75,11 @@ __host__ void hostInitialization_nodeType_bulk(
  *  @param nodeType: node type ID
  */
 __host__ void hostInitialization_nodeType(
-    unsigned int *hNodeType);
+    unsigned int *hNodeType
+    #ifdef CURVED_BOUNDARY_CONDITION
+    , unsigned int* numberCurvedBoundaryNodes
+    #endif
+ );
 
 
 /**

@@ -48,6 +48,10 @@
 #include "saveData.cuh"
 #include "checkpoint.cuh"
 
+#ifdef CURVED_BOUNDARY_CONDITION
+    #include "curvedBC.cuh"
+#endif
+
 /**
  *  @brief Swaps the pointers of two dfloat variables.
  *  @param pt1: reference to the first dfloat pointer to be swapped
@@ -873,8 +877,17 @@ void initializeDomain(
         checkCudaErrors(cudaMallocHost((void**)&dNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
     #endif //NODE_TYPE_SAVE
 
+    #ifdef CURVED_BOUNDARY_CONDITION
+    unsigned int numberCurvedBoundaryNodes;
+    #endif
+
+
     #ifndef VOXEL_FILENAME
-        hostInitialization_nodeType(hNodeType);
+        hostInitialization_nodeType(hNodeType
+        #ifdef CURVED_BOUNDARY_CONDITION
+        ,&numberCurvedBoundaryNodes
+        #endif
+        );
         checkCudaErrors(cudaMemcpy(dNodeType, hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyHostToDevice));  
         checkCudaErrors(cudaDeviceSynchronize());
         #ifdef FORCE_VOXEL_BC_BUILDING
@@ -884,7 +897,11 @@ void initializeDomain(
     #else
         hostInitialization_nodeType_bulk(hNodeType); 
         read_xyz_file(VOXEL_FILENAME, hNodeType);
-        hostInitialization_nodeType(hNodeType);
+        hostInitialization_nodeType(hNodeType
+        #ifdef CURVED_BOUNDARY_CONDITION
+        ,numberCurvedBoundaryNodes
+        #endif
+        );
         checkCudaErrors(cudaMemcpy(dNodeType, hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyHostToDevice));  
         checkCudaErrors(cudaDeviceSynchronize());
         define_voxel_bc<<<gridBlock, threadBlock>>>(dNodeType); 

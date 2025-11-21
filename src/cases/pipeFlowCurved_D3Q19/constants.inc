@@ -1,4 +1,4 @@
-//#define CURVED_BOUNDARY_CONDITION
+#define CURVED_BOUNDARY_CONDITION
 
 constexpr dfloat RE = 10;
 
