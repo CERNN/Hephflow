@@ -1,4 +1,4 @@
-#define CURVED_BOUNDARY_CONDITION
+//#define CURVED_BOUNDARY_CONDITION
 
 constexpr dfloat RE = 10;
 
@@ -53,3 +53,15 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
 #define LOAD_FIELD false
 #define LOAD_FIELD_STEP 0
 
+#define FORCE_VOXEL_BC_BUILDING
+
+#define EXTERNAL_DUCT_BC 
+#define DUCT_CENTER_X (((NX-1)/2.0)+0.5)
+#define DUCT_CENTER_Y (((NY-1)/2.0)+0.5)
+
+#ifdef EXTERNAL_DUCT_BC 
+    #define OUTER_RADIUS (NY/2.0-1.5)
+    #define EXTERNAL_DUCT_BC_RADIUS OUTER_RADIUS
+    #define OUTER_VELOCITY 0.0
+    #define OUTER_ROTATION 0.0 //(U_MAX/OUTER_RADIUS)    
+#endif //EXTERNAL_DUCT_BC

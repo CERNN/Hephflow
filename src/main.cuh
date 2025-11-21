@@ -877,6 +877,10 @@ void initializeDomain(
         hostInitialization_nodeType(hNodeType);
         checkCudaErrors(cudaMemcpy(dNodeType, hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyHostToDevice));  
         checkCudaErrors(cudaDeviceSynchronize());
+        #ifdef FORCE_VOXEL_BC_BUILDING
+            define_voxel_bc<<<gridBlock, threadBlock>>>(dNodeType); 
+            checkCudaErrors(cudaMemcpy(hNodeType, dNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES, cudaMemcpyDeviceToHost)); 
+        #endif
     #else
         hostInitialization_nodeType_bulk(hNodeType); 
         read_xyz_file(VOXEL_FILENAME, hNodeType);
