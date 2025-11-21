@@ -262,42 +262,60 @@ void updateParticlePosition(
     #endif //PARTICLE_DEBUG
 
 
-    //compute orientation vector
     const dfloat w_norm = sqrt((pc_i->getWAvgX() * pc_i->getWAvgX()) 
                              + (pc_i->getWAvgY() * pc_i->getWAvgY()) 
                              + (pc_i->getWAvgZ() * pc_i->getWAvgZ()));
+    dfloat3 axis = {0,0,0};
+    if (w_norm > 1e-8) {
+        axis.x = pc_i->getWAvgX() / w_norm;
+        axis.y = pc_i->getWAvgY() / w_norm;
+        axis.z = pc_i->getWAvgZ() / w_norm;
+    }
+    dfloat angle = w_norm;
+    dfloat4 q = axis_angle_to_quart(axis, angle);
+    dfloat3 pos_old = pc_i->getPos_old();
 
-    const dfloat q0 = cos(w_norm/2);
-    const dfloat qi = (pc_i->getWAvgX()/w_norm) * sin (w_norm/2);
-    const dfloat qj = (pc_i->getWAvgY()/w_norm) * sin (w_norm/2);
-    const dfloat qk = (pc_i->getWAvgZ()/w_norm) * sin (w_norm/2);
-    const dfloat tq0m1 = (q0*q0) - 0.5;
+    dfloat3 pos_new = pc_i->getPos();
 
-    dfloat x_vec = pc_i->getSemiAxis1X() - pc_i->getPosOldX();
-    dfloat y_vec = pc_i->getSemiAxis1Y() - pc_i->getPosOldY();
-    dfloat z_vec = pc_i->getSemiAxis1Z() - pc_i->getPosOldZ();
+    pc_i->setSemiAxis1(updateSemiAxis(pc_i->getSemiAxis1(), pos_old, pos_new, q));
+    pc_i->setSemiAxis2(updateSemiAxis(pc_i->getSemiAxis2(), pos_old, pos_new, q));
+    pc_i->setSemiAxis3(updateSemiAxis(pc_i->getSemiAxis3(), pos_old, pos_new, q));
+}
 
-    //update semiaxis position
-    pc_i->setSemiAxis1X(pc_i->getPosX() + 2 * (   (tq0m1 + (qi*qi))*x_vec + ((qi*qj) - (q0*qk))*y_vec + ((qi*qk) + (q0*qj))*z_vec));
-    pc_i->setSemiAxis1Y(pc_i->getPosY() + 2 * ( ((qi*qj) + (q0*qk))*x_vec +   (tq0m1 + (qj*qj))*y_vec + ((qj*qk) - (q0*qi))*z_vec));
-    pc_i->setSemiAxis1Z(pc_i->getPosZ() + 2 * ( ((qi*qj) - (q0*qj))*x_vec + ((qj*qk) + (q0*qi))*y_vec +   (tq0m1 + (qk*qk))*z_vec));
 
-    x_vec = pc_i->getSemiAxis2X() - pc_i->getPosOldX();
-    y_vec = pc_i->getSemiAxis2Y() - pc_i->getPosOldY();
-    z_vec = pc_i->getSemiAxis2Z() - pc_i->getPosOldZ();
+__host__ __device__
+dfloat3 updateSemiAxis(
+    dfloat3 semi,
+    const dfloat3 pos_old,
+    const dfloat3 pos_new,
+    const dfloat4 q
+){
+    // --- periodic wrapping ---
+    #ifdef BC_X_PERIODIC
+        semi.x = wrapPeriodic(semi.x, pos_old.x, (dfloat)NX);
+    #endif
+    #ifdef BC_Y_PERIODIC
+        semi.y = wrapPeriodic(semi.y, pos_old.y, (dfloat)NY);
+    #endif
+    #ifdef BC_Z_PERIODIC
+        semi.z = wrapPeriodic(semi.z, pos_old.z, (dfloat)NZ_TOTAL);
+    #endif
 
-    pc_i->setSemiAxis2X(pc_i->getPosX() +  2 * (   (tq0m1 + (qi*qi))*x_vec + ((qi*qj) - (q0*qk))*y_vec + ((qi*qk) + (q0*qj))*z_vec));
-    pc_i->setSemiAxis2Y(pc_i->getPosY() +  2 * ( ((qi*qj) + (q0*qk))*x_vec +   (tq0m1  + (qj*qj))*y_vec + ((qj*qk) - (q0*qi))*z_vec));
-    pc_i->setSemiAxis2Z(pc_i->getPosZ() +  2 * ( ((qi*qj) - (q0*qj))*x_vec + ((qj*qk) + (q0*qi))*y_vec +   (tq0m1  + (qk*qk))*z_vec));
+    dfloat3 v = {
+        semi.x - pos_old.x,
+        semi.y - pos_old.y,
+        semi.z - pos_old.z
+    };
 
-    x_vec = pc_i->getSemiAxis3X() - pc_i->getPosOldX();
-    y_vec = pc_i->getSemiAxis3Y() - pc_i->getPosOldY();
-    z_vec = pc_i->getSemiAxis3Z() - pc_i->getPosOldZ();
+    dfloat3 v_rot = rotate_vector_by_quart_R(v, q);
 
-    pc_i->setSemiAxis3X(pc_i->getPosX() +  2 * (   (tq0m1 + (qi*qi))*x_vec + ((qi*qj) - (q0*qk))*y_vec + ((qi*qk) + (q0*qj))*z_vec));
-    pc_i->setSemiAxis3X(pc_i->getPosY() +  2 * ( ((qi*qj) + (q0*qk))*x_vec +   (tq0m1  + (qj*qj))*y_vec + ((qj*qk) - (q0*qi))*z_vec));
-    pc_i->setSemiAxis3X(pc_i->getPosZ() +  2 * ( ((qi*qj) - (q0*qj))*x_vec + ((qj*qk) + (q0*qi))*y_vec +   (tq0m1  + (qk*qk))*z_vec));
+    dfloat3 newSemi = {
+        pos_new.x + v_rot.x,
+        pos_new.y + v_rot.y,
+        pos_new.z + v_rot.z
+    };
 
+    return newSemi;
 }
 
 #endif //PARTICLE_MODEL

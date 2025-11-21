@@ -503,6 +503,15 @@ dfloat point_to_point_distance_periodic(dfloat3 p1, dfloat3 p2);
  */
 __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2);
 
+/**
+ * @brief Wrap a coordinate within periodic boundaries.
+ * @param coord: The coordinate to be wrapped.
+ * @param pos: The position of the point.
+ * @param L: The length of the periodic domain.
+ * @return The wrapped coordinate.
+ */
+__host__ __device__
+inline dfloat wrapPeriodic(dfloat coord, dfloat pos, dfloat L);
 
 /**
  *  @brief Compute the shortest distance from a point to a segment considering periodic conditions.

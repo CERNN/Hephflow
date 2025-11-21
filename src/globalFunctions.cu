@@ -131,6 +131,15 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2) {
     return dfloat3(dx, dy, dz);
 }
 
+__host__ __device__
+inline dfloat wrapPeriodic(dfloat coord, dfloat pos, dfloat L) {
+    dfloat diff = coord - pos;
+    if (fabs(diff) > 0.5f * L) {
+        if (coord < pos) coord += L;
+        else             coord -= L;
+    }
+    return coord;
+}
 
 __device__
 dfloat point_to_segment_distance_periodic(dfloat3 p, dfloat3 segA, dfloat3 segB, dfloat3 closestOnAB[1]) {

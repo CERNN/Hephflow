@@ -69,6 +69,22 @@ void updateParticlePosition(
     unsigned int step
 );
 
+/**
+ * @brief Update the semi-axis positions considering periodic boundaries.
+ * @param semi: The semi-axis positions to be updated.
+ * @param pos_old: The old position of the particle.
+ * @param pos_new: The current position of the particle.
+ * @param q: The quaternion representing the particle's orientation.
+ * @return The updated semi-axis positions.
+ */
+__host__ __device__
+dfloat3 updateSemiAxis(
+    dfloat3 semi,
+    const dfloat3 pos_old,
+    const dfloat3 pos_new,
+    const dfloat4 q
+);
+
 #endif //PARTICLE_MODEL
 #endif // !__PARTICLE_MOVEMENT_H
 
