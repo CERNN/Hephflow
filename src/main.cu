@@ -79,6 +79,11 @@ int main() {
 
     #endif //PARTICLE_MODEL
 
+    #ifdef CURVED_BOUNDARY_CONDITION
+        //Get number of curved boundary nodes
+        unsigned int numberCurvedBoundaryNodes = getNumberCurvedBoundaryNodes(hostField.hNodeType);
+    #endif //CURVE
+
     /* ------------------------------ TIMER EVENTS  ------------------------------ */
     checkCudaErrors(cudaSetDevice(GPU_INDEX));
     cudaEvent_t start, stop, start_step, stop_step;
@@ -117,6 +122,10 @@ int main() {
         if (err != cudaSuccess) {
             printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
         }
+        #ifdef CURVED_BOUNDARY_CONDITION
+           updateCurvedBoundaryVelocities << <1,numberCurvedBoundaryNodes>> >(deviceField.d_curvedBC_array,deviceField.d_fMom,numberCurvedBoundaryNodes);
+           cudaDeviceSynchronize();
+        #endif
 
         //swap interface pointers
         deviceField.swapGhostInterfacesDeviceField();

@@ -58,7 +58,11 @@ typedef struct deviceField{
     #endif //DENSITY_CORRECTION
 
     void gpuMomCollisionStreamDeviceField(dim3 gridBlock, dim3 threadBlock, unsigned int step, bool save){
-            gpuMomCollisionStream << <gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>> >(d_fMom, dNodeType,ghostInterface, DENSITY_CORRECTION_PARAMS(d_) BC_FORCES_PARAMS(d_) step, save);
+            gpuMomCollisionStream << <gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>> >(d_fMom, dNodeType,ghostInterface, DENSITY_CORRECTION_PARAMS(d_) BC_FORCES_PARAMS(d_) step, save
+        #ifdef CURVED_BOUNDARY_CONDITION
+        , d_curvedBC, d_curvedBC_array
+        #endif //CURVED_BOUNDARY_CONDITION
+        );
     }
 
     void swapGhostInterfacesDeviceField(){

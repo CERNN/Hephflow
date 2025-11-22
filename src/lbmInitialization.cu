@@ -1062,7 +1062,7 @@ void define_voxel_bc(
         dNodeType[index] = bc_id(dNodeType,x,y,z);
         #ifdef CURVED_BOUNDARY_CONDITION //TODO: this only works if is the only boundary conditiond being made, if there is an obstacle will stop working
             if((dNodeType[index] != BULK )&& (dNodeType[index] != SOLID_NODE)){
-                dNodeType[index] += BC_CURVED_BC;
+                dNodeType[index] += BC_CURVED_BC_CONCAV;
             }
         #endif
     }

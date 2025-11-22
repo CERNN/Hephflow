@@ -363,6 +363,9 @@ typedef struct curvedBoundary{
 
     dfloat delta;
     dfloat theta;
+
+    dfloat3 vel; //extrapolated velocity, which will be used on the boundary condition
+
 }CurvedBoundary;
 
 

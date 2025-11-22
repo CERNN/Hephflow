@@ -42,7 +42,11 @@ void gpuMomCollisionStream(
     DENSITY_CORRECTION_PARAMS_DECLARATION(d_)
     BC_FORCES_PARAMS_DECLARATION(d_)
     unsigned int step,
-    bool save);
+    bool save
+    #ifdef CURVED_BOUNDARY_CONDITION
+    , CurvedBoundary** d_curvedBC, CurvedBoundary* d_curvedBC_array
+    #endif //CURVED_BOUNDARY_CONDITION
+    );
 
 #ifdef LOCAL_FORCES
 /**

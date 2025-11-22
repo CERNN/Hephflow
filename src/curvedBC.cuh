@@ -30,21 +30,36 @@ void curvedBoundaryInterpExtrapStore(
     dfloat delta,
     dfloat3 pf1, 
     dfloat3 pf2,
-    int momentIndex,
     int tx, int ty, int tz,
     int bx, int by, int bz,
-    dfloat *fMom)
+    dfloat *fMom,
+    CurvedBoundary* tempCBC)
 {
-    dfloat val1 = mom_trilinear_interp(pf1.x, pf1.y, pf1.z, momentIndex, fMom);
-    dfloat val2 = mom_trilinear_interp(pf2.x, pf2.y, pf2.z, momentIndex, fMom);
 
-    fMom[idxMom(tx, ty, tz, momentIndex, bx, by, bz)] = curvedBoundaryExtrapolation(delta, val1, val2);
+    dfloat val1;
+    dfloat val2;
+
+    val1 = mom_trilinear_interp(pf1.x, pf1.y, pf1.z, M_UX_INDEX, fMom);
+    val2 = mom_trilinear_interp(pf2.x, pf2.y, pf2.z, M_UX_INDEX, fMom);
+
+    dfloat ux_e = curvedBoundaryExtrapolation(delta, val1, val2);
+
+    val1 = mom_trilinear_interp(pf1.x, pf1.y, pf1.z, M_UY_INDEX, fMom);
+    val2 = mom_trilinear_interp(pf2.x, pf2.y, pf2.z, M_UY_INDEX, fMom);
+
+    dfloat uy_e = curvedBoundaryExtrapolation(delta, val1, val2);
+
+    val1 = mom_trilinear_interp(pf1.x, pf1.y, pf1.z, M_UZ_INDEX, fMom);
+    val2 = mom_trilinear_interp(pf2.x, pf2.y, pf2.z, M_UZ_INDEX, fMom);
+
+    dfloat uz_e = curvedBoundaryExtrapolation(delta, val1, val2);
+
+    tempCBC->vel = dfloat3(ux_e, uy_e, uz_e);
 }
 
 
-
-__global__
-void TBD_FUNCTION_NAME(
+ //can you give a better name for this function?
+void updateCurvedBoundaryVelocities(
     CurvedBoundary* d_curvedBC_array, 
     dfloat *fMom, 
     unsigned int numberCurvedBoundaryNodes
@@ -54,11 +69,11 @@ void TBD_FUNCTION_NAME(
     if (idx >= numberCurvedBoundaryNodes)
         return;
         
-    CurvedBoundary tempCBC = d_curvedBC_array[idx];
+    CurvedBoundary* tempCBC = &d_curvedBC_array[idx];
 
-    const int xb = tempCBC.b.x;
-    const int yb = tempCBC.b.y;
-    const int zb = tempCBC.b.z;
+    const int xb = tempCBC->b.x;
+    const int yb = tempCBC->b.y;
+    const int zb = tempCBC->b.z;
 
     const int tx = xb % BLOCK_NX;
     const int ty = yb % BLOCK_NY;
@@ -67,24 +82,13 @@ void TBD_FUNCTION_NAME(
     const int by = yb / BLOCK_NY;
     const int bz = zb / BLOCK_NZ;
 
-    const dfloat3 pf1 = tempCBC.pf1; 
-    const dfloat3 pf2 = tempCBC.pf2;
-    const dfloat delta = tempCBC.delta;
+    const dfloat3 pf1 = tempCBC->pf1; 
+    const dfloat3 pf2 = tempCBC->pf2;
+    const dfloat delta = tempCBC->delta;
 
     // Pass the dfloat3 structures to the inline function
-    curvedBoundaryInterpExtrapStore(delta, pf1, pf2, M_RHO_INDEX, tx, ty, tz, bx, by, bz, fMom);
-    curvedBoundaryInterpExtrapStore(delta, pf1, pf2, M_UX_INDEX , tx, ty, tz, bx, by, bz, fMom);
-    curvedBoundaryInterpExtrapStore(delta, pf1, pf2, M_UY_INDEX , tx, ty, tz, bx, by, bz, fMom);
-    curvedBoundaryInterpExtrapStore(delta, pf1, pf2, M_UZ_INDEX , tx, ty, tz, bx, by, bz, fMom);
-    curvedBoundaryInterpExtrapStore(delta, pf1, pf2, M_MXX_INDEX, tx, ty, tz, bx, by, bz, fMom);
-    curvedBoundaryInterpExtrapStore(delta, pf1, pf2, M_MXY_INDEX, tx, ty, tz, bx, by, bz, fMom);
-    curvedBoundaryInterpExtrapStore(delta, pf1, pf2, M_MXZ_INDEX, tx, ty, tz, bx, by, bz, fMom);
-    curvedBoundaryInterpExtrapStore(delta, pf1, pf2, M_MYY_INDEX, tx, ty, tz, bx, by, bz, fMom);
-    curvedBoundaryInterpExtrapStore(delta, pf1, pf2, M_MYZ_INDEX, tx, ty, tz, bx, by, bz, fMom);
-    curvedBoundaryInterpExtrapStore(delta, pf1, pf2, M_MZZ_INDEX, tx, ty, tz, bx, by, bz, fMom);
+    curvedBoundaryInterpExtrapStore(delta, pf1, pf2, tx, ty, tz, bx, by, bz, fMom, tempCBC);
 }
-
-
 
 
 #endif //!__CURVED_BC_CUH

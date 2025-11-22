@@ -5,7 +5,11 @@ __global__ void gpuMomCollisionStream(
     DENSITY_CORRECTION_PARAMS_DECLARATION(d_)
     BC_FORCES_PARAMS_DECLARATION(d_)
     unsigned int step,
-    bool save)
+    bool save
+    #ifdef CURVED_BOUNDARY_CONDITION
+    , CurvedBoundary** d_curvedBC, CurvedBoundary* d_curvedBC_array
+    #endif //CURVED_BOUNDARY_CONDITION
+    )
 {
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
@@ -464,6 +468,17 @@ __global__ void gpuMomCollisionStream(
 
     dfloat invRho;
     if(nodeType != BULK){
+        #ifdef CURVED_BOUNDARY_CONDITION
+            //array index for the d_curvedBC_array
+            CurvedBoundary* curvedBC = d_curvedBC[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)];
+            if(curvedBC!= nullptr){
+                CurvedBoundary aa = *curvedBC;
+                dfloat ux0 = aa.vel.x;
+                dfloat uy0 = aa.vel.y;
+                dfloat uz0 = aa.vel.z;
+            }
+        #endif //CURVED_BOUNDARY_CONDITION
+            
         #include CASE_BC_DEF
 
         invRho = 1.0 / rhoVar;               
