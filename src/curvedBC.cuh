@@ -59,6 +59,7 @@ void curvedBoundaryInterpExtrapStore(
 
 
  //can you give a better name for this function?
+ __global__
 void updateCurvedBoundaryVelocities(
     CurvedBoundary* d_curvedBC_array, 
     dfloat *fMom, 
