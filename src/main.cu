@@ -31,12 +31,13 @@ int main() {
     /* -------------- ALLOCATION FOR GPU ------------- */
     deviceField.allocateDeviceMemoryDeviceField();
     //TODO : move these malocs to inside teh corresponding mallocs
+    
     #ifdef DENSITY_CORRECTION
         checkCudaErrors(cudaMallocHost((void**)&(hostField.h_mean_rho), sizeof(dfloat)));
         cudaMalloc((void**)&deviceField.d_mean_rho, sizeof(dfloat));  
     #endif //DENSITY_CORRECTION
 
-    // Setup Streams
+    /* -------------- Setup Streams ------------- */
     cudaStream_t streamsLBM[1];
     checkCudaErrors(cudaSetDevice(GPU_INDEX));
     checkCudaErrors(cudaStreamCreate(&streamsLBM[0]));
@@ -47,6 +48,8 @@ int main() {
     #endif //PARTICLE_MODEL
 
     step = INI_STEP;
+
+
     //Declaration of atomic flags to safely control the state of data saving in multiple threads.
     std::atomic<bool> savingMacrVtk(false);
     std::atomic<bool> savingMacrParticle(false);
@@ -56,7 +59,7 @@ int main() {
         savingMacrBin[i].store(false);
     }
 
-    //Initialize domain in the device by copying data from the host
+    /* -------------- Initialize domain in the device ------------- */
     deviceField.initializeDomainDeviceField(hostField, randomNumbers,  step, gridBlock, threadBlock);
 
     int ini_step = step;

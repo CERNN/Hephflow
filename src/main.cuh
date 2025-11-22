@@ -762,6 +762,7 @@ __host__
 void allocateDeviceMemory(
     dfloat** d_fMom, unsigned int** dNodeType, GhostInterfaceData* ghostInterface
     BC_FORCES_PARAMS_DECLARATION_PTR(d_)
+    CURVED_BC_PARAMS_DECLARATION_PTR(d_)
 ) {
     unsigned int memAllocated = 0;
 
@@ -807,6 +808,8 @@ void initializeDomain(
     BC_FORCES_PARAMS_DECLARATION(&d_)
     DENSITY_CORRECTION_PARAMS_DECLARATION(&h_)
     DENSITY_CORRECTION_PARAMS_DECLARATION(&d_)
+    CURVED_BC_PTRS_DECL(d_)
+    CURVED_BC_ARRAY_DECL(d_)
     int *step, dim3 gridBlock, dim3 threadBlock
     ){
     
@@ -912,6 +915,17 @@ void initializeDomain(
     #ifdef BC_FORCES
         gpuInitialization_force<<<gridBlock, threadBlock>>>(d_BC_Fx, d_BC_Fy, d_BC_Fz);
     #endif //BC_FORCES
+
+
+    #ifdef CURVED_BOUNDARY_CONDITION
+        initializeCurvedBoundaryDeviceField(
+            hNodeType,
+            dNodeType,
+            d_curvedBC,
+            d_curvedBC_array
+        );
+    #endif
+
 
     // Interface population initialization
     interfaceCudaMemcpy(ghostInterface, ghostInterface.gGhost, ghostInterface.fGhost, cudaMemcpyDeviceToDevice, QF);
