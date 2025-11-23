@@ -760,9 +760,10 @@ void allocateHostMemory(
  */
 __host__
 void allocateDeviceMemory(
-    dfloat** d_fMom, unsigned int** dNodeType, GhostInterfaceData* ghostInterface
+    dfloat** d_fMom, unsigned int** dNodeType, 
     BC_FORCES_PARAMS_DECLARATION_PTR(d_)
     CURVED_BC_PARAMS_DECLARATION_PTR(d_)
+    GhostInterfaceData* ghostInterface
 ) {
     unsigned int memAllocated = 0;
 

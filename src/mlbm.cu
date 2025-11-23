@@ -467,11 +467,13 @@ __global__ void gpuMomCollisionStream(
     #include "includeFiles/popLoad.inc"
 
     dfloat invRho;
-    dfloat ux0 = 0.0;
-    dfloat uy0 = 0.0;
-    dfloat uz0 = 0.0;
+
     if(nodeType != BULK){
         #ifdef CURVED_BOUNDARY_CONDITION
+            dfloat ux0 = 0.0;
+            dfloat uy0 = 0.0;
+            dfloat uz0 = 0.0;
+            
             //array index for the d_curvedBC_array
             CurvedBoundary* curvedBC = d_curvedBC[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)];
             if(curvedBC!= nullptr){

@@ -624,6 +624,81 @@ void ellipsoidEllipsoidCollision(const CollisionContext& ctx,dfloat3 closestOnA[
 }
 
 
+__device__
+void ellipsoidCylinderCollision(const CollisionContext& ctx, dfloat3 closestOnB[1],dfloat cr1[1], dfloat3 P1, dfloat3 P2, dfloat cRadius, int cyDir) {
+    ParticleCenter* pc_i = ctx.pc_i;
+    int step = ctx.step;
+    dfloat displacement = ctx.displacement;
+    dfloat3 endpoint = closestOnB[1];
+
+    dfloat3 pos_i = pc_i->getPos(); 
+    dfloat3 pos_c_i = endpoint;
+    const dfloat3 v_i = pc_i->getVel();
+    const dfloat3 w_i = pc_i->getW();
+    const dfloat r_i = pc_i->getRadius();
+    const dfloat m_i = pc_i->getVolume() * pc_i->getDensity();
+
+
+    //wall information        
+    dfloat3 wall_speed = dfloat3(0,0,0); 
+    dfloat3 wall_rotation = dfloat3(0,0,0);
+
+    dfloat3 proj = segmentProjection(endpoint,P1,P2,cRadius,cyDir);
+    dfloat3 dir = pc_i->getPos() - proj;
+    dfloat3 n = vector_normalize(proj - endpoint);
+
+    //invert collision direction since is from sphere to wall
+    n = -n;
+
+    //vector center-> contact 
+    dfloat3 rri = pos_c_i - pos_i;
+
+    dfloat3 G = (v_i + cross_product(w_i,rri)) - (wall_speed + cross_product(wall_rotation,cRadius));
+    dfloat3 G_cn = dot_product(G,n) * n;
+    dfloat3 G_ct = G - G_cn;
+
+    dfloat effective_radius = 1.0 / ((cr1[0] + cRadius) / (cr1[0] * cRadius));
+    dfloat effective_mass = 1.0 / (m_i); //wall has infinite mass
+
+    const dfloat STIFFNESS_NORMAL = SPHERE_SPHERE_STIFFNESS_NORMAL_CONST * sqrt(effective_radius);
+    const dfloat STIFFNESS_TANGENTIAL = SPHERE_SPHERE_STIFFNESS_TANGENTIAL_CONST * sqrt(effective_radius) * sqrt(abs(displacement));
+
+    const dfloat DAMPING_NORMAL = SPHERE_SPHERE_DAMPING_CONST * sqrt(effective_mass * STIFFNESS_NORMAL);
+    const dfloat DAMPING_TANGENTIAL = SPHERE_SPHERE_DAMPING_CONST * sqrt(effective_mass * STIFFNESS_TANGENTIAL);
+
+    // Normal force
+    dfloat3 f_normal = computeNormalForce(n, G, displacement, STIFFNESS_NORMAL, DAMPING_NORMAL);
+    dfloat f_n = vector_length(f_normal);
+
+    // Relative tangential velocity
+    dfloat mag = vector_length(G_ct);
+    dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0};
+
+    int tang_index;
+    if(cyDir == -1){
+        tang_index = calculateWallIndex(dfloat3(0,0,0)); //this returns to 3 which is not being used
+    }else{
+        tang_index = NUM_PARTICLES+10; //it forces to be a id outside of particle range
+    }
+
+    //hack: we set n = dfloat3(-(7+NUM_PARTICLES), 0, 0)), which should return a tang_index equal to NUM_PARTICLES+10
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G_cn, tang_index, dfloat3(-(7+NUM_PARTICLES), 0, 0));
+
+
+    dfloat3 f_tang = computeTangentialForce(
+        tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
+        PP_FRICTION_COEF, f_n, t, pc_i, tang_index, step
+    );
+
+    // Final force results
+    dfloat3 f_dirs = f_normal + f_tang;
+    dfloat3 m_dirs_i = cross_product(rri, f_dirs);
+
+    //Save data in the particle information
+    accumulateForceAndTorque(pc_i, f_dirs, m_dirs_i);
+}
+
+
 // ****************************************************************************
 // ******************   AUXILIARY COLLISION FUNCTIONS  ************************
 // ****************************************************************************

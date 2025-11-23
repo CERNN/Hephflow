@@ -30,9 +30,10 @@ typedef struct deviceField{
 
     void allocateDeviceMemoryDeviceField() {
         allocateDeviceMemory(
-            &d_fMom, &dNodeType, &ghostInterface
+            &d_fMom, &dNodeType, 
             BC_FORCES_PARAMS_PTR(d_)
             CURVED_BC_PARAMS_PTR(d_)
+            &ghostInterface
         );
     }
 

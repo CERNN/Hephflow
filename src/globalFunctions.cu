@@ -46,6 +46,18 @@ dfloat3 planeProjection(dfloat3 P, dfloat3 n, dfloat d) {
     return proj;
 }
 
+__device__
+dfloat3 segmentProjection(dfloat3 P, dfloat3 P1, dfloat3 P2, dfloat cRadius, int cyDir ){
+    dfloat3 closestOnAB[1];
+
+    dfloat dist = point_to_segment_distance(P, P1, P2, closestOnAB);
+    dfloat3 n =  vector_normalize(closestOnAB[0] - P); //TODO: FIX IT, missing cyDir, i.e internal (1) vs external (-1)
+    dfloat3 contactPoint =  closestOnAB[0] - n *  cRadius;
+
+    return contactPoint;
+}
+
+
 __host__ __device__
 dfloat dot_product(dfloat3 v1, dfloat3 v2) {
     return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
@@ -131,14 +143,15 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2) {
     return dfloat3(dx, dy, dz);
 }
 
-__host__ __device__
-inline dfloat wrapPeriodic(dfloat coord, dfloat pos, dfloat L) {
-    dfloat diff = coord - pos;
-    if (fabs(diff) > 0.5f * L) {
-        if (coord < pos) coord += L;
-        else             coord -= L;
-    }
-    return coord;
+
+__device__
+dfloat point_to_segment_distance(dfloat3 p, dfloat3 segA, dfloat3 segB, dfloat3 closestOnAB[1]) {
+    dfloat3 ab = segB - segA;
+    dfloat3 ap = p - segA;
+    dfloat t = dot_product(ap, ab) / dot_product(ab, ab);
+    t = myMax(0, myMin(1, t));  // Clamp t to [0, 1]
+    closestOnAB[0] = segA + ab*t;
+    return vector_length(p - closestOnAB[0]);
 }
 
 __device__
