@@ -10,6 +10,9 @@
 #include "../../../saveData.cuh"
 #include "./../../class/Particle.cuh"
 
+#include "../dem/particleMovement.cuh"
+#include "../dem/collision/collisionDetection.cuh"
+
 #ifdef PARTICLE_MODEL
 
 /**
