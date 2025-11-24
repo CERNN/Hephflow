@@ -63,3 +63,41 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
     #define OUTER_VELOCITY 0.0
     #define OUTER_ROTATION 0.0 //(U_MAX/OUTER_RADIUS)    
 #endif //EXTERNAL_DUCT_BC
+
+#define PARTICLE_MODEL 
+#ifdef PARTICLE_MODEL
+    #define IBM_METHOD
+    #define DEM_METHOD
+    #define LOCAL_FORCES
+    //number of particles
+    #define NUM_PARTICLES 1
+
+    constexpr dfloat GX = 0.0;
+    constexpr dfloat GY = 8.4E-04;
+    constexpr dfloat GZ = 0.0;
+
+    constexpr dfloat FLUID_DENSITY = 1.0;
+
+
+    #ifdef DEM_METHOD
+        constexpr dfloat PP_FRICTION_COEF = 0.1; // friction coeficient particle particle -- case
+        constexpr dfloat PW_FRICTION_COEF = 0.1; // friction coeficient particle wall -- case
+        constexpr dfloat PP_REST_COEF = 0.9; // restitution coeficient particle particle -- case
+        constexpr dfloat PW_REST_COEF = 0.9; // restitution coeficient particle wall-- case
+        //#define REST_COEF_CORRECTION
+
+
+        //material properties
+        constexpr dfloat PARTICLE_YOUNG_MODULUS = 0.5; //-- case
+        constexpr dfloat PARTICLE_POISSON_RATIO = 0.3; //-- case
+
+
+        constexpr dfloat WALL_YOUNG_MODULUS = 100.0; //-- case
+        constexpr dfloat WALL_POISSON_RATIO = 0.3; //-- case
+
+        // Sphere-wall collision constants (compile-time)
+        constexpr dfloat SPHERE_WALL_DAMPING_CONST = (-2.0 * constexprLn(PW_REST_COEF) / (sqrtt(M_PI * M_PI + constexprLn(PW_REST_COEF) * constexprLn(PW_REST_COEF))));
+        constexpr dfloat SPHERE_SPHERE_DAMPING_CONST = (-2.0 * constexprLn(PP_REST_COEF) / (sqrtt(M_PI * M_PI + constexprLn(PP_REST_COEF) * constexprLn(PP_REST_COEF))));
+
+    #endif //DEM_METHOD
+#endif //PARTICLE_MODEL
