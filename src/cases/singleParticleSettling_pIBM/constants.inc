@@ -52,6 +52,8 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
 #define LOAD_FIELD_STEP 0
 
 #ifdef PARTICLE_MODEL
+    // IBM_METHOD must be defined, otherwise createParticles function are not compiled
+    #define IBM_METHOD
     #define PIBM_METHOD
     #define DEM_METHOD
     #define LOCAL_FORCES
@@ -70,6 +72,11 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
         const int LAGRANGIAN_I_MAX = 2; // min 2
         const int LAGRANGIAN_J_MAX = 2; // min 2
         const int LAGRANGIAN_K_MAX = 2; // min 2
+
+        const int FORCE_SPREAD_X_NODES = 2; // min 1
+        const int FORCE_SPREAD_Y_NODES = 2; // min 1
+        const int FORCE_SPREAD_Z_NODES = 2; // min 1
+
     #endif //PIBM_METHOD
     #ifdef DEM_METHOD
         constexpr dfloat PP_FRICTION_COEF = 0.1; // friction coeficient particle particle -- case
