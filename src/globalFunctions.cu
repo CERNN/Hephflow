@@ -654,6 +654,48 @@ dfloat mom_trilinear_interp(dfloat x, dfloat y, dfloat z, const int mom , dfloat
          xi      * eta       * zeta       * c111;
 }
 
+__host__ __device__ static inline void normalize_lagrangian_range(float pos, int lagr_range, int domain_size, unsigned int* start, unsigned int* end) {
+    int s, e;
+
+    if (lagr_range % 2 == 0) {
+        int half_width = (lagr_range / 2) - 1;
+        s = (int)floor(pos) - half_width;
+        e = (int)ceil(pos) + half_width;
+    } else {
+        int half_width = (lagr_range - 1) / 2;
+        int rounded_pos = (int)round(pos); 
+        s = rounded_pos - half_width;
+        e = rounded_pos + half_width;
+    }
+
+    if (s < 0) s = 0;
+    if (e > domain_size - 1) e = domain_size - 1;
+
+    *start = s;
+    *end = e;
+}
+
+__host__ __device__
+dfloat mom_lagrange_interp(dfloat x, dfloat y, dfloat z, const int Nx, const int Ny, const int Nz, const int i_range, const int j_range, const int k_range, const int mom, dfloat *fMom) {
+    dim3 range_start, range_end;
+
+    normalize_lagrangian_range(x, i_range, Nx, &range_start.x, &range_end.x);
+    normalize_lagrangian_range(y, j_range, Ny, &range_start.y, &range_end.y);
+    normalize_lagrangian_range(z, k_range, Nz, &range_start.z, &range_end.z);
+
+    dfloat interp_mom = 0.0;
+
+    for (unsigned int node_i = range_start.x; node_i<= range_end.x; node_i++){
+        for (unsigned int node_j = range_start.y; node_j<= range_end.y; node_j++){
+            for (unsigned int node_k = range_start.z; node_k<= range_end.z; node_k++){
+                interp_mom += (x - node_i) * (x - node_i) * (x - node_i) * getMom(node_i, node_j, node_k, mom, fMom);
+            }
+        }
+    }
+
+    return interp_mom;
+}
+
 
 
 __host__ __device__
