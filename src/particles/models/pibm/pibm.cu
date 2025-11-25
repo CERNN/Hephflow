@@ -4,82 +4,133 @@
 
 #ifdef PARTICLE_MODEL
 
+__global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsigned int nParticles)
+{
+    int p_idx = threadIdx.x + blockDim.x * blockIdx.x;
+    if (p_idx >= nParticles)
+        return;
 
-__host__
-void pibmSimulation(
+    ParticleCenter *pc_i = &pArray[p_idx];
+
+    dfloat px = pc_i->getPosX();
+    dfloat py = pc_i->getPosY();
+    dfloat pz = pc_i->getPosZ();
+
+    // Use a Lagrangian interpolator
+    dfloat ux_interpolated = mom_trilinear_interp(px, py, pz, M_UX_INDEX, fMom);
+    dfloat uy_interpolated = mom_trilinear_interp(px, py, pz, M_UY_INDEX, fMom);
+    dfloat uz_interpolated = mom_trilinear_interp(px, py, pz, M_UZ_INDEX, fMom);
+    dfloat3 fluid_velocity = {ux_interpolated, uy_interpolated, uz_interpolated};
+
+    // Drag force following stokes law
+    dfloat3 drag_force = (3.0 * M_PI * VISC * pc_i->getDiameter()) * (fluid_velocity - pc_i->getVel());
+
+    // Particle collision happened before so add to the current particle force
+    pc_i->setF(pc_i->getF() + drag_force);
+
+    dim3 stencil_bound_start, stencil_bound_end;
+    stencil_bound_start.x = (int)ceil(px) - FORCE_SPREAD_X_NODES;
+    stencil_bound_start.y = (int)ceil(py) - FORCE_SPREAD_Y_NODES;
+    stencil_bound_start.z = (int)ceil(pz) - FORCE_SPREAD_Z_NODES;
+
+    stencil_bound_start.x = (int)floor(px) + FORCE_SPREAD_X_NODES;
+    stencil_bound_start.y = (int)floor(py) + FORCE_SPREAD_Y_NODES;
+    stencil_bound_start.z = (int)floor(pz) + FORCE_SPREAD_Z_NODES;
+
+    // For periodic boundary
+    // TODO: Update this to react to BC definitions
+    if (stencil_bound_start.x < 0)
+        stencil_bound_start.x += NX;
+    if (stencil_bound_start.y < 0)
+        stencil_bound_start.y += NY;
+    if (stencil_bound_start.z < 0)
+        stencil_bound_start.z += NZ;
+
+    if (stencil_bound_start.x >= NX)
+        stencil_bound_start.x = stencil_bound_start.x % NX;
+    if (stencil_bound_start.y >= NY)
+        stencil_bound_start.y = stencil_bound_start.y % NY;
+    if (stencil_bound_start.z >= NZ)
+        stencil_bound_start.z = stencil_bound_start.z % NZ;
+
+    // Use correct stencil
+    for (int zk = stencil_bound_start.z; zk <= stencil_bound_end.z; zk++) // z
+    {
+        for (int yj = stencil_bound_start.y; yj <= stencil_bound_end.y; yj++) // y
+        {
+            for (int xi = stencil_bound_start.x; xi <= stencil_bound_end.x; xi++) // x
+            {
+                dfloat spread_filter = (1 + cos(M_PI * (xi - px) / 2)) * (1 + cos(M_PI * (yj - py) / 2)) * (1 + cos(M_PI * (zk - pz) / 2)) / 64;
+
+                unsigned int xx = (stencil_bound_start.x + xi + NX) % (NX);
+                unsigned int yy = (stencil_bound_start.y + yj + NY) % (NY);
+                unsigned int zz = (stencil_bound_start.z + zk + NZ) % (NZ);
+
+                atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FX_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.x * spread_filter);
+                atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FY_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.y * spread_filter);
+                atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FZ_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.z * spread_filter);
+            }
+        }
+    }
+
+    printf("Drag Force         x: %e y: %e z: %e\n", drag_force.x, drag_force.y, drag_force.z);
+    printf("Particle Position  x: %e y: %e z: %e\n", pc_i->getPosX(), pc_i->getPosY(), pc_i->getPosZ());
+    printf("Particle Velocity  x: %e y: %e z: %e\n", pc_i->getVelX(), pc_i->getVelY(), pc_i->getVelZ());
+    printf("Particle Ang Vel   x: %e y: %e z: %e\n", pc_i->getWX(), pc_i->getWY(), pc_i->getWZ());
+    printf("Particle Force     x: %e y: %e z: %e\n", pc_i->getFX(), pc_i->getFY(), pc_i->getFZ());
+    printf("Particle Moment    x: %e y: %e z: %e\n", pc_i->getMX(), pc_i->getMY(), pc_i->getMZ());
+}
+
+__global__ void resetParticleForce(ParticleCenter *pArray, unsigned int nParticles)
+{
+    int p_idx = threadIdx.x + blockDim.x * blockIdx.x;
+    if (p_idx >= nParticles)
+        return;
+
+    ParticleCenter *pc_i = &pArray[p_idx];
+
+    pc_i->setF(dfloat3(0.0, 0.0, 0.0));
+}
+
+__host__ void pibmSimulation(
     ParticlesSoA *particles,
     dfloat *fMom,
     cudaStream_t streamParticles,
     unsigned int step)
 {
-    IbmNodesSoA h_nodes = *(particles->getNodesSoA());
+    // IbmNodesSoA h_nodes = *(particles->getNodesSoA());
+    // IbmNodesSoA *d_nodes = &h_nodes;
+    // cudaMalloc(&d_nodes, sizeof(IbmNodesSoA));
+    // cudaMemcpy(d_nodes, &h_nodes, sizeof(IbmNodesSoA), cudaMemcpyHostToDevice);
+
+    // checkCudaErrors(cudaSetDevice(GPU_INDEX));
+
     MethodRange range = particles->getMethodRange(PIBM);
-    // const unsigned int n_particles = range.last - range.first + 1;
+    const unsigned int N_PARTICLES = range.last - range.first + 1;
 
-    ParticleCenter* pArray = particles->getPCenterArray();
+    const unsigned int THREADS_PARTICLES_PIBM = N_PARTICLES > 64 ? 64 : N_PARTICLES;
+    const unsigned int GRID_PARTICLES_PIBM = (N_PARTICLES % THREADS_PARTICLES_PIBM ? (N_PARTICLES / THREADS_PARTICLES_PIBM + 1) : (N_PARTICLES / THREADS_PARTICLES_PIBM));
 
-    updateParticleOldValues<<<GRID_PARTICLES_IBM, THREADS_PARTICLES_IBM, 0, streamParticles>>>(pArray,range.first,range.last,step);
+    const unsigned int TOTAL_PCOLLISION_PIBM_THREADS = (N_PARTICLES * (N_PARTICLES + 1)) / 2;
+    const unsigned int THREADS_PCOLLISION_PIBM = (TOTAL_PCOLLISION_PIBM_THREADS > 64) ? 64 : TOTAL_PCOLLISION_PIBM_THREADS;
+    const unsigned int GRID_PCOLLISION_PIBM =
+        (TOTAL_PCOLLISION_PIBM_THREADS % THREADS_PCOLLISION_PIBM ? (TOTAL_PCOLLISION_PIBM_THREADS / THREADS_PCOLLISION_PIBM + 1)
+                                                                 : (TOTAL_PCOLLISION_PIBM_THREADS / THREADS_PCOLLISION_PIBM));
 
-    ParticleShape* shape = particles->getPShape();
-    particlesCollisionHandler<<<GRID_PCOLLISION_IBM, THREADS_PCOLLISION_IBM, 0, streamParticles>>>(shape,pArray,step);
+    ParticleCenter *pArray = particles->getPCenterArray();
+    ParticleShape *shape = particles->getPShape();
 
-    for (unsigned int p_idx = range.first; p_idx <= range.last; p_idx++)
-    {
-        ParticleCenter* pc_i = &pArray[p_idx];
-        // Drag force following stokes law
-        // Check if M_PI does not cause mixed-precision (maybe use a constexpr for this)
+    updateParticleOldValues<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, range.first, range.last, step);
+    particlesCollisionHandler<<<GRID_PCOLLISION_PIBM, THREADS_PCOLLISION_PIBM, 0, streamParticles>>>(shape, pArray, step);
 
-        dfloat px = pc_i->getPosX();
-        dfloat py = pc_i->getPosY();
-        dfloat pz = pc_i->getPosZ();
+    spreadParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, fMom, N_PARTICLES);
 
-        dfloat ux_interpolated = mom_trilinear_interp(px,py,pz,M_UX_INDEX,fMom);
-        dfloat uy_interpolated = mom_trilinear_interp(px,py,pz,M_UY_INDEX,fMom);
-        dfloat uz_interpolated = mom_trilinear_interp(px,py,pz,M_UZ_INDEX,fMom);
-        dfloat3 fluid_velocity = {ux_interpolated,uy_interpolated,uz_interpolated};
+    updateParticleCenterVelocityAndRotation<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, range.first, range.last, step);
+    updateParticlePosition<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, range.first, range.last, step);
 
-
-        dfloat3 drag_force = (3.0 * M_PI * VISC * pc_i->getDiameter()) * (fluid_velocity -  pc_i->getVel());
-
-        // Check if particle collision happened before. If so, add to the current particle force
-        // If not, then zero the force before summing drag force
-        pc_i->setF(pc_i->getF() + drag_force);
-
-
-            for (int zk = minIdx[2]; zk <= maxIdx[2]; zk++) // z
-    {
-        for (int yj = minIdx[1]; yj <= maxIdx[1]; yj++) // y
-        {
-            aux1 = stencilVal[2][zk]*stencilVal[1][yj];
-            for (int xi = minIdx[0]; xi <= maxIdx[0]; xi++) // x
-            {
-                // Dirac delta (kernel)
-                aux = aux1 * stencilVal[0][xi];
-                // same as aux = stencil(x - xIBM) * stencil(y - yIBM) * stencil(z - zIBM);
- 
-                xx = (posBase[0] + xi + NX)%(NX);
-                yy = (posBase[1] + yj + NY)%(NY);
-                zz = (posBase[2] + zk + NZ)%(NZ);
-                
-                atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -drag_foce.x * aux);
-                atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -drag_foce.y * aux);
-                atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -drag_foce.z * aux);
-
-            }
-        }
-    }
-    }
-
-    // const unsigned int THREADS_PARTICLES_PIBM = n_particles > 64 ? 64 : n_particles;
-    // const unsigned int GRID_PARTICLES_PIBM = (n_particles % THREADS_PARTICLES_PIBM ? (n_particles / THREADS_PARTICLES_PIBM + 1) : (n_particles / THREADS_PARTICLES_PIBM));
-
-    // atomicAdd(&(fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)]), Fx);
-
-    updateParticleCenterVelocityAndRotation<<<GRID_PARTICLES_IBM, THREADS_PARTICLES_IBM, 0, streamParticles>>>(pArray,range.first,range.last,step);
-    updateParticlePosition<<<GRID_PARTICLES_IBM, THREADS_PARTICLES_IBM, 0, streamParticles>>>(pArray,range.first,range.last,step);
+    resetParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, N_PARTICLES);
 
     checkCudaErrors(cudaStreamSynchronize(streamParticles));
-
 }
 
 #endif // PARTICLE_MODEL
