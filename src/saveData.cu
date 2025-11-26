@@ -435,7 +435,7 @@ std::vector<dfloat6> convertPointToCellTensor6(
 }
 
 std::vector<int> convertPointToCellIntMode(
-    const int* pointField, size_t NX, size_t NY, size_t NZ)
+    const unsigned int* pointField, size_t NX, size_t NY, size_t NZ)
 {
     size_t Ncells = (NX-1)*(NY-1)*(NZ-1);
     std::vector<int> cellField(Ncells, 0);
@@ -634,7 +634,7 @@ void saveVarVTK(
             #endif //SAVE_BC_FORCES
 
             #if NODE_TYPE_SAVE
-                auto bc_cell = convertPointToCellIntMode(NODE_TYPE_SAVE,NX,NY,NZ);
+                auto bc_cell = convertPointToCellIntMode(nodeTypeSave,NX,NY,NZ);
                 ofs << "SCALARS bc int 1\n"
                     << "LOOKUP_TABLE default\n";
                 writeBigEndian(ofs, bc_cell.data(), Ncells);
