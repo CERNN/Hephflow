@@ -523,6 +523,7 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2);
  * @param L: The length of the periodic domain.
  * @return The wrapped coordinate.
  */
+
 __host__ __device__
 inline dfloat wrapPeriodic(dfloat coord, dfloat pos, dfloat L) {
     dfloat diff = coord - pos;
@@ -532,6 +533,7 @@ inline dfloat wrapPeriodic(dfloat coord, dfloat pos, dfloat L) {
     }
     return coord;
 }
+
 
 /**
  * @brief Compute the shortest distance from a point to a segment.

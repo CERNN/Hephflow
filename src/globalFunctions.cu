@@ -143,7 +143,6 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2) {
     return dfloat3(dx, dy, dz);
 }
 
-
 __device__
 dfloat point_to_segment_distance(dfloat3 p, dfloat3 segA, dfloat3 segB, dfloat3 closestOnAB[1]) {
     dfloat3 ab = segB - segA;

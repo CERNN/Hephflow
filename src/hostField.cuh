@@ -15,10 +15,9 @@ typedef struct hostField{
     
     unsigned int* hNodeType;
 
-    int NThread = 4;
+    int NThread;
 
     #if NODE_TYPE_SAVE
-    NThread++;
     unsigned int* nodeTypeSave; 
     #endif //NODE_TYPE_SAVE
 
@@ -67,7 +66,6 @@ typedef struct hostField{
 
     #ifdef BC_FORCES
         #ifdef SAVE_BC_FORCES
-        NThread += 3;
         dfloat* h_BC_Fx;
         dfloat* h_BC_Fy;
         dfloat* h_BC_Fz;
