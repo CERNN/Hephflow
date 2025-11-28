@@ -39,12 +39,12 @@
 #endif //SINGLE_PRECISION
 
 
-#define CELLDATA_SAVE false
+#define CELLDATA_SAVE true
 
 /* ----------------------------- PROBLEM DEFINE ---------------------------- */
 
 
-#define BC_PROBLEM benchmark_ibm
+#define BC_PROBLEM pipeFlowCurved_D3Q19
 
                                 
 constexpr bool console_flush = false;
@@ -67,7 +67,9 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};    // Which GPUs to use
 #define CASE_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/bc_definition.inc)
 #define CASE_FLOW_INITIALIZATION STR(CASE_DIRECTORY/BC_PROBLEM/flow_initialization.inc)
 #define CASE_TREAT_DATA STR(CASE_DIRECTORY/BC_PROBLEM/treat_data.inc)
+#define CASE_CURVED_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/curved_bc_definition.inc)
 #define VOXEL_BC_DEFINE STR(../../CASE_DIRECTORY/voxel/bc_definition.inc)
+
 
 #define COLREC_DIRECTORY colrec
 #define COLREC_COLLISION STR(COLREC_DIRECTORY/COLLISION_TYPE/collision.inc)

@@ -1,5 +1,3 @@
-#define CURVED_BOUNDARY_CONDITION
-
 constexpr dfloat RE = 10;
 
 constexpr int SCALE = 1;
@@ -65,3 +63,4 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
     #define OUTER_VELOCITY 0.0
     #define OUTER_ROTATION 0.0 //(U_MAX/OUTER_RADIUS)    
 #endif //EXTERNAL_DUCT_BC
+

@@ -354,4 +354,20 @@ typedef struct wall{
 } Wall;
 
 
+typedef struct curvedBoundary{
+    dfloat3 b;
+    dfloat3 w;
+    dfloat3 pf1;
+    dfloat3 pf2;
+    dfloat3 pf3;
+
+    dfloat delta;
+    dfloat theta;
+
+    dfloat3 vel; //extrapolated velocity, which will be used on the boundary condition
+
+}CurvedBoundary;
+
+
+
 #endif //__GLOBAL_STRUCTS_H
