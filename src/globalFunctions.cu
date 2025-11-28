@@ -46,6 +46,18 @@ dfloat3 planeProjection(dfloat3 P, dfloat3 n, dfloat d) {
     return proj;
 }
 
+__device__
+dfloat3 segmentProjection(dfloat3 P, dfloat3 P1, dfloat3 P2, dfloat cRadius, int cyDir ){
+    dfloat3 closestOnAB[1];
+
+    dfloat dist = point_to_segment_distance(P, P1, P2, closestOnAB);
+    dfloat3 n =  vector_normalize(closestOnAB[0] - P); //TODO: FIX IT, missing cyDir, i.e internal (1) vs external (-1)
+    dfloat3 contactPoint =  closestOnAB[0] - n *  cRadius;
+
+    return contactPoint;
+}
+
+
 __host__ __device__
 dfloat dot_product(dfloat3 v1, dfloat3 v2) {
     return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
@@ -131,14 +143,15 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2) {
     return dfloat3(dx, dy, dz);
 }
 
-__host__ __device__
-inline dfloat wrapPeriodic(dfloat coord, dfloat pos, dfloat L) {
-    dfloat diff = coord - pos;
-    if (fabs(diff) > 0.5f * L) {
-        if (coord < pos) coord += L;
-        else             coord -= L;
-    }
-    return coord;
+
+__device__
+dfloat point_to_segment_distance(dfloat3 p, dfloat3 segA, dfloat3 segB, dfloat3 closestOnAB[1]) {
+    dfloat3 ab = segB - segA;
+    dfloat3 ap = p - segA;
+    dfloat t = dot_product(ap, ab) / dot_product(ab, ab);
+    t = myMax(0, myMin(1, t));  // Clamp t to [0, 1]
+    closestOnAB[0] = segA + ab*t;
+    return vector_length(p - closestOnAB[0]);
 }
 
 __device__
@@ -561,97 +574,74 @@ dfloat6 rotate_inertia_by_quart(dfloat4 q, dfloat6 I6) {
 }
 
 __host__ __device__
-dfloat mom_trilinear_interp(dfloat x, dfloat y, dfloat z, const int mom , dfloat *fMom) {
+dfloat mom_trilinear_interp(
+    dfloat x, dfloat y, dfloat z,
+    int mom,
+    dfloat *fMom)
+{
     int i = (int)floor(x);
     int j = (int)floor(y);
     int k = (int)floor(z);
 
+    dfloat fx = x - i;
+    dfloat fy = y - j;
+    dfloat fz = z - k;
 
-    dfloat xi = x - i;
-    dfloat eta = y - j;
-    dfloat zeta = z - k;
+    int i1 = i + 1;
+    int j1 = j + 1;
+    int k1 = k + 1;
 
-    // Direct value (no interpolation needed)
-    if (xi == 0.0 && eta == 0.0 && zeta == 0.0) {
-        return getMom(i, j, k, mom, fMom);
-    }
+    #ifdef BC_X_PERIODIC
+        i  = (i  % NX + NX) % NX;
+        i1 = (i1 % NX + NX) % NX;
+    #elif defined(BC_X_WALL)
+        if (i  < 0)    i  = 0;
+        if (i1 < 0)    i1 = 0;
+        if (i  >= NX)  i  = NX-1;
+        if (i1 >= NX)  i1 = NX-1;
+    #endif
 
-    // Linear in x direction
-    if (eta == 0.0 && zeta == 0.0) {
-        dfloat c0 = getMom(i,     j, k, mom, fMom);
-        dfloat c1 = getMom(i + 1, j, k, mom, fMom);
-        return (1 - xi) * c0 + xi * c1;
-    }
+    #ifdef BC_Y_PERIODIC
+        j  = (j  % NY + NY) % NY;
+        j1 = (j1 % NY + NY) % NY;
+    #elif defined(BC_Y_WALL)
+        if (j  < 0)    j  = 0;
+        if (j1 < 0)    j1 = 0;
+        if (j  >= NY)  j  = NY-1;
+        if (j1 >= NY)  j1 = NY-1;
+    #endif
 
-    // Linear in y direction
-    if (xi == 0.0 && zeta == 0.0) {
-        dfloat c0 = getMom(i, j,     k, mom, fMom);
-        dfloat c1 = getMom(i, j + 1, k, mom, fMom);
-        return (1 - eta) * c0 + eta * c1;
-    }
+    #ifdef BC_Z_PERIODIC
+        k  = (k  % NZ + NZ) % NZ;
+        k1 = (k1 % NZ + NZ) % NZ;
+    #elif defined(BC_Z_WALL)
+        if (k  < 0)    k  = 0;
+        if (k1 < 0)    k1 = 0;
+        if (k  >= NZ)  k  = NZ-1;
+        if (k1 >= NZ)  k1 = NZ-1;
+    #endif
 
-    // Linear in z direction
-    if (xi == 0.0 && eta == 0.0) {
-        dfloat c0 = getMom(i, j, k,     mom, fMom);
-        dfloat c1 = getMom(i, j, k + 1, mom, fMom);
-        return (1 - zeta) * c0 + zeta * c1;
-    }
+    dfloat c000 = getMom(i, j, k, mom, fMom);
+    dfloat c100 = getMom(i1, j, k, mom, fMom);
+    dfloat c010 = getMom(i, j1, k, mom, fMom);
+    dfloat c110 = getMom(i1, j1, k, mom, fMom);
 
-    // Bilinear in xy plane (z fixed)
-    if (zeta == 0.0) {
-        dfloat c00 = getMom(i,     j,     k, mom, fMom);
-        dfloat c10 = getMom(i + 1, j,     k, mom, fMom);
-        dfloat c01 = getMom(i,     j + 1, k, mom, fMom);
-        dfloat c11 = getMom(i + 1, j + 1, k, mom, fMom);
-        return (1 - xi) * (1 - eta) * c00 +
-                xi      * (1 - eta) * c10 +
-               (1 - xi) * eta       * c01 +
-                xi      * eta       * c11;
-    }
+    dfloat c001 = getMom(i, j, k1, mom, fMom);
+    dfloat c101 = getMom(i1, j, k1, mom, fMom);
+    dfloat c011 = getMom(i, j1, k1, mom, fMom);
+    dfloat c111 = getMom(i1, j1, k1, mom, fMom);
 
-    // Bilinear in xz plane (y fixed)
-    if (eta == 0.0) {
-        dfloat c00 = getMom(i,     j, k,     mom, fMom);
-        dfloat c10 = getMom(i + 1, j, k,     mom, fMom);
-        dfloat c01 = getMom(i,     j, k + 1, mom, fMom);
-        dfloat c11 = getMom(i + 1, j, k + 1, mom, fMom);
-        return (1 - xi) * (1 - zeta) * c00 +
-                xi      * (1 - zeta) * c10 +
-               (1 - xi) * zeta       * c01 +
-                xi      * zeta       * c11;
-    }
+    // trilinear interpolation
+    dfloat c00 = c000*(1-fx) + c100*fx;
+    dfloat c10 = c010*(1-fx) + c110*fx;
 
-    // Bilinear in yz plane (x fixed)
-    if (xi == 0.0) {
-        dfloat c00 = getMom(i, j,     k,     mom, fMom);
-        dfloat c10 = getMom(i, j + 1, k,     mom, fMom);
-        dfloat c01 = getMom(i, j,     k + 1, mom, fMom);
-        dfloat c11 = getMom(i, j + 1, k + 1, mom, fMom);
-        return (1 - eta) * (1 - zeta) * c00 +
-                eta      * (1 - zeta) * c10 +
-               (1 - eta) * zeta       * c01 +
-                eta      * zeta       * c11;
-    }
+    dfloat c01 = c001*(1-fx) + c101*fx;
+    dfloat c11 = c011*(1-fx) + c111*fx;
 
-    // Full trilinear
-    dfloat c000 = getMom(i,     j,     k,     mom, fMom);
-    dfloat c100 = getMom(i + 1, j,     k,     mom, fMom);
-    dfloat c010 = getMom(i,     j + 1, k,     mom, fMom);
-    dfloat c110 = getMom(i + 1, j + 1, k,     mom, fMom);
-    dfloat c001 = getMom(i,     j,     k + 1, mom, fMom);
-    dfloat c101 = getMom(i + 1, j,     k + 1, mom, fMom);
-    dfloat c011 = getMom(i,     j + 1, k + 1, mom, fMom);
-    dfloat c111 = getMom(i + 1, j + 1, k + 1, mom, fMom);
+    dfloat c0 = c00*(1-fy) + c10*fy;
+    dfloat c1 = c01*(1-fy) + c11*fy;
 
-    return
-        (1 - xi) * (1 - eta) * (1 - zeta) * c000 +
-         xi      * (1 - eta) * (1 - zeta) * c100 +
-        (1 - xi) * eta       * (1 - zeta) * c010 +
-         xi      * eta       * (1 - zeta) * c110 +
-        (1 - xi) * (1 - eta) * zeta       * c001 +
-         xi      * (1 - eta) * zeta       * c101 +
-        (1 - xi) * eta       * zeta       * c011 +
-         xi      * eta       * zeta       * c111;
+    return c0*(1-fz) + c1*fz;
 }
 
 

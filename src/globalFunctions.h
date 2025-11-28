@@ -453,6 +453,19 @@ dfloat3 vector_lerp(dfloat3 v1, dfloat3 v2, dfloat t);
  */
 __device__
 dfloat3 planeProjection(dfloat3 P, dfloat3 n, dfloat d);
+
+/**
+ * @brief Projects point P onto a line segment defined by endpoints P1 and P2, considering a cylinder radius and direction. 
+ * @param P The point to project.
+ * @param P1 The start point of the segment.
+ * @param P2 The end point of the segment.
+ * @param cRadius The radius of the cylinder around the segment.
+ * @param cyDir The direction of the surfance normal for the cylinder (-1 for external and 1 for internal).
+ * @return The projected point on the segment within the cylinder.
+ */
+__device__
+dfloat3 segmentProjection(dfloat3 P, dfloat3 P1, dfloat3 P2, dfloat cRadius, int cyDir);
+
 /**
  *  @brief Compute the dot product of two vectors.
  *  @param v1: First vector.
@@ -511,7 +524,26 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2);
  * @return The wrapped coordinate.
  */
 __host__ __device__
-inline dfloat wrapPeriodic(dfloat coord, dfloat pos, dfloat L);
+inline dfloat wrapPeriodic(dfloat coord, dfloat pos, dfloat L) {
+    dfloat diff = coord - pos;
+    if (fabs(diff) > 0.5f * L) {
+        if (coord < pos) coord += L;
+        else             coord -= L;
+    }
+    return coord;
+}
+
+/**
+ * @brief Compute the shortest distance from a point to a segment.
+ * @param point: The point in 3D space.
+ * @param segA: The start point of the segment.
+ * @param segB: The end point of the segment.
+ * @param closestPoint: Output for the closest point on the segment.
+ * @return The shortest distance between the point and the segment.
+ */
+__device__
+dfloat point_to_segment_distance(dfloat3 p, dfloat3 segA, dfloat3 segB, dfloat3 closestOnAB[1]);
+
 
 /**
  *  @brief Compute the shortest distance from a point to a segment considering periodic conditions.
@@ -770,12 +802,11 @@ dfloat6 rotate_inertia_by_quart(dfloat4 q, dfloat6 I6);
 
 
 __host__ __device__
-
 dfloat mom_trilinear_interp(dfloat x, dfloat y, dfloat z, const int mom , dfloat *fMom);
 __host__ __device__
 dfloat cubic_interp(dfloat p0, dfloat p1, dfloat p2, dfloat p3, dfloat t);
 __host__ __device__
-dfloat mom_tricubic_interp(dfloat x, dfloat y, dfloat z, const int mom, dfloat *fMom) ;
+dfloat mom_tricubic_interp(dfloat x, dfloat y, dfloat z, const int mom, dfloat *fMom);
 
 __host__ __forceinline__  uint32_t set_top12_bits_host(uint32_t base, dfloat x) {return (base & 0x000FFFFF) | (static_cast<uint32_t>(x * 4095.0f + 0.5f) << 20);}
 __host__ __forceinline__  dfloat get_from_top12_bits_host(uint32_t value) {return static_cast<dfloat>(value >> 20) * 0.0002442002f;}

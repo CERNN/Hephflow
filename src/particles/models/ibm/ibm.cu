@@ -364,10 +364,21 @@ void ibmForceInterpolationSpread(
                 yy = (posBase[1] + yj + NY)%(NY);
                 zz = (posBase[2] + zk + NZ)%(NZ);
 
-                rhoVar += aux * (RHO_0 + fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_RHO_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]);
-                uxVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
-                uyVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
-                uzVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
+                #ifdef EXTERNAL_DUCT_BC
+                    dfloat pos_r_i = (xx - DUCT_CENTER_X)*(xx - DUCT_CENTER_X) + (yy - DUCT_CENTER_Y)*(yy - DUCT_CENTER_Y);
+                    if(pos_r_i < OUTER_RADIUS*OUTER_RADIUS){
+                        rhoVar += aux * (RHO_0 + fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_RHO_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]);
+                        uxVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
+                        uyVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
+                        uzVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
+                    }
+                #endif
+                #ifndef EXTERNAL_DUCT_BC
+                    rhoVar += aux * (RHO_0 + fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_RHO_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]);
+                    uxVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
+                    uyVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
+                    uzVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
+                #endif //EXTERNAL_DUCT_BC
             }
         }
     }
@@ -463,9 +474,20 @@ void ibmForceInterpolationSpread(
                 yy = (posBase[1] + yj + NY)%(NY);
                 zz = (posBase[2] + zk + NZ)%(NZ);
                 
-                atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.x * aux);
-                atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.y * aux);
-                atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.z * aux);
+                
+                #ifdef EXTERNAL_DUCT_BC
+                    dfloat pos_r_i = (xx - DUCT_CENTER_X)*(xx - DUCT_CENTER_X) + (yy - DUCT_CENTER_Y)*(yy - DUCT_CENTER_Y);
+                    if(pos_r_i < OUTER_RADIUS*OUTER_RADIUS){
+                        atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.x * aux);
+                        atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.y * aux);
+                        atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.z * aux);
+                    }
+                #endif
+                #ifndef EXTERNAL_DUCT_BC
+                    atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.x * aux);
+                    atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.y * aux);
+                    atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.z * aux);
+                #endif //EXTERNAL_DUCT_BC
 
                 //TODO: find a way to do subinterations
                 //here would enter the correction of the velocity field for subiterations

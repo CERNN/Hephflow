@@ -333,5 +333,32 @@ constexpr int MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_SIZE_POP, myMax(VEL_GRAD_
     #define DENSITY_CORRECTION_PARAMS_PTR
 #endif //DENSITY_CORRECTION
 
+#ifdef CURVED_BOUNDARY_CONDITION
+    #define CURVED_BC_PARAMS_DECLARATION_PTR(PREFIX) CurvedBoundary*** PREFIX##curvedBC,
+    #define CURVED_BC_PARAMS_PTR(PREFIX) &PREFIX##curvedBC,
+#else
+    #define CURVED_BC_PARAMS_DECLARATION_PTR(PREFIX)
+    #define CURVED_BC_PARAMS_PTR(PREFIX)
+#endif
+
+#ifdef CURVED_BOUNDARY_CONDITION
+    #define CURVED_BC_PTRS_DECL(PREFIX) \
+        CurvedBoundary** PREFIX##curvedBC,
+
+    #define CURVED_BC_ARRAY_DECL(PREFIX) \
+        CurvedBoundary* PREFIX##curvedBC_array,
+
+    #define CURVED_BC_PTRS(PREFIX) \
+        PREFIX##curvedBC,
+
+    #define CURVED_BC_ARRAY(PREFIX) \
+        PREFIX##curvedBC_array,
+#else
+    #define CURVED_BC_PTRS_DECL(PREFIX)
+    #define CURVED_BC_ARRAY_DECL(PREFIX)
+    #define CURVED_BC_PTRS(PREFIX)
+    #define CURVED_BC_ARRAY(PREFIX)
+#endif
+
 
 #endif //!__DEFINITIONS_H

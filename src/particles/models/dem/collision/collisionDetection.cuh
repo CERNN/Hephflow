@@ -128,6 +128,30 @@ void ellipsoidEllipsoidCollisionCheck(unsigned int column, unsigned int row, Par
 __device__
 dfloat sphereSphereGap(ParticleCenter*  pc_i, ParticleCenter*  pc_j);
 
+/**
+*   @brief determine wall properties for duct, based on contact position and radius
+*   @param pos_i: coordinates of the collision point in the body center .
+*   @param R: Radius of the duct
+*   @param dir: direction of the duct, -1 for internal collision and +1 for external collision
+*/
+__device__
+Wall determineCircularWall(dfloat3 pos_i, dfloat R, dfloat dir);
+
+/**
+ * @brief Calculate the collision distance between an ellipsoid and a cylinder segment.
+ * @param pc_i: Pointer to the `ParticleCenter` structure representing the ellipsoid.
+ * @param P1: The starting point of the cylinder segment.
+ * @param P2: The ending point of the cylinder segment.
+ * @param cRadius: The radius of the cylinder surrounding the segment.
+ * @param contactPoint1: Output parameter to store the contact point on the ellipsoid.
+ * @param contactPoint2: Output parameter to store the contact point on the cylinder segment.
+ * @param cr: Output parameter to store the contact radius.
+ * @param cyDir: Direction indicator for the cylinder (-1 for externa, 1 for internal
+ * @param step: The current simulation time step for collision checking.
+ * @return The distance between the surfaces of the cylinder and ellipsoid
+ */
+__device__
+dfloat ellipsoidSegmentCollisionDistance( ParticleCenter* pc_i, dfloat3 P1, dfloat3 P2, dfloat cRadius ,dfloat3 contactPoint1[1], dfloat3 contactPoint2[1], dfloat cr[1], int cyDir, unsigned int step);
 
 #endif //PARTICLE_MODEL
 #endif // !__COLLISION_H
