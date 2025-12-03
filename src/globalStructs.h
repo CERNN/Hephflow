@@ -344,13 +344,13 @@ typedef struct ghostInterfaceData  {
 typedef struct wall{
     dfloat3 normal;
     dfloat distance;
+    dfloat3 velocity;
 
     __host__ __device__
-    wall(dfloat3 normal = dfloat3(0,0,0), dfloat distance = 0)
-    {
-        this->normal = normal;
-        this->distance = distance;
-    }
+    wall(dfloat3 n = dfloat3(0,0,0),
+         dfloat d = 0,
+         dfloat3 v = dfloat3(0,0,0))
+        : normal(n), distance(d), velocity(v) {}
 } Wall;
 
 

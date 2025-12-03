@@ -147,18 +147,18 @@ void checkCollisionWallsSphere(ParticleCenter* pc_i, unsigned int step) {
     int wallCount = 0;
 
     #ifdef BC_X_WALL
-    walls[wallCount++] = wall(dfloat3(1, 0, 0), 0);
-    walls[wallCount++] = wall(dfloat3(-1, 0, 0), (NX - 1));
+    walls[wallCount++] = wall(dfloat3(1, 0, 0), 0,dfloat3(0,-WALL_VEL_UY,-WALL_VEL_UZ));
+    walls[wallCount++] = wall(dfloat3(-1, 0, 0), (NX - 1),dfloat3(0,WALL_VEL_UY,WALL_VEL_UZ));
     #endif
 
     #ifdef BC_Y_WALL
-    walls[wallCount++] = wall(dfloat3(0, 1, 0), 0);
-    walls[wallCount++] = wall(dfloat3(0, -1, 0), (NY - 1));
+    walls[wallCount++] = wall(dfloat3(0, 1, 0), 0,dfloat3(-WALL_VEL_UX,0,-WALL_VEL_UZ));
+    walls[wallCount++] = wall(dfloat3(0, -1, 0), (NY - 1),dfloat3(WALL_VEL_UX,0,WALL_VEL_UZ));
     #endif
 
     #ifdef BC_Z_WALL
-    walls[wallCount++] = wall(dfloat3(0, 0, 1), 0);
-    walls[wallCount++] = wall(dfloat3(0, 0, -1), (NZ_TOTAL - 1));
+    walls[wallCount++] = wall(dfloat3(0, 0, 1), 0,dfloat3(-WALL_VEL_UX,-WALL_VEL_UY,0));
+    walls[wallCount++] = wall(dfloat3(0, 0, -1), (NZ_TOTAL - 1),dfloat3(WALL_VEL_UX,WALL_VEL_UY,0));
     #endif
 
     for (int i = 0; i < wallCount; ++i) {
@@ -481,6 +481,7 @@ dfloat sphereSphereGap(ParticleCenter* pc_i, ParticleCenter* pc_j) {
     return dist - (r1 + r2);
 }
 
+#ifdef CURVED_BOUNDARY_CONDITION
 __device__
 Wall determineCircularWall(dfloat3 pos_i, dfloat R, dfloat dir){
     Wall tempWall;
@@ -496,6 +497,7 @@ Wall determineCircularWall(dfloat3 pos_i, dfloat R, dfloat dir){
 
     return tempWall;
 }
+#endif
 
 __device__
 dfloat ellipsoidSegmentCollisionDistance( ParticleCenter* pc_i, dfloat3 P1, dfloat3 P2, dfloat cRadius ,dfloat3 contactPoint1[1], dfloat3 contactPoint2[1], dfloat cr[1], int cyDir, unsigned int step){

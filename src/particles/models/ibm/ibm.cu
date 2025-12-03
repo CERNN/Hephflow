@@ -49,8 +49,7 @@ void ibmSimulation(
     // Calculate collision force between particles
     ParticleShape* shape = particles->getPShape();
     particlesCollisionHandler<<<GRID_PCOLLISION_IBM, THREADS_PCOLLISION_IBM, 0, streamParticles>>>(shape,pArray,step);
- 
-
+    
     // Make the interpolation of LBM and spreading of IBM forces
     ibmForceInterpolationSpread<<<gridNodesIBM, threadsNodesIBM,0, streamParticles>>>(d_nodes,pArray, &fMom[0],step);
 
