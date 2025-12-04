@@ -81,6 +81,7 @@ __host__ __device__
 ParticleCenter::ParticleCenter() {
     pos = dfloat3();
     pos_old = dfloat3();
+    dx = dfloat3();
     vel = dfloat3();
     vel_old = dfloat3();
     w = dfloat3();
@@ -120,6 +121,9 @@ __host__ __device__ void ParticleCenter::setPos_old(const dfloat3 pos_old) { thi
 __host__ __device__ void ParticleCenter::setPosOldX(dfloat x) { this->pos_old.x = x; }
 __host__ __device__ void ParticleCenter::setPosOldY(dfloat y) { this->pos_old.y = y; }
 __host__ __device__ void ParticleCenter::setPosOldZ(dfloat z) { this->pos_old.z = z; }
+
+__host__ __device__ dfloat3 ParticleCenter::getDx() const { return this->dx; }
+__host__ __device__ void ParticleCenter::setDx(const dfloat3 dx) { this->dx = dx; }
 
 __host__ __device__ dfloat3 ParticleCenter::getVel() const { return this->vel; }
 __host__ __device__ dfloat ParticleCenter::getVelX() const { return this->vel.x; }

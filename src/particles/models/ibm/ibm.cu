@@ -37,36 +37,19 @@ void ibmSimulation(
     }
 
     ParticleCenter* pArray = particles->getPCenterArray();
-
-
-    // Update particle center position and its old values
-    updateParticleOldValues<<<GRID_PARTICLES_IBM, THREADS_PARTICLES_IBM, 0, streamParticles>>>(pArray,range.first,range.last,step);
-
     // Reset forces in all IBM nodes;
     ibmResetNodesForces<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(d_nodes,step);
-
-    //TODO: move particlesCollisionHandler to particleSimulation so it can handle from different sources
-    // Calculate collision force between particles
-    ParticleShape* shape = particles->getPShape();
-    particlesCollisionHandler<<<GRID_PCOLLISION_IBM, THREADS_PCOLLISION_IBM, 0, streamParticles>>>(shape,pArray,step);
-    
-    // Make the interpolation of LBM and spreading of IBM forces
+    ibmParticleNodeMovement<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(d_nodes,pArray,range.first,range.last,step);
     ibmForceInterpolationSpread<<<gridNodesIBM, threadsNodesIBM,0, streamParticles>>>(d_nodes,pArray, &fMom[0],step);
 
-    // Update particle velocity using body center force and constant forces
-    updateParticleCenterVelocityAndRotation<<<GRID_PARTICLES_IBM, THREADS_PARTICLES_IBM, 0, streamParticles>>>(pArray,range.first,range.last,step);
- 
-    // Update particle center position and its old values
-    updateParticlePosition<<<GRID_PARTICLES_IBM, THREADS_PARTICLES_IBM, 0, streamParticles>>>(pArray,range.first,range.last,step);
-    ibmParticleNodeMovement<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(d_nodes,pArray,range.first,range.last,step);
-    
+    updateParticleCenterVelocityAndRotation<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles>>>(pArray,range.first,range.last,step);
+    updateParticlePosition<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles>>>(pArray,range.first,range.last,step);
+    updateParticleOldValues<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles>>>(pArray,range.first,range.last,step);
+
     checkCudaErrors(cudaStreamSynchronize(streamParticles));
     cudaFree(d_nodes);
     // cudaFree(d_particlesSoA);
 }
-
-
-
 
 __global__ 
 void ibmResetNodesForces(IbmNodesSoA* particlesNodes, unsigned int step)
@@ -113,99 +96,88 @@ void ibmParticleNodeMovement(
                              + (pc_i.getWAvgY() * pc_i.getWAvgY()) 
                              + (pc_i.getWAvgZ() * pc_i.getWAvgZ()));
 
+    dfloat dx,dy,dz;
+    // dfloat new_pos_x,new_pos_y,new_pos_z;
+
+    dfloat3 dd = pc_i.getDx();
+
+    dx = dd.x; //pc_i.getPosX() - pc_i.getPosOldX();
+    dy = dd.y; //pc_i.getPosY() - pc_i.getPosOldY();
+    dz = dd.z; //pc_i.getPosZ() - pc_i.getPosOldZ();
+
+    dfloat pc_old_x = pc_i.getPosX() - dx;
+    dfloat pc_old_y = pc_i.getPosY() - dy;
+    dfloat pc_old_z = pc_i.getPosZ() - dz;
+
     // check the norm to see if is worth computing the rotation
     if(w_norm <= 1e-8)
     {
-        dfloat dx,dy,dz;
-        // dfloat new_pos_x,new_pos_y,new_pos_z;
-
-        dx = pc_i.getPosX() - pc_i.getPosOldX();
-        dy = pc_i.getPosY() - pc_i.getPosOldY();
-        dz = pc_i.getPosZ() - pc_i.getPosOldZ();
-
         
         #ifdef BC_X_WALL
             pos.x[idx] += dx;
-        #endif //BC_X_WALL
+        #endif
         #ifdef BC_X_PERIODIC
-            if(abs(dx) > (dfloat)(NX)/2.0){
-                if(pc_i.getPosX() < pc_i.getPosOldX() )
-                    dx = (pc_i.getPosX() + NX) - pc_i.getPosOldX();
-                else
-                    dx = (pc_i.getPosX() - NX) - pc_i.getPosOldX();
+            if(abs(dx) > (dfloat)(NX)/2){
+                dx = (pc_i.getPosX() < pc_old_x)
+                    ? (pc_i.getPosX() + (dfloat)NX) - pc_old_x
+                    : (pc_i.getPosX() - (dfloat)NX) - pc_old_x;
             }
-            pos.x[idx] = std::fmod((dfloat)(pos.x[idx] + dx + NX),(dfloat)(NX));
-        #endif //BC_X_PERIODIC
-
+            pos.x[idx] = std::fmod(pos.x[idx] + dx + (dfloat)NX,(dfloat)NX);
+        #endif
         #ifdef BC_Y_WALL
             pos.y[idx] += dy;
-        #endif //BC_Y_WALL
+        #endif
         #ifdef BC_Y_PERIODIC
-            if(abs(dy) > (dfloat)(NY)/2.0){
-                if(pc_i.getPosY() < pc_i.getPosOldY() )
-                    dy = (pc_i.getPosY() + NY) - pc_i.getPosOldY();
-                else
-                    dy = (pc_i.getPosY() - NY) - pc_i.getPosOldY();
+            if(abs(dy) > (dfloat)(NY)/2){
+                dy = (pc_i.getPosY() < pc_old_y)
+                    ? (pc_i.getPosY() + (dfloat)NY) - pc_old_y
+                    : (pc_i.getPosY() - (dfloat)NY) - pc_old_y;
             }
-            pos.y[idx] = std::fmod((dfloat)(pos.y[idx] + dy + NY),(dfloat)(NY));
-        #endif //BC_Y_PERIODIC
+            pos.y[idx] = std::fmod(pos.y[idx] + dy + (dfloat)NY, (dfloat)NY);
+        #endif
 
         #ifdef BC_Z_WALL
             pos.z[idx] += dz;
-        #endif //BC_Z_WALL
+        #endif
         #ifdef BC_Z_PERIODIC
-            if(abs(dz) > (dfloat)(NZ)/2.0){
-                if(pc_i.getPosZ() < pc_i.getPosOldZ() )
-                    dz = (pc_i.getPosZ() + NZ_TOTAL) - pc_i.getPosOldZ();
-                else
-                    dz = (pc_i.getPosZ() - NZ_TOTAL) - pc_i.getPosOldZ();
+            if(abs(dz) > (dfloat)(NZ_TOTAL)/2){
+                dz = (pc_i.getPosZ() < pc_old_z)
+                    ? (pc_i.getPosZ() + (dfloat)NZ_TOTAL) - pc_old_z
+                    : (pc_i.getPosZ() - (dfloat)NZ_TOTAL) - pc_old_z;
             }
-            pos.z[idx] = std::fmod((dfloat)(pos.z[idx] + dz + NZ_TOTAL),(dfloat)(NZ_TOTAL));
-        #endif //BC_Z_PERIODIC
+            pos.z[idx] = std::fmod(pos.z[idx] + dz + (dfloat)NZ_TOTAL, (dfloat)NZ_TOTAL);
+        #endif
         
         //ealier return since is no longer necessary
         return;
     }
 
     //compute vector between the node and the partic
-    dfloat x_vec = pos.x[idx] - pc_i.getPosOldX();
-    dfloat y_vec = pos.y[idx] - pc_i.getPosOldY();
-    dfloat z_vec = pos.z[idx] - pc_i.getPosOldZ();
+    dfloat x_vec = pos.x[idx] - pc_old_x;
+    dfloat y_vec = pos.y[idx] - pc_old_y;
+    dfloat z_vec = pos.z[idx] - pc_old_z;
 
 
     #ifdef BC_X_PERIODIC
-        if(abs(x_vec) > (dfloat)(NX)/2.0){
-            if(pos.x[idx] < pc_i.getPosOldX() )
-                pos.x[idx] += (dfloat)(NX) ;
-            else
-                pos.x[idx] -= (dfloat)(NX) ;
+        if(abs(x_vec) > (dfloat)NX/2){
+            pos.x[idx] += (pos.x[idx] < pc_old_x) ? (dfloat)NX : -(dfloat)NX;
         }
-        x_vec = pos.x[idx] - pc_i.getPosOldX();
-    #endif //BC_X_PERIODIC
-
+        x_vec = pos.x[idx] - pc_old_x;
+    #endif
 
     #ifdef BC_Y_PERIODIC
-        if(abs(y_vec) > (dfloat)(NY)/2.0){
-            if(pos.y[idx] < pc_i.getPosOldY())
-                pos.y[idx] += (dfloat)(NY) ;
-            else
-                pos.y[idx] -= (dfloat)(NY) ;
+        if(abs(y_vec) > (dfloat)NY/2){
+            pos.y[idx] += (pos.y[idx] < pc_old_y) ? (dfloat)NY : -(dfloat)NY;
         }
-
-        y_vec = pos.y[idx] - pc_i.getPosOldY();
-    #endif //BC_Y_PERIODIC
-
+        y_vec = pos.y[idx] - pc_old_y;
+    #endif
 
     #ifdef BC_Z_PERIODIC
-        if(abs(z_vec) > (dfloat)(NZ_TOTAL)/2.0){
-            if(pos.z[idx] < pc_i.getPosOldZ())
-                pos.z[idx] += (dfloat)(NZ_TOTAL) ;
-            else
-                pos.z[idx] -= (NZ_TOTAL) ;
+        if(abs(z_vec) > (dfloat)NZ_TOTAL/2){
+            pos.z[idx] += (pos.z[idx] < pc_old_z) ? (dfloat)NZ_TOTAL : -(dfloat)NZ_TOTAL;
         }
-
-        z_vec = pos.z[idx] - pc_i.getPosOldZ();
-    #endif //BC_Z_PERIODIC
+        z_vec = pos.z[idx] - pc_old_z;
+    #endif
 
        
     // compute rotation quartenion

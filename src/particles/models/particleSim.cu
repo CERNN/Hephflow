@@ -10,6 +10,11 @@ void particleSimulation(
     cudaStream_t *streamParticles,
     unsigned int step
 ){
+    // Calculate collision force between particles
+    ParticleCenter* pArray = particles->getPCenterArray();
+    ParticleShape* shape = particles->getPShape();
+    particlesCollisionHandler<<<GRID_PCOLLISION, TOTAL_PCOLLISION, 0, streamParticles[0]>>>(shape,pArray,step);
+    checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
 
     int numIBM    = particles->getMethodCount(IBM);
     int numPIBM   = particles->getMethodCount(PIBM);

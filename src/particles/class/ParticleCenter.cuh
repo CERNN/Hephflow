@@ -102,6 +102,10 @@ public:
     __host__ __device__ void setPosOldY(dfloat y);
     __host__ __device__ void setPosOldZ(dfloat z);
 
+    //Position change
+    __host__ __device__ dfloat3 getDx() const;
+    __host__ __device__ void setDx(const dfloat3 dx);
+
     // Velocity
     __host__ __device__ dfloat3 getVel() const;
     __host__ __device__ dfloat getVelX() const;
@@ -332,6 +336,7 @@ public:
 protected:
     dfloat3 pos;        // Particle center position
     dfloat3 pos_old;    // Old Particle center position
+    dfloat3 dx;         // change in particle position between two time steps.
     dfloat3 vel;        // Particle center translation velocity
     dfloat3 vel_old;    // Old particle center translation velocity
     dfloat3 w;          // Particle center rotation velocity

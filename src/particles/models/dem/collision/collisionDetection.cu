@@ -48,7 +48,7 @@ void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, uns
     */
     const unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if(idx > TOTAL_PCOLLISION_IBM_THREADS)
+    if(idx > TOTAL_PCOLLISION_THREADS)
         return;
     
     const unsigned int row = ceil((-1.0+sqrt((dfloat)1+8*(idx+1)))/2);

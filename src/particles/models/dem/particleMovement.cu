@@ -277,6 +277,8 @@ void updateParticlePosition(
 
     dfloat3 pos_new = pc_i->getPos();
 
+    pc_i->setDx(pos_new - pos_old);
+
     pc_i->setSemiAxis1(updateSemiAxis(pc_i->getSemiAxis1(), pos_old, pos_new, q));
     pc_i->setSemiAxis2(updateSemiAxis(pc_i->getSemiAxis2(), pos_old, pos_new, q));
     pc_i->setSemiAxis3(updateSemiAxis(pc_i->getSemiAxis3(), pos_old, pos_new, q));
