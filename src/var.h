@@ -44,7 +44,7 @@
 /* ----------------------------- PROBLEM DEFINE ---------------------------- */
 
 
-#define BC_PROBLEM pipeFlowCurved_D3Q19
+#define BC_PROBLEM couette_spherical
 
                                 
 constexpr bool console_flush = false;

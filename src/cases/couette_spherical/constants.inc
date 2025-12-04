@@ -1,10 +1,10 @@
 #define PARTICLE_MODEL 
-
+#define TREAT_DATA_INCLUDE
 
 constexpr dfloat RE = 10;
 
 constexpr int SCALE = 1;
-constexpr int N_STEPS = 2;
+constexpr int N_STEPS = 5000;
 constexpr int N = 256 * SCALE;
 constexpr int NX = 2*N;        // size x of the grid 
 constexpr int NY = N;        // size y of the grid
