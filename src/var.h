@@ -44,7 +44,7 @@
 /* ----------------------------- PROBLEM DEFINE ---------------------------- */
 
 
-#define BC_PROBLEM couette_spherical
+#define BC_PROBLEM taylorGreen
 
                                 
 constexpr bool console_flush = false;
@@ -53,8 +53,8 @@ constexpr bool console_flush = false;
 
 
 /* --------------------------  SIMULATION DEFINES -------------------------- */
-constexpr unsigned int N_GPUS = 1;    // Number of GPUS to use
-constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};    // Which GPUs to use
+constexpr unsigned int N_GPUS = 2;    // Number of GPUS to use
+constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0,0};    // Which GPUs to use
 
 #define STR_IMPL(A) #A
 #define STR(A) STR_IMPL(A)

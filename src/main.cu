@@ -9,9 +9,6 @@ int main() {
     // Setup saving folder
     folderSetup();
 
-    // Set cuda device
-    checkCudaErrors(cudaSetDevice(GPU_INDEX));
-
     // Field Variables
     HostField hostField;
     DeviceField deviceField;
@@ -24,31 +21,22 @@ int main() {
     int step = 0;
 
     dfloat** randomNumbers = nullptr;
-    randomNumbers = (dfloat**)malloc(sizeof(dfloat*));
+    randomNumbers = (dfloat**)malloc(sizeof(dfloat*) * N_GPUS);
 
-    hostField.allocateHostMemoryHostField();
-    
-    /* -------------- ALLOCATION FOR GPU ------------- */
-    deviceField.allocateDeviceMemoryDeviceField();
     //TODO : move these malocs to inside teh corresponding mallocs
     
     #ifdef DENSITY_CORRECTION
         checkCudaErrors(cudaMallocHost((void**)&(hostField.h_mean_rho), sizeof(dfloat)));
-        cudaMalloc((void**)&deviceField.d_mean_rho, sizeof(dfloat));  
     #endif //DENSITY_CORRECTION
 
     /* -------------- Setup Streams ------------- */
-    cudaStream_t streamsLBM[1];
-    checkCudaErrors(cudaSetDevice(GPU_INDEX));
-    checkCudaErrors(cudaStreamCreate(&streamsLBM[0]));
-    checkCudaErrors(cudaDeviceSynchronize());
+    cudaStream_t streamsLBM[N_GPUS];
+   
     #ifdef PARTICLE_MODEL
-    cudaStream_t streamsPart[1];
-    checkCudaErrors(cudaStreamCreate(&streamsPart[0]));
+    cudaStream_t streamsPart[N_GPUS];
     #endif //PARTICLE_MODEL
 
     step = INI_STEP;
-
 
     //Declaration of atomic flags to safely control the state of data saving in multiple threads.
     std::atomic<bool> savingMacrVtk(false);
@@ -59,9 +47,29 @@ int main() {
         savingMacrBin[i].store(false);
     }
 
-    /* -------------- Initialize domain in the device ------------- */
-    deviceField.initializeDomainDeviceField(hostField, randomNumbers,  step, gridBlock, threadBlock);
+    hostField.allocateHostMemoryHostField();
+        
+    for(int g = 0; g < N_GPUS; g++){
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
 
+        /* -------------- ALLOCATION FOR GPU ------------- */
+        deviceField.allocateDeviceMemoryDeviceField(g);
+
+        //TODO : move these malocs to inside teh corresponding mallocs
+        #ifdef DENSITY_CORRECTION
+            cudaMalloc((void**)&deviceField.d_mean_rho[g], sizeof(dfloat));  
+        #endif //DENSITY_CORRECTION
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        checkCudaErrors(cudaStreamCreate(&streamsLBM[g]));
+        checkCudaErrors(cudaDeviceSynchronize());
+
+        #ifdef PARTICLE_MODEL
+        checkCudaErrors(cudaStreamCreate(&streamsPart[g]));
+        #endif //PARTICLE_MODEL
+
+        /* -------------- Initialize domain in the device ------------- */
+        deviceField.initializeDomainDeviceField(hostField, randomNumbers,  step, gridBlock, threadBlock, g);
+    }
     int ini_step = step;
 
     printf("Domain Initialized. Starting simulation\n"); if(console_flush) fflush(stdout);
@@ -85,7 +93,7 @@ int main() {
     #endif //CURVE
 
     /* ------------------------------ TIMER EVENTS  ------------------------------ */
-    checkCudaErrors(cudaSetDevice(GPU_INDEX));
+    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[0]));
     cudaEvent_t start, stop, start_step, stop_step;
     initializeCudaEvents(start, stop, start_step, stop_step);
     
@@ -123,8 +131,7 @@ int main() {
             printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
         }
         #ifdef CURVED_BOUNDARY_CONDITION
-           updateCurvedBoundaryVelocities << <1,numberCurvedBoundaryNodes>> >(deviceField.d_curvedBC_array,deviceField.d_fMom,numberCurvedBoundaryNodes);
-           cudaDeviceSynchronize();
+            deviceField.updateCurvedBoundaryVelocitiesDeviceField(numberCurvedBoundaryNodes);
         #endif
 
         //swap interface pointers
