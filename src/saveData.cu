@@ -764,6 +764,22 @@ std::string getSimInfoString(int step,dfloat MLUPS)
 
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif// THERMAL_MODEL
+    #ifdef PHASE_MODEL 
+    strSimInfo << "\n------------------------------ PHASE -----------------------------\n";
+    strSimInfo << std::scientific << std::setprecision(4);
+    strSimInfo << "          Delta Phi: " << PHI_DELTA_PHI << "\n";
+    strSimInfo << "      Reference Phi: " << PHI_REFERENCE << "\n";
+    strSimInfo << "            Phi One: " << PHI_ONE << "\n";
+    strSimInfo << "            Phi Two: " << PHI_TWO << "\n";
+    strSimInfo << "  Diffusivity ratio: " << PHI_DIFFUSIVITY_RATIO << "\n";
+    strSimInfo << "  Diffusivity Coef.: " << PHI_DIFFUSIVITY << "\n";
+    strSimInfo << "            PHI_TAU: " << PHI_TAU << "\n";
+    strSimInfo << "          PHI_OMEGA: " << PHI_OMEGA << "\n";
+    strSimInfo << "      PHI_DIFF_FLUC: " << PHI_DIFF_FLUC << "\n";
+    strSimInfo << "            PHI_AAA: " << PHI_AAA << "\n";
+    strSimInfo << " PHI_DIFF_FLUC_COEF: " << PHI_DIFF_FLUC_COEF << "\n";
+    strSimInfo << "--------------------------------------------------------------------------------\n";
+    #endif// PHASE_MODEL
     #if defined(FENE_P) || defined(OLDROYD_B)
     strSimInfo << "\n------------------------------ VISCOELASTIC -----------------------------\n";
         strSimInfo << std::scientific << std::setprecision(4);
