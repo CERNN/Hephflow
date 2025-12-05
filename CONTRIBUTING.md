@@ -18,8 +18,8 @@ We welcome code contributions, including bug fixes, performance improvements, an
 1. Fork the repository.
 2. Clone your fork:
    ```sh
-   git clone https://github.com/CERNN/MR-LBM.git
-   cd MR-LBM
+   git clone https://github.com/CERNN/Hephflow.git
+   cd Hephflow
    ```
 3. Create a new branch for your feature/fix:
    ```sh
