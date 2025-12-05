@@ -202,6 +202,40 @@ __global__ void gpuMomCollisionStream(
                 qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
             }
         #endif //SECOND_DIST
+        #ifdef PHI_DIST 
+
+            dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            dfloat invPhi = 1/phiVar;
+            dfloat phi_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat phi_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat phi_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            dfloat phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
+            dfloat phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
+            dfloat phi_udz_t30 = PHI_DIFF_FLUC_COEF * (phi_qz_t30*invPhi - uz_t30);
+
+            #include  COLREC_PHI_RECONSTRUCTION
+
+            __syncthreads();
+
+            #include "includeFiles/convection_diffusion_streaming.inc"
+            /* load pop from global in cover nodes */        
+            #include "includeFiles/phi_popLoad.inc"
+
+
+            if(nodeType != BULK){
+                #include CASE_PHI_BC_DEF
+            }else{
+                phiVar = gNode[0] + gNode[1] + gNode[2] + gNode[3] + gNode[4] + gNode[5] + gNode[6] + gNode[7] + gNode[8] + gNode[9] + gNode[10] + gNode[11] + gNode[12] + gNode[13] + gNode[14] + gNode[15] + gNode[16] + gNode[17] + gNode[18];
+                phiVar = phiVar; //TODO SOURCE TEM
+                invPhi= 1.0/phiVar;
+
+                phi_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
+                phi_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
+                phi_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
+            }
+        #endif //PHI_DIST
         #ifdef A_XX_DIST
             //dfloat GxxVar = fMom[baseIdx + BLOCK_LBM_SIZE * G_XX_C_INDEX];
             dfloat invAxx = 1/AxxVar;
@@ -656,6 +690,21 @@ __global__ void gpuMomCollisionStream(
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qz_t30;
 
         #endif //SECOND_DIST
+        #ifdef PHI_DIST 
+            phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
+            phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
+            phi_udz_t30 = PHI_DIFF_FLUC_COEF * (phi_qz_t30*invPhi - uz_t30);
+
+            #include COLREC_PHI_RECONSTRUCTION
+
+            #include "includeFiles/phi_popSave.inc"
+            
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiVar;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qx_t30;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qy_t30;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qz_t30;
+
+        #endif //PHI_DIST
         #ifdef A_XX_DIST
             Axx_udx_t30 = CONF_DIFF_FLUC_COEF * (Axx_qx_t30*invAxx - ux_t30);
             Axx_udy_t30 = CONF_DIFF_FLUC_COEF * (Axx_qy_t30*invAxx - uy_t30);

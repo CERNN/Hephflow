@@ -46,14 +46,20 @@ __global__ void gpuInitialization_mom(
     dfloat rho = RHO_0, ux = U_0_X, uy = U_0_Y, uz = U_0_Z;
     #ifdef OMEGA_FIELD
     dfloat omega;
-    #endif
+    #endif //OMEGA_FIELD
     #ifdef SECOND_DIST 
     dfloat cVar = 1.0;
     dfloat qx_t30 = 3.0*cVar*(ux - 0.0);
     dfloat qy_t30 = 3.0*cVar*(uy - 0.0);
     dfloat qz_t30 = 3.0*cVar*(uz - 0.0);
-    #endif
-    #ifdef  CONFORMATION_TENSOR
+    #endif //SECOND_DIST
+    #ifdef PHI_DIST 
+    dfloat phiVar = 1.0;
+    dfloat phi_qx_t30 = 3.0*phiVar*(ux - 0.0);
+    dfloat phi_qy_t30 = 3.0*phiVar*(uy - 0.0);
+    dfloat phi_qz_t30 = 3.0*phiVar*(uz - 0.0);
+    #endif //PHI_DIST
+    #ifdef CONFORMATION_TENSOR
         //assuming that velocity has grad = 0 
         #ifdef A_XX_DIST 
         dfloat AxxVar = 1.0 + CONF_ZERO; 
@@ -144,7 +150,17 @@ __global__ void gpuInitialization_mom(
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qz_t30;
-    #endif 
+    #endif //SECOND_DIST
+
+        
+    #ifdef PHI_DIST 
+    dfloat invC= 1.0/phiVar;
+
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiVar;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qx_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qy_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qz_t30;
+    #endif //PHI_DIST
 
     #ifdef A_XX_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AxxVar;
@@ -387,6 +403,74 @@ __global__ void gpuInitialization_pop(
             #endif                    
         }
     #endif //SECOND_DIST
+    #ifdef PHI_DIST 
+        
+        dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat invPhi = 1/phiVar;
+        dfloat phi_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat phi_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat phi_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+        dfloat phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
+        dfloat phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
+        dfloat phi_udz_t30 = PHI_DIFF_FLUC_COEF * (phi_qz_t30*invPhi - uz_t30);
+
+        #include COLREC_PHI_RECONSTRUCTION
+
+        if (threadIdx.x == 0) { //w
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
+            #ifdef D3G19
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            #endif            
+        }else if (threadIdx.x == (BLOCK_NX - 1)){                    
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
+            #ifdef D3G19
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
+            #endif    
+        }
+
+        if (threadIdx.y == 0)  { //s                             
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
+            #ifdef D3G19
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
+            #endif           
+        }else if (threadIdx.y == (BLOCK_NY - 1)){             
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
+            #ifdef D3G19
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
+            #endif        
+        }
+        
+        if (threadIdx.z == 0){ //b                          
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
+            #ifdef D3G19
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
+            #endif    
+        }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
+            #ifdef D3G19
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
+            #endif                    
+        }
+    #endif //PHI_DIST
     #ifdef A_XX_DIST 
         
         dfloat AxxVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];

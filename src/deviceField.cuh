@@ -92,6 +92,9 @@ typedef struct deviceField{
         #ifdef SECOND_DIST 
         interfaceCudaMemcpy(ghostInterface,ghostInterface.g_h_fGhost,ghostInterface.g_fGhost,cudaMemcpyDeviceToHost,GF);
         #endif //SECOND_DIST
+        #ifdef PHI_DIST 
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.phi_h_fGhost,ghostInterface.phi_fGhost,cudaMemcpyDeviceToHost,GF);
+        #endif //PHI_DIST
         #ifdef A_XX_DIST 
         interfaceCudaMemcpy(ghostInterface,ghostInterface.Axx_h_fGhost,ghostInterface.Axx_fGhost,cudaMemcpyDeviceToHost,GF);
         #endif //A_XX_DIST     

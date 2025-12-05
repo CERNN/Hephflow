@@ -71,6 +71,9 @@ void linearMacr(dfloat* h_fMom, dfloat* rho, dfloat* ux, dfloat* uy, dfloat* uz,
     #ifdef SECOND_DIST 
     dfloat* C,
     #endif //SECOND_DIST
+    #ifdef PHI_DIST 
+    dfloat* phi,
+    #endif //PHI_DIST
     #if NODE_TYPE_SAVE
     dfloat* nodeTypeSave,
     unsigned int* hNodeType,
@@ -98,6 +101,9 @@ void saveMacr(dfloat* h_fMom, dfloat* rho, dfloat* ux, dfloat* uy, dfloat* uz, u
     #ifdef SECOND_DIST 
     dfloat* C,
     #endif //SECOND_DIST
+    #ifdef PHI_DIST 
+    dfloat* phi,
+    #endif //PHI_DIST
     #ifdef A_XX_DIST 
     dfloat* Axx,
     #endif //A_XX_DIST
@@ -227,6 +233,9 @@ void saveVarVTK(
     #ifdef SECOND_DIST 
     dfloat* C,
     #endif //SECOND_DIST
+    #ifdef PHI_DIST 
+    dfloat* phi,
+    #endif //PHI_DIST
     #ifdef A_XX_DIST 
     dfloat* Axx,
     #endif //A_XX_DIST

@@ -67,6 +67,9 @@ void saveMacr(
     #ifdef SECOND_DIST 
     dfloat* C,
     #endif //SECOND_DIST
+    #ifdef PHI_DIST 
+    dfloat* phi,
+    #endif //PHI_DIST
     #ifdef A_XX_DIST 
     dfloat* Axx,
     #endif //A_XX_DIST
@@ -112,6 +115,9 @@ void saveMacr(
                 #ifdef SECOND_DIST 
                 C[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
                 #endif //SECOND_DIST
+                #ifdef PHI_DIST 
+                phi[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_PHI_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
+                #endif //PHI_DIST
                 #ifdef A_XX_DIST 
                 Axx[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, A_XX_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - CONF_ZERO;
                 #endif //A_XX_DIST
@@ -175,6 +181,7 @@ void saveMacr(
     std::string strFileRho, strFileUx, strFileUy, strFileUz; 
     std::string strFileOmega;
     std::string strFileC;
+    std::string strFilePhi;
     std::string strFileBc; 
     std::string strFileFx, strFileFy, strFileFz;
     std::string strFileAxx, strFileAxy, strFileAxz, strFileAyy, strFileAyz, strFileAzz;
@@ -190,6 +197,9 @@ void saveMacr(
                     #ifdef SECOND_DIST 
                     C,
                     #endif //SECOND_DIST
+                    #ifdef PHI_DIST 
+                    phi,
+                    #endif //PHI_DIST
                     #ifdef A_XX_DIST 
                     Axx,
                     #endif //A_XX_DIST
@@ -225,6 +235,9 @@ void saveMacr(
         #ifdef SECOND_DIST 
         strFileC = getVarFilename("C", nSteps, ".bin");
         #endif //SECOND_DIST
+        #ifdef PHI_DIST 
+        strFilePhi = getVarFilename("phi", nSteps, ".bin");
+        #endif //PHI_DIST
         #ifdef A_XX_DIST 
         strFileAxx = getVarFilename("Axx", nSteps, ".bin");
         #endif //A_XX_DIST
@@ -264,7 +277,10 @@ void saveMacr(
         #endif
         #ifdef SECOND_DIST
         varArray.push_back(C); fileArray.push_back(strFileC);
-        #endif
+        #endif //SECOND_DIST
+        #ifdef PHI_DIST
+        varArray.push_back(phi); fileArray.push_back(strFilePhi);
+        #endif //PHI_DIST
         #ifdef A_XX_DIST
         varArray.push_back(Axx); fileArray.push_back(strFileAxx);
         #endif
@@ -296,44 +312,6 @@ void saveMacr(
             while (savingMacrBin[i]) std::this_thread::yield();
             saveVarBin(fileArray[i], varArray[i], MEM_SIZE_SCALAR, false, savingMacrBin[i]);
         }
-
-        // saveVarBin(strFileRho, rho, MEM_SIZE_SCALAR, false);
-        // saveVarBin(strFileUx, ux, MEM_SIZE_SCALAR, false);
-        // saveVarBin(strFileUy, uy, MEM_SIZE_SCALAR, false);
-        // saveVarBin(strFileUz, uz, MEM_SIZE_SCALAR, false);
-        // #ifdef OMEGA_FIELD
-        // saveVarBin(strFileOmega, omega, MEM_SIZE_SCALAR, false);
-        // #endif //OMEGA_FIELD
-        // #ifdef SECOND_DIST
-        // saveVarBin(strFileC, C, MEM_SIZE_SCALAR, false);
-        // #endif //SECOND_DIST
-        // #ifdef A_XX_DIST 
-        // saveVarBin(strFileAxx, Axx, MEM_SIZE_SCALAR, false);
-        // #endif //A_XX_DIST
-        // #ifdef A_XY_DIST 
-        // saveVarBin(strFileAxy, Axy, MEM_SIZE_SCALAR, false);
-        // #endif //A_XY_DIST
-        // #ifdef A_XZ_DIST 
-        // saveVarBin(strFileAxz, Axz, MEM_SIZE_SCALAR, false);
-        // #endif //A_XZ_DIST
-        // #ifdef A_YY_DIST 
-        // saveVarBin(strFileAyy, Ayy, MEM_SIZE_SCALAR, false);
-        // #endif //A_YY_DIST
-        // #ifdef A_YZ_DIST 
-        // saveVarBin(strFileAyz, Ayz, MEM_SIZE_SCALAR, false);
-        // #endif //A_YZ_DIST
-        // #ifdef A_ZZ_DIST 
-        // saveVarBin(strFileAzz, Azz, MEM_SIZE_SCALAR, false);
-        // #endif //A_ZZ_DIST
-        
-        // #if NODE_TYPE_SAVE
-        // saveVarBin(strFileBc, (dfloat*)nodeTypeSave, MEM_SIZE_SCALAR, false);
-        // #endif //NODE_TYPE_SAVE
-        // #if defined BC_FORCES && defined SAVE_BC_FORCES
-        // saveVarBin(strFileFx, h_BC_Fx, MEM_SIZE_SCALAR, false);
-        // saveVarBin(strFileFy, h_BC_Fy, MEM_SIZE_SCALAR, false);
-        // saveVarBin(strFileFz, h_BC_Fz, MEM_SIZE_SCALAR, false);
-        // #endif //BC_FORCES && SAVE_BC_FORCES
     }
 }
 
@@ -470,6 +448,9 @@ void saveVarVTK(
     #ifdef SECOND_DIST 
     dfloat* C,
     #endif //SECOND_DIST
+    #ifdef PHI_DIST 
+    dfloat* phi,
+    #endif //PHI_DIST
     #ifdef A_XX_DIST 
     dfloat* Axx,
     #endif //A_XX_DIST
@@ -540,6 +521,13 @@ void saveVarVTK(
                     << "LOOKUP_TABLE default\n";
                 writeBigEndian(ofs, C, N);
             #endif //SECOND_DIST
+            
+            #ifdef PHI_DIST
+                ofs << "SCALARS PHI " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, phi, N);
+            #endif //PHI_DIST
+
 
             #ifdef CONFORMATION_TENSOR
                 ofs << "TENSORS6 Aij " << VTK_TYPE << "\n";
@@ -578,7 +566,7 @@ void saveVarVTK(
             //Header 
             ofs << "# vtk DataFile Version 3.0\n"
                 << "LBM output (binary)\n"
-                << "BINARY\n"                               // ← here!
+                << "BINARY\n"
                 << "DATASET STRUCTURED_POINTS\n"
                 << "DIMENSIONS " << NX << " " << NY << " " << NZ << "\n"
                 << "ORIGIN 0 0 0\n"
@@ -611,6 +599,13 @@ void saveVarVTK(
                     << "LOOKUP_TABLE default\n";
                 writeBigEndian(ofs, C_cell.data(), Ncells);
             #endif //SECOND_DIST
+
+            #ifdef PHI_DIST
+                auto PHI_cell = convertPointToCellScalar(phi,NX,NY,NZ);
+                ofs << "SCALARS PHI  " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, PHI_cell.data(), Ncells);
+            #endif //PHI_DIST
 
             #ifdef CONFORMATION_TENSOR
                 auto A_cell = convertPointToCellTensor6(Axx,Ayy,Azz,Axy,Ayz,Axz,NX,NY,NZ);
