@@ -27,45 +27,33 @@
 /**
  *  @brief Update the old values of particle properties (position, velocity, angular velocity, force and torque).
  *  @param pArray: Pointer to the array of ParticleCenter objects.
- *  @param firstIndex: The first index of the particle array to be processed.
- *  @param lastIndex: The last index of the particle array to be processed.
  *  @param step: The current simulation time step for collision checking.
  */
 __global__
 void updateParticleOldValues(
     ParticleCenter *pArray,
-    int firstIndex,
-    int lastIndex,    
     unsigned int step
 );
 
 /**
  *  @brief Compute the new particle properties (velocity, angular velocity, force and torque).
  *  @param pArray: Pointer to the array of ParticleCenter objects.
- *  @param firstIndex: The first index of the particle array to be processed.
- *  @param lastIndex: The last index of the particle array to be processed.
  *  @param step: The current simulation time step for collision checking.
  */
 __global__ 
 void updateParticleCenterVelocityAndRotation(
     ParticleCenter *pArray,
-    int firstIndex,
-    int lastIndex,    
     unsigned int step
 );
 
 /**
  *  @brief Compute the new particle position.
  *  @param pArray: Pointer to the array of ParticleCenter objects.
- *  @param firstIndex: The first index of the particle array to be processed.
- *  @param lastIndex: The last index of the particle array to be processed.
  *  @param step: The current simulation time step for collision checking.
  */
 __global__
 void updateParticlePosition(
     ParticleCenter *pArray,
-    int firstIndex,
-    int lastIndex,    
     unsigned int step
 );
 

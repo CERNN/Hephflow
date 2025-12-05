@@ -30,6 +30,10 @@ void particleSimulation(
         tracerSimulation(particles,fMom,streamParticles[0],step);
     }
 
+    updateParticleCenterVelocityAndRotation<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
+    updateParticlePosition<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
+    updateParticleOldValues<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
+    checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
 }
 
 #endif //PARTICLE_MODEL

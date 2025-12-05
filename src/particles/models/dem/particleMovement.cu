@@ -8,14 +8,12 @@
 __global__
 void updateParticleOldValues(
     ParticleCenter *pArray,
-    int firstIndex,
-    int lastIndex,    
     unsigned int step)
 {
     unsigned int localIdx = threadIdx.x + blockDim.x * blockIdx.x;
-    int globalIdx = firstIndex + localIdx;
+    int globalIdx = localIdx;
 
-    if (globalIdx < firstIndex || globalIdx > lastIndex || globalIdx >= NUM_PARTICLES) {
+    if (globalIdx >= NUM_PARTICLES) {
         return;
     }
 
@@ -24,9 +22,6 @@ void updateParticleOldValues(
         return;
     }
 
-    if (globalIdx < firstIndex || globalIdx > lastIndex || globalIdx >= NUM_PARTICLES) {
-        return;
-    }
 
     ParticleCenter* pc_i = &pArray[globalIdx];
 
@@ -71,23 +66,17 @@ void updateParticleOldValues(
 __global__ 
 void updateParticleCenterVelocityAndRotation(
     ParticleCenter *pArray,
-    int firstIndex,
-    int lastIndex,    
     unsigned int step)
 {
     unsigned int localIdx = threadIdx.x + blockDim.x * blockIdx.x;
-    int globalIdx = firstIndex + localIdx;
+    int globalIdx = localIdx;
 
-    if (globalIdx < firstIndex || globalIdx > lastIndex || globalIdx >= NUM_PARTICLES) {
+    if (globalIdx >= NUM_PARTICLES) {
         return;
     }
 
     if (pArray == nullptr) {
         printf("ERROR: particles is nullptr\n");
-        return;
-    }
-
-    if (globalIdx < firstIndex || globalIdx > lastIndex || globalIdx >= NUM_PARTICLES) {
         return;
     }
 
@@ -194,23 +183,17 @@ void updateParticleCenterVelocityAndRotation(
 __global__
 void updateParticlePosition(
     ParticleCenter *pArray,
-    int firstIndex,
-    int lastIndex,    
     unsigned int step)
 {
     unsigned int localIdx = threadIdx.x + blockDim.x * blockIdx.x;
-    int globalIdx = firstIndex + localIdx;
+    int globalIdx = localIdx;
 
-    if (globalIdx < firstIndex || globalIdx > lastIndex || globalIdx >= NUM_PARTICLES) {
+    if (globalIdx >= NUM_PARTICLES) {
         return;
     }
 
     if (pArray == nullptr) {
         printf("ERROR: particles is nullptr\n");
-        return;
-    }
-
-    if (globalIdx < firstIndex || globalIdx > lastIndex || globalIdx >= NUM_PARTICLES) {
         return;
     }
 

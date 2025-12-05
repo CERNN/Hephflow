@@ -41,12 +41,7 @@ void ibmSimulation(
     ibmResetNodesForces<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(d_nodes,step);
     ibmParticleNodeMovement<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(d_nodes,pArray,range.first,range.last,step);
     ibmForceInterpolationSpread<<<gridNodesIBM, threadsNodesIBM,0, streamParticles>>>(d_nodes,pArray, &fMom[0],step);
-
-    updateParticleCenterVelocityAndRotation<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles>>>(pArray,range.first,range.last,step);
-    updateParticlePosition<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles>>>(pArray,range.first,range.last,step);
-    updateParticleOldValues<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles>>>(pArray,range.first,range.last,step);
-
-    checkCudaErrors(cudaStreamSynchronize(streamParticles));
+    
     cudaFree(d_nodes);
     // cudaFree(d_particlesSoA);
 }
