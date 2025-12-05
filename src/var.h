@@ -44,7 +44,7 @@
 /* ----------------------------- PROBLEM DEFINE ---------------------------- */
 
 
-#define BC_PROBLEM couette_spherical
+#define BC_PROBLEM oscillating_droplet
 
                                 
 constexpr bool console_flush = false;
