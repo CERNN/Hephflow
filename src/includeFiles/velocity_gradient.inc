@@ -58,14 +58,14 @@ if ((nodeType & 0b11001100) == 0b11001100) { // wall north
     duzdy_t30 = (uz_t30 - uz_ym1);
 }
 if ((nodeType & 0b00001111) == 0b00001111) { // wall back
-    duxdz_t30 = (ux_yp1 - ux_t30);
-    duydz_t30 = (uy_yp1 - uy_t30);
-    duzdz_t30 = (uz_yp1 - uz_t30);
+    duxdz_t30 = (ux_zp1 - ux_t30);
+    duydz_t30 = (uy_zp1 - uy_t30);
+    duzdz_t30 = (uz_zp1 - uz_t30);
 }
 if ((nodeType & 0b11110000) == 0b11110000) { // wall front
-    duxdz_t30 = (ux_ym1 - ux_t30);
-    duydz_t30 = (uy_ym1 - uy_t30);
-    duzdz_t30 = (uz_ym1 - uz_t30);
+    duxdz_t30 = (ux_zm1 - ux_t30);
+    duydz_t30 = (uy_zm1 - uy_t30);
+    duzdz_t30 = (uz_zm1 - uz_t30);
 }
 
 

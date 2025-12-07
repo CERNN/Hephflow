@@ -308,6 +308,11 @@ typedef struct ghostInterfaceData  {
         ghostData g_gGhost;
         ghostData g_h_fGhost;
     #endif //SECOND_DIST
+    #ifdef PHI_DIST
+        ghostData phi_fGhost;
+        ghostData phi_gGhost;
+        ghostData phi_h_fGhost;
+    #endif //PHI_DIST
     #ifdef A_XX_DIST
         ghostData Axx_fGhost;
         ghostData Axx_gGhost;

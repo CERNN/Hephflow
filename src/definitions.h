@@ -247,6 +247,16 @@ constexpr int MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_SIZE_POP, myMax(VEL_GRAD_
 #endif //SECOND_DIST
 
 
+#ifdef PHI_DIST
+    #define PHI_DIST_PARAMS_DECLARATION_PTR ,dfloat** phi
+    #define PHI_DIST_PARAMS_PTR ,&phi
+#else
+    #define PHI_DIST_PARAMS_DECLARATION_PTR
+    #define PHI_DIST_PARAMS_PTR
+#endif //SECOND_DIST
+
+
+
 #ifdef A_XX_DIST
     #define A_XX_DIST_PARAMS_DECLARATION_PTR ,dfloat** Axx
     #define A_XX_DIST_PARAMS_PTR ,&Axx
@@ -307,11 +317,20 @@ constexpr int MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_SIZE_POP, myMax(VEL_GRAD_
         #define MEAN_FLOW_SECOND_DIST_PARAMS_DECLARATION_PTR
         #define MEAN_FLOW_SECOND_DIST_PARAMS_PTR
     #endif //SECOND_DIST
+    #ifdef PHI_DIST
+        #define MEAN_FLOW_PHI_DIST_PARAMS_DECLARATION_PTR ,dfloat** phi_c
+        #define MEAN_FLOW_PHI_DIST_PARAMS_PTR , &phi_c
+    #else
+        #define MEAN_FLOW_PHI_DIST_PARAMS_DECLARATION_PTR
+        #define MEAN_FLOW_PHI_DIST_PARAMS_PTR
+    #endif //PHI_DIST
 #else
     #define MEAN_FLOW_PARAMS_DECLARATION_PTR
     #define MEAN_FLOW_PARAMS_PTR
     #define MEAN_FLOW_SECOND_DIST_PARAMS_DECLARATION_PTR
     #define MEAN_FLOW_SECOND_DIST_PARAMS_PTR
+    #define MEAN_FLOW_PHI_DIST_PARAMS_DECLARATION_PTR
+    #define MEAN_FLOW_PHI_DIST_PARAMS_PTR
 #endif //MEAN_FLOW
 
 

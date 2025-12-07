@@ -262,6 +262,21 @@ void operateSimCheckpoint(
 
     #endif //SECOND_DIST
 
+    #ifdef PHI_DIST 
+    f_arr(ghostInterface.phi_h_fGhost.X_0, f_filename("phi_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.phi_h_fGhost.X_1, f_filename("phi_fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.phi_h_fGhost.Y_0, f_filename("phi_fGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.phi_h_fGhost.Y_1, f_filename("phi_fGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.phi_h_fGhost.Z_0, f_filename("phi_fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
+    f_arr(ghostInterface.phi_h_fGhost.Z_1, f_filename("phi_fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
+    if(oper == __LOAD_CHECKPOINT){
+        printf("Loaded checkpoint: phi_pop \n");
+    }else if(oper == __SAVE_CHECKPOINT){
+        printf("Saved checkpoint: phi_pop \n");
+    }
+
+    #endif //PHI_DIST
+
     #ifdef A_XX_DIST 
     f_arr(ghostInterface.Axx_h_fGhost.X_0, f_filename("Axx_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
     f_arr(ghostInterface.Axx_h_fGhost.X_1, f_filename("Axx_fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);

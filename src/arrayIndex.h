@@ -60,6 +60,20 @@ constexpr int M_MZZ_INDEX = 9;
     #define M_OFFSET M2_CZ_INDEX
 #endif
 
+#ifdef PHI_DIST
+    constexpr int M3_PHI_INDEX   = (1+M_OFFSET);
+    constexpr int M3_PX_INDEX  = (2+M_OFFSET);
+    constexpr int M3_PY_INDEX  = (3+M_OFFSET);
+    constexpr int M3_PZ_INDEX  = (4+M_OFFSET);
+    constexpr int M3_NX_INDEX  = (5+M_OFFSET);
+    constexpr int M3_NY_INDEX  = (6+M_OFFSET);
+    constexpr int M3_NZ_INDEX  = (7+M_OFFSET);
+    #ifdef M_OFFSET
+        #undef M_OFFSET
+    #endif
+    #define M_OFFSET M3_NZ_INDEX
+#endif
+
 #ifdef A_XX_DIST
     constexpr int A_XX_C_INDEX   = (1+M_OFFSET);
     constexpr int A_XX_CX_INDEX  = (2+M_OFFSET);

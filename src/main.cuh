@@ -139,6 +139,21 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.g_gGhost.Z_0);
         cudaFree(ghostInterface.g_gGhost.Z_1);
     #endif //SECOND_DIST
+    #ifdef PHI_DIST
+        cudaFree(ghostInterface.phi_fGhost.X_0);
+        cudaFree(ghostInterface.phi_fGhost.X_1);
+        cudaFree(ghostInterface.phi_fGhost.Y_0);
+        cudaFree(ghostInterface.phi_fGhost.Y_1);
+        cudaFree(ghostInterface.phi_fGhost.Z_0);
+        cudaFree(ghostInterface.phi_fGhost.Z_1);
+
+        cudaFree(ghostInterface.phi_gGhost.X_0);
+        cudaFree(ghostInterface.phi_gGhost.X_1);
+        cudaFree(ghostInterface.phi_gGhost.Y_0);
+        cudaFree(ghostInterface.phi_gGhost.Y_1);
+        cudaFree(ghostInterface.phi_gGhost.Z_0);
+        cudaFree(ghostInterface.phi_gGhost.Z_1);
+    #endif //PHI_DIST
     #ifdef A_XX_DIST
         cudaFree(ghostInterface.Axx_fGhost.X_0);
         cudaFree(ghostInterface.Axx_fGhost.X_1);
@@ -245,6 +260,14 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
             cudaFree(ghostInterface.g_h_fGhost.Z_0);
             cudaFree(ghostInterface.g_h_fGhost.Z_1);
         #endif //SECOND_DIST
+        #ifdef PHI_DIST
+            cudaFree(ghostInterface.phi_h_fGhost.X_0);
+            cudaFree(ghostInterface.phi_h_fGhost.X_1);
+            cudaFree(ghostInterface.phi_h_fGhost.Y_0);
+            cudaFree(ghostInterface.phi_h_fGhost.Y_1);
+            cudaFree(ghostInterface.phi_h_fGhost.Z_0);
+            cudaFree(ghostInterface.phi_h_fGhost.Z_1);
+        #endif //PHI_DIST
         #ifdef A_XX_DIST
             cudaFree(ghostInterface.Axx_h_fGhost.X_0);
             cudaFree(ghostInterface.Axx_h_fGhost.X_1);
@@ -347,7 +370,6 @@ void swapGhostInterfaces(GhostInterfaceData& ghostInterface) {
     interfaceSwap(ghostInterface.fGhost.Z_1, ghostInterface.gGhost.Z_1);
 
     #ifdef SECOND_DIST
-    // Swap interface pointers for g_fGhost and g_gGhost if SECOND_DIST is defined
     interfaceSwap(ghostInterface.g_fGhost.X_0, ghostInterface.g_gGhost.X_0);
     interfaceSwap(ghostInterface.g_fGhost.X_1, ghostInterface.g_gGhost.X_1);
     interfaceSwap(ghostInterface.g_fGhost.Y_0, ghostInterface.g_gGhost.Y_0);
@@ -355,6 +377,16 @@ void swapGhostInterfaces(GhostInterfaceData& ghostInterface) {
     interfaceSwap(ghostInterface.g_fGhost.Z_0, ghostInterface.g_gGhost.Z_0);
     interfaceSwap(ghostInterface.g_fGhost.Z_1, ghostInterface.g_gGhost.Z_1);
     #endif //SECOND_DIST
+
+    #ifdef PHI_DIST
+    interfaceSwap(ghostInterface.phi_fGhost.X_0, ghostInterface.phi_gGhost.X_0);
+    interfaceSwap(ghostInterface.phi_fGhost.X_1, ghostInterface.phi_gGhost.X_1);
+    interfaceSwap(ghostInterface.phi_fGhost.Y_0, ghostInterface.phi_gGhost.Y_0);
+    interfaceSwap(ghostInterface.phi_fGhost.Y_1, ghostInterface.phi_gGhost.Y_1);
+    interfaceSwap(ghostInterface.phi_fGhost.Z_0, ghostInterface.phi_gGhost.Z_0);
+    interfaceSwap(ghostInterface.phi_fGhost.Z_1, ghostInterface.phi_gGhost.Z_1);
+    #endif //PHI_DIST
+
 
     #ifdef A_XX_DIST
     interfaceSwap(ghostInterface.Axx_fGhost.X_0, ghostInterface.Axx_gGhost.X_0);
@@ -454,6 +486,24 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
 
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
 #endif //SECOND_DIST
+
+#ifdef PHI_DIST
+    cudaMalloc((void **)&(ghostInterface.phi_fGhost.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
+    cudaMalloc((void **)&(ghostInterface.phi_fGhost.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
+    cudaMalloc((void **)&(ghostInterface.phi_fGhost.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
+    cudaMalloc((void **)&(ghostInterface.phi_fGhost.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
+    cudaMalloc((void **)&(ghostInterface.phi_fGhost.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.phi_fGhost.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+
+    cudaMalloc((void **)&(ghostInterface.phi_gGhost.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
+    cudaMalloc((void **)&(ghostInterface.phi_gGhost.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
+    cudaMalloc((void **)&(ghostInterface.phi_gGhost.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
+    cudaMalloc((void **)&(ghostInterface.phi_gGhost.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
+    cudaMalloc((void **)&(ghostInterface.phi_gGhost.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.phi_gGhost.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+
+    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+#endif //PHI_DIST
 
 #ifdef A_XX_DIST
     cudaMalloc((void **)&(ghostInterface.Axx_fGhost.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
@@ -585,6 +635,17 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
         memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
         #endif //SECOND_DIST
 
+        #ifdef PHI_DIST
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.phi_h_fGhost.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.phi_h_fGhost.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.phi_h_fGhost.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.phi_h_fGhost.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.phi_h_fGhost.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.phi_h_fGhost.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
+
+        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+        #endif //PHI_DIST
+
         #ifdef A_XX_DIST
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.Axx_h_fGhost.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.Axx_h_fGhost.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
@@ -663,6 +724,7 @@ void allocateHostMemory(
     dfloat** h_fMom, dfloat** rho, dfloat** ux, dfloat** uy, dfloat** uz
     OMEGA_FIELD_PARAMS_DECLARATION_PTR
     SECOND_DIST_PARAMS_DECLARATION_PTR
+    PHI_DIST_PARAMS_DECLARATION_PTR
     A_XX_DIST_PARAMS_DECLARATION_PTR
     A_XY_DIST_PARAMS_DECLARATION_PTR
     A_XZ_DIST_PARAMS_DECLARATION_PTR
@@ -671,6 +733,7 @@ void allocateHostMemory(
     A_ZZ_DIST_PARAMS_DECLARATION_PTR
     MEAN_FLOW_PARAMS_DECLARATION_PTR
     MEAN_FLOW_SECOND_DIST_PARAMS_DECLARATION_PTR
+    MEAN_FLOW_PHI_DIST_PARAMS_DECLARATION_PTR
     #if NODE_TYPE_SAVE
     ,unsigned int** nodeTypeSave
     #endif //NODE_TYPE_SAVE
@@ -695,6 +758,11 @@ void allocateHostMemory(
     checkCudaErrors(cudaMallocHost((void**)C, MEM_SIZE_SCALAR));
     memAllocated += MEM_SIZE_SCALAR;
     #endif //SECOND_DIST
+
+    #ifdef PHI_DIST
+    checkCudaErrors(cudaMallocHost((void**)phi, MEM_SIZE_SCALAR));
+    memAllocated += MEM_SIZE_SCALAR;
+    #endif //PHI_DIST
 
     #ifdef A_XX_DIST
     checkCudaErrors(cudaMallocHost((void**)Axx, MEM_SIZE_SCALAR));
@@ -732,6 +800,10 @@ void allocateHostMemory(
     checkCudaErrors(cudaMallocHost((void**)m_c, MEM_SIZE_SCALAR));
     memAllocated += MEM_SIZE_SCALAR;
     #endif //SECOND_DIST
+    #ifdef PHI_DIST
+    checkCudaErrors(cudaMallocHost((void**)m_phi, MEM_SIZE_SCALAR));
+    memAllocated += MEM_SIZE_SCALAR;
+    #endif //PHI_DIST
     #endif // MEAN_FLOW
 
     #ifdef BC_FORCES
@@ -841,6 +913,10 @@ void initializeDomain(
                 interfaceCudaMemcpy(ghostInterface, ghostInterface.g_fGhost, ghostInterface.g_h_fGhost, cudaMemcpyHostToDevice, GF);
             #endif //SECOND_DIST
 
+            #ifdef PHI_DIST
+                interfaceCudaMemcpy(ghostInterface, ghostInterface.phi_fGhost, ghostInterface.phi_h_fGhost, cudaMemcpyHostToDevice, GF);
+            #endif //PHI_DIST
+
             #ifdef A_XX_DIST
                 interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx_fGhost, ghostInterface.Axx_h_fGhost, cudaMemcpyHostToDevice, GF);
             #endif //A_XX_DIST
@@ -932,8 +1008,10 @@ void initializeDomain(
     interfaceCudaMemcpy(ghostInterface, ghostInterface.gGhost, ghostInterface.fGhost, cudaMemcpyDeviceToDevice, QF);
     #ifdef SECOND_DIST
         interfaceCudaMemcpy(ghostInterface, ghostInterface.g_gGhost, ghostInterface.g_fGhost, cudaMemcpyDeviceToDevice, GF);
-        printf("Interface pop copied \n"); if(console_flush) fflush(stdout);
     #endif //SECOND_DIST
+    #ifdef PHI_DIST
+        interfaceCudaMemcpy(ghostInterface, ghostInterface.phi_gGhost, ghostInterface.phi_fGhost, cudaMemcpyDeviceToDevice, GF);
+    #endif //PHI_DIST
     #ifdef A_XX_DIST
         interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx_gGhost, ghostInterface.Axx_fGhost, cudaMemcpyDeviceToDevice, GF);
     #endif //A_XX_DIST
