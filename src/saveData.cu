@@ -116,7 +116,7 @@ void saveMacr(
                 C[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
                 #endif //SECOND_DIST
                 #ifdef PHI_DIST 
-                phi[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_PHI_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
+                phi[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M3_PHI_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - PHI_ZERO;
                 #endif //PHI_DIST
                 #ifdef A_XX_DIST 
                 Axx[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, A_XX_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - CONF_ZERO;
@@ -773,6 +773,7 @@ std::string getSimInfoString(int step,dfloat MLUPS)
     strSimInfo << "            Phi Two: " << PHI_TWO << "\n";
     strSimInfo << "  Diffusivity ratio: " << PHI_DIFFUSIVITY_RATIO << "\n";
     strSimInfo << "  Diffusivity Coef.: " << PHI_DIFFUSIVITY << "\n";
+    strSimInfo << "         Phi Offset: " << PHI_ZERO << "\n";
     strSimInfo << "            PHI_TAU: " << PHI_TAU << "\n";
     strSimInfo << "          PHI_OMEGA: " << PHI_OMEGA << "\n";
     strSimInfo << "      PHI_DIFF_FLUC: " << PHI_DIFF_FLUC << "\n";

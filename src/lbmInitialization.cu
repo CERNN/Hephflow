@@ -156,10 +156,13 @@ __global__ void gpuInitialization_mom(
     #ifdef PHI_DIST 
     dfloat invC= 1.0/phiVar;
 
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiVar;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qx_t30;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qy_t30;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qz_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiVar;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qx_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qy_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qz_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
     #endif //PHI_DIST
 
     #ifdef A_XX_DIST 
@@ -405,11 +408,11 @@ __global__ void gpuInitialization_pop(
     #endif //SECOND_DIST
     #ifdef PHI_DIST 
         
-        dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat invPhi = 1/phiVar;
-        dfloat phi_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-        dfloat phi_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-        dfloat phi_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat phi_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat phi_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat phi_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
         dfloat phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
         dfloat phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);

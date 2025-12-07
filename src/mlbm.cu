@@ -204,12 +204,34 @@ __global__ void gpuMomCollisionStream(
         #endif //SECOND_DIST
         #ifdef PHI_DIST 
 
-            dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            phiVar -= PHI_ZERO;
 
+
+            #include "includeFiles/phase_gradient.inc"
+            #include "includeFiles/normal_gradient.inc"
+
+            dfloat Fs_x = - phi_sigma * curvature * pnx * mod_grad;
+            dfloat Fs_y = - phi_sigma * curvature * pny * mod_grad;
+            dfloat Fs_z = - phi_sigma * curvature * pnz * mod_grad;
+
+            L_Fx += 0;//Fs_x;
+            L_Fy += 0;//Fs_y;
+            L_Fz += 0;//Fs_z;
+
+            dfloat phiSource = 0.0;
+
+            //if(y == (NY-1)/2 && z == (NZ-1)/2){
+            //printf("step = %d x = %d, y = %d, z = %d, phiVar = %f, phiSource = %f, kappa = %f, grad_mag = %f, phi_x = %f, phi_y = %f, phi_z = %f, phi_xx = %f, phi_yy = %f, phi_zz = %f, phi_xy = %f, phi_xz = %f, phi_yz = %f\n",
+            //printf("%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f, %f,%f,%f,%f\n",
+            //    step, x, y, z, phiVar, phiSource, kappa, grad_mag, phi_x, phi_y, phi_z, phi_xx, phi_yy, phi_zz, phi_xy, phi_xz, phi_yz);
+            //}
+
+            phiVar += PHI_ZERO;
             dfloat invPhi = 1/phiVar;
-            dfloat phi_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-            dfloat phi_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-            dfloat phi_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat phi_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat phi_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat phi_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
             dfloat phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
             dfloat phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
@@ -228,7 +250,13 @@ __global__ void gpuMomCollisionStream(
                 #include CASE_PHI_BC_DEF
             }else{
                 phiVar = gNode[0] + gNode[1] + gNode[2] + gNode[3] + gNode[4] + gNode[5] + gNode[6] + gNode[7] + gNode[8] + gNode[9] + gNode[10] + gNode[11] + gNode[12] + gNode[13] + gNode[14] + gNode[15] + gNode[16] + gNode[17] + gNode[18];
-                phiVar = phiVar; //TODO SOURCE TEM
+                phiVar = phiVar + phiSource; //TODO SOURCE TEM
+                //clamp 
+                if(phiVar > PHI_TWO + PHI_ZERO)
+                    phiVar = PHI_TWO + PHI_ZERO;
+                if(phiVar < PHI_ONE + PHI_ZERO)
+                    phiVar = PHI_ONE + PHI_ZERO;
+
                 invPhi= 1.0/phiVar;
 
                 phi_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
@@ -699,10 +727,10 @@ __global__ void gpuMomCollisionStream(
 
             #include "includeFiles/phi_popSave.inc"
             
-            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiVar;
-            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qx_t30;
-            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qy_t30;
-            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qz_t30;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiVar;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qx_t30;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qy_t30;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qz_t30;
 
         #endif //PHI_DIST
         #ifdef A_XX_DIST

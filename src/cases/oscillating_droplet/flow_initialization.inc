@@ -41,10 +41,10 @@ phiVar = phi_raw;
 const dfloat phi_mid  = 0.5 * (PHI_ONE + PHI_TWO);
 const dfloat phi_half = 0.5 * (PHI_TWO - PHI_ONE);
 
-const dfloat a = 50.0;
-const dfloat b = 15.0;
-const dfloat c = 10.0;
-const dfloat xi = 1.0;
+const dfloat a = 30.0;
+const dfloat b = 20.0;
+const dfloat c = 20.0;
+const dfloat xi = 0.3;
 
 const dfloat denom = sqrt(2.0) * xi;
 
@@ -65,6 +65,7 @@ dfloat gnorm = sqrt(gnorm2 + 1e-20);
 dfloat delta = f / gnorm;  //signed distance ( >0 outside, <0 inside )
 
 phiVar = phi_mid + phi_half * tanh( -delta / denom );
+phiVar += PHI_ZERO;
 
 #endif
 

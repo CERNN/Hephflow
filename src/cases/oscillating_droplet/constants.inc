@@ -1,8 +1,8 @@
 #define PHASE_MODEL 
 
 constexpr int SCALE = 1;
-constexpr int N_STEPS = 200;
-constexpr int N = 256 * SCALE;
+constexpr int N_STEPS = 400000;
+constexpr int N = 128 * SCALE;
 constexpr int NX = N;        // size x of the grid 
 constexpr int NY = N;        // size y of the grid
 constexpr int NZ = N;        // size z of the grid in one GPU
@@ -31,7 +31,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 #define BC_Y_WALL
 #define BC_Z_WALL
 
-constexpr dfloat TAU = 0.8;//0.5 + 3.0*VISC;     // relaxation time
+constexpr dfloat TAU = 0.55;//0.5 + 3.0*VISC;     // relaxation time
 constexpr dfloat VISC = (TAU-0.5)/3;
 constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
 
@@ -42,13 +42,21 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
 
     #define PHI_DIST
 
-    constexpr dfloat PHI_REFERENCE = (dfloat)(1.0);
-    constexpr dfloat PHI_DELTA_PHI = 0.5;
+    constexpr dfloat PHI_REFERENCE = (dfloat)(0.5);
+    constexpr dfloat PHI_DELTA_PHI = 1;
     constexpr dfloat PHI_ONE = PHI_REFERENCE - PHI_DELTA_PHI/2.0;
     constexpr dfloat PHI_TWO = PHI_REFERENCE + PHI_DELTA_PHI/2.0;
+    constexpr dfloat PHI_ALPHA = 0.05;
+    constexpr dfloat PHI_ZERO = (dfloat)(10.0);
+    
+    //model constanst
+    constexpr dfloat phi_sigma = 1e-4; //surface tension coeficiet
+    constexpr dfloat phi_del = 3; //interface width
+    constexpr dfloat phi_beta = 12.0*phi_sigma / phi_del;
+    constexpr dfloat phi_kappa = 3.0*phi_sigma*phi_del/2;
 
     //ADVECTION-DIFFUSIONS CONSTANTS
-    constexpr dfloat PHI_DIFFUSIVITY_RATIO = 100; //OR Pr in malaspinas
+    constexpr dfloat PHI_DIFFUSIVITY_RATIO = 1000; //OR Pr in malaspinas
     constexpr dfloat PHI_DIFFUSIVITY = VISC/PHI_DIFFUSIVITY_RATIO; // a0lpha
 
     constexpr dfloat PHI_DIFF_REF = (1.0/6);
