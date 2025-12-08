@@ -52,8 +52,8 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
     constexpr dfloat BN_NUMBER = 0.08;
     constexpr dfloat T_GR_NUMBER = T_RA_NUMBER/T_PR_NUMBER; //Grashof number
 
-    constexpr dfloat T_DELTA_T = 10.0; //temperature difference
-    constexpr dfloat T_REFERENCE  = 10.0; //better closer to 1
+    constexpr dfloat T_DELTA_T = 0.1; //temperature difference
+    constexpr dfloat T_REFERENCE  = 1.0; //better closer to 1
     constexpr dfloat T_COLD = T_REFERENCE - T_DELTA_T/2.0;
     constexpr dfloat T_HOT = T_REFERENCE + T_DELTA_T/2.0;
     constexpr dfloat C_0 = T_REFERENCE; //initial temperature field 
@@ -67,7 +67,7 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
     __device__ const dfloat gravity_vector[3] =  {1.0, 0.0, 0.0};
 
     constexpr dfloat T_DIFF_REF = (1.0/6);
-    constexpr dfloat G_TAU = T_DIFF_REF*3+0.5;
+    constexpr dfloat G_TAU = T_DIFFUSIVITY*3+0.5;
     constexpr dfloat G_OMEGA  = 1.0/G_TAU;
     constexpr dfloat G_TT_OMEGA = 1.0-0.5*G_OMEGA;
 

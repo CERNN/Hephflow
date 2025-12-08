@@ -177,10 +177,6 @@ __global__ void gpuMomCollisionStream(
             dfloat qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
-            dfloat udx_t30 = G_DIFF_FLUC_COEF * (qx_t30*invC - ux_t30);
-            dfloat udy_t30 = G_DIFF_FLUC_COEF * (qy_t30*invC - uy_t30);
-            dfloat udz_t30 = G_DIFF_FLUC_COEF * (qz_t30*invC - uz_t30);
-
             #include  COLREC_G_RECONSTRUCTION
 
             __syncthreads();
@@ -197,10 +193,17 @@ __global__ void gpuMomCollisionStream(
                 cVar = cVar + T_Q_INTERNAL_D_Cp;
                 invC= 1.0/cVar;
 
-                qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
-                qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
-                qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
+                qx_t30 = ((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]))*invC;
+                qy_t30 = ((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]))*invC;
+                qz_t30 = ((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]))*invC;
             }
+
+            qx_t30 = F_M_I_SCALE * qx_t30;
+            qy_t30 = F_M_I_SCALE * qy_t30;
+            qz_t30 = F_M_I_SCALE * qz_t30;
+
+            #include COLREC_G_COLLISION
+
         #endif //SECOND_DIST
         #ifdef PHI_DIST 
 
@@ -704,9 +707,6 @@ __global__ void gpuMomCollisionStream(
     }
     #ifdef CONVECTION_DIFFUSION_TRANSPORT
         #ifdef SECOND_DIST 
-            udx_t30 = G_DIFF_FLUC_COEF * (qx_t30*invC - ux_t30);
-            udy_t30 = G_DIFF_FLUC_COEF * (qy_t30*invC - uy_t30);
-            udz_t30 = G_DIFF_FLUC_COEF * (qz_t30*invC - uz_t30);
 
             #include COLREC_G_RECONSTRUCTION
 

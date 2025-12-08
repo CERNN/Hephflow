@@ -49,9 +49,9 @@ __global__ void gpuInitialization_mom(
     #endif //OMEGA_FIELD
     #ifdef SECOND_DIST 
     dfloat cVar = 1.0;
-    dfloat qx_t30 = 3.0*cVar*(ux - 0.0);
-    dfloat qy_t30 = 3.0*cVar*(uy - 0.0);
-    dfloat qz_t30 = 3.0*cVar*(uz - 0.0);
+    dfloat qx_t30 = 3.0*(ux - 0.0);
+    dfloat qy_t30 = 3.0*(uy - 0.0);
+    dfloat qz_t30 = 3.0*(uz - 0.0);
     #endif //SECOND_DIST
     #ifdef PHI_DIST 
     dfloat phiVar = 1.0;
