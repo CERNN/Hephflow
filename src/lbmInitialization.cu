@@ -55,9 +55,9 @@ __global__ void gpuInitialization_mom(
     #endif //SECOND_DIST
     #ifdef PHI_DIST 
     dfloat phiVar = 1.0;
-    dfloat phi_qx_t30 = 3.0*phiVar*(ux - 0.0);
-    dfloat phi_qy_t30 = 3.0*phiVar*(uy - 0.0);
-    dfloat phi_qz_t30 = 3.0*phiVar*(uz - 0.0);
+    dfloat phi_qx_t30 = 3.0*(ux - 0.0);
+    dfloat phi_qy_t30 = 3.0*(uy - 0.0);
+    dfloat phi_qz_t30 = 3.0*(uz - 0.0);
     #endif //PHI_DIST
     #ifdef CONFORMATION_TENSOR
         //assuming that velocity has grad = 0 

@@ -60,7 +60,7 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
     constexpr dfloat PHI_DIFFUSIVITY = VISC/PHI_DIFFUSIVITY_RATIO; // a0lpha
 
     constexpr dfloat PHI_DIFF_REF = (1.0/6);
-    constexpr dfloat PHI_TAU = PHI_DIFF_REF*3+0.5;
+    constexpr dfloat PHI_TAU = PHI_DIFFUSIVITY*3+0.5;
     constexpr dfloat PHI_OMEGA  = 1.0/PHI_TAU;
     constexpr dfloat PHI_TT_OMEGA = 1.0-0.5*PHI_OMEGA;
 

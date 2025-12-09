@@ -236,10 +236,6 @@ __global__ void gpuMomCollisionStream(
             dfloat phi_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat phi_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
-            dfloat phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
-            dfloat phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
-            dfloat phi_udz_t30 = PHI_DIFF_FLUC_COEF * (phi_qz_t30*invPhi - uz_t30);
-
             #include  COLREC_PHI_RECONSTRUCTION
 
             __syncthreads();
@@ -262,10 +258,16 @@ __global__ void gpuMomCollisionStream(
 
                 invPhi= 1.0/phiVar;
 
-                phi_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
-                phi_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
-                phi_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
+                phi_qx_t30 = ((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]))invPhi;
+                phi_qy_t30 = ((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]))invPhi;
+                phi_qz_t30 = ((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]))invPhi;
             }
+
+            phi_qx_t30 = F_M_I_SCALE * phi_qx_t30;
+            phi_qy_t30 = F_M_I_SCALE * phi_qy_t30;
+            phi_qz_t30 = F_M_I_SCALE * phi_qz_t30;
+
+            #include  COLREC_PHI_COLLISION
         #endif //PHI_DIST
         #ifdef A_XX_DIST
             dfloat invAxx = 1/AxxVar;
@@ -720,10 +722,6 @@ __global__ void gpuMomCollisionStream(
 
         #endif //SECOND_DIST
         #ifdef PHI_DIST 
-            phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
-            phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
-            phi_udz_t30 = PHI_DIFF_FLUC_COEF * (phi_qz_t30*invPhi - uz_t30);
-
             #include COLREC_PHI_RECONSTRUCTION
 
             #include "includeFiles/phi_popSave.inc"
