@@ -53,42 +53,35 @@ typedef struct deviceField{
     }
 
     #ifdef DENSITY_CORRECTION
-    void mean_rhoDeviceField(size_t step){
-        mean_rho(d_fMom,step,d_mean_rho);
+    void mean_rhoDeviceField(size_t step, int g){
+        mean_rho(d_fMom[g],step,d_mean_rho[g]);
     }
     #endif //DENSITY_CORRECTION
 
-    void gpuMomCollisionStreamDeviceField(dim3 gridBlock, dim3 threadBlock, unsigned int step, bool save){
-        for(int g = 0; g < N_GPUS; g++){
-                gpuMomCollisionStream << <gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>> >(d_fMom[g], dNodeType[g],ghostInterface[g], DENSITY_CORRECTION_PARAMS(d_) BC_FORCES_PARAMS(d_) step, save
-            #ifdef CURVED_BOUNDARY_CONDITION
-            , d_curvedBC[g], d_curvedBC_array[g]
-            #endif //CURVED_BOUNDARY_CONDITION
+    void gpuMomCollisionStreamDeviceField(dim3 gridBlock, dim3 threadBlock, unsigned int step, bool save, int g){
+            gpuMomCollisionStream << <gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>> >(d_fMom[g], dNodeType[g],ghostInterface[g], DENSITY_CORRECTION_PARAMS(d_) BC_FORCES_PARAMS(d_) step, save
+        #ifdef CURVED_BOUNDARY_CONDITION
+        , d_curvedBC[g], d_curvedBC_array[g]
+        #endif //CURVED_BOUNDARY_CONDITION
         );
-        }
+        
         
     }
 
     #ifdef CURVED_BOUNDARY_CONDITION
-    void updateCurvedBoundaryVelocitiesDeviceField(unsigned int numberCurvedBoundaryNodes){
-        for(int g = 0; g < N_GPUS; g++){
-            updateCurvedBoundaryVelocities << <1,numberCurvedBoundaryNodes>> >(d_curvedBC_array[g],d_fMom[g],numberCurvedBoundaryNodes);
-            cudaDeviceSynchronize();
-        }
+    void updateCurvedBoundaryVelocitiesDeviceField(unsigned int numberCurvedBoundaryNodes, int g){
+        updateCurvedBoundaryVelocities << <1,numberCurvedBoundaryNodes>> >(d_curvedBC_array[g],d_fMom[g],numberCurvedBoundaryNodes);
+        cudaDeviceSynchronize();
     }
     #endif
 
-    void swapGhostInterfacesDeviceField(){
-        for(int g = 0; g < N_GPUS; g++){
-            swapGhostInterfaces(ghostInterface[g]);
-        }
+    void swapGhostInterfacesDeviceField(int g){
+        swapGhostInterfaces(ghostInterface[g]);
     }
     
     #ifdef LOCAL_FORCES
-    void gpuResetMacroForcesDeviceField(dim3 gridBlock, dim3 threadBlock){
-        for(int g = 0; g < N_GPUS; g++){
-            gpuResetMacroForces<<<gridBlock, threadBlock>>>(d_fMom[g]);
-        }
+    void gpuResetMacroForcesDeviceField(dim3 gridBlock, dim3 threadBlock, int g){
+        gpuResetMacroForces<<<gridBlock, threadBlock>>>(d_fMom[g]);
     }
     #endif //LOCAL_FORCES
 
@@ -98,8 +91,7 @@ typedef struct deviceField{
     }
     #endif //PARTICLE_MODEL
 
-    void interfaceCudaMemcpyDeviceField(bool fGhost){
-        for(int g = 0; g < N_GPUS; g++){
+    void interfaceCudaMemcpyDeviceField(bool fGhost, int g){
             if (fGhost) {
                 interfaceCudaMemcpy(ghostInterface[g], ghostInterface[g].h_fGhost, ghostInterface[g].fGhost, cudaMemcpyDeviceToHost, QF);
             } else {
@@ -127,73 +119,58 @@ typedef struct deviceField{
             #ifdef A_ZZ_DIST 
             interfaceCudaMemcpy(ghostInterface[g],ghostInterface[g].Azz_h_fGhost,ghostInterface[g].Azz_fGhost,cudaMemcpyDeviceToHost,GF);
             #endif //A_ZZ_DIST
-        }
     }
 
-    void cudaMemcpyDeviceField(hostField &hostField){
-        for(int g = 0; g < N_GPUS; g++){
-            checkCudaErrors(cudaMemcpy(hostField.h_fMom, d_fMom[g], sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
-        }
+    void cudaMemcpyDeviceField(hostField &hostField, int g){
+        checkCudaErrors(cudaMemcpy(hostField.h_fMom, d_fMom[g], sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
     }
 
-    void saveSimCheckpointHostDeviceField(hostField &hostField, int &step){
-        for(int g = 0; g < N_GPUS; g++){
-            saveSimCheckpoint(hostField.h_fMom, ghostInterface[g], &step);
-        }
+    void saveSimCheckpointHostDeviceField(hostField &hostField, int &step, int g){
+        saveSimCheckpoint(hostField.h_fMom, ghostInterface[g], &step);
     }
 
-    void saveSimCheckpointDeviceField( int &step){
-        for(int g = 0; g < N_GPUS; g++){
-            saveSimCheckpoint(d_fMom[g],ghostInterface[g],&step);
-        }
+    void saveSimCheckpointDeviceField( int &step, int g){
+        saveSimCheckpoint(d_fMom[g],ghostInterface[g],&step);
     }
 
-    void treatDataDeviceField(hostField &hostField, int step){
-        for(int g = 0; g < N_GPUS; g++){
-            treatData(hostField.h_fMom, d_fMom[g],
-            #if MEAN_FLOW
-            hostField.m_fMom,
-            #endif //MEAN_FLOW
-            step);
-        }
+    void treatDataDeviceField(hostField &hostField, int step, int g){
+        treatData(hostField.h_fMom, d_fMom[g],
+        #if MEAN_FLOW
+        hostField.m_fMom,
+        #endif //MEAN_FLOW
+        step);
     }
 
     #ifdef BC_FORCES
-    void totalBcDragDeviceField(size_t step){
-        for(int g = 0; g < N_GPUS; g++){
-            totalBcDrag(d_BC_Fx[g], d_BC_Fy[g], d_BC_Fz[g], step);
-        }
+    void totalBcDragDeviceField(size_t step, int g){
+        totalBcDrag(d_BC_Fx[g], d_BC_Fy[g], d_BC_Fz[g], step);
     }
     #endif //BC_FORCES
 
     #if defined BC_FORCES && defined SAVE_BC_FORCES
-    void saveBcForces(hostField &hostField){
-        for(int g = 0; g < N_GPUS; g++){
-            checkCudaErrors(cudaDeviceSynchronize()); 
-            checkCudaErrors(cudaMemcpy(hostField.h_BC_Fx, d_BC_Fx[g], MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
-            checkCudaErrors(cudaMemcpy(hostField.h_BC_Fy, d_BC_Fy[g], MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
-            checkCudaErrors(cudaMemcpy(hostField.h_BC_Fz, d_BC_Fz[g], MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
-        }
+    void saveBcForces(hostField &hostField, int g){
+        checkCudaErrors(cudaDeviceSynchronize()); 
+        checkCudaErrors(cudaMemcpy(hostField.h_BC_Fx, d_BC_Fx[g], MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(hostField.h_BC_Fy, d_BC_Fy[g], MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(hostField.h_BC_Fz, d_BC_Fz[g], MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
     }
     #endif //BC_FORCES && SAVE_BC_FORCES
 
-    void freeDeviceField() {
-        for(int g = 0; g < N_GPUS; g++){
-            interfaceFree(ghostInterface[g]);
+    void freeDeviceField(int g) {
+        interfaceFree(ghostInterface[g]);
 
-            cudaFree(d_fMom[g]);
-            cudaFree(dNodeType[g]);
+        cudaFree(d_fMom[g]);
+        cudaFree(dNodeType[g]);
 
-            #ifdef DENSITY_CORRECTION
-            cudaFree(d_mean_rho[g]);
-            #endif //DENSITY_CORRECTION
+        #ifdef DENSITY_CORRECTION
+        cudaFree(d_mean_rho[g]);
+        #endif //DENSITY_CORRECTION
 
-            #ifdef BC_FORCES
-            cudaFree(d_BC_Fx[g]);
-            cudaFree(d_BC_Fy[g]);
-            cudaFree(d_BC_Fz[g]);
-            #endif //_BC_FORCES
-        }
+        #ifdef BC_FORCES
+        cudaFree(d_BC_Fx[g]);
+        cudaFree(d_BC_Fy[g]);
+        cudaFree(d_BC_Fz[g]);
+        #endif //_BC_FORCES
     }
 } DeviceField;
 #endif //__DEVICEFIELD_STRUCTS_H

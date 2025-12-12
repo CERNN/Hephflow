@@ -48,28 +48,51 @@ int main() {
     }
 
     hostField.allocateHostMemoryHostField();
-        
+    
+    std::vector<std::thread> threads;
+    std::vector<DeviceField> devices(N_GPUS);
+
+    threads.reserve(N_GPUS);
     for(int g = 0; g < N_GPUS; g++){
-        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
 
-        /* -------------- ALLOCATION FOR GPU ------------- */
-        deviceField.allocateDeviceMemoryDeviceField(g);
+        int gpu = GPUS_TO_USE[g];
+        threads.emplace_back([&, gpu, g]() {
+            checkCudaErrors(cudaSetDevice(gpu));
 
-        //TODO : move these malocs to inside teh corresponding mallocs
-        #ifdef DENSITY_CORRECTION
-            cudaMalloc((void**)&deviceField.d_mean_rho[g], sizeof(dfloat));  
-        #endif //DENSITY_CORRECTION
-        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-        checkCudaErrors(cudaStreamCreate(&streamsLBM[g]));
-        checkCudaErrors(cudaDeviceSynchronize());
+            /* -------------- ALLOCATION FOR GPU ------------- */
+            devices[gpu].allocateDeviceMemoryDeviceField(g);
 
-        #ifdef PARTICLE_MODEL
-        checkCudaErrors(cudaStreamCreate(&streamsPart[g]));
-        #endif //PARTICLE_MODEL
+            //TODO : move these malocs to inside teh corresponding mallocs
+            #ifdef DENSITY_CORRECTION
+                cudaMalloc((void**)&deviceField.d_mean_rho[g], sizeof(dfloat));  
+            #endif //DENSITY_CORRECTION
+            checkCudaErrors(cudaSetDevice(gpu));
+            checkCudaErrors(cudaStreamCreate(&streamsLBM[g]));
+            checkCudaErrors(cudaDeviceSynchronize());
 
-        /* -------------- Initialize domain in the device ------------- */
-        deviceField.initializeDomainDeviceField(hostField, randomNumbers,  step, gridBlock, threadBlock, g);
+            #ifdef PARTICLE_MODEL
+            checkCudaErrors(cudaStreamCreate(&streamsPart[g]));
+            #endif //PARTICLE_MODEL
+
+            /* -------------- Initialize domain in the device ------------- */
+            // threads.emplace_back([&devices, &hostField, &randomNumbers, &step, gridBlock, threadBlock, gpu, g]() {
+            //     cudaSetDevice(gpu);
+            devices[gpu].initializeDomainDeviceField(hostField, randomNumbers, step, gridBlock, threadBlock, g);
+            
+            checkCudaErrors(cudaDeviceSynchronize());
+            cudaError_t err = cudaGetLastError();
+            if (err != cudaSuccess) {
+                printf("Erro no device %d após init: %s\n", gpu, cudaGetErrorString(err));
+            }
+        });
     }
+
+    for (auto &t : threads) {
+        t.join();
+    }
+    
+    threads.clear();
+    
     int ini_step = step;
 
     printf("Domain Initialized. Starting simulation\n"); if(console_flush) fflush(stdout);
@@ -115,85 +138,126 @@ int main() {
     /* --------------------------------------------------------------------- */
 
     for (;step<N_STEPS;step++){ // step is already initialized
+        // printf("Laço step\n");
 
         SaveField saveField;
 
-        #ifdef DENSITY_CORRECTION
-        deviceField.mean_rhoDeviceField(step)
-        #endif //DENSITY_CORRECTION
-
         saveField.flagsUpdate(step);
 
-        // ghost interface should be inside the deviceField struct
-        deviceField.gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save);
-        cudaError_t err = cudaGetLastError();
-        if (err != cudaSuccess) {
-            printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
-        }
-        #ifdef CURVED_BOUNDARY_CONDITION
-            deviceField.updateCurvedBoundaryVelocitiesDeviceField(numberCurvedBoundaryNodes);
-        #endif
+        for(int g = 0; g < N_GPUS; g++){
+            int gpu = GPUS_TO_USE[g];
+            threads.emplace_back([&, gpu, g]() {
+                checkCudaErrors(cudaSetDevice(gpu));
 
-        //swap interface pointers
-        deviceField.swapGhostInterfacesDeviceField();
-        
-        #ifdef LOCAL_FORCES
-            deviceField.gpuResetMacroForcesDeviceField(gridBlock, threadBlock);
-        #endif //LOCAL_FORCES
+                // ghost interface should be inside the deviceField struct
+                devices[gpu].gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save, g);
+                cudaError_t err = cudaGetLastError();
+                if (err != cudaSuccess) {
+                    printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
+                }
 
-        #ifdef PARTICLE_MODEL
-            deviceField.particleSimulationDeviceField(particlesSoA,streamsPart,step);
-        #endif //PARTICLE_MODEL
+                #ifdef DENSITY_CORRECTION
+                    devices[gpu].mean_rhoDeviceField(step, g)
+                #endif //DENSITY_CORRECTION
 
-        if(saveField.checkpoint){
-            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
-            // throwing a warning for being used without being initialized. But does not matter since we are overwriting it;
-            deviceField.cudaMemcpyDeviceField(hostField);
-            deviceField.interfaceCudaMemcpyDeviceField(true);       
-            deviceField.saveSimCheckpointHostDeviceField(hostField, step);
+                #ifdef CURVED_BOUNDARY_CONDITION
+                    devices[gpu].updateCurvedBoundaryVelocitiesDeviceField(numberCurvedBoundaryNodes, g);
+                #endif
+
+                //swap interface pointers
+                devices[gpu].swapGhostInterfacesDeviceField(g);
+                
+                #ifdef LOCAL_FORCES
+                    devices[gpu].gpuResetMacroForcesDeviceField(gridBlock, threadBlock, g);
+                #endif //LOCAL_FORCES
+
+                #ifdef PARTICLE_MODEL
+                    deviceField.particleSimulationDeviceField(particlesSoA,streamsPart,step);
+                #endif //PARTICLE_MODEL
+                
+                // printf("Saiu Laço gpu denttro laço step\n");
+                if(saveField.checkpoint){
+                    printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
+                    // throwing a warning for being used without being initialized. But does not matter since we are overwriting it;
+                    devices[gpu].cudaMemcpyDeviceField(hostField, g);
+                    devices[gpu].interfaceCudaMemcpyDeviceField(true, g);       
+                    devices[gpu].saveSimCheckpointHostDeviceField(hostField, step, g);
+                    
+                    #ifdef PARTICLE_MODEL
+                        printf("Starting saveSimCheckpointParticle...\t"); fflush(stdout);
+                        saveSimCheckpointParticle(particlesSoA, &step);
+                    #endif //PARTICLE_MODEL
+                    
+                }
             
-            #ifdef PARTICLE_MODEL
-                printf("Starting saveSimCheckpointParticle...\t"); fflush(stdout);
-                saveSimCheckpointParticle(particlesSoA, &step);
-            #endif //PARTICLE_MODEL
-            
-        }
-       
-        // Saving data checks
-        if(saveField.reportSave){
-            printf("\n--------------------------- Saving report %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
-            deviceField.treatDataDeviceField(hostField, step);
-        }
+                // Saving data checks
+                if(saveField.reportSave){
+                    printf("\n--------------------------- Saving report %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
+                    devices[gpu].treatDataDeviceField(hostField, step, g);
+                }
+                    checkCudaErrors(cudaDeviceSynchronize());
+                    });
+                }
+
+                for (auto &t : threads) {
+                    t.join();
+                }
+                
+                threads.clear();
+                
+                if(saveField.macrSave){
+                    for(int g = 0; g < N_GPUS; g++){
+                        int gpu = GPUS_TO_USE[g];
+                        threads.emplace_back([&, gpu, g]() {
+                        #if defined BC_FORCES && defined SAVE_BC_FORCES
+                            devices[gpu].saveBcForces(hostField, g);
+                        #endif //BC_FORCES && SAVE_BC_FORCES
+
+                        checkCudaErrors(cudaDeviceSynchronize()); 
+                    
+                        checkCudaErrors(cudaSetDevice(gpu));
+                        devices[gpu].cudaMemcpyDeviceField(hostField, g);
+                        checkCudaErrors(cudaDeviceSynchronize());
+
+                        });
+                    }
         
-        if(saveField.macrSave){
-            #if defined BC_FORCES && defined SAVE_BC_FORCES
-                deviceField.saveBcForces(hostField);
-            #endif //BC_FORCES && SAVE_BC_FORCES
+                    for (auto &t : threads) {
+                        t.join();
+                    }
+                    
+                    threads.clear();
 
-            checkCudaErrors(cudaDeviceSynchronize()); 
-            deviceField.cudaMemcpyDeviceField(hostField);
+                    printf("\n--------------------------- Saving macro %06d ---------------------------\n", step); if(console_flush){fflush(stdout);}
 
-            printf("\n--------------------------- Saving macro %06d ---------------------------\n", step); if(console_flush){fflush(stdout);}
+                    if(!ONLY_FINAL_MACRO){
+                        hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
+                    }
+                    for(int g = 0; g < N_GPUS; g++){
+                        int gpu = GPUS_TO_USE[g];
+                        threads.emplace_back([&, gpu, g]() {
+                        #ifdef BC_FORCES
+                            devices[gpu].totalBcDragDeviceField(step, g);
+                        #endif //BC_FORCES
+                        checkCudaErrors(cudaDeviceSynchronize());
+                        });
+                    }
+        
+                    for (auto &t : threads) {
+                        t.join();
+                    }
+                }
 
-            if(!ONLY_FINAL_MACRO){
-                hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
-            }
-
-            #ifdef BC_FORCES
-                deviceField.totalBcDragDeviceField(step);
-            #endif //BC_FORCES
-        }
-
-        #ifdef PARTICLE_MODEL
-            if (saveField.particleSave){
-                printf("\n------------------------- Saving particles %06d -------------------------\n", step);
-                if(console_flush){fflush(stdout);}
-                while (savingMacrParticle) std::this_thread::yield();
-                saveParticlesInfo(&particlesSoA, step, savingMacrParticle);
-            }
-        #endif //PARTICLE_MODEL
-
+                #ifdef PARTICLE_MODEL
+                    if (saveField.particleSave){
+                        printf("\n------------------------- Saving particles %06d -------------------------\n", step);
+                        if(console_flush){fflush(stdout);}
+                        while (savingMacrParticle) std::this_thread::yield();
+                        saveParticlesInfo(&particlesSoA, step, savingMacrParticle);
+                    }
+                #endif //PARTICLE_MODEL
     } 
+    
 
     /* --------------------------------------------------------------------- */
     /* ------------------------------ END LOOP ----------------------------- */
@@ -207,21 +271,46 @@ int main() {
     printf("MLUPS: %f\n",MLUPS);
     
     /* ------------------------------ POST ------------------------------ */
-    deviceField.cudaMemcpyDeviceField(hostField);
+    for(int g = 0; g < N_GPUS; g++){
+        int gpu = GPUS_TO_USE[g];
+        threads.emplace_back([&, gpu, g]() {
+            checkCudaErrors(cudaSetDevice(gpu));
+            devices[gpu].cudaMemcpyDeviceField(hostField, g);
 
-    #if defined BC_FORCES && defined SAVE_BC_FORCES
-    deviceField.saveBcForces(hostField);
-    #endif //BC_FORCES && SAVE_BC_FORCES
-
-    if(console_flush){fflush(stdout);}
-    hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
-
-    if(CHECKPOINT_SAVE){
-        printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
-        deviceField.cudaMemcpyDeviceField(hostField);
-        deviceField.interfaceCudaMemcpyDeviceField(false); 
-        deviceField.saveSimCheckpointDeviceField(step);
+            #if defined BC_FORCES && defined SAVE_BC_FORCES
+            devices[gpu].saveBcForces(hostField, g);
+            #endif //BC_FORCES && SAVE_BC_FORCES
+        checkCudaErrors(cudaDeviceSynchronize());
+        });
     }
+
+    for (auto &t : threads) {
+        t.join();
+    }
+
+    threads.clear();
+
+            if(console_flush){fflush(stdout);}
+            hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
+            for(int g = 0; g < N_GPUS; g++){
+                int gpu = GPUS_TO_USE[g];
+                threads.emplace_back([&, gpu, g]() {
+                    checkCudaErrors(cudaSetDevice(gpu));
+                    if(CHECKPOINT_SAVE){
+                        printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
+                        devices[gpu].cudaMemcpyDeviceField(hostField, g);
+                        devices[gpu].interfaceCudaMemcpyDeviceField(false, g); 
+                        devices[gpu].saveSimCheckpointDeviceField(step, g);
+                    }
+                    checkCudaErrors(cudaDeviceSynchronize());
+                });
+            }
+
+            for (auto &t : threads) {
+                t.join();
+            }
+
+            threads.clear();
 
     checkCudaErrors(cudaDeviceSynchronize());
     #if MEAN_FLOW
@@ -242,7 +331,19 @@ int main() {
     /* ------------------------------ FREE ------------------------------ */
 
     hostField.freeHostField();
-    deviceField.freeDeviceField();
+    for(int g = 0; g < N_GPUS; g++){
+        int gpu = GPUS_TO_USE[g];
+        threads.emplace_back([&, gpu, g]() {
+            devices[g].freeDeviceField(g);
+            checkCudaErrors(cudaDeviceSynchronize());
+        });
+    }
+
+    for (auto &t : threads) {
+        t.join();
+    }
+
+    threads.clear();
 
     // Free particle
     #ifdef PARTICLE_MODEL
