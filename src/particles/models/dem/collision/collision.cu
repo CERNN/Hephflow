@@ -177,7 +177,7 @@ dfloat3 getOrUpdateTangentialDisplacement(
 
 // -------------------------- SPHERE COLLISION --------------------------------
 __device__
-void sphereWallCollision(const CollisionContext& ctx){
+void sphereWallCollision(const CollisionContext& ctx, ParticleWallForces *d_pwForces){
 
     ParticleCenter* pc_i = ctx.pc_i;
     Wall wallData = ctx.wall;
@@ -191,7 +191,7 @@ void sphereWallCollision(const CollisionContext& ctx){
     const dfloat3 w_i = pc_i->getW();
 
     // Wall info
-    dfloat3 wall_speed = dfloat3(0,0,0);
+    dfloat3 wall_speed = wallData.velocity;
     dfloat3 n = wallData.normal;
     n = n * -1.0f; //invert collision direction since is from sphere to wall
 
@@ -230,6 +230,33 @@ void sphereWallCollision(const CollisionContext& ctx){
 
     //Save data in the particle information
     accumulateForceAndTorque(pc_i, f_dirs, m_dirs);
+
+    // Force exerted by particle on wall
+    dfloat3 f_on_wall = -f_dirs;
+
+    // Magnitudes
+    dfloat Fn = vector_length(f_normal);
+    dfloat Ft = vector_length(f_tang);
+
+    // Select wall accumulator
+    ParticleWallForce* pwf = nullptr;
+
+    if (wallData.normal.y > 0) {
+        pwf = &d_pwForces->bottom;
+    } else if (wallData.normal.y < 0) {
+        pwf = &d_pwForces->top;
+    }
+
+    if (pwf) {
+        atomicAdd(&pwf->Fx, f_on_wall.x);
+        atomicAdd(&pwf->Fy, f_on_wall.y);
+        atomicAdd(&pwf->Fz, f_on_wall.z);
+
+        atomicAdd(&pwf->Fn, Fn);
+        atomicAdd(&pwf->Ft, Ft);
+
+        atomicAdd(&pwf->nContacts, 1);
+    }
 }
 
 // ------------------------- CAPSULE COLLISIONS -------------------------------

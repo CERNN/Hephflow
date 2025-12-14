@@ -41,7 +41,7 @@
  *  @param step: The current time step for collision processing.
  */
 __global__
-void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, unsigned int step);
+void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, ParticleWallForces *d_pwForces, unsigned int step);
 
 // collision between particles themselves
 /**
@@ -61,14 +61,14 @@ void checkCollisionBetweenParticles(unsigned int column, unsigned int row, Parti
  *  @param step: The current time step for collision checking.
  */
 __device__
-void checkCollisionWalls(ParticleShape *shape, ParticleCenter* pc_i, unsigned int step);
+void checkCollisionWalls(ParticleShape *shape, ParticleCenter* pc_i, ParticleWallForces *d_pwForces, unsigned int step);
 /**
  *  @brief Check for collisions between a sphere and walls.
  *  @param pc_i: Pointer to the `ParticleCenter` structure containing sphere information.
  *  @param step: The current time step for collision checking.
  */
 __device__
-void checkCollisionWallsSphere(ParticleCenter* pc_i, unsigned int step);
+void checkCollisionWallsSphere(ParticleCenter* pc_i, ParticleWallForces *d_pwForces, unsigned int step);
 /**
  *  @brief Check for collisions between a capsule and walls.
  *  @param pc_i: Pointer to the `ParticleCenter` structure containing capsule information.

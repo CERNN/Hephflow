@@ -77,8 +77,8 @@ typedef struct deviceField{
     #endif //LOCAL_FORCES
 
     #ifdef PARTICLE_MODEL
-    void particleSimulationDeviceField(ParticlesSoA &particlesSoA, cudaStream_t *streamsPart, unsigned int step){
-        particleSimulation(&particlesSoA,d_fMom,streamsPart,step);
+    void particleSimulationDeviceField(ParticlesSoA &particlesSoA, cudaStream_t *streamsPart, ParticleWallForces *d_pwForces,unsigned int step){
+        particleSimulation(&particlesSoA,d_fMom,streamsPart,d_pwForces,step);
     }
     #endif //PARTICLE_MODEL
 
@@ -127,7 +127,8 @@ typedef struct deviceField{
         saveSimCheckpoint(d_fMom,ghostInterface,&step);
     }
 
-    void treatDataDeviceField(hostField &hostField, int step){
+    void treatDataDeviceField(hostField &hostField, 
+        int step){
         treatData(hostField.h_fMom, d_fMom,
         #if MEAN_FLOW
         hostField.m_fMom,

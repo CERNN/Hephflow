@@ -161,7 +161,7 @@ dfloat3 getOrUpdateTangentialDisplacement(
  *  @param step: The current time step for collision processing.
  */
 __device__
-void sphereWallCollision(const CollisionContext& ctx);
+void sphereWallCollision(const CollisionContext& ctx, ParticleWallForces *d_pwForces);
 
 /**
  *  @brief Handle collision mechanics between a capsule's end cap and a wall.

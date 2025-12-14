@@ -374,5 +374,21 @@ typedef struct curvedBoundary{
 }CurvedBoundary;
 
 
+struct ParticleWallForce {
+    dfloat Fx;   // sum of particle forces on wall (x)
+    dfloat Fy;   // sum of particle forces on wall (y)
+    dfloat Fz;   // sum of particle forces on wall (z)
+
+    dfloat Fn;   // sum of normal force magnitudes
+    dfloat Ft;   // sum of tangential force magnitudes
+
+    int    nContacts; // number of particle-wall contacts
+};
+
+struct ParticleWallForces {
+    ParticleWallForce bottom;
+    ParticleWallForce top;
+};
+
 
 #endif //__GLOBAL_STRUCTS_H

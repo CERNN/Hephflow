@@ -44,7 +44,7 @@
 /* ----------------------------- PROBLEM DEFINE ---------------------------- */
 
 
-#define BC_PROBLEM couette_spherical
+#define BC_PROBLEM 006_couetteSpherical
 
                                 
 constexpr bool console_flush = false;

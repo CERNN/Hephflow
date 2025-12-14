@@ -61,5 +61,10 @@ void saveParticlesInfo(ParticlesSoA *particles, unsigned int step, std::atomic<b
  */
 void printParticlesInfo(ParticlesSoA particles, unsigned int step);
 
+void collectAndExportWallForces(
+    ParticleWallForces* d_pwForces,
+    unsigned int step
+);
+
 #endif //PARTICLE_MODEL
 #endif //!__PARTICLES_REPORT_H
