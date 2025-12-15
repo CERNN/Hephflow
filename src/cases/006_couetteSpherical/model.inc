@@ -30,4 +30,11 @@
 #define STENCIL_4 // Peskin Stencil
 
 
+// ---------------- Long-range interaction toggles ----------------
+//#define ENABLE_LUBRICATION
+//#define ENABLE_REPULSIVE_FORCE
+//#define ENABLE_ATTRACTIVE_FORCE
+//#define ENABLE_RATE_DEP_LUBRICATION
+
+
 

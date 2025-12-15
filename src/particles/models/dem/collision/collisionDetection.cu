@@ -327,22 +327,27 @@ void checkCollisionBetweenParticles( unsigned int column,unsigned int row,Partic
 // ------------------------------------------------------------------------ 
 
 
-__device__
 void sphereSphereCollisionCheck(unsigned int column,unsigned int row,ParticleCenter* pc_i, ParticleCenter* pc_j, int step){
     dfloat gap = sphereSphereGap(pc_i, pc_j);
-    if (gap < 0) {
-        dfloat3 diff_pos = getDiffPeriodic(pc_i->getPos(), pc_j->getPos());
-        dfloat mag_dist = vector_length(diff_pos);
-        dfloat3 normal = (mag_dist != 0) ? (diff_pos / mag_dist) : dfloat3{0.0, 0.0, 0.0};
+    dfloat3 diff_pos = getDiffPeriodic(pc_i->getPos(), pc_j->getPos());
+    dfloat mag_dist = vector_length(diff_pos);
+    dfloat3 normal = (mag_dist != 0) ? diff_pos / mag_dist : dfloat3{0,0,0};
 
-        CollisionContext ctx = {};
-        ctx.pc_i = pc_i;
-        ctx.pc_j = pc_j;
-        ctx.displacement = -gap; // overlap
-        ctx.step = step;
-        ctx.partnerID = row;
-        ctx.wall.normal = normal;
-        sphereSphereCollision(ctx);
+    CollisionContext ctx = {};
+    ctx.pc_i = pc_i;
+    ctx.pc_j = pc_j;
+    ctx.step = step;
+    ctx.partnerID = row;
+    ctx.wall.normal = normal;
+
+    if (gap < 0) {
+        ctx.displacement = -gap;
+        sphereSphereCollision(ctx); // Hertz
+    }
+    else {
+        sphereSphereLubrication(ctx, gap);
+        sphereSphereRepulsion(ctx, gap);
+        sphereSphereAttraction(ctx, gap);
     }
 }
 

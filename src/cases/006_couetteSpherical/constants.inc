@@ -4,7 +4,7 @@
 constexpr dfloat RE = 10;
 
 constexpr int SCALE = 1;
-constexpr int N_STEPS = 5000;
+constexpr int N_STEPS = 50000;
 constexpr int N = 256 * SCALE;
 constexpr int NX = 2*N;        // size x of the grid 
 constexpr int NY = N;        // size y of the grid
@@ -54,12 +54,14 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
 #define LOAD_FIELD false
 #define LOAD_FIELD_STEP 0
 
+#define WALL_VEL_UX U_MAX
+
 #ifdef PARTICLE_MODEL
     #define IBM_METHOD
     #define DEM_METHOD
     #define LOCAL_FORCES
     //number of particles
-    #define NUM_PARTICLES 2600
+    #define NUM_PARTICLES 3600
 
     constexpr dfloat GX = 0.0;
     constexpr dfloat GY = 0.0;
@@ -90,6 +92,19 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
 
     #endif //DEM_METHOD
 
+    // ---- Lubrication ----
+    #define LUB_CUTOFF_FACTOR   0.02
+    #define LUB_MIN_FACTOR      0.002
 
-    #define WALL_VEL_UX U_MAX
+    // ---- Repulsion ----
+    #define REP_RANGE_FACTOR    0.02
+    #define REP_FORCE_AMPLITUDE  1.0 
+
+    // ---- Attraction ----
+    #define ATT_RANGE_FACTOR    0.01
+
+    // ---- Van der Waals attraction ----
+    #define HAMAKER_CONST 1e-4   // lattice units
+
+
 #endif //PARTICLE_MODEL

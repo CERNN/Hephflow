@@ -9,7 +9,7 @@
  *  @date 01/01/2025
  */
 
-#ifndef ___COLLISION_DETECTION_H
+#ifndef __COLLISION_DETECTION_H
 #define __COLLISION_DETECTION_H
 
 #include "../../ibm/ibmVar.h"
@@ -17,6 +17,7 @@
 #include "../../../../globalFunctions.h"
 #include "../../../class/Particle.cuh"
 #include "collision.cuh"
+#include "nearFieldForces.cuh"
 
 #ifdef PARTICLE_MODEL
 
