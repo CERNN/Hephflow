@@ -93,18 +93,18 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
     #endif //DEM_METHOD
 
     // ---- Lubrication ----
-    #define LUB_CUTOFF_FACTOR   0.02
-    #define LUB_MIN_FACTOR      0.002
+    #define LUB_CUTOFF_FACTOR   0.02 //stop working above this value
+    #define LUB_MIN_FACTOR      1e-3 //stop working below this values since the force is proportional to 1/h
 
     // ---- Repulsion ----
-    #define REP_RANGE_FACTOR    0.02
-    #define REP_FORCE_AMPLITUDE  1.0 
+    #define REP_RANGE_FACTOR    0.1 //stops woirking above this value
+    #define REP_FORCE_AMPLITUDE  1.0
 
     // ---- Attraction ----
-    #define ATT_RANGE_FACTOR    0.01
+    #define ATT_RANGE_FACTOR    0.1
 
     // ---- Van der Waals attraction ----
-    #define HAMAKER_CONST 1e-4   // lattice units
+    #define HAMAKER_CONST 1e-5   // lattice units
 
 
 #endif //PARTICLE_MODEL

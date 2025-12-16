@@ -31,10 +31,9 @@
 
 
 // ---------------- Long-range interaction toggles ----------------
-//#define ENABLE_LUBRICATION
+#define ENABLE_LUBRICATION
 //#define ENABLE_REPULSIVE_FORCE
-//#define ENABLE_ATTRACTIVE_FORCE
-//#define ENABLE_RATE_DEP_LUBRICATION
+#define ENABLE_ATTRACTIVE_FORCE
 
 
 

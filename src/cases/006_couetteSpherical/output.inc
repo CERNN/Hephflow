@@ -1,5 +1,5 @@
 /* ----------------------------- OUTPUT DEFINES ---------------------------- */
-#define ID_SIM "000"            // prefix for simulation's files
+#define ID_SIM "009"            // prefix for simulation's files
 #define PATH_FILES "CouetteSpherical"  // path to save simulation's files
 #define TREATFIELD (false) //treat data over the entire field
 #define TREATPOINT (false) //treat data in a single or several points

@@ -16,6 +16,7 @@ void particleSimulation(
     // Calculate collision force between particles
     ParticleCenter* pArray = particles->getPCenterArray();
     ParticleShape* shape = particles->getPShape();
+    updateParticleOldValues<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
     particlesCollisionHandler<<<GRID_PCOLLISION, TOTAL_PCOLLISION, 0, streamParticles[0]>>>(shape,pArray,d_pwForces,step);
     checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
 
@@ -35,7 +36,6 @@ void particleSimulation(
 
     updateParticleCenterVelocityAndRotation<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
     updateParticlePosition<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
-    updateParticleOldValues<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
     checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
 }
 
