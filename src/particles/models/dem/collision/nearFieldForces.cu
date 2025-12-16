@@ -164,7 +164,7 @@ void sphereSphereAttraction(const CollisionContext& ctx, dfloat gap)
 
     const dfloat A_H = HAMAKER_CONST;
 
-    dfloat force_mag = (A_H * r_eq) / (12.0 * h * h);
+    dfloat force_mag = (A_H * r_eq) / (6.0 * h * h);
     dfloat3 f = force_mag * n;
 
     accumulateForceAndTorque(pc_i, -f, dfloat3{0,0,0});
