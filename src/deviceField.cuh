@@ -64,6 +64,7 @@ typedef struct deviceField{
         , d_curvedBC[g], d_curvedBC_array[g]
         #endif //CURVED_BOUNDARY_CONDITION
         );
+        checkCudaErrors(cudaDeviceSynchronize());
         
         
     }

@@ -98,7 +98,7 @@ dfloat recordElapsedTime(cudaEvent_t &start_step, cudaEvent_t &stop_step, int st
     checkCudaErrors(cudaEventElapsedTime(&elapsedTime, start_step, stop_step));
     elapsedTime *= 0.001;
 
-    size_t nodesUpdatedSync = (step - ini_step) * NUMBER_LBM_NODES;
+    size_t nodesUpdatedSync = (step - ini_step) * NX * NY * NZ_TOTAL;
     dfloat MLUPS = (nodesUpdatedSync / 1e6) / elapsedTime;
     return MLUPS;
 }
@@ -866,8 +866,10 @@ void initializeDomain(
             // Implement LOAD_FIELD logic if needed
         } else {
             gpuInitialization_mom<<<gridBlock, threadBlock>>>(d_fMom, randomNumbers[g]);
+            checkCudaErrors(cudaDeviceSynchronize());
         }
         gpuInitialization_pop<<<gridBlock, threadBlock>>>(d_fMom, ghostInterface);
+        checkCudaErrors(cudaDeviceSynchronize());
     }
 
     // Mean flow initialization

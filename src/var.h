@@ -53,8 +53,8 @@ constexpr bool console_flush = false;
 
 
 /* --------------------------  SIMULATION DEFINES -------------------------- */
-constexpr unsigned int N_GPUS = 4;    // Number of GPUS to use
-constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0,1,2,3};    // Which GPUs to use
+constexpr unsigned int N_GPUS = 2;    // Number of GPUS to use
+constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0,3};    // Which GPUs to use
 
 #define STR_IMPL(A) #A
 #define STR(A) STR_IMPL(A)
