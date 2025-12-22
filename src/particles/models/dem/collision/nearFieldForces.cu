@@ -1,9 +1,10 @@
 #include "nearFieldForces.cuh"
 
+#ifdef ENABLE_LUBRICATION
 __device__
 void sphereWallLubrication(const CollisionContext& ctx, dfloat gap)
 {
-#ifdef ENABLE_LUBRICATION
+
     ParticleCenter* pc = ctx.pc_i;
 
     const dfloat R = pc->getRadius();
@@ -31,13 +32,15 @@ void sphereWallLubrication(const CollisionContext& ctx, dfloat gap)
     dfloat3 f = -(C / h) * (un);
 
     accumulateForceAndTorque(pc, -f, dfloat3{0,0,0});
-#endif
-}
 
+}
+#endif
+
+#ifdef ENABLE_REPULSIVE_FORCE
 __device__
 void sphereWallRepulsion(const CollisionContext& ctx, dfloat gap)
 {
-#ifdef ENABLE_REPULSIVE_FORCE
+
     ParticleCenter* pc = ctx.pc_i;
 
     const dfloat R = pc->getRadius();
@@ -52,13 +55,14 @@ void sphereWallRepulsion(const CollisionContext& ctx, dfloat gap)
     dfloat3 f = force_mag * n;
 
     accumulateForceAndTorque(pc, -f, dfloat3{0,0,0});
-#endif
-}
 
+}
+#endif
+#ifdef ENABLE_ATTRACTIVE_FORCE
 __device__
 void sphereWallAttraction(const CollisionContext& ctx, dfloat gap)
 {
-#ifdef ENABLE_ATTRACTIVE_FORCE
+
     ParticleCenter* pc = ctx.pc_i;
 
     const dfloat R = pc->getRadius();
@@ -76,14 +80,15 @@ void sphereWallAttraction(const CollisionContext& ctx, dfloat gap)
     dfloat3 f = force_mag * n;
 
     accumulateForceAndTorque(pc, -f, dfloat3{0,0,0});
-#endif
+
 }
+#endif
 
-
+#ifdef ENABLE_LUBRICATION
 __device__
 void sphereSphereLubrication(const CollisionContext& ctx, dfloat gap)
 {
-#ifdef ENABLE_LUBRICATION
+
     ParticleCenter* pc_i = ctx.pc_i;
     ParticleCenter* pc_j = ctx.pc_j;
 
@@ -111,15 +116,15 @@ void sphereSphereLubrication(const CollisionContext& ctx, dfloat gap)
 
     accumulateForceAndTorque(pc_i, -f, dfloat3{0,0,0});
     accumulateForceAndTorque(pc_j,  f, dfloat3{0,0,0});
-#endif
+
 }
+#endif
 
-
-
+#ifdef ENABLE_REPULSIVE_FORCE
 __device__
 void sphereSphereRepulsion(const CollisionContext& ctx, dfloat gap)
 {
-#ifdef ENABLE_REPULSIVE_FORCE
+
     ParticleCenter* pc_i = ctx.pc_i;
     ParticleCenter* pc_j = ctx.pc_j;
 
@@ -138,16 +143,16 @@ void sphereSphereRepulsion(const CollisionContext& ctx, dfloat gap)
 
     accumulateForceAndTorque(pc_i, -f, dfloat3{0,0,0});
     accumulateForceAndTorque(pc_j,  f, dfloat3{0,0,0});
-#endif
+
 }
+#endif
 
 
-
-
+#ifdef ENABLE_ATTRACTIVE_FORCE
 __device__
 void sphereSphereAttraction(const CollisionContext& ctx, dfloat gap)
 {
-#ifdef ENABLE_ATTRACTIVE_FORCE
+
     ParticleCenter* pc_i = ctx.pc_i;
     ParticleCenter* pc_j = ctx.pc_j;
 
@@ -169,6 +174,7 @@ void sphereSphereAttraction(const CollisionContext& ctx, dfloat gap)
 
     accumulateForceAndTorque(pc_i, -f, dfloat3{0,0,0});
     accumulateForceAndTorque(pc_j,  f, dfloat3{0,0,0});
-#endif
+
 }
 
+#endif

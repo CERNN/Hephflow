@@ -17,6 +17,7 @@
 
 
 #ifdef PARTICLE_MODEL
+#ifdef ENABLE_LUBRICATION
 /**
  * @brief Compute near-field hydrodynamic lubrication forces between a sphere and a wall.
  * @param ctx  Collision context containing particle and wall data.
@@ -24,7 +25,8 @@
  */
 __device__ 
 void sphereWallLubrication(const CollisionContext& ctx, dfloat gap);
-
+#endif
+#ifdef ENABLE_REPULSIVE_FORCE
 /**
  * @brief Compute near-field repulsive forces between a sphere and a wall.
  * @param ctx  Collision context containing particle and wall data.
@@ -32,7 +34,8 @@ void sphereWallLubrication(const CollisionContext& ctx, dfloat gap);
  */
 __device__ 
 void sphereWallRepulsion (const CollisionContext& ctx, dfloat gap);
-
+#endif
+#ifdef ENABLE_ATTRACTIVE_FORCE
 /**
  * @brief Compute near-field attractive forces between a sphere and a wall.
  * @param ctx  Collision context containing particle and wall data.
@@ -40,7 +43,8 @@ void sphereWallRepulsion (const CollisionContext& ctx, dfloat gap);
  */
 __device__ 
 void sphereWallAttraction(const CollisionContext& ctx, dfloat gap);
-
+#endif
+#ifdef ENABLE_LUBRICATION
 /**
  * @brief Compute near-field hydrodynamic lubrication forces between two spheres.
  * @param ctx  Collision context containing particle-particle interaction data.
@@ -48,7 +52,8 @@ void sphereWallAttraction(const CollisionContext& ctx, dfloat gap);
  */
 __device__
 void sphereSphereLubrication(const CollisionContext& ctx, dfloat gap);
-
+#endif
+#ifdef ENABLE_REPULSIVE_FORCE
 /**
  * @brief Compute near-field repulsive forces between two spheres.
  * @param ctx  Collision context containing particle-particle interaction data.
@@ -56,7 +61,8 @@ void sphereSphereLubrication(const CollisionContext& ctx, dfloat gap);
  */
 __device__
 void sphereSphereRepulsion(const CollisionContext& ctx, dfloat gap);
-
+#endif
+#ifdef ENABLE_ATTRACTIVE_FORCE
 /**
  * @brief Compute near-field attractive forces between two spheres.
  * @param ctx  Collision context containing particle-particle interaction data.
@@ -64,8 +70,6 @@ void sphereSphereRepulsion(const CollisionContext& ctx, dfloat gap);
  */
 __device__
 void sphereSphereAttraction(const CollisionContext& ctx, dfloat gap);
-
-
-
+#endif
 #endif //PARTICLE_MODEL
 #endif // !__NEAR_FIELD_FORCES_H

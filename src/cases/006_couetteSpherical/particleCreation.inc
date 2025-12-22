@@ -1,7 +1,7 @@
 srand(12345);  // fixed seed for reproducibility
 
 
-dfloat diameter = 16.0;
+dfloat diameter = 20.0;
 dfloat radius   = diameter / 2.0;
 
 srand(12345);  // fixed seed for reproducibility

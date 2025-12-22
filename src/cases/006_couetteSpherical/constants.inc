@@ -4,14 +4,14 @@
 constexpr dfloat RE = 10;
 
 constexpr int SCALE = 1;
-constexpr int N_STEPS = 150000;
-constexpr int N = 256 * SCALE;
-constexpr int NX = 2*N;        // size x of the grid 
+constexpr int N_STEPS = 200000;
+constexpr int N = 320 * SCALE;
+constexpr int NX = N;        // size x of the grid 
 constexpr int NY = N;        // size y of the grid
 constexpr int NZ = N;        // size z of the grid in one GPU
 constexpr int NZ_TOTAL = NZ;       // size z of the grid
 
-constexpr dfloat U_MAX = 0.0333333333;  
+constexpr dfloat U_MAX = 0.0000533333;  
 constexpr dfloat L = N;
 
 constexpr dfloat FX = 0.0;        // force in x
@@ -61,7 +61,7 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
     #define DEM_METHOD
     #define LOCAL_FORCES
     //number of particles
-    #define NUM_PARTICLES 7402
+    #define NUM_PARTICLES 3129 // 391 / 782 / 1565 / 2347 / 3129
 
     constexpr dfloat GX = 0.0;
     constexpr dfloat GY = 0.0;
@@ -79,11 +79,11 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
 
 
         //material properties
-        constexpr dfloat PARTICLE_YOUNG_MODULUS = 0.5; //-- case
+        constexpr dfloat PARTICLE_YOUNG_MODULUS = 0.3; //-- case
         constexpr dfloat PARTICLE_POISSON_RATIO = 0.3; //-- case
 
 
-        constexpr dfloat WALL_YOUNG_MODULUS = 100.0; //-- case
+        constexpr dfloat WALL_YOUNG_MODULUS = 10.0; //-- case
         constexpr dfloat WALL_POISSON_RATIO = 0.3; //-- case
 
         // Sphere-wall collision constants (compile-time)
