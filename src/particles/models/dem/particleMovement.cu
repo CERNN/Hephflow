@@ -103,7 +103,13 @@ void updateParticleCenterVelocityAndRotation(
 
     // Update particle center velocity using its surface forces and the body forces
     dfloat3 g = {GX,GY,GZ};
-    const dfloat inv_volume = 1 / pc_i->getVolume();
+    // CRITICAL: Validate volume to prevent division by zero
+    dfloat volume = pc_i->getVolume();
+    if (volume <= 0) {
+        printf("ERROR: Invalid particle volume %e at step %u\n", volume, step);
+        return;
+    }
+    const dfloat inv_volume = 1 / volume;
     pc_i->setVel(pc_i->getVel_old() + (((pc_i->getF_old() + pc_i->getF())/2 + pc_i->getDP_internal())*inv_volume
                 + (pc_i->getDensity() - FLUID_DENSITY)*g) / (pc_i->getDensity()));
     //pc_i->setVel(pc_i->getVel_old() + (((pc_i->getF_old() + pc_i->getF())/2 + pc_i->getDP_internal())) / (pc_i->getVolume()) 
@@ -113,7 +119,13 @@ void updateParticleCenterVelocityAndRotation(
     // Update particle angular velocity  
 
     dfloat6 I = pc_i->getI();
-    dfloat inv_I_det_neg = 1.0/(I.zz*I.xy*I.xy + I.yy*I.xz*I.xz + I.xx*I.yz*I.yz - I.xx*I.yy*I.zz - 2*I.xy*I.xz*I.yz);
+    // CRITICAL: Check inertia determinant before division to prevent NaN propagation
+    dfloat I_det = I.zz*I.xy*I.xy + I.yy*I.xz*I.xz + I.xx*I.yz*I.yz - I.xx*I.yy*I.zz - 2*I.xy*I.xz*I.yz;
+    if (!isfinite(I_det) || fabs(I_det) < 1e-15) {
+        printf("ERROR: Invalid inertia determinant %e at step %u\n", I_det, step);
+        return;
+    }
+    dfloat inv_I_det_neg = 1.0/I_det;
     dfloat3 wAux = pc_i->getW_old();
     dfloat3 wAvg = (pc_i->getW_old() + pc_i->getW())/2;
     dfloat3 LM_avg = pc_i->getDL_internal() + (pc_i->getM_old() + pc_i->getM())/2;
@@ -213,7 +225,10 @@ void updateParticlePosition(
     #endif //BC_X_WALL
     #ifdef BC_X_PERIODIC
         dfloat dx  = (pc_i->getVelX() + pc_i->getVelOldX())/2;
-        pc_i->setPosX(std::fmod((dfloat)(pc_i->getPosX() + dx + NX),(dfloat)(NX)));
+        // CRITICAL: Proper modulo for periodic BC - handles negative and large values
+        dfloat new_x = pc_i->getPosX() + dx;
+        dfloat mod_x = std::fmod(new_x, (dfloat)NX);
+        pc_i->setPosX((mod_x < 0) ? mod_x + (dfloat)NX : mod_x);
     #endif //BC_X_PERIODIC
 
     #ifdef BC_Y_WALL
@@ -221,7 +236,10 @@ void updateParticlePosition(
     #endif //BC_Y_WALL
     #ifdef BC_Y_PERIODIC
         dfloat dy  = (pc_i->getVelY() + pc_i->getVelOldY())/2;
-        pc_i->setPosY(std::fmod((dfloat)(pc_i->getPosY() + dy + NY),(dfloat)(NY)));
+        // CRITICAL: Proper modulo for periodic BC - handles negative and large values
+        dfloat new_y = pc_i->getPosY() + dy;
+        dfloat mod_y = std::fmod(new_y, (dfloat)NY);
+        pc_i->setPosY((mod_y < 0) ? mod_y + (dfloat)NY : mod_y);
     #endif //BC_Y_PERIODIC
 
     #ifdef BC_Z_WALL
@@ -229,7 +247,10 @@ void updateParticlePosition(
     #endif //BC_Z_WALL
     #ifdef BC_Z_PERIODIC
         dfloat dz  = (pc_i->getVelZ() + pc_i->getVelOldZ())/2;
-        pc_i->setPosZ(std::fmod((dfloat)(pc_i->getPosZ() + dz + NZ_TOTAL),(dfloat)(NZ_TOTAL)));
+        // CRITICAL: Proper modulo for periodic BC - handles negative and large values
+        dfloat new_z = pc_i->getPosZ() + dz;
+        dfloat mod_z = std::fmod(new_z, (dfloat)NZ_TOTAL);
+        pc_i->setPosZ((mod_z < 0) ? mod_z + (dfloat)NZ_TOTAL : mod_z);
     #endif //BC_Z_PERIODIC
 
     //Compute angular velocity
