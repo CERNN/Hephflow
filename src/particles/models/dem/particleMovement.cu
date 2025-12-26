@@ -277,6 +277,18 @@ void updateParticlePosition(
     }
     dfloat angle = w_norm;
     dfloat4 q = axis_angle_to_quart(axis, angle);
+    
+    // PRECISION FIX: Update cumulative rotation quaternion
+    // Fetch current accumulated rotation from particle center
+    dfloat4 q_cumulative = pc_i->getQ_cumulative_rot();
+    
+    // Compose new rotation into cumulative rotation
+    // q_cumulative = q_cumulative * q_new (quaternion multiplication)
+    q_cumulative = quart_multiplication(q_cumulative, q);
+    
+    // Store updated cumulative rotation back to particle center
+    pc_i->setQ_cumulative_rot(q_cumulative);
+    
     dfloat3 pos_old = pc_i->getPos_old();
 
     dfloat3 pos_new = pc_i->getPos();
