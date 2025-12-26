@@ -87,6 +87,9 @@ __host__ __device__ void IbmNodesSoA::setFZ(const dfloat& fz) { this->f.z[0] = f
 __host__ __device__ dfloat3SoA IbmNodesSoA::getDeltaF() const { return this->deltaF; }
 __host__ __device__ void IbmNodesSoA::setDeltaF(const dfloat3SoA& deltaF) { this->deltaF = deltaF; }
 
+__host__ __device__ dfloat3SoA IbmNodesSoA::getOriginalRelativePos() const { return this->originalRelativePos; }
+__host__ __device__ void IbmNodesSoA::setOriginalRelativePos(const dfloat3SoA& originalRelativePos) { this->originalRelativePos = originalRelativePos; }
+
 __host__ __device__ dfloat* IbmNodesSoA::getS() const { return this->S; }
 __host__ __device__ void IbmNodesSoA::setS(dfloat* S) { this->S = S; }
 
@@ -99,6 +102,7 @@ void IbmNodesSoA::allocateMemory(unsigned int numMaxNodes)
     this->vel_old.allocateMemory((size_t) numMaxNodes);
     this->f.allocateMemory((size_t) numMaxNodes);
     this->deltaF.allocateMemory((size_t) numMaxNodes);
+    this->originalRelativePos.allocateMemory((size_t) numMaxNodes);
 
     checkCudaErrors(
         cudaMallocManaged((void**)&(this->S), sizeof(dfloat) * numMaxNodes));
@@ -116,6 +120,7 @@ void IbmNodesSoA::freeMemory()
     this->vel_old.freeMemory();
     this->f.freeMemory();
     this->deltaF.freeMemory();
+    this->originalRelativePos.freeMemory();
 
     cudaFree(this->S);
     cudaFree(this->particleCenterIdx);
@@ -162,6 +167,7 @@ void IbmNodesSoA::leftShiftNodesSoA(int idx, int left_shift){
     this->vel_old.leftShift(idx, left_shift);
     this->f.leftShift(idx, left_shift);
     this->deltaF.leftShift(idx, left_shift);
+    this->originalRelativePos.leftShift(idx, left_shift);
 }
 
 

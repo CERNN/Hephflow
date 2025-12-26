@@ -286,6 +286,128 @@ typedef struct dfloat3SoA {
 
 } dfloat3SoA;
 
+/**
+ *  @brief Structure of Arrays for dfloat4 (quaternions: w, x, y, z)
+ *  Stores 4-component quaternions in separated arrays for CUDA memory coalescing
+ */
+typedef struct dfloat4SoA {
+    int varLocation; // IN_VIRTUAL or IN_HOST
+    dfloat* w; // w component array
+    dfloat* x; // x component array
+    dfloat* y; // y component array
+    dfloat* z; // z component array
+
+    __host__ __device__
+    dfloat4SoA()
+    {
+        varLocation = 0;
+        w = nullptr;
+        x = nullptr;
+        y = nullptr;
+        z = nullptr;
+    }
+
+    __host__ __device__
+    ~dfloat4SoA()
+    {
+        varLocation = 0;
+        w = nullptr;
+        x = nullptr;
+        y = nullptr;
+        z = nullptr;
+    }
+
+    /**
+     *  @brief Allocate memory for quaternion SoA
+     *  @param arraySize: array size, in number of elements
+     *  @param location: array location, IN_VIRTUAL or IN_HOST
+     */
+    __host__
+    void allocateMemory(size_t arraySize, int location = IN_VIRTUAL){
+        size_t memSize = sizeof(dfloat) * arraySize;
+
+        this->varLocation = location;
+        switch(location){
+        case IN_VIRTUAL:
+            checkCudaErrors(cudaMallocManaged((void**)&(this->w), memSize));
+            checkCudaErrors(cudaMallocManaged((void**)&(this->x), memSize));
+            checkCudaErrors(cudaMallocManaged((void**)&(this->y), memSize));
+            checkCudaErrors(cudaMallocManaged((void**)&(this->z), memSize));
+            break;
+        case IN_HOST:
+            checkCudaErrors(cudaMallocHost((void**)&(this->w), memSize));
+            checkCudaErrors(cudaMallocHost((void**)&(this->x), memSize));
+            checkCudaErrors(cudaMallocHost((void**)&(this->y), memSize));
+            checkCudaErrors(cudaMallocHost((void**)&(this->z), memSize));
+            break;
+        default:
+            break;
+        }
+    }
+
+    /**
+     *  @brief Free memory of quaternion SoA
+     */
+    __host__
+    void freeMemory(){
+        switch (this->varLocation)
+        {
+        case IN_VIRTUAL:
+            checkCudaErrors(cudaFree(this->w));
+            checkCudaErrors(cudaFree(this->x));
+            checkCudaErrors(cudaFree(this->y));
+            checkCudaErrors(cudaFree(this->z));
+            break;
+
+        case IN_HOST:
+            checkCudaErrors(cudaFreeHost(this->w));
+            checkCudaErrors(cudaFreeHost(this->x));
+            checkCudaErrors(cudaFreeHost(this->y));
+            checkCudaErrors(cudaFreeHost(this->z));
+            break;
+        default:
+            break;
+        }
+    }
+
+    /**
+     *  @brief Copy value from dfloat4 (quaternion)
+     *  @param val: dfloat4 to copy values
+     *  @param idx: index to write values to
+     */
+    __host__ __device__
+    void copyValuesFromFloat4(dfloat4 val, size_t idx){
+        this->w[idx] = val.w;
+        this->x[idx] = val.x;
+        this->y[idx] = val.y;
+        this->z[idx] = val.z;
+    }
+
+    /**
+     *  @brief Get the values from given index
+     *  @param idx: index to copy from
+     *  @return dfloat4: dfloat4 with quaternion values
+     */
+    __host__ __device__
+    dfloat4 getValuesFromIdx(size_t idx){
+        return dfloat4{this->w[idx], this->x[idx], this->y[idx], this->z[idx]};
+    }
+
+    /**
+     *  @brief Left shift values (used for array compaction after deletions)
+     *  @param idx: source index
+     *  @param left_shift: number of positions to shift left
+     */
+    __host__ __device__
+    void leftShift(size_t idx, size_t left_shift){
+        this->w[idx-left_shift] = this->w[idx];
+        this->x[idx-left_shift] = this->x[idx];
+        this->y[idx-left_shift] = this->y[idx];
+        this->z[idx-left_shift] = this->z[idx];
+    }
+
+} dfloat4SoA;
+
 
 
 typedef struct ghostData {

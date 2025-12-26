@@ -90,6 +90,7 @@ ParticleCenter::ParticleCenter() {
     w_pos = dfloat3();
     q_pos = dfloat4();
     q_pos_old = dfloat4();
+    q_cumulative_rot = dfloat4({1.0f, 0.0f, 0.0f, 0.0f}); // Identity quaternion
     f = dfloat3();
     f_old = dfloat3();
     M = dfloat3();
@@ -203,6 +204,17 @@ __host__ __device__ void ParticleCenter::setQPosOldX(dfloat x) { this->q_pos_old
 __host__ __device__ void ParticleCenter::setQPosOldY(dfloat y) { this->q_pos_old.y = y; }
 __host__ __device__ void ParticleCenter::setQPosOldZ(dfloat z) { this->q_pos_old.z = z; }
 __host__ __device__ void ParticleCenter::setQPosOldW(dfloat w) { this->q_pos_old.w = w; }
+
+__host__ __device__ dfloat4 ParticleCenter::getQ_cumulative_rot() const { return this->q_cumulative_rot; }
+__host__ __device__ dfloat ParticleCenter::getQCumulativeRotX() const { return this->q_cumulative_rot.x; }
+__host__ __device__ dfloat ParticleCenter::getQCumulativeRotY() const { return this->q_cumulative_rot.y; }
+__host__ __device__ dfloat ParticleCenter::getQCumulativeRotZ() const { return this->q_cumulative_rot.z; }
+__host__ __device__ dfloat ParticleCenter::getQCumulativeRotW() const { return this->q_cumulative_rot.w; }
+__host__ __device__ void ParticleCenter::setQ_cumulative_rot(const dfloat4& q_cumulative_rot) { this->q_cumulative_rot = q_cumulative_rot; }
+__host__ __device__ void ParticleCenter::setQCumulativeRotX(dfloat x) { this->q_cumulative_rot.x = x; }
+__host__ __device__ void ParticleCenter::setQCumulativeRotY(dfloat y) { this->q_cumulative_rot.y = y; }
+__host__ __device__ void ParticleCenter::setQCumulativeRotZ(dfloat z) { this->q_cumulative_rot.z = z; }
+__host__ __device__ void ParticleCenter::setQCumulativeRotW(dfloat w) { this->q_cumulative_rot.w = w; }
 
 __host__ __device__ dfloat3 ParticleCenter::getF() const { return this->f; }
 __host__ __device__ dfloat ParticleCenter::getFX() const { return this->f.x; }

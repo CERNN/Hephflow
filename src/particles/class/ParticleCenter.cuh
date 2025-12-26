@@ -190,6 +190,18 @@ public:
     __host__ __device__ void setQPosOldZ(dfloat z);
     __host__ __device__ void setQPosOldW(dfloat w);
 
+    // Cumulative rotation quaternion (precision fix)
+    __host__ __device__ dfloat4 getQ_cumulative_rot() const;
+    __host__ __device__ dfloat getQCumulativeRotX() const;
+    __host__ __device__ dfloat getQCumulativeRotY() const;
+    __host__ __device__ dfloat getQCumulativeRotZ() const;
+    __host__ __device__ dfloat getQCumulativeRotW() const;
+    __host__ __device__ void setQ_cumulative_rot(const dfloat4& q_cumulative_rot);
+    __host__ __device__ void setQCumulativeRotX(dfloat x);
+    __host__ __device__ void setQCumulativeRotY(dfloat y);
+    __host__ __device__ void setQCumulativeRotZ(dfloat z);
+    __host__ __device__ void setQCumulativeRotW(dfloat w);
+
     // Force
     __host__ __device__ dfloat3 getF() const;
     __host__ __device__ dfloat getFX() const;
@@ -345,6 +357,7 @@ protected:
     dfloat3 w_pos;      // Particle angular position
     dfloat4 q_pos; // Particle angular poistion defined by a quartenion
     dfloat4 q_pos_old; // Particle angular poistion defined by a quartenion
+    dfloat4 q_cumulative_rot; // Cumulative rotation quaternion for precision fix
     dfloat3 f;          // Sum of the forces acting on particle
     dfloat3 f_old;      // Old sum of the forces acting on particle
     dfloat3 M;          // Total momentum acting on particle

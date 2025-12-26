@@ -83,6 +83,7 @@ protected:
     dfloat3SoA vel_old; // vectors with nodes old velocities
     dfloat3SoA f;  // vectors with nodes forces
     dfloat3SoA deltaF;  // vectors with nodes forces variations
+    dfloat3SoA originalRelativePos; // vectors with original relative positions (node_pos - particle_center_pos) - immutable reference for precision
     dfloat* S; // vector node surface area
 
 public:
@@ -142,6 +143,9 @@ public:
     
     __host__ __device__ dfloat3SoA getDeltaF() const;
     __host__ __device__ void setDeltaF(const dfloat3SoA& deltaF);
+    
+    __host__ __device__ dfloat3SoA getOriginalRelativePos() const;
+    __host__ __device__ void setOriginalRelativePos(const dfloat3SoA& originalRelativePos);
    
     __host__ __device__ dfloat* getS() const;
     __host__ __device__ void setS(dfloat* S);
