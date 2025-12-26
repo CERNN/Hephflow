@@ -1,5 +1,5 @@
 multiplyTerm = rhoVar * W0;
-pics2 = 1.0 - cs2 * (m_xx_t45 + m_yy_t45 + m_zz_t45);
+pics2 = 1.0_df - cs2 * (m_xx_t45 + m_yy_t45 + m_zz_t45);
 
 pop[ 0] = multiplyTerm * (pics2);
 multiplyTerm = rhoVar * W1;

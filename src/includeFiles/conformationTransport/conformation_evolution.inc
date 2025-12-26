@@ -7,12 +7,12 @@ AyyVar -= CONF_ZERO;
 AyzVar -= CONF_ZERO;
 AzzVar -= CONF_ZERO;
 
-dfloat switch_conf = 0.0;
+dfloat switch_conf = 0.0_df;
 if (step>CONFORMATION_SWITCH){
-    switch_conf = 1.0;     
+    switch_conf = 1.0_df;     
 }
 
-// (A . div U + div U^T . A) * 3.0
+// (A . div U + div U^T . A) * 3.0_df
 /*
 dfloat ADU_DUTA_xx_t30 = 2*AxxVar*duxdx_t30 + 2*AxyVar*duxdy_t30 + 2*0*0;
 dfloat ADU_DUTA_yy_t30 = 2*AxyVar*duydx_t30 + 2*AyyVar*duydy_t30 + 2*0*0;
@@ -36,19 +36,19 @@ dfloat aa, bb;
 #ifdef FENE_P
     //trace of A
     dfloat trA = AxxVar + AyyVar + AzzVar;
-    aa = 1.0 / (1 - trA/(fenep_re*fenep_re));
-    bb = 1.0 / (1 - 3.0/(fenep_re*fenep_re));
+    aa = 1.0_df / (1.0_df - trA/(fenep_re*fenep_re));
+    bb = 1.0_df / (1.0_df - 3.0_df/(fenep_re*fenep_re));
 #endif 
 
 #ifdef OLDROYD_B
-    aa = 1.0;
-    bb = 1.0;
+    aa = 1.0_df;
+    bb = 1.0_df;
 #endif
 
 
 //compute source term for the conformation transport
-// G = (1/lambda)*(I-A) + (A . div U + div U^T . A) * 3.0
-//TODO: maybe eq36 is wrong here and it should have  been: G = (1/lambda)*(b*I-a*A) + (A . div U + div U^T . A) * 3.0
+// G = (1/lambda)*(I-A) + (A . div U + div U^T . A) * 3.0_df
+//TODO: maybe eq36 is wrong here and it should have  been: G = (1/lambda)*(b*I-a*A) + (A . div U + div U^T . A) * 3.0_df
 dfloat Gxx = inv_lambda * (bb - aa*AxxVar) + ADU_DUTA_xx_t30/F_M_I_SCALE;
 dfloat Gyy = inv_lambda * (bb - aa*AyyVar) + ADU_DUTA_yy_t30/F_M_I_SCALE;
 dfloat Gzz = inv_lambda * (bb - aa*AzzVar) + ADU_DUTA_zz_t30/F_M_I_SCALE;

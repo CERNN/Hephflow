@@ -11,7 +11,7 @@ dfloat A[3][3]= { //psi matrix
 
 
 // Compute coefficients of the characteristic polynomial eq 30.5
-dfloat a = 1.0;
+dfloat a = 1.0_df;
 dfloat b = -A[0][0] - A[1][1] - A[2][2];
 dfloat c = A[0][0] * A[1][1] + A[0][0] * A[2][2] + A[1][1] * A[2][2] - A[0][1] * A[1][0] - A[0][2] * A[2][0] - A[1][2] * A[2][1];
 dfloat d = A[0][0] * (-A[1][1] * A[2][2] + A[1][2] * A[2][1]) +
@@ -20,20 +20,20 @@ dfloat d = A[0][0] * (-A[1][1] * A[2][2] + A[1][2] * A[2][1]) +
 
 
 // Solve for eigenvalues
-dfloat p = (3.0 * a * c - b * b) / (3.0 * a * a);
-dfloat q = (2.0 * b * b * b - 9.0 * a * b * c + 27.0 * a * a * d) / (27.0 * a * a * a);
+dfloat p = (3.0_df * a * c - b * b) / (3.0_df * a * a);
+dfloat q = (2.0_df * b * b * b - 9.0_df * a * b * c + 27.0_df * a * a * d) / (27.0_df * a * a * a);
 
 
-dfloat discriminant = (q * q / 4.0) + (p * p * p / 27.0);
+dfloat discriminant = (q * q / 4.0_df) + (p * p * p / 27.0_df);
 dfloat eigenvalues_psi[3];
 
 // Three distinct real roots
-dfloat r = sqrt(-p / 3.0);
-dfloat theta = acos(3.0 * q * sqrtf(-3.0 / p) / (2.0 * p));
+dfloat r = sqrt(-p / 3.0_df);
+dfloat theta = acos(3.0_df * q * sqrtf(-3.0_df / p) / (2.0_df * p));
 
-eigenvalues_psi[0]=  2.0 * r * cos(theta / 3.0) - b / (3.0 * a);
-eigenvalues_psi[1]=  2.0 * r * cos((theta + 2.0 * M_PI) / 3.0) - b / (3.0 * a);
-eigenvalues_psi[2]=  2.0 * r * cos((theta + 4.0 * M_PI) / 3.0) - b / (3.0 * a);
+eigenvalues_psi[0]=  2.0_df * r * cos(theta / 3.0_df) - b / (3.0_df * a);
+eigenvalues_psi[1]=  2.0_df * r * cos((theta + 2.0_df * M_PI) / 3.0_df) - b / (3.0_df * a);
+eigenvalues_psi[2]=  2.0_df * r * cos((theta + 4.0_df * M_PI) / 3.0_df) - b / (3.0_df * a);
 
 
 // Compute eigenvectors 
@@ -66,18 +66,18 @@ transpose_matrix_3x3(R, Rt);
 
 //temporary matrices
 dfloat temp[3][3];
-dfloat temp2[3][3] = {0.0};
-dfloat sum_temp[3][3] = {0.0};
+dfloat temp2[3][3] = {0.0_df};
+dfloat sum_temp[3][3] = {0.0_df};
 
 //velocity gradient matrix
 dfloat GU[3][3] = {
-    {duxdx_t30/3.0, duydx_t30/3.0, duzdx_t30/3.0},
-    {duxdy_t30/3.0, duydy_t30/3.0, duzdy_t30/3.0},
-    {duxdz_t30/3.0, duydz_t30/3.0, duzdz_t30/3.0}    
+    {duxdx_t30/3.0_df, duydx_t30/3.0_df, duzdx_t30/3.0_df},
+    {duxdy_t30/3.0_df, duydy_t30/3.0_df, duzdy_t30/3.0_df},
+    {duxdz_t30/3.0_df, duydz_t30/3.0_df, duzdz_t30/3.0_df}    
 };
 
 // Compute M = R^T * GU * R //eq.15
-dfloat M[3][3] = {0.0};
+dfloat M[3][3] = {0.0_df};
 multiply_matrices_3x3(GU, Rt, temp); //GU*Rt
 multiply_matrices_3x3(R, temp, M);   //R* (GU*Rt)
 
@@ -91,7 +91,7 @@ dfloat omega_xz = ( eigenvalues[2]*M[0][2] + eigenvalues[0]*M[2][0] ) / ( eigenv
 dfloat omega_yz = ( eigenvalues[2]*M[1][2] + eigenvalues[1]*M[2][1] ) / ( eigenvalues[2] - eigenvalues[1] + MIN_FLT);
 
 
-dfloat OHM[3][3] = {0.0};
+dfloat OHM[3][3] = {0.0_df};
 
 OHM[0][1] = omega_xy;
 OHM[0][2] = omega_xz ;
@@ -107,7 +107,7 @@ multiply_matrices_3x3(temp, Rt, OHM); //(R*0) * R^T
 
 
 // Compute B matrix Eq 16.b
-dfloat B[3][3] = {0.0};
+dfloat B[3][3] = {0.0_df};
 // the element are diogonal so its not hard to expand
 B[0][0] = M[0][0] * R[0][0] * R[0][0] + M[1][1] * R[0][1] * R[0][1] + M[2][2] * R[0][2] * R[0][2];
 B[0][1] = M[0][0] * R[0][0] * R[1][0] + M[1][1] * R[0][1] * R[1][1] + M[2][2] * R[0][2] * R[1][2];
@@ -132,24 +132,24 @@ dfloat aa, bb;
 #ifdef FENE_P
     //trace of A
     dfloat trA = AxxVar + AyyVar + AzzVar;
-    aa = -inv_fenep_lambda/(1-trA/(fenep_re*fenep_re));
-    bb = -inv_fenep_lambda/(1-3.0/(fenep_re*fenep_re));
+    aa = -inv_fenep_lambda/(1.0_df-trA/(fenep_re*fenep_re));
+    bb = -inv_fenep_lambda/(1.0_df-3.0_df/(fenep_re*fenep_re));
     #ifdef OLDROYD_B
-    aa = 1.0;
-    bb = 1.0;
+    aa = 1.0_df;
+    bb = 1.0_df;
     #endif
 #endif
 
 
 // -I/lambda
-dfloat IM[3][3] = {0.0};
+dfloat IM[3][3] = {0.0_df};
 IM[0][0] = -inv_fenep_lambda*bb;
 IM[1][1] = -inv_fenep_lambda*bb;
 IM[2][2] = -inv_fenep_lambda*bb;
 
 
 // A / lambda
-AA[3][3] = {0.0};
+AA[3][3] = {0.0_df};
 AA[0][0] = -inv_fenep_lambda*aa*eigenvalues[0];
 AA[1][1] = -inv_fenep_lambda*aa*eigenvalues[1];
 AA[2][2] = -inv_fenep_lambda*aa*eigenvalues[2];
@@ -168,7 +168,7 @@ multiply_matrices_3x3(R, temp2, temp);
 multiply_matrices_3x3(temp, Rt, sum_temp); 
 
 //sum_temp =  R*(1/lambda)*(A^-1-I)*R^T + 2*B
-add_matrices_3x3(2.0,B,sum_temp,sum_temp); 
+add_matrices_3x3(2.0_df,B,sum_temp,sum_temp); 
 
 //define PSI
 dfloat PSI[3][3]= {
@@ -179,11 +179,11 @@ dfloat PSI[3][3]= {
 
 //sum_temp =  R*(1/lambda)*(A^-1-I)*R^T + 2*B + OHM * Psi
 multiply_matrices_3x3(OHM, PSI, temp); 
-add_matrices_3x3(1.0,temp,sum_temp,sum_temp);
+add_matrices_3x3(1.0_df,temp,sum_temp,sum_temp);
 
 //sum_temp =  R*(1/lambda)*(A^-1-I)*Rt + 2B + OHM*Psi - Psi*OHM
 multiply_matrices_3x3(PSI, OHM, temp);
-add_matrices_3x3(-1.0,temp,sum_temp,sum_temp); 
+add_matrices_3x3(-1.0_df,temp,sum_temp,sum_temp); 
 
 
 // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -197,9 +197,9 @@ dfloat G_xz =  sum_temp[0][2];
 dfloat G_yz =  sum_temp[1][2];
 
 
-dfloat switch_conf = 0.0;
+dfloat switch_conf = 0.0_df;
 if (step>CONFORMATION_SWITCH){
-    switch_conf = 1.0;     
+    switch_conf = 1.0_df;     
 }
 
 fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = switch_conf*G_xx;
@@ -255,7 +255,7 @@ if(step%2 == 0){
 
 L_Fx += (dCxxdx + dCxydy + dCxzdz)*(fenep_mu_d_lambda)*switch_conf; //zero just to debug for now
 L_Fy += (dCxydx + dCyydy + dCyzdz)*(fenep_mu_d_lambda)*switch_conf; //zero just to debug for now
-L_Fz += (dCxzdx + dCyzdy + dCzzdz)*(fenep_mu_d_lambda)*0.0; //zero just to debug for now
+L_Fz += (dCxzdx + dCyzdy + dCzzdz)*(fenep_mu_d_lambda)*0.0_df; //zero just to debug for now
 
 
 

@@ -23,17 +23,17 @@ dfloat nz_zm1 = fMom[idxMom(tx, ty, tzm1, M3_NZ_INDEX, bx, by, ((z - 1 + NZ) % N
 dfloat nz_zp1 = fMom[idxMom(tx, ty, tzp1, M3_NZ_INDEX, bx, by, ((z + 1) % NZ) / BLOCK_NZ)];
 
 
-dfloat dnxdx = (nx_xp1 - nx_xm1) *0.5;
-//dfloat dnydx = (ny_xp1 - ny_xm1) *0.5;
-//dfloat dnzdx = (nz_xp1 - nz_xm1) *0.5;
+dfloat dnxdx = (nx_xp1 - nx_xm1) *0.5_df;
+//dfloat dnydx = (ny_xp1 - ny_xm1) *0.5_df;
+//dfloat dnzdx = (nz_xp1 - nz_xm1) *0.5_df;
 
-//dfloat dnxdy = (nx_yp1 - nx_ym1) *0.5;
-dfloat dnydy = (ny_yp1 - ny_ym1) *0.5;
-//dfloat dnzdy = (nz_yp1 - nz_ym1) *0.5;
+//dfloat dnxdy = (nx_yp1 - nx_ym1) *0.5_df;
+dfloat dnydy = (ny_yp1 - ny_ym1) *0.5_df;
+//dfloat dnzdy = (nz_yp1 - nz_ym1) *0.5_df;
 
-//dfloat dnxdz = (nx_zp1 - nx_zm1) *0.5;
-//dfloat dnydz = (ny_zp1 - ny_zm1) *0.5;
-dfloat dnzdz = (nz_zp1 - nz_zm1) *0.5;
+//dfloat dnxdz = (nx_zp1 - nx_zm1) *0.5_df;
+//dfloat dnydz = (ny_zp1 - ny_zm1) *0.5_df;
+dfloat dnzdz = (nz_zp1 - nz_zm1) *0.5_df;
 
 if ((nodeType & 0b01010101) == 0b01010101) { // wall west
     dnxdx = (nx_xp1 - pnx);

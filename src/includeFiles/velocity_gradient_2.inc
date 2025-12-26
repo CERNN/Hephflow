@@ -80,14 +80,14 @@ dfloat uy_zp1 = s_pop[sharedIndexUy + 3*haloNx*haloNy];
 dfloat uz_zp1 = s_pop[sharedIndexUz + 3*haloNx*haloNy];
 
 // Compute unrolled gradient calculations
-dfloat duxdx_t30 = (ux_xp1 - ux_xm1) / 2.0;
-dfloat duydx_t30 = (uy_xp1 - uy_xm1) / 2.0;
-dfloat duzdx_t30 = (uz_xp1 - uz_xm1) / 2.0;
+dfloat duxdx_t30 = (ux_xp1 - ux_xm1) / 2.0_df;
+dfloat duydx_t30 = (uy_xp1 - uy_xm1) / 2.0_df;
+dfloat duzdx_t30 = (uz_xp1 - uz_xm1) / 2.0_df;
 
-dfloat duxdy_t30 = (ux_yp1 - ux_ym1) / 2.0;
-dfloat duydy_t30 = (uy_yp1 - uy_ym1) / 2.0;
-dfloat duzdy_t30 = (uz_yp1 - uz_ym1) / 2.0;
+dfloat duxdy_t30 = (ux_yp1 - ux_ym1) / 2.0_df;
+dfloat duydy_t30 = (uy_yp1 - uy_ym1) / 2.0_df;
+dfloat duzdy_t30 = (uz_yp1 - uz_ym1) / 2.0_df;
 
-dfloat duxdz_t30 = (ux_zp1 - ux_zm1) / 2.0;
-dfloat duydz_t30 = (uy_zp1 - uy_zm1) / 2.0;
-dfloat duzdz_t30 = (uz_zp1 - uz_zm1) / 2.0;
+dfloat duxdz_t30 = (ux_zp1 - ux_zm1) / 2.0_df;
+dfloat duydz_t30 = (uy_zp1 - uy_zm1) / 2.0_df;
+dfloat duzdz_t30 = (uz_zp1 - uz_zm1) / 2.0_df;

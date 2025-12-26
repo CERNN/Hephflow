@@ -200,7 +200,7 @@ void totalSpringEnergy(
     dfloat temp;
     
     checkCudaErrors(cudaMemcpy(&temp, sumKE, sizeof(dfloat), cudaMemcpyDeviceToHost)); 
-    temp = (temp/2.0) * nu_p * inv_lambda;
+    temp = (temp/2.0_df) * nu_p * inv_lambda;
     temp = (temp)/(NUMBER_LBM_NODES);
 
     std::ostringstream strDataInfo("");
@@ -712,7 +712,7 @@ void computeNusseltNumber(
     dfloat C_x1;
     dfloat C_x2;
     dfloat C_x3;
-    dfloat Nu_sum = 0.0;
+    dfloat Nu_sum = 0.0_df;
 
 
     for (int z = 0; z <NZ_TOTAL; z++){
@@ -768,30 +768,30 @@ void computeTurbulentEnergies(
     //fluctuation values
     dfloat f_ux, f_uy, f_uz; //NO IDEA WHY IT GIVES A WARNING FOR USED
 
-    dfloat f_Sxx = 0;
-    dfloat f_Sxy = 0;
-    dfloat f_Sxz = 0;
-    dfloat f_Syy = 0;
-    dfloat f_Syz = 0;
-    dfloat f_Szz = 0;
+    dfloat f_Sxx = 0.0_df;
+    dfloat f_Sxy = 0.0_df;
+    dfloat f_Sxz = 0.0_df;
+    dfloat f_Syy = 0.0_df;
+    dfloat f_Syz = 0.0_df;
+    dfloat f_Szz = 0.0_df;
 
-    dfloat f_SS = 0;
+    dfloat f_SS = 0.0_df;
 
     //mean values;
-    dfloat m_ux = 0.0;
-    dfloat m_uy = 0.0;
-    dfloat m_uz = 0.0;
+    dfloat m_ux = 0.0_df;
+    dfloat m_uy = 0.0_df;
+    dfloat m_uz = 0.0_df;
 
-    dfloat m_Sxx = 0;
-    dfloat m_Sxy = 0;
-    dfloat m_Sxz = 0;
-    dfloat m_Syy = 0;
-    dfloat m_Syz = 0;
-    dfloat m_Szz = 0;
+    dfloat m_Sxx = 0.0_df;
+    dfloat m_Sxy = 0.0_df;
+    dfloat m_Sxz = 0.0_df;
+    dfloat m_Syy = 0.0_df;
+    dfloat m_Syz = 0.0_df;
+    dfloat m_Szz = 0.0_df;
 
 #pragma warning(push)
 #pragma warning(disable: 4804)
-    dfloat mean_counter = 1.0/((dfloat)(step/MACR_SAVE)+1.0);
+    dfloat mean_counter = 1.0_df/((dfloat)(step/MACR_SAVE)+1.0_df);
     count = 0;
 #pragma warning(pop)
 
@@ -870,7 +870,7 @@ void computeTurbulentEnergies(
 
     SS = SS/(N*N*N);
     f_SS = f_SS / (count);
-    dfloat epsilon = 2*((TAU-0.5)/3)*f_SS;
+    dfloat epsilon = 2.0_df*((TAU-0.5_df)/3.0_df)*f_SS;
 
     strDataInfo <<"step,"<< step<< "," << SS << "," << epsilon;
     saveTreatData("_turbulentData",strDataInfo.str(),step);

@@ -34,7 +34,7 @@ __host__ __device__
 {
     // f_eq = rho_w * (1 - uu * 1.5 + uc * 3 + uc * uc * 4.5) ->
     // f_eq = rho_w * (1 - uu * 1.5 + uc * 3 * ( 1 + uc * 1.5)) ->
-    return (rhow * (p1_muu + uc3 * (1.0 + uc3 * 0.5)));
+    return (rhow * (p1_muu + uc3 * (1.0_df + uc3 * 0.5_df)));
 }   
 
 

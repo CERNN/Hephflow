@@ -1,5 +1,5 @@
 multiplyTerm = rho * W0;
-pics2 = 1.0 - cs2 * (mxx + myy + mzz);
+pics2 = 1.0_df - cs2 * (mxx + myy + mzz);
 
 const dfloat mxxy = ux * mxy + uy * mxx - ux * ux * uy;
 const dfloat mxxz = ux * mxz + uz * mxx - ux * ux * uz;
@@ -9,17 +9,17 @@ const dfloat myzz = uy * mzz + uz * myz - uy * uz * uz;
 const dfloat myyz = uy * myz + uz * myy - uy * uy * uz;
 const dfloat mxyz = ux * myz + uy * mxz + uz * mxy - 2 * ux * uy * uz;
 
-const dfloat mxxyy = (ux * ux * myy + ux * uy * mxy + uy * mxxy - 3.0 * ux * ux * uy * uy/2)/2;
-const dfloat mxxzz = (ux * ux * mzz + ux * uz * mxz + uz * mxxz - 3.0 * ux * ux * uz * uz/2)/2;
-const dfloat myyzz = (uy * uy * mzz + uy * uz * myz + uz * myyz - 3.0 * uy * uy * uz * uz/2)/2;
+const dfloat mxxyy = (ux * ux * myy + ux * uy * mxy + uy * mxxy - 3.0_df * ux * ux * uy * uy/2)/2;
+const dfloat mxxzz = (ux * ux * mzz + ux * uz * mxz + uz * mxxz - 3.0_df * ux * ux * uz * uz/2)/2;
+const dfloat myyzz = (uy * uy * mzz + uy * uz * myz + uz * myyz - 3.0_df * uy * uy * uz * uz/2)/2;
 
-const dfloat mxyzz = (ux * uy * mzz) + (ux * uz * myz) + (uy * uz * mxz) / 2 + (uz * mxyz) - 3.0 * (ux * uy * uz * uz) / 2;
-const dfloat mxyyz = (ux * uy * myz) + (uy * uy * mxz) + (    uz * mxyy) / 2               - 3.0 * (ux * uy * uy * uz) / 2;
-const dfloat mxxyz = (ux * uy * mxz) + (    uz * mxxy) + (ux * ux * myz) / 2               - 3.0 * (ux * ux * uy * uz) / 2;
+const dfloat mxyzz = (ux * uy * mzz) + (ux * uz * myz) + (uy * uz * mxz) / 2 + (uz * mxyz) - 3.0_df * (ux * uy * uz * uz) / 2;
+const dfloat mxyyz = (ux * uy * myz) + (uy * uy * mxz) + (    uz * mxyy) / 2               - 3.0_df * (ux * uy * uy * uz) / 2;
+const dfloat mxxyz = (ux * uy * mxz) + (    uz * mxxy) + (ux * ux * myz) / 2               - 3.0_df * (ux * ux * uy * uz) / 2;
 
 const dfloat cs4 = cs2 * cs2;
 
-const dfloat one_minus_cs2 = 1.0 - cs2;
+const dfloat one_minus_cs2 = 1.0_df - cs2;
 const dfloat one_minus_cs2_square = one_minus_cs2 * one_minus_cs2;
 
 pop[0] = multiplyTerm * (pics2 + cs4 * mxxyy + cs4 * mxxzz + cs4 * myyzz);

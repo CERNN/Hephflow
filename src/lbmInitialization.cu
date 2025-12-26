@@ -48,54 +48,54 @@ __global__ void gpuInitialization_mom(
     dfloat omega;
     #endif //OMEGA_FIELD
     #ifdef SECOND_DIST 
-    dfloat cVar = 1.0;
-    dfloat qx_t30 = 3.0*(ux - 0.0);
-    dfloat qy_t30 = 3.0*(uy - 0.0);
-    dfloat qz_t30 = 3.0*(uz - 0.0);
+    dfloat cVar = 1.0_df;
+    dfloat qx_t30 = 3.0_df*(ux - 0.0_df);
+    dfloat qy_t30 = 3.0_df*(uy - 0.0_df);
+    dfloat qz_t30 = 3.0_df*(uz - 0.0_df);
     #endif //SECOND_DIST
     #ifdef PHI_DIST 
-    dfloat phiVar = 1.0;
-    dfloat phi_qx_t30 = 3.0*(ux - 0.0);
-    dfloat phi_qy_t30 = 3.0*(uy - 0.0);
-    dfloat phi_qz_t30 = 3.0*(uz - 0.0);
+    dfloat phiVar = 1.0_df;
+    dfloat phi_qx_t30 = 3.0_df*(ux - 0.0_df);
+    dfloat phi_qy_t30 = 3.0_df*(uy - 0.0_df);
+    dfloat phi_qz_t30 = 3.0_df*(uz - 0.0_df);
     #endif //PHI_DIST
     #ifdef CONFORMATION_TENSOR
         //assuming that velocity has grad = 0 
         #ifdef A_XX_DIST 
-        dfloat AxxVar = 1.0 + CONF_ZERO; 
-        dfloat Axx_qx_t30 = 3.0*AxxVar*(ux + 0.0);
-        dfloat Axx_qy_t30 = 3.0*AxxVar*(uy + 0.0);
-        dfloat Axx_qz_t30 = 3.0*AxxVar*(uz + 0.0);
+        dfloat AxxVar = 1.0_df + CONF_ZERO; 
+        dfloat Axx_qx_t30 = 3.0_df*AxxVar*(ux + 0.0_df);
+        dfloat Axx_qy_t30 = 3.0_df*AxxVar*(uy + 0.0_df);
+        dfloat Axx_qz_t30 = 3.0_df*AxxVar*(uz + 0.0_df);
         #endif
         #ifdef A_XY_DIST 
-        dfloat AxyVar = 1.0 + CONF_ZERO;
-        dfloat Axy_qx_t30 = 3.0*AxyVar*(ux + 0.0);
-        dfloat Axy_qy_t30 = 3.0*AxyVar*(uy + 0.0);
-        dfloat Axy_qz_t30 = 3.0*AxyVar*(uz + 0.0);
+        dfloat AxyVar = 1.0_df + CONF_ZERO;
+        dfloat Axy_qx_t30 = 3.0_df*AxyVar*(ux + 0.0_df);
+        dfloat Axy_qy_t30 = 3.0_df*AxyVar*(uy + 0.0_df);
+        dfloat Axy_qz_t30 = 3.0_df*AxyVar*(uz + 0.0_df);
         #endif
         #ifdef A_XZ_DIST 
-        dfloat AxzVar = 1.0 + CONF_ZERO;
-        dfloat Axz_qx_t30 = 3.0*AxzVar*(ux + 0.0);
-        dfloat Axz_qy_t30 = 3.0*AxzVar*(uy + 0.0);
-        dfloat Axz_qz_t30 = 3.0*AxzVar*(uz + 0.0);
+        dfloat AxzVar = 1.0_df + CONF_ZERO;
+        dfloat Axz_qx_t30 = 3.0_df*AxzVar*(ux + 0.0_df);
+        dfloat Axz_qy_t30 = 3.0_df*AxzVar*(uy + 0.0_df);
+        dfloat Axz_qz_t30 = 3.0_df*AxzVar*(uz + 0.0_df);
         #endif
         #ifdef A_YY_DIST 
-        dfloat AyyVar = 1.0 + CONF_ZERO;
-        dfloat Ayy_qx_t30 = 3.0*AyyVar*(ux + 0.0);
-        dfloat Ayy_qy_t30 = 3.0*AyyVar*(uy + 0.0);
-        dfloat Ayy_qz_t30 = 3.0*AyyVar*(uz + 0.0);
+        dfloat AyyVar = 1.0_df + CONF_ZERO;
+        dfloat Ayy_qx_t30 = 3.0_df*AyyVar*(ux + 0.0_df);
+        dfloat Ayy_qy_t30 = 3.0_df*AyyVar*(uy + 0.0_df);
+        dfloat Ayy_qz_t30 = 3.0_df*AyyVar*(uz + 0.0_df);
         #endif
         #ifdef A_YZ_DIST 
-        dfloat AyzVar = 1.0 + CONF_ZERO;
-        dfloat Ayz_qx_t30 = 3.0*AyzVar*(ux + 0.0);
-        dfloat Ayz_qy_t30 = 3.0*AyzVar*(uy + 0.0);
-        dfloat Ayz_qz_t30 = 3.0*AyzVar*(uz + 0.0);
+        dfloat AyzVar = 1.0_df + CONF_ZERO;
+        dfloat Ayz_qx_t30 = 3.0_df*AyzVar*(ux + 0.0_df);
+        dfloat Ayz_qy_t30 = 3.0_df*AyzVar*(uy + 0.0_df);
+        dfloat Ayz_qz_t30 = 3.0_df*AyzVar*(uz + 0.0_df);
         #endif
         #ifdef A_ZZ_DIST 
-        dfloat AzzVar = 1.0 + CONF_ZERO;
-        dfloat Azz_qx_t30 = 3.0*AzzVar*(ux + 0.0);
-        dfloat Azz_qy_t30 = 3.0*AzzVar*(uy + 0.0);
-        dfloat Azz_qz_t30 = 3.0*AzzVar*(uz + 0.0);
+        dfloat AzzVar = 1.0_df + CONF_ZERO;
+        dfloat Azz_qx_t30 = 3.0_df*AzzVar*(ux + 0.0_df);
+        dfloat Azz_qy_t30 = 3.0_df*AzzVar*(uy + 0.0_df);
+        dfloat Azz_qz_t30 = 3.0_df*AzzVar*(uz + 0.0_df);
         #endif
     #endif
 
@@ -119,11 +119,11 @@ __global__ void gpuInitialization_mom(
     for (int i = 0; i < Q; i++)
     {
         pop[i] = gpu_f_eq(w[i] * RHO_0,
-                          3 * (ux * cx[i] + uy * cy[i] + uz * cz[i]),
-                          1 - 1.5 * (ux * ux + uy * uy + uz * uz));
+                          3.0_df * (ux * cx[i] + uy * cy[i] + uz * cz[i]),
+                          1.0_df - 1.5_df * (ux * ux + uy * uy + uz * uz));
     }
     
-    dfloat invRho = 1.0/rho;
+    dfloat invRho = 1.0_df/rho;
     dfloat pixx =  (pop[1] + pop[2] + pop[7] + pop[8] + pop[9] + pop[10] + pop[13] + pop[14] + pop[15] + pop[16]) * invRho - cs2;
     dfloat pixy = ((pop[7] + pop[ 8]) - (pop[13] + pop[14])) * invRho;
     dfloat pixz = ((pop[9] + pop[10]) - (pop[15] + pop[16])) * invRho;
@@ -144,7 +144,7 @@ __global__ void gpuInitialization_mom(
     
     
     #ifdef SECOND_DIST 
-    dfloat invC= 1.0/cVar;
+    dfloat invC= 1.0_df/cVar;
 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = cVar;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qx_t30;
@@ -154,7 +154,7 @@ __global__ void gpuInitialization_mom(
 
         
     #ifdef PHI_DIST 
-    dfloat invC= 1.0/phiVar;
+    dfloat invC= 1.0_df/phiVar;
 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiVar;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qx_t30;
@@ -167,42 +167,42 @@ __global__ void gpuInitialization_mom(
 
     #ifdef A_XX_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AxxVar;
-    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0;
+    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qz_t30;
     #endif 
     #ifdef A_XY_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AxyVar;
-    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0;
+    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qz_t30;
     #endif 
     #ifdef A_XZ_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AxzVar;
-    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0;
+    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qz_t30;
     #endif
     #ifdef A_YY_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AyyVar;
-    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0;
+    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qz_t30;
     #endif
     #ifdef A_YZ_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AyzVar;
-    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_YZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0;
+    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_YZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qz_t30;
     #endif
     #ifdef A_ZZ_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AzzVar;
-    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_ZZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0;
+    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_ZZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qz_t30;
@@ -1024,9 +1024,9 @@ __global__ void gpuInitialization_force(
 
     size_t index = idxScalarGlobal(x, y, z);
 
-    d_BC_Fx[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0;
-    d_BC_Fy[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0;
-    d_BC_Fz[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0; 
+    d_BC_Fx[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0_df;
+    d_BC_Fy[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0_df;
+    d_BC_Fz[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0_df; 
 }
 
 
@@ -1311,7 +1311,7 @@ unsigned int bc_id(unsigned int *dNodeType, int x, int y, int z){
 
         memAllocated += sizeof(CurvedBoundary*) * NUMBER_LBM_NODES + sizeof(CurvedBoundary) * numberCurvedBoundaryNodes;
 
-        printf("Device Memory Allocated for Curved Boundary: %.2f MB \n", (float)memAllocated /(1024.0 * 1024.0));
+        printf("Device Memory Allocated for Curved Boundary: %.2f MB \n", (float)memAllocated /(1024.0_df * 1024.0_df));
     }
 
 

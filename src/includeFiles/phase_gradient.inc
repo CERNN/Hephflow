@@ -32,9 +32,9 @@ if ((nodeType & 0b11110000) == 0b11110000) { // wall front
 }
 
 dfloat mod_grad = sqrtf(dphidx*dphidx + dphidy*dphidy + dphidz*dphidz);
-dfloat pnx = dphidx / (mod_grad + 1e-9);
-dfloat pny = dphidy / (mod_grad + 1e-9);
-dfloat pnz = dphidz / (mod_grad + 1e-9);
+dfloat pnx = dphidx / (mod_grad + 1e-9_df);
+dfloat pny = dphidy / (mod_grad + 1e-9_df);
+dfloat pnz = dphidz / (mod_grad + 1e-9_df);
 
 fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = pnx;
 fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = pny;

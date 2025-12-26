@@ -1,5 +1,5 @@
 multiplyTerm = AyyVar * gW0;
-pics2 = 1.0;
+pics2 = 1.0_df;
 
 gNode[ 0] = multiplyTerm * (pics2);
 multiplyTerm = AyyVar * gW1;
