@@ -132,11 +132,14 @@ bool is_inside_gpu(dfloat3 pos, unsigned int n_gpu){
 }
 
 __host__
-void IbmNodesSoA::copyNodesFromParticle(Particle *p, unsigned int pCenterIdx, unsigned int n_gpu)
+void IbmNodesSoA::copyNodesFromParticle(Particle *p, unsigned int pCenterIdx, ParticleCenter* pArray, unsigned int n_gpu)
 {
     const int baseIdx = this->numNodes;
     int nodesAdded = 0;
     IbmNodes* node = p->getNode();
+    
+    // Get particle center position for computing relative offsets
+    dfloat3 pc_pos = pArray[pCenterIdx].getPos();
 
     for (int i = 0; i < p->getNumNodes(); i++)
     {
@@ -146,7 +149,19 @@ void IbmNodesSoA::copyNodesFromParticle(Particle *p, unsigned int pCenterIdx, un
 
         this->particleCenterIdx[nodesAdded+baseIdx] = pCenterIdx;
 
+        // PRECISION FIX: Store node positions initially, but compute and store relative offsets
         this->pos.copyValuesFromFloat3(node[i].getPos(), nodesAdded+baseIdx);
+        
+        // Compute and store relative offset (node position - particle center position)
+        // This immutable reference prevents error accumulation
+        dfloat3 node_pos = node[i].getPos();
+        dfloat3 relative_pos = dfloat3(
+            node_pos.x - pc_pos.x,
+            node_pos.y - pc_pos.y,
+            node_pos.z - pc_pos.z
+        );
+        this->originalRelativePos.copyValuesFromFloat3(relative_pos, nodesAdded+baseIdx);
+        
         this->vel.copyValuesFromFloat3(node[i].getVel(), nodesAdded+baseIdx);
         this->vel_old.copyValuesFromFloat3(node[i].getVelOld(), nodesAdded+baseIdx);
         this->f.copyValuesFromFloat3(node[i].getF(), nodesAdded+baseIdx);

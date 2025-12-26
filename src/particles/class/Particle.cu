@@ -261,7 +261,7 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
             this->pMethod[p]            = particles[p].getMethod();
             this->pCollideWall[p]       = particles[p].getCollideWall();
             this->pCollideParticle[p]   = particles[p].getCollideParticle();
-            this->nodesSoA[0].copyNodesFromParticle(&particles[p], p, 0);
+            this->nodesSoA[0].copyNodesFromParticle(&particles[p], p, this->pCenterArray, 0);
             if (firstIndex == -1) firstIndex = p;
             lastIndex = p;
         }

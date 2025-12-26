@@ -15,11 +15,12 @@
 #include "../../../globalStructs.h"
 #include "../../models/ibm/ibmVar.h"
 // #include "../../class/Particle.cuh"
-//#include "../../class/ParticleCenter.cuh"
+#include "../../class/ParticleCenter.cuh"
 #pragma once
 
 #ifdef PARTICLE_MODEL
 class Particle;
+class ParticleCenter;
 
 /*
 *   Class describe the IBM node properties
@@ -109,7 +110,7 @@ public:
      *  @param pCenterIdx: index of particle center for given particle nodes
      *  @param baseIdx: base index to use while copying
      */
-    __host__ void copyNodesFromParticle(Particle *particle, unsigned int pCenterIdx, unsigned int n_gpu);
+    __host__ void copyNodesFromParticle(Particle *particle, unsigned int pCenterIdx, ParticleCenter* pArray, unsigned int n_gpu);
  
     __host__ void updateNodesGPUs();
     __host__ void freeNodesAndCenters();
