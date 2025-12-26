@@ -225,7 +225,14 @@ void ibmForceInterpolationSpread(
 
     const dfloat3SoA posNode = particlesNodes->getPos();
 
-    ParticleCenter* pc_i = &pArray[particlesNodes->getParticleCenterIdx()[i]];
+    // CRITICAL: Validate particle index before dereferencing
+    int particleCenterIdx = particlesNodes->getParticleCenterIdx()[i];
+    if (particleCenterIdx < 0 || particleCenterIdx >= NUM_PARTICLES) {
+        printf("ERROR: Invalid particle center index %d at node %d\n", particleCenterIdx, i);
+        return;
+    }
+    
+    ParticleCenter* pc_i = &pArray[particleCenterIdx];
 
     dfloat aux, aux1; // aux variable for many things
 
@@ -233,13 +240,62 @@ void ibmForceInterpolationSpread(
     const dfloat yIBM = posNode.y[i]; 
     const dfloat zIBM = posNode.z[i];
 
+    // CRITICAL: Validate IBM node positions to prevent invalid floor operations
+    if (!isfinite(xIBM) || !isfinite(yIBM) || !isfinite(zIBM)) {
+        printf("ERROR: Non-finite IBM node position at node %d: x=%e y=%e z=%e\n", i, xIBM, yIBM, zIBM);
+        return;
+    }
+    
+    // CRITICAL: Clamp IBM node positions to valid domain to prevent invalid indices
+    // Valid range depends on BC type, but we use conservative bounds
+    #ifdef BC_X_PERIODIC
+        if (xIBM < -1000 || xIBM > NX + 1000) {
+            printf("WARNING: IBM node %d has out-of-range X position: %e (domain: 0-%d)\n", i, xIBM, NX);
+            return;
+        }
+    #else
+        if (xIBM < -P_DIST || xIBM > NX + P_DIST) {
+            printf("WARNING: IBM node %d has out-of-range X position: %e (domain: 0-%d)\n", i, xIBM, NX);
+            return;
+        }
+    #endif
+
+    #ifdef BC_Y_PERIODIC
+        if (yIBM < -1000 || yIBM > NY + 1000) {
+            printf("WARNING: IBM node %d has out-of-range Y position: %e (domain: 0-%d)\n", i, yIBM, NY);
+            return;
+        }
+    #else
+        if (yIBM < -P_DIST || yIBM > NY + P_DIST) {
+            printf("WARNING: IBM node %d has out-of-range Y position: %e (domain: 0-%d)\n", i, yIBM, NY);
+            return;
+        }
+    #endif
+
+    #ifdef BC_Z_PERIODIC
+        if (zIBM < -1000 || zIBM > NZ_TOTAL + 1000) {
+            printf("WARNING: IBM node %d has out-of-range Z position: %e (domain: 0-%d)\n", i, zIBM, NZ_TOTAL);
+            return;
+        }
+    #else
+        if (zIBM < -P_DIST || zIBM > NZ_TOTAL + P_DIST) {
+            printf("WARNING: IBM node %d has out-of-range Z position: %e (domain: 0-%d)\n", i, zIBM, NZ_TOTAL);
+            return;
+        }
+    #endif
+
     const dfloat pos[3] = {xIBM, yIBM, zIBM};
 
     // Calculate stencils to use and the valid interval [xyz][idx]
     dfloat stencilVal[3][P_DIST*2];
 
     // First lattice position for each coordinate
-    const int posBase[3] = {int(xIBM) - (P_DIST) + 1,int(yIBM) - (P_DIST) + 1, int(zIBM) - (P_DIST) + 1};
+    // CRITICAL: Use safe casting to prevent integer overflow
+    const int posBase[3] = {
+        static_cast<int>(std::floor(xIBM)) - P_DIST + 1,
+        static_cast<int>(std::floor(yIBM)) - P_DIST + 1,
+        static_cast<int>(std::floor(zIBM)) - P_DIST + 1
+    };
 
    
     // Maximum stencil index for each direction xyz ("index" to stop)
@@ -297,11 +353,25 @@ void ibmForceInterpolationSpread(
     // Particle stencil out of the domain
     if(minIdx[0] >= P_DIST*2 || minIdx[1] >= P_DIST*2 || minIdx[2] >= P_DIST*2)
         return;
+    
+    // CRITICAL: Additional validation for pathological cases
+    if(minIdx[0] < 0 || minIdx[1] < 0 || minIdx[2] < 0 || 
+       minIdx[0] > maxIdx[0] || minIdx[1] > maxIdx[1] || minIdx[2] > maxIdx[2]) {
+        printf("ERROR: Invalid stencil indices - minIdx=[%d,%d,%d] maxIdx=[%d,%d,%d]\n",
+               minIdx[0], minIdx[1], minIdx[2], maxIdx[0], maxIdx[1], maxIdx[2]);
+        return;
+    }
 
 
     //compute stencil values
     for(int ii = 0; ii < 3; ii++){
         for(int jj=minIdx[ii]; jj <= maxIdx[ii]; jj++){
+            // CRITICAL: Bounds check to prevent array overflow
+            if(jj < 0 || jj >= P_DIST*2) {
+                printf("ERROR: Stencil index out of bounds: jj=%d, ii=%d, minIdx=%d, maxIdx=%d\n", 
+                       jj, ii, minIdx[ii], maxIdx[ii]);
+                return;
+            }
             stencilVal[ii][jj] = stencil(posBase[ii]+jj-(pos[ii]));
         }
     }
@@ -314,36 +384,72 @@ void ibmForceInterpolationSpread(
     unsigned int baseIdx;
     int xx,yy,zz;
 
+    // Velocity on node given the particle velocity and rotation
+    dfloat ux_calc = 0;
+    dfloat uy_calc = 0;
+    dfloat uz_calc = 0;
+
     // Interpolation (zyx for memory locality)
     for (int zk = minIdx[2]; zk <= maxIdx[2]; zk++) // z
     {
+        int zg = posBase[2] + zk;
+
+        #ifdef BC_Z_WALL
+            if (zg < 0 || zg >= NZ) continue;
+            zz = zg;
+        #endif
+        #ifdef BC_Z_PERIODIC
+            // CRITICAL: Proper modulo for periodic BC that handles negative numbers
+            zz = ((zg % NZ) + NZ) % NZ;
+        #endif
+
         for (int yj = minIdx[1]; yj <= maxIdx[1]; yj++) // y
         {
+            int yg = posBase[1] + yj;
+            #ifdef BC_Y_WALL
+                if (yg < 0 || yg >= NY) continue;
+                yy = yg;
+            #endif
+            #ifdef BC_Y_PERIODIC
+                // CRITICAL: Proper modulo for periodic BC that handles negative numbers
+                yy = ((yg % NY) + NY) % NY;
+            #endif
             aux1 = stencilVal[2][zk]*stencilVal[1][yj];
             for (int xi = minIdx[0]; xi <= maxIdx[0]; xi++) // x
             {
+                int xg = posBase[0] + xi;
+                #ifdef BC_X_WALL
+                    if (xg < 0 || xg >= NX) continue;
+                    xx = xg;
+                #endif
+                #ifdef BC_X_PERIODIC
+                    // CRITICAL: Proper modulo for periodic BC that handles negative numbers
+                    xx = ((xg % NX) + NX) % NX;
+                #endif
+
                 // Dirac delta (kernel)
                 aux = aux1 * stencilVal[0][xi];
-                // same as aux = stencil(x - xIBM) * stencil(y - yIBM) * stencil(z - zIBM);
 
-                xx = (posBase[0] + xi + NX)%(NX);
-                yy = (posBase[1] + yj + NY)%(NY);
-                zz = (posBase[2] + zk + NZ)%(NZ);
+                // CRITICAL: Validate fMom index before access
+                int momIdx_rho = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_RHO_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                int momIdx_ux = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                int momIdx_uy = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                int momIdx_uz = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
 
                 #ifdef EXTERNAL_DUCT_BC
                     dfloat pos_r_i = (xx - DUCT_CENTER_X)*(xx - DUCT_CENTER_X) + (yy - DUCT_CENTER_Y)*(yy - DUCT_CENTER_Y);
                     if(pos_r_i < OUTER_RADIUS*OUTER_RADIUS){
-                        rhoVar += aux * (RHO_0 + fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_RHO_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]);
-                        uxVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
-                        uyVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
-                        uzVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
+                        rhoVar += aux * (RHO_0 + fMom[momIdx_rho]);
+                        uxVar  += aux * (fMom[momIdx_ux]/F_M_I_SCALE);
+                        uyVar  += aux * (fMom[momIdx_uy]/F_M_I_SCALE);
+                        uzVar  += aux * (fMom[momIdx_uz]/F_M_I_SCALE);
                     }
                 #endif
                 #ifndef EXTERNAL_DUCT_BC
-                    rhoVar += aux * (RHO_0 + fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_RHO_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]);
-                    uxVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
-                    uyVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
-                    uzVar  += aux * (fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]/F_M_I_SCALE);
+                    rhoVar += aux * (RHO_0 + fMom[momIdx_rho]);
+                    uxVar  += aux * (fMom[momIdx_ux]/F_M_I_SCALE);
+                    uyVar  += aux * (fMom[momIdx_uy]/F_M_I_SCALE);
+                    uzVar  += aux * (fMom[momIdx_uz]/F_M_I_SCALE);
                 #endif //EXTERNAL_DUCT_BC
             }
         }
@@ -351,16 +457,12 @@ void ibmForceInterpolationSpread(
 
 
 
-    // Velocity on node given the particle velocity and rotation
-    dfloat ux_calc = 0;
-    dfloat uy_calc = 0;
-    dfloat uz_calc = 0;
-
     // Load position of particle center
     const dfloat x_pc = pc_i->getPosX();
     const dfloat y_pc = pc_i->getPosY();
     const dfloat z_pc = pc_i->getPosZ();
 
+    // CRITICAL: Store distance vectors BEFORE they are needed for deltaMomentum
     dfloat dx = xIBM - x_pc;
     dfloat dy = yIBM - y_pc;
     dfloat dz = zIBM - z_pc;
@@ -413,6 +515,13 @@ void ibmForceInterpolationSpread(
     const dfloat dA = particlesNodes->getS()[i];
     aux = 2 * rhoVar * dA * IBM_THICKNESS;
 
+    // CRITICAL: Check for NaN/Inf propagation
+    if (!isfinite(aux) || !isfinite(rhoVar) || !isfinite(uxVar) || !isfinite(uyVar) || !isfinite(uzVar)) {
+        printf("WARNING: Non-finite values at node %d, step %u: aux=%e rho=%e ux=%e uy=%e uz=%e\n", 
+               i, step, aux, rhoVar, uxVar, uyVar, uzVar);
+        return;
+    }
+
     dfloat3 deltaF;
     deltaF.x = aux * (uxVar - ux_calc);
     deltaF.y = aux * (uyVar - uy_calc);
@@ -434,25 +543,54 @@ void ibmForceInterpolationSpread(
             {
                 // Dirac delta (kernel)
                 aux = aux1 * stencilVal[0][xi];
-                // same as aux = stencil(x - xIBM) * stencil(y - yIBM) * stencil(z - zIBM);
- 
-                xx = (posBase[0] + xi + NX)%(NX);
-                yy = (posBase[1] + yj + NY)%(NY);
-                zz = (posBase[2] + zk + NZ)%(NZ);
-                
-                
+
+                // Global (unmapped) indices
+                int xg = posBase[0] + xi;
+                int yg = posBase[1] + yj;
+                int zg = posBase[2] + zk;
+
+                // ---- X direction ----
+                #ifdef BC_X_WALL
+                    if (xg < 0 || xg >= NX) continue;
+                    xx = xg;
+                #else // BC_X_PERIODIC
+                    xx = ((xg % NX) + NX) % NX;
+                #endif
+
+                // ---- Y direction ----
+                #ifdef BC_Y_WALL
+                    if (yg < 0 || yg >= NY) continue;
+                    yy = yg;
+                #else // BC_Y_PERIODIC
+                    yy = ((yg % NY) + NY) % NY;
+                #endif
+
+                // ---- Z direction ----
+                #ifdef BC_Z_WALL
+                    if (zg < 0 || zg >= NZ_TOTAL) continue;
+                    zz = zg;
+                #else // BC_Z_PERIODIC
+                    zz = ((zg % NZ_TOTAL) + NZ_TOTAL) % NZ_TOTAL;
+                #endif
+
+                // CRITICAL: Validate fMom indices before atomic operations
+                int fmomIdx_fx = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                int fmomIdx_fy = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                int fmomIdx_fz = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+
+                // ---- External duct condition ----
                 #ifdef EXTERNAL_DUCT_BC
                     dfloat pos_r_i = (xx - DUCT_CENTER_X)*(xx - DUCT_CENTER_X) + (yy - DUCT_CENTER_Y)*(yy - DUCT_CENTER_Y);
                     if(pos_r_i < OUTER_RADIUS*OUTER_RADIUS){
-                        atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.x * aux);
-                        atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.y * aux);
-                        atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.z * aux);
+                        atomicAdd(&(fMom[fmomIdx_fx]), -deltaF.x * aux);
+                        atomicAdd(&(fMom[fmomIdx_fy]), -deltaF.y * aux);
+                        atomicAdd(&(fMom[fmomIdx_fz]), -deltaF.z * aux);
                     }
                 #endif
                 #ifndef EXTERNAL_DUCT_BC
-                    atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.x * aux);
-                    atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.y * aux);
-                    atomicAdd(&(fMom[idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)]), -deltaF.z * aux);
+                    atomicAdd(&(fMom[fmomIdx_fx]), -deltaF.x * aux);
+                    atomicAdd(&(fMom[fmomIdx_fy]), -deltaF.y * aux);
+                    atomicAdd(&(fMom[fmomIdx_fz]), -deltaF.z * aux);
                 #endif //EXTERNAL_DUCT_BC
 
                 //TODO: find a way to do subinterations
