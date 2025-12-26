@@ -345,9 +345,9 @@ void sphereSphereCollisionCheck(unsigned int column,unsigned int row,ParticleCen
         sphereSphereCollision(ctx); // Hertz
     }
     else {
-        sphereSphereLubrication(ctx, gap);
-        sphereSphereRepulsion(ctx, gap);
-        sphereSphereAttraction(ctx, gap);
+        //sphereSphereLubrication(ctx, gap);
+        //sphereSphereRepulsion(ctx, gap);
+        //sphereSphereAttraction(ctx, gap);
     }
 }
 

@@ -90,7 +90,7 @@ for (int i = 0; i < NUM_PARTICLES; i++) {
 }
 */
 
-/*
+
 
 srand(12345);  // fixed seed for reproducibility
 
@@ -142,7 +142,7 @@ for (int i = 0; i < NUM_PARTICLES; i++) {
     particles[i].setCollideParticle(false);
     particles[i].setCollideWall(true);
 }
-*/
+/*
 
 
 dfloat noise_amp = 0.02 * diameter;   // optional, small

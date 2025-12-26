@@ -1,5 +1,5 @@
 /* ----------------------------- OUTPUT DEFINES ---------------------------- */
-#define ID_SIM "034"            // prefix for simulation's files
+#define ID_SIM "010a"            // prefix for simulation's files
 #define PATH_FILES "CouetteSpherical"  // path to save simulation's files
 #define TREATFIELD (false) //treat data over the entire field
 #define TREATPOINT (false) //treat data in a single or several points
@@ -10,7 +10,7 @@
 #define NODE_TYPE_SAVE (false) //save the bc conditions, usefull for drawing the surface
 #define ONLY_FINAL_MACRO (false) //save only the last time step macroscopic
 #define MACR_SAVE (false)
-#define REPORT_SAVE (500)
+#define REPORT_SAVE (5000)
 #define VTK_SAVE (true)
 #define BIN_SAVE (false)
 
@@ -19,11 +19,11 @@
 
 /* ------------------------- TIME AND SAVE DEFINES ------------------------- */
 
-#define PARTICLES_SAVE (500)               // Save particles info every given steps (0 not report)
+#define PARTICLES_SAVE (5000)               // Save particles info every given steps (0 not report)
 #define PARTICLES_DATA_REPORT (false)                   // Report IBM treated data every given steps (0 not report)
 
 
-#define IBM_PARTICLES_NODES_SAVE false      // Saves particles nodes data
+#define IBM_PARTICLES_NODES_SAVE true      // Saves particles nodes data
 
 //#define PARTICLE_DEBUG
 /* ------------------------------------------------------------------------- */

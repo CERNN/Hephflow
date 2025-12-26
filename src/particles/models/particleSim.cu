@@ -17,6 +17,7 @@ void particleSimulation(
     ParticleCenter* pArray = particles->getPCenterArray();
     ParticleShape* shape = particles->getPShape();
     updateParticleOldValues<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
+    checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     particlesCollisionHandler<<<GRID_PCOLLISION, TOTAL_PCOLLISION, 0, streamParticles[0]>>>(shape,pArray,d_pwForces,step);
     checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
 
@@ -26,15 +27,22 @@ void particleSimulation(
 
     if(numIBM>0){
        ibmSimulation(particles,fMom,streamParticles[0],step);
+       // Synchronize after IBM to catch any errors early
+       checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     }
     if(numPIBM>0){
         pibmSimulation(particles,fMom,streamParticles[0],step);
+        // Synchronize after PIBM to catch any errors early
+        checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     }
     if(numTRACER>0){
         tracerSimulation(particles,fMom,streamParticles[0],step);
+        // Synchronize after TRACER to catch any errors early
+        checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     }
 
     updateParticleCenterVelocityAndRotation<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
+    checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     updateParticlePosition<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
     checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
 }

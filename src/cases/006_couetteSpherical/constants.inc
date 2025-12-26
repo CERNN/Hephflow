@@ -4,14 +4,14 @@
 constexpr dfloat RE = 10;
 
 constexpr int SCALE = 1;
-constexpr int N_STEPS = 200000;
+constexpr int N_STEPS = 2000000;
 constexpr int N = 320 * SCALE;
 constexpr int NX = N;        // size x of the grid 
 constexpr int NY = N;        // size y of the grid
 constexpr int NZ = N;        // size z of the grid in one GPU
 constexpr int NZ_TOTAL = NZ;       // size z of the grid
 
-constexpr dfloat U_MAX = 0.0000533333;  
+constexpr dfloat U_MAX = 0.00533333;  
 constexpr dfloat L = N;
 
 constexpr dfloat FX = 0.0;        // force in x
@@ -50,7 +50,7 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
 #define SIMULATION_FOLDER_LOAD_CHECKPOINT "TEST"
 // Interval to make checkpoint to save all simulation data and restart from it.
 // It must not be very frequent (10000 or more), because it takes a long time
-#define CHECKPOINT_SAVE false // the frequency on which the simulation checkpoint is saved
+#define CHECKPOINT_SAVE 10000 // the frequency on which the simulation checkpoint is saved
 #define LOAD_FIELD false
 #define LOAD_FIELD_STEP 0
 
@@ -61,7 +61,7 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
     #define DEM_METHOD
     #define LOCAL_FORCES
     //number of particles
-    #define NUM_PARTICLES 3129 // 391 / 782 / 1565 / 2347 / 3129
+    #define NUM_PARTICLES 391 // 391 / 782 / 1565 / 2347 / 3129
 
     constexpr dfloat GX = 0.0;
     constexpr dfloat GY = 0.0;
