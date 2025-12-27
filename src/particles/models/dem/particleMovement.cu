@@ -278,13 +278,47 @@ void updateParticlePosition(
     dfloat angle = w_norm;
     dfloat4 q = axis_angle_to_quart(axis, angle);
     
+    // DEBUG: Check if delta quaternion is identity or non-trivial
+    /*if (step % 100 == 0 && globalIdx < 1) {
+        dfloat q_mag = sqrtf(q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+        printf("DEBUG PARTICLE %d STEP %u: w_norm=%e, axis=(x=%e,y=%e,z=%e), angle=%e\n", 
+               globalIdx, step, w_norm, axis.x, axis.y, axis.z, angle);
+        printf("DEBUG PARTICLE %d STEP %u: q_delta_before=(w=%e,x=%e,y=%e,z=%e), mag=%e\n", 
+               globalIdx, step, q.w, q.x, q.y, q.z, q_mag);
+        // Check if identity: identity has w≈1 and x,y,z≈0
+        bool is_identity = (fabsf(q.w - 1.0f) < 1e-5f && fabsf(q.x) < 1e-5f && fabsf(q.y) < 1e-5f && fabsf(q.z) < 1e-5f);
+        printf("DEBUG PARTICLE %d STEP %u: Is delta quaternion IDENTITY? %s\n", globalIdx, step, is_identity ? "YES (NO ROTATION)" : "NO (rotation active)");
+    }*/
+    
     // PRECISION FIX: Update cumulative rotation quaternion
     // Fetch current accumulated rotation from particle center
     dfloat4 q_cumulative = pc_i->getQ_cumulative_rot();
     
     // Compose new rotation into cumulative rotation
-    // q_cumulative = q_cumulative * q_new (quaternion multiplication)
-    q_cumulative = quart_multiplication(q_cumulative, q);
+    // CRITICAL: Quaternion multiplication order matters!
+    // We want: final_rotation = q_new * q_cumulative (apply cumulative first, then new rotation)
+    q_cumulative = quart_multiplication(q, q_cumulative);
+    
+    // CRITICAL FIX: Re-normalize quaternion after multiplication
+    // Without this, the quaternion magnitude drifts away from 1.0 after many frames,
+    // causing scaling errors in position and orientation
+    q_cumulative = quart_normalize(q_cumulative);
+    
+    // DEBUG: Print rotation updates with magnitude check
+    /*if (step % 100 == 0 && globalIdx < 1) {
+        dfloat q_mag = sqrtf(q_cumulative.w*q_cumulative.w + q_cumulative.x*q_cumulative.x + 
+                              q_cumulative.y*q_cumulative.y + q_cumulative.z*q_cumulative.z);
+        printf("DEBUG PARTICLE %d STEP %u: w_norm=%e, q_new=(w=%e,x=%e,y=%e,z=%e)\n", 
+               globalIdx, step, w_norm, q.w, q.x, q.y, q.z);
+        printf("DEBUG PARTICLE %d STEP %u: q_cumulative_normalized=(w=%e,x=%e,y=%e,z=%e), mag=%e\n", 
+               globalIdx, step, q_cumulative.w, q_cumulative.x, q_cumulative.y, q_cumulative.z, q_mag);
+        
+        // SANITY CHECK: Magnitude should ALWAYS be 1.0 after normalization
+        if (fabsf(q_mag - 1.0f) > 1e-4f) {
+            printf("WARNING PARTICLE %d STEP %u: QUATERNION MAGNITUDE DRIFT DETECTED! mag=%e (expected 1.0)\n", 
+                   globalIdx, step, q_mag);
+        }
+    }*/
     
     // Store updated cumulative rotation back to particle center
     pc_i->setQ_cumulative_rot(q_cumulative);

@@ -103,6 +103,9 @@ ParticleCenter::ParticleCenter() {
     volume = 0;
     density = 0;
     movable = false;
+    semiAxis1_original = dfloat3(); // Will be set to current semi-axis after first setSemiAxis1 call
+    semiAxis2_original = dfloat3();
+    semiAxis3_original = dfloat3();
 }
 
 __host__ __device__  dfloat3 ParticleCenter::getPos() const { return this->pos; }
@@ -340,6 +343,21 @@ __host__ __device__ void ParticleCenter::setSemiAxis3(const dfloat3& semiAxis3) 
 __host__ __device__ void ParticleCenter::setSemiAxis3X(dfloat x) { this->semiAxis3.x = x; }
 __host__ __device__ void ParticleCenter::setSemiAxis3Y(dfloat y) { this->semiAxis3.y = y; }
 __host__ __device__ void ParticleCenter::setSemiAxis3Z(dfloat z) { this->semiAxis3.z = z; }
+
+__host__ __device__ void ParticleCenter::initializeSemiAxesFromCurrent() {
+    // Store the current semi-axis positions as the original reference
+    // This should be called once after all setSemiAxis calls in particle creation
+    this->semiAxis1_original = this->semiAxis1;
+    this->semiAxis2_original = this->semiAxis2;
+    this->semiAxis3_original = this->semiAxis3;
+}
+
+__host__ __device__ dfloat3 ParticleCenter::getSemiAxis1Original() const { return this->semiAxis1_original; }
+__host__ __device__ void ParticleCenter::setSemiAxis1Original(const dfloat3& semiAxis1_original) { this->semiAxis1_original = semiAxis1_original; }
+__host__ __device__ dfloat3 ParticleCenter::getSemiAxis2Original() const { return this->semiAxis2_original; }
+__host__ __device__ void ParticleCenter::setSemiAxis2Original(const dfloat3& semiAxis2_original) { this->semiAxis2_original = semiAxis2_original; }
+__host__ __device__ dfloat3 ParticleCenter::getSemiAxis3Original() const { return this->semiAxis3_original; }
+__host__ __device__ void ParticleCenter::setSemiAxis3Original(const dfloat3& semiAxis3_original) { this->semiAxis3_original = semiAxis3_original; }
 
 __host__ __device__ dfloat3 ParticleCenter::getCenter1() const { return this->center1; }
 __host__ __device__ void ParticleCenter::setCenter1(const dfloat3 center1) { this->center1 = center1; }

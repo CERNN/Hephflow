@@ -675,6 +675,15 @@ dfloat4 quart_conjugate(dfloat4 q);
 __host__ __device__
 dfloat4 quart_multiplication(dfloat4 q1, dfloat4 q2);
 
+/**
+ *  @brief Normalize a quaternion to unit magnitude.
+ *  @param q: Quaternion to be normalized.
+ *  @return The normalized quaternion with magnitude 1.0.
+ *  @note Critical for preventing drift after repeated multiplications.
+ */
+__host__ __device__
+dfloat4 quart_normalize(dfloat4 q);
+
 // ****************************************************************************
 // **********************   CONVERSION OPERATIONS   ***************************
 // ****************************************************************************

@@ -385,6 +385,25 @@ dfloat4 quart_multiplication(dfloat4 q1, dfloat4 q2){
     return q;
 }
 
+/**
+ *  @brief Normalize a quaternion to unit magnitude.
+ *  Prevents drift in quaternion magnitude after repeated multiplications.
+ *  Formula: q_normalized = q / ||q||
+ */
+__host__ __device__
+dfloat4 quart_normalize(dfloat4 q){
+    dfloat magnitude = sqrtf(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
+    
+    // Avoid division by zero
+    if (magnitude > 1.0e-10f) {
+        q.w /= magnitude;
+        q.x /= magnitude;
+        q.y /= magnitude;
+        q.z /= magnitude;
+    }
+    
+    return q;
+}
 
 // ****************************************************************************
 // **********************   CONVERSION OPERATIONS   ***************************

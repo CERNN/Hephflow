@@ -10,7 +10,7 @@ constexpr int NY = N;        // size y of the grid
 constexpr int NZ = N;        // size z of the grid in one GPU
 constexpr int NZ_TOTAL = NZ;       // size z of the grid
 
-constexpr dfloat U_MAX = 0.00533333;  
+constexpr dfloat U_MAX = 0.0533333;  
 constexpr dfloat L = N;
 
 constexpr dfloat FX = 0.0;        // force in x
@@ -60,7 +60,7 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
     #define DEM_METHOD
     #define LOCAL_FORCES
     //number of particles
-    #define NUM_PARTICLES 1
+    #define NUM_PARTICLES 3
 
     constexpr dfloat GX = 0.0;
     constexpr dfloat GY = 0.0;

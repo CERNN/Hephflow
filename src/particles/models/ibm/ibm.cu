@@ -79,6 +79,7 @@ void ibmParticleNodeMovement(
         return;
 
     const dfloat3SoA pos = particlesNodes->getPos();
+    const dfloat3SoA originalRelativePos = particlesNodes->getOriginalRelativePos();
 
     //direct copy since we are not modifying
     const ParticleCenter pc_i = pArray[particlesNodes->getParticleCenterIdx()[idx]];
@@ -86,128 +87,70 @@ void ibmParticleNodeMovement(
     if(!pc_i.getMovable())
         return;
 
-    // TODO: make the calculation of w_norm along with w_avg?
-    const dfloat w_norm = sqrt((pc_i.getWAvgX() * pc_i.getWAvgX()) 
-                             + (pc_i.getWAvgY() * pc_i.getWAvgY()) 
-                             + (pc_i.getWAvgZ() * pc_i.getWAvgZ()));
-
-    dfloat dx,dy,dz;
-    // dfloat new_pos_x,new_pos_y,new_pos_z;
-
-    dfloat3 dd = pc_i.getDx();
-
-    dx = dd.x; //pc_i.getPosX() - pc_i.getPosOldX();
-    dy = dd.y; //pc_i.getPosY() - pc_i.getPosOldY();
-    dz = dd.z; //pc_i.getPosZ() - pc_i.getPosOldZ();
-
-    dfloat pc_old_x = pc_i.getPosX() - dx;
-    dfloat pc_old_y = pc_i.getPosY() - dy;
-    dfloat pc_old_z = pc_i.getPosZ() - dz;
-
-    // check the norm to see if is worth computing the rotation
-    if(w_norm <= 1e-8)
-    {
-        
-        #ifdef BC_X_WALL
-            pos.x[idx] += dx;
-        #endif
-        #ifdef BC_X_PERIODIC
-            if(abs(dx) > (dfloat)(NX)/2){
-                dx = (pc_i.getPosX() < pc_old_x)
-                    ? (pc_i.getPosX() + (dfloat)NX) - pc_old_x
-                    : (pc_i.getPosX() - (dfloat)NX) - pc_old_x;
-            }
-            pos.x[idx] = std::fmod(pos.x[idx] + dx + (dfloat)NX,(dfloat)NX);
-        #endif
-        #ifdef BC_Y_WALL
-            pos.y[idx] += dy;
-        #endif
-        #ifdef BC_Y_PERIODIC
-            if(abs(dy) > (dfloat)(NY)/2){
-                dy = (pc_i.getPosY() < pc_old_y)
-                    ? (pc_i.getPosY() + (dfloat)NY) - pc_old_y
-                    : (pc_i.getPosY() - (dfloat)NY) - pc_old_y;
-            }
-            pos.y[idx] = std::fmod(pos.y[idx] + dy + (dfloat)NY, (dfloat)NY);
-        #endif
-
-        #ifdef BC_Z_WALL
-            pos.z[idx] += dz;
-        #endif
-        #ifdef BC_Z_PERIODIC
-            if(abs(dz) > (dfloat)(NZ_TOTAL)/2){
-                dz = (pc_i.getPosZ() < pc_old_z)
-                    ? (pc_i.getPosZ() + (dfloat)NZ_TOTAL) - pc_old_z
-                    : (pc_i.getPosZ() - (dfloat)NZ_TOTAL) - pc_old_z;
-            }
-            pos.z[idx] = std::fmod(pos.z[idx] + dz + (dfloat)NZ_TOTAL, (dfloat)NZ_TOTAL);
-        #endif
-        
-        //ealier return since is no longer necessary
-        return;
-    }
-
-    //compute vector between the node and the partic
-    dfloat x_vec = pos.x[idx] - pc_old_x;
-    dfloat y_vec = pos.y[idx] - pc_old_y;
-    dfloat z_vec = pos.z[idx] - pc_old_z;
-
-
-    #ifdef BC_X_PERIODIC
-        if(abs(x_vec) > (dfloat)NX/2){
-            pos.x[idx] += (pos.x[idx] < pc_old_x) ? (dfloat)NX : -(dfloat)NX;
-        }
-        x_vec = pos.x[idx] - pc_old_x;
-    #endif
-
-    #ifdef BC_Y_PERIODIC
-        if(abs(y_vec) > (dfloat)NY/2){
-            pos.y[idx] += (pos.y[idx] < pc_old_y) ? (dfloat)NY : -(dfloat)NY;
-        }
-        y_vec = pos.y[idx] - pc_old_y;
-    #endif
-
-    #ifdef BC_Z_PERIODIC
-        if(abs(z_vec) > (dfloat)NZ_TOTAL/2){
-            pos.z[idx] += (pos.z[idx] < pc_old_z) ? (dfloat)NZ_TOTAL : -(dfloat)NZ_TOTAL;
-        }
-        z_vec = pos.z[idx] - pc_old_z;
-    #endif
-
-       
-    // compute rotation quartenion
-    const dfloat q0 = cos(w_norm/2);
-    const dfloat qi = (pc_i.getWAvgX()/w_norm) * sin (w_norm/2);
-    const dfloat qj = (pc_i.getWAvgY()/w_norm) * sin (w_norm/2);
-    const dfloat qk = (pc_i.getWAvgZ()/w_norm) * sin (w_norm/2);
-
-    const dfloat tq0m1 = (q0*q0) - 0.5;
+    // PRECISION FIX Phase 4: Reconstruct node position from immutable reference
+    // Instead of incrementally updating (which accumulates errors),
+    // we reconstruct the position each frame using:
+    // position = particle_center + rotate(original_relative_offset, cumulative_rotation)
     
-    dfloat new_pos_x = pc_i.getPosX() + 2 * (   (tq0m1 + (qi*qi))*x_vec + ((qi*qj) - (q0*qk))*y_vec + ((qi*qk) + (q0*qj))*z_vec);
-    dfloat new_pos_y = pc_i.getPosY() + 2 * ( ((qi*qj) + (q0*qk))*x_vec +   (tq0m1 + (qj*qj))*y_vec + ((qj*qk) - (q0*qi))*z_vec);
-    dfloat new_pos_z = pc_i.getPosZ() + 2 * ( ((qi*qj) - (q0*qj))*x_vec + ((qj*qk) + (q0*qi))*y_vec +   (tq0m1 + (qk*qk))*z_vec);
-
-    //update node position
+    // Get the original relative position (immutable reference set at initialization)
+    dfloat3 original_offset = dfloat3(
+        originalRelativePos.x[idx],
+        originalRelativePos.y[idx],
+        originalRelativePos.z[idx]
+    );
+    
+    // Fetch the cumulative rotation quaternion from particle center
+    // This stores the total accumulated rotation history
+    dfloat4 q_cumulative = pc_i.getQ_cumulative_rot();
+    
+    // Rotate the original offset using the accumulated rotation
+    dfloat3 rotated_offset = rotate_vector_by_quart_R(original_offset, q_cumulative);
+    
+    // Reconstruct node position from first principles
+    // This prevents error accumulation - we're not updating incrementally
+    dfloat new_pos_x = pc_i.getPosX() + rotated_offset.x;
+    dfloat new_pos_y = pc_i.getPosY() + rotated_offset.y;
+    dfloat new_pos_z = pc_i.getPosZ() + rotated_offset.z;
+    
+    // DEBUG: Verify rotation is being applied (print first few nodes)
+    /*if (idx < 1) {
+        printf("DEBUG IBM NODE %d: original_offset=(x=%e,y=%e,z=%e)\n", 
+               idx, original_offset.x, original_offset.y, original_offset.z);
+        printf("DEBUG IBM NODE %d: q_cumulative=(w=%e,x=%e,y=%e,z=%e)\n", 
+               idx, q_cumulative.w, q_cumulative.x, q_cumulative.y, q_cumulative.z);
+        printf("DEBUG IBM NODE %d: rotated_offset=(x=%e,y=%e,z=%e)\n", 
+               idx, rotated_offset.x, rotated_offset.y, rotated_offset.z);
+        printf("DEBUG IBM NODE %d: pc_center=(x=%e,y=%e,z=%e)\n", 
+               idx, pc_i.getPosX(), pc_i.getPosY(), pc_i.getPosZ());
+        printf("DEBUG IBM NODE %d: new_pos=(x=%e,y=%e,z=%e)\n", 
+               idx, new_pos_x, new_pos_y, new_pos_z);
+    }
+    */
+    // Apply boundary conditions AFTER rotation to final position
+    // This ensures periodic wrapping only affects the final global position
     #ifdef BC_X_WALL
-        pos.x[idx] =  new_pos_x;
-    #endif //BC_X_WALL
-    #ifdef  BC_X_PERIODIC
-        pos.x[idx] =  std::fmod((dfloat)(new_pos_x + NX),(dfloat)(NX));
-    #endif //BC_X_PERIODIC
+        pos.x[idx] = new_pos_x;
+    #endif
+    #ifdef BC_X_PERIODIC
+        pos.x[idx] = std::fmod((dfloat)(new_pos_x + NX), (dfloat)(NX));
+        if (pos.x[idx] < 0) pos.x[idx] += (dfloat)NX;
+    #endif
 
     #ifdef BC_Y_WALL
-        pos.y[idx] =  new_pos_y;
-    #endif //BC_Y_WALL
-    #ifdef  BC_Y_PERIODIC
-        pos.y[idx] = std::fmod((dfloat)(new_pos_y + NY),(dfloat)(NY));
-    #endif //BC_Y_PERIODIC
+        pos.y[idx] = new_pos_y;
+    #endif
+    #ifdef BC_Y_PERIODIC
+        pos.y[idx] = std::fmod((dfloat)(new_pos_y + NY), (dfloat)(NY));
+        if (pos.y[idx] < 0) pos.y[idx] += (dfloat)NY;
+    #endif
 
     #ifdef BC_Z_WALL
-        pos.z[idx] =  new_pos_z;
-    #endif //BC_Z_WALL
+        pos.z[idx] = new_pos_z;
+    #endif
     #ifdef BC_Z_PERIODIC
-        pos.z[idx] = std::fmod((dfloat)(new_pos_z + NZ_TOTAL),(dfloat)(NZ_TOTAL));
-    #endif //IBBC_Z_PERIODIC
+        pos.z[idx] = std::fmod((dfloat)(new_pos_z + NZ_TOTAL), (dfloat)(NZ_TOTAL));
+        if (pos.z[idx] < 0) pos.z[idx] += (dfloat)NZ_TOTAL;
+    #endif
 }
 
 __global__

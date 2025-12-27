@@ -335,6 +335,17 @@ public:
     __host__ __device__ void setSemiAxis3Y(dfloat y);
     __host__ __device__ void setSemiAxis3Z(dfloat z);
 
+    // Initialize original semi-axes from current semi-axis values (call once at particle setup)
+    __host__ __device__ void initializeSemiAxesFromCurrent();
+
+    // Original semi-axis getters/setters (immutable references for precision fix)
+    __host__ __device__ dfloat3 getSemiAxis1Original() const;
+    __host__ __device__ void setSemiAxis1Original(const dfloat3& semiAxis1_original);
+    __host__ __device__ dfloat3 getSemiAxis2Original() const;
+    __host__ __device__ void setSemiAxis2Original(const dfloat3& semiAxis2_original);
+    __host__ __device__ dfloat3 getSemiAxis3Original() const;
+    __host__ __device__ void setSemiAxis3Original(const dfloat3& semiAxis3_original);
+
     // __host__ __device__ dfloat3 getPos() const;
     // __host__ __device__ dfloat getPosX() const;
     // __host__ __device__ dfloat getPosY() const;
@@ -376,6 +387,9 @@ protected:
     dfloat3 semiAxis1;
     dfloat3 semiAxis2;
     dfloat3 semiAxis3;
+    dfloat3 semiAxis1_original; // Original semi-axis 1 (relative to particle center) - immutable reference for precision fix
+    dfloat3 semiAxis2_original; // Original semi-axis 2 (relative to particle center) - immutable reference for precision fix
+    dfloat3 semiAxis3_original; // Original semi-axis 3 (relative to particle center) - immutable reference for precision fix
     CollisionData collision;
 }; 
 
