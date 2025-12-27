@@ -329,42 +329,35 @@ void updateParticlePosition(
 
     pc_i->setDx(pos_new - pos_old);
 
-    pc_i->setSemiAxis1(updateSemiAxis(pc_i->getSemiAxis1(), pos_old, pos_new, q));
-    pc_i->setSemiAxis2(updateSemiAxis(pc_i->getSemiAxis2(), pos_old, pos_new, q));
-    pc_i->setSemiAxis3(updateSemiAxis(pc_i->getSemiAxis3(), pos_old, pos_new, q));
+    // Update semi-axes using cumulative rotation and original offsets
+    // This avoids error accumulation from incremental updates
+    pc_i->setSemiAxis1(updateSemiAxis(pc_i->getSemiAxis1Original(), pos_new, q_cumulative));
+    pc_i->setSemiAxis2(updateSemiAxis(pc_i->getSemiAxis2Original(), pos_new, q_cumulative));
+    pc_i->setSemiAxis3(updateSemiAxis(pc_i->getSemiAxis3Original(), pos_new, q_cumulative));
 }
 
 
 __host__ __device__
 dfloat3 updateSemiAxis(
-    dfloat3 semi,
-    const dfloat3 pos_old,
-    const dfloat3 pos_new,
-    const dfloat4 q
+    const dfloat3 semi_offset_original,
+    const dfloat3 particle_center,
+    const dfloat4 q_cumulative
 ){
-    // --- periodic wrapping ---
-    #ifdef BC_X_PERIODIC
-        semi.x = wrapPeriodic(semi.x, pos_old.x, (dfloat)NX);
-    #endif
-    #ifdef BC_Y_PERIODIC
-        semi.y = wrapPeriodic(semi.y, pos_old.y, (dfloat)NY);
-    #endif
-    #ifdef BC_Z_PERIODIC
-        semi.z = wrapPeriodic(semi.z, pos_old.z, (dfloat)NZ_TOTAL);
-    #endif
-
-    dfloat3 v = {
-        semi.x - pos_old.x,
-        semi.y - pos_old.y,
-        semi.z - pos_old.z
-    };
-
-    dfloat3 v_rot = rotate_vector_by_quart_R(v, q);
-
+    // PRECISION FIX: Reconstruct semi-axis from first principles each frame
+    // This resets floating-point error accumulation to ~1e-7 per frame
+    // instead of growing unbounded with incremental updates
+    
+    // Rotate the original immutable offset by cumulative rotation
+    dfloat3 rotated_offset = rotate_vector_by_quart_R(semi_offset_original, q_cumulative);
+    
+    // Reconstruct semi-axis position from scratch
+    // Periodic wrapping is IMPLICIT: particle_center is already wrapped correctly
+    // by the center's position update kernel, so adding rotated_offset maintains
+    // synchronization with the center's periodic boundary behavior
     dfloat3 newSemi = {
-        pos_new.x + v_rot.x,
-        pos_new.y + v_rot.y,
-        pos_new.z + v_rot.z
+        particle_center.x + rotated_offset.x,
+        particle_center.y + rotated_offset.y,
+        particle_center.z + rotated_offset.z
     };
 
     return newSemi;

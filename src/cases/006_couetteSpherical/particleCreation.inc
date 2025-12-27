@@ -79,6 +79,8 @@ for (int i = 0; i < NUM_PARTICLES; i++) {
     center.setDensity(1.166666);
     center.setDiameter(diameter);
     center.setSemiAxis1(sa);
+    center.initializeSemiAxesFromCurrent(); // Precision fix: store original semi-axis positions
+    center.setQ_cumulative_rot(dfloat4(0, 0, 0, 1)); // Initialize cumulative rotation to identity
     center.setMovable(true);
     center.setQ_pos(dfloat4(1,0,0,0));
         
@@ -123,7 +125,9 @@ for (int i = 0; i < NUM_PARTICLES; i++) {
 
 
     dfloat3 vel = {0.0, 0.0, 0.0};
-    dfloat3 sa  = {10, 20, 30};
+    dfloat3 sa1 = {10, 0, 0};
+    dfloat3 sa2 = {0, 10, 0};
+    dfloat3 sa3 = {0, 0, 10};
 
     this->pShape[i] = SPHERE;
     center.setPos(pos);
@@ -132,7 +136,11 @@ for (int i = 0; i < NUM_PARTICLES; i++) {
     center.setVel_old(vel);
     center.setDensity(1.166666);
     center.setDiameter(diameter);
-    center.setSemiAxis1(sa);
+    center.setSemiAxis1(sa1);
+    center.setSemiAxis2(sa2);
+    center.setSemiAxis3(sa3);
+    center.initializeSemiAxesFromCurrent(); // Precision fix: store original semi-axis positions
+    center.setQ_cumulative_rot(dfloat4(0, 0, 0, 1)); // Initialize cumulative rotation to identity
     center.setMovable(true);
     center.setQ_pos(dfloat4(1,0,0,0));
         
@@ -335,14 +343,20 @@ for (int i = 0; i < NUM_PARTICLES; i++) {
     ParticleCenter& center = centerStorage[i];
 
     dfloat3 vel = {0.0, 0.0, 0.0};
-    dfloat3 sa  = {10, 20, 30};
+        dfloat3 sa1 = {10, 0, 0};
+    dfloat3 sa2 = {0, 10, 0};
+    dfloat3 sa3 = {0, 0, 10};
 
     this->pShape[i] = SPHERE;
     center.setVel(vel);
     center.setVel_old(vel);
     center.setDensity(1.166666);
     center.setDiameter(diameter);
-    center.setSemiAxis1(sa);
+    center.setSemiAxis1(sa1);
+    center.setSemiAxis2(sa2);
+    center.setSemiAxis3(sa3);
+    center.initializeSemiAxesFromCurrent(); // Precision fix: store original semi-axis positions
+    center.setQ_cumulative_rot(dfloat4(0, 0, 0, 1)); // Initialize cumulative rotation to identity
     center.setMovable(true);
     center.setQ_pos(dfloat4(1,0,0,0));
 
@@ -495,7 +509,9 @@ for (int i = 0; i < NUM_PARTICLES; i++) {
     if (pos.z > NZ - 1 - radius) pos.z = NZ - 1 - radius;
     ParticleCenter& center = centerStorage[i];
     dfloat3 vel = {0.0, 0.0, 0.0};
-    dfloat3 sa  = {10, 20, 30};
+    dfloat3 sa1 = {10, 0, 0};
+    dfloat3 sa2 = {0, 10, 0};
+    dfloat3 sa3 = {0, 0, 10};
     printf("Particle index %d Pos %f %f %f \n",i,pos.x,pos.y,pos.z);
     this->pShape[i] = SPHERE;
     center.setPos(pos);
@@ -504,7 +520,11 @@ for (int i = 0; i < NUM_PARTICLES; i++) {
     center.setVel_old(vel);
     center.setDensity(1.166666);
     center.setDiameter(diameter);
-    center.setSemiAxis1(sa);
+    center.setSemiAxis1(sa1);
+    center.setSemiAxis2(sa2);
+    center.setSemiAxis3(sa3);
+    center.initializeSemiAxesFromCurrent(); // Precision fix: store original semi-axis positions
+    center.setQ_cumulative_rot(dfloat4(0, 0, 0, 1)); // Initialize cumulative rotation to identity
     center.setMovable(true);
     center.setQ_pos(dfloat4(1,0,0,0));
     particles[i].setMethod(IBM);
