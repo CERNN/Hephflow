@@ -116,4 +116,42 @@ void saveParticlesInfo(ParticlesSoA *particles, unsigned int step, std::atomic<b
     saveThread.join();
 }
 
+
+void collectAndExportWallForces(
+    ParticleWallForces* d_pwForces,
+    unsigned int step
+){
+    ParticleWallForces h_pwForces;
+
+    cudaMemcpy(&h_pwForces, d_pwForces,sizeof(ParticleWallForces), cudaMemcpyDeviceToHost);
+
+    {
+        std::ostringstream s;
+        s << "step," << step
+          << "," << h_pwForces.bottom.Fx
+          << "," << h_pwForces.bottom.Fy
+          << "," << h_pwForces.bottom.Fz
+          << "," << h_pwForces.bottom.Fn
+          << "," << h_pwForces.bottom.Ft
+          << "," << h_pwForces.bottom.nContacts;
+
+        saveTreatData("_wall_forces_bottom", s.str(), step);
+    }
+
+
+    {
+        std::ostringstream s;
+        s << "step," << step
+          << "," << h_pwForces.top.Fx
+          << "," << h_pwForces.top.Fy
+          << "," << h_pwForces.top.Fz
+          << "," << h_pwForces.top.Fn
+          << "," << h_pwForces.top.Ft
+          << "," << h_pwForces.top.nContacts;
+
+        saveTreatData("_wall_forces_top", s.str(), step);
+    }
+}
+
+
 #endif //PARTICLE_MODEL

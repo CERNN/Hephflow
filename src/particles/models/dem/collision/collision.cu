@@ -31,7 +31,11 @@ __device__ dfloat3 computeTangentialForce(
     f_tang.z = - stiffness * tang_disp.z - damping * G_ct.z* POW_FUNCTION(abs(tang_disp.z) ,0.25);
     dfloat mag = vector_length(f_tang);
     if (mag > friction_coef * fabsf(f_n)) {
-        tang_disp = updateTangentialDisplacement(pc_i->getCollision(), tang_index, -G_ct, step);
+        // CRITICAL: When slipping occurs, RESET displacement to zero, not subtract G_ct
+        // This prevents the accumulated elastic deformation from being applied
+        tang_disp = dfloat3{0.0, 0.0, 0.0};
+        updateTangentialDisplacement(pc_i->getCollision(), tang_index, tang_disp, step);
+        // Apply Coulomb (kinetic) friction
         f_tang = -friction_coef * f_n * t;
     }
     return f_tang;
@@ -152,15 +156,19 @@ dfloat3 getOrUpdateTangentialDisplacement(
 
     //check if there is a current collision
     if (tang_index == -1) {
+        // NEW COLLISION: Initialize with zero displacement
         tang_index = startCollision(pc_i->getCollision(), identifier, isWall, wallNormal, step);
-        tang_disp = G_ct;
+        tang_disp = dfloat3{0.0, 0.0, 0.0};
     } else {
         //check if the collision already exited in the past
         if (step - pc_i->getCollision().getLastCollisionStep(tang_index) > 1) {
-            endCollision(pc_i->getCollision(), tang_index, step); //erase previous collision
-            tang_index = startCollision(pc_i->getCollision(), identifier, isWall, wallNormal, step); //start collision and retrive collision index
-            tang_disp = G_ct;
+            // COLLISION ENDED: Clean up old data
+            endCollision(pc_i->getCollision(), tang_index, step);
+            // START NEW COLLISION with fresh tracking
+            tang_index = startCollision(pc_i->getCollision(), identifier, isWall, wallNormal, step);
+            tang_disp = dfloat3{0.0, 0.0, 0.0};
         } else {
+            // ONGOING COLLISION: Accumulate tangential displacement
             tang_disp = updateTangentialDisplacement(pc_i->getCollision(), tang_index, G_ct, step);
         }
     }
@@ -177,7 +185,7 @@ dfloat3 getOrUpdateTangentialDisplacement(
 
 // -------------------------- SPHERE COLLISION --------------------------------
 __device__
-void sphereWallCollision(const CollisionContext& ctx){
+void sphereWallCollision(const CollisionContext& ctx, ParticleWallForces *d_pwForces){
 
     ParticleCenter* pc_i = ctx.pc_i;
     Wall wallData = ctx.wall;
@@ -191,7 +199,7 @@ void sphereWallCollision(const CollisionContext& ctx){
     const dfloat3 w_i = pc_i->getW();
 
     // Wall info
-    dfloat3 wall_speed = dfloat3(0,0,0);
+    dfloat3 wall_speed = wallData.velocity;
     dfloat3 n = wallData.normal;
     n = n * -1.0f; //invert collision direction since is from sphere to wall
 
@@ -230,6 +238,33 @@ void sphereWallCollision(const CollisionContext& ctx){
 
     //Save data in the particle information
     accumulateForceAndTorque(pc_i, f_dirs, m_dirs);
+
+    // Force exerted by particle on wall
+    dfloat3 f_on_wall = -f_dirs;
+
+    // Magnitudes
+    dfloat Fn = vector_length(f_normal);
+    dfloat Ft = vector_length(f_tang);
+
+    // Select wall accumulator
+    ParticleWallForce* pwf = nullptr;
+
+    if (wallData.normal.y > 0) {
+        pwf = &d_pwForces->bottom;
+    } else if (wallData.normal.y < 0) {
+        pwf = &d_pwForces->top;
+    }
+
+    if (pwf) {
+        atomicAdd(&pwf->Fx, f_on_wall.x);
+        atomicAdd(&pwf->Fy, f_on_wall.y);
+        atomicAdd(&pwf->Fz, f_on_wall.z);
+
+        atomicAdd(&pwf->Fn, Fn);
+        atomicAdd(&pwf->Ft, Ft);
+
+        atomicAdd(&pwf->nContacts, 1);
+    }
 }
 
 // ------------------------- CAPSULE COLLISIONS -------------------------------

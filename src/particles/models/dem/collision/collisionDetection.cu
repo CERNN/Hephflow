@@ -9,7 +9,7 @@
 
 //collision
 __global__
-void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, unsigned int step){
+void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, ParticleWallForces *d_pwForces, unsigned int step){
     /* Maps a 1D array to a Floyd triangle, where the last row is for checking
     collision against the wall and the other ones to check collision between 
     particles, with index given by row/column. Example for 7 particles:
@@ -61,7 +61,7 @@ void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, uns
     if(row == NUM_PARTICLES){
         if(!pc_i->getMovable())
             return;
-        checkCollisionWalls(shape_i,pc_i,step);
+        checkCollisionWalls(shape_i,pc_i,d_pwForces,step);
     }else{    //Collision between particles
         ParticleCenter* pc_j = &pArray[row]; 
         ParticleShape* shape_j = &shape[row];
@@ -72,10 +72,10 @@ void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, uns
 }
 
 __device__
-void checkCollisionWalls(ParticleShape *shape, ParticleCenter* pc_i, unsigned int step){
+void checkCollisionWalls(ParticleShape *shape, ParticleCenter* pc_i, ParticleWallForces *d_pwForces, unsigned int step){
     switch (*shape) {
         case SPHERE:
-            checkCollisionWallsSphere(pc_i,step);
+            checkCollisionWallsSphere(pc_i,d_pwForces,step);
             break;
         case CAPSULE:
             checkCollisionWallsCapsule(pc_i,step);
@@ -138,7 +138,7 @@ void checkCollisionWalls(ParticleShape *shape, ParticleCenter* pc_i, unsigned in
 }
 
 __device__
-void checkCollisionWallsSphere(ParticleCenter* pc_i, unsigned int step) {
+void checkCollisionWallsSphere(ParticleCenter* pc_i, ParticleWallForces *d_pwForces, unsigned int step) {
     const dfloat3 pos_i = pc_i->getPos();
     const dfloat radius = pc_i->getRadius();
 
@@ -174,7 +174,7 @@ void checkCollisionWallsSphere(ParticleCenter* pc_i, unsigned int step) {
         }
 
         if (distanceWall < radius) {
-            sphereWallCollision({pc_i, walls[i], radius - distanceWall, step});
+            sphereWallCollision({pc_i, walls[i], radius - distanceWall, step}, d_pwForces);
         }
     }
 }
@@ -327,22 +327,27 @@ void checkCollisionBetweenParticles( unsigned int column,unsigned int row,Partic
 // ------------------------------------------------------------------------ 
 
 
-__device__
 void sphereSphereCollisionCheck(unsigned int column,unsigned int row,ParticleCenter* pc_i, ParticleCenter* pc_j, int step){
     dfloat gap = sphereSphereGap(pc_i, pc_j);
-    if (gap < 0) {
-        dfloat3 diff_pos = getDiffPeriodic(pc_i->getPos(), pc_j->getPos());
-        dfloat mag_dist = vector_length(diff_pos);
-        dfloat3 normal = (mag_dist != 0) ? (diff_pos / mag_dist) : dfloat3{0.0, 0.0, 0.0};
+    dfloat3 diff_pos = getDiffPeriodic(pc_i->getPos(), pc_j->getPos());
+    dfloat mag_dist = vector_length(diff_pos);
+    dfloat3 normal = (mag_dist != 0) ? diff_pos / mag_dist : dfloat3{0,0,0};
 
-        CollisionContext ctx = {};
-        ctx.pc_i = pc_i;
-        ctx.pc_j = pc_j;
-        ctx.displacement = -gap; // overlap
-        ctx.step = step;
-        ctx.partnerID = row;
-        ctx.wall.normal = normal;
-        sphereSphereCollision(ctx);
+    CollisionContext ctx = {};
+    ctx.pc_i = pc_i;
+    ctx.pc_j = pc_j;
+    ctx.step = step;
+    ctx.partnerID = row;
+    ctx.wall.normal = normal;
+
+    if (gap < 0) {
+        ctx.displacement = -gap;
+        sphereSphereCollision(ctx); // Hertz
+    }
+    else {
+        //sphereSphereLubrication(ctx, gap);
+        //sphereSphereRepulsion(ctx, gap);
+        //sphereSphereAttraction(ctx, gap);
     }
 }
 

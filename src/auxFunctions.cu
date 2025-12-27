@@ -76,27 +76,27 @@ void meanFlowComputation(
 ){
 
     //current values
-    dfloat t_ux0 = 0.0;
-    dfloat t_uy0 = 0.0;
-    dfloat t_uz0 = 0.0;
+    dfloat t_ux0 = 0.0_df;
+    dfloat t_uy0 = 0.0_df;
+    dfloat t_uz0 = 0.0_df;
 
     #ifdef THERMAL_MODEL
-    dfloat t_cc0 = 0.0;
+    dfloat t_cc0 = 0.0_df;
     #endif //THERMAL_MODEL
 
     //old mean values
-    dfloat m_ux = 0.0;
-    dfloat m_uy = 0.0;
-    dfloat m_uz = 0.0;
+    dfloat m_ux = 0.0_df;
+    dfloat m_uy = 0.0_df;
+    dfloat m_uz = 0.0_df;
 
     #ifdef THERMAL_MODEL
-    dfloat m_cc = 0.0;
+    dfloat m_cc = 0.0_df;
     #endif //THERMAL_MODEL
 
 
     #pragma warning(push)
     #pragma warning(disable: 4804)
-    dfloat mean_counter = 1.0/((dfloat)(step/MACR_SAVE)+1.0);
+    dfloat mean_counter = 1.0_df/((dfloat)(step/MACR_SAVE)+1.0_df);
     #pragma warning(pop)
     
     int count = 0;

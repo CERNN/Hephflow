@@ -58,19 +58,19 @@ void updateParticlePosition(
 );
 
 /**
- * @brief Update the semi-axis positions considering periodic boundaries.
- * @param semi: The semi-axis positions to be updated.
- * @param pos_old: The old position of the particle.
- * @param pos_new: The current position of the particle.
- * @param q: The quaternion representing the particle's orientation.
- * @return The updated semi-axis positions.
+ * @brief Update the semi-axis positions using cumulative rotation and original offsets.
+ * Reconstructs semi-axis position from first principles each frame to avoid error accumulation.
+ * Periodic wrapping is implicit through particle_center position (which is already wrapped).
+ * @param semi_offset_original: The immutable original offset (semi_axis - center) at initialization.
+ * @param particle_center: The current particle center position (already wrapped if periodic BC).
+ * @param q_cumulative: The cumulative rotation quaternion (complete rotation history).
+ * @return The updated semi-axis position.
  */
 __host__ __device__
 dfloat3 updateSemiAxis(
-    dfloat3 semi,
-    const dfloat3 pos_old,
-    const dfloat3 pos_new,
-    const dfloat4 q
+    const dfloat3 semi_offset_original,
+    const dfloat3 particle_center,
+    const dfloat4 q_cumulative
 );
 
 #endif //PARTICLE_MODEL

@@ -90,6 +90,7 @@ ParticleCenter::ParticleCenter() {
     w_pos = dfloat3();
     q_pos = dfloat4();
     q_pos_old = dfloat4();
+    q_cumulative_rot = dfloat4({1.0f, 0.0f, 0.0f, 0.0f}); // Identity quaternion
     f = dfloat3();
     f_old = dfloat3();
     M = dfloat3();
@@ -102,6 +103,9 @@ ParticleCenter::ParticleCenter() {
     volume = 0;
     density = 0;
     movable = false;
+    semiAxis1_original = dfloat3(); // Will be set to current semi-axis after first setSemiAxis1 call
+    semiAxis2_original = dfloat3();
+    semiAxis3_original = dfloat3();
 }
 
 __host__ __device__  dfloat3 ParticleCenter::getPos() const { return this->pos; }
@@ -203,6 +207,17 @@ __host__ __device__ void ParticleCenter::setQPosOldX(dfloat x) { this->q_pos_old
 __host__ __device__ void ParticleCenter::setQPosOldY(dfloat y) { this->q_pos_old.y = y; }
 __host__ __device__ void ParticleCenter::setQPosOldZ(dfloat z) { this->q_pos_old.z = z; }
 __host__ __device__ void ParticleCenter::setQPosOldW(dfloat w) { this->q_pos_old.w = w; }
+
+__host__ __device__ dfloat4 ParticleCenter::getQ_cumulative_rot() const { return this->q_cumulative_rot; }
+__host__ __device__ dfloat ParticleCenter::getQCumulativeRotX() const { return this->q_cumulative_rot.x; }
+__host__ __device__ dfloat ParticleCenter::getQCumulativeRotY() const { return this->q_cumulative_rot.y; }
+__host__ __device__ dfloat ParticleCenter::getQCumulativeRotZ() const { return this->q_cumulative_rot.z; }
+__host__ __device__ dfloat ParticleCenter::getQCumulativeRotW() const { return this->q_cumulative_rot.w; }
+__host__ __device__ void ParticleCenter::setQ_cumulative_rot(const dfloat4& q_cumulative_rot) { this->q_cumulative_rot = q_cumulative_rot; }
+__host__ __device__ void ParticleCenter::setQCumulativeRotX(dfloat x) { this->q_cumulative_rot.x = x; }
+__host__ __device__ void ParticleCenter::setQCumulativeRotY(dfloat y) { this->q_cumulative_rot.y = y; }
+__host__ __device__ void ParticleCenter::setQCumulativeRotZ(dfloat z) { this->q_cumulative_rot.z = z; }
+__host__ __device__ void ParticleCenter::setQCumulativeRotW(dfloat w) { this->q_cumulative_rot.w = w; }
 
 __host__ __device__ dfloat3 ParticleCenter::getF() const { return this->f; }
 __host__ __device__ dfloat ParticleCenter::getFX() const { return this->f.x; }
@@ -328,6 +343,21 @@ __host__ __device__ void ParticleCenter::setSemiAxis3(const dfloat3& semiAxis3) 
 __host__ __device__ void ParticleCenter::setSemiAxis3X(dfloat x) { this->semiAxis3.x = x; }
 __host__ __device__ void ParticleCenter::setSemiAxis3Y(dfloat y) { this->semiAxis3.y = y; }
 __host__ __device__ void ParticleCenter::setSemiAxis3Z(dfloat z) { this->semiAxis3.z = z; }
+
+__host__ __device__ void ParticleCenter::initializeSemiAxesFromCurrent() {
+    // Store the current semi-axis positions as the original reference
+    // This should be called once after all setSemiAxis calls in particle creation
+    this->semiAxis1_original = this->semiAxis1;
+    this->semiAxis2_original = this->semiAxis2;
+    this->semiAxis3_original = this->semiAxis3;
+}
+
+__host__ __device__ dfloat3 ParticleCenter::getSemiAxis1Original() const { return this->semiAxis1_original; }
+__host__ __device__ void ParticleCenter::setSemiAxis1Original(const dfloat3& semiAxis1_original) { this->semiAxis1_original = semiAxis1_original; }
+__host__ __device__ dfloat3 ParticleCenter::getSemiAxis2Original() const { return this->semiAxis2_original; }
+__host__ __device__ void ParticleCenter::setSemiAxis2Original(const dfloat3& semiAxis2_original) { this->semiAxis2_original = semiAxis2_original; }
+__host__ __device__ dfloat3 ParticleCenter::getSemiAxis3Original() const { return this->semiAxis3_original; }
+__host__ __device__ void ParticleCenter::setSemiAxis3Original(const dfloat3& semiAxis3_original) { this->semiAxis3_original = semiAxis3_original; }
 
 __host__ __device__ dfloat3 ParticleCenter::getCenter1() const { return this->center1; }
 __host__ __device__ void ParticleCenter::setCenter1(const dfloat3 center1) { this->center1 = center1; }

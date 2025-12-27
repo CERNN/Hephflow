@@ -36,31 +36,31 @@
 __device__ __forceinline__  dfloat stencil(dfloat x) {
     dfloat absX = abs(x);
     #if defined STENCIL_2
-        if (absX > 1.0) {
-            return 0.0;
+        if (absX > 1.0_df) {
+            return 0.0_df;
         }
         else {
             return (1 - x);
         }
     #elif defined STENCIL_4
         if (absX <= 1) {
-            return (3.0 - 2.0*absX + sqrt(1 + 4 * absX - 4 * absX*absX))/8;
+            return (3.0_df - 2.0_df*absX + sqrt(1.0_df + 4.0_df * absX - 4.0_df * absX*absX))/8.0_df;
         }
-        else if (absX > 1.0 && absX <= 2.0) {
-            return (5.0 - 2.0*absX - sqrt(-7.0 + 12.0*absX - 4.0*absX*absX))/8;
+        else if (absX > 1.0_df && absX <= 2.0_df) {
+            return (5.0_df - 2.0_df*absX - sqrt(-7.0_df + 12.0_df*absX - 4.0_df*absX*absX))/8.0_df;
         }
         else {
-            return 0.0;
+            return 0.0_df;
         }
     #elif defined STENCIL_COS
         if (absX <= 2){
-            return (cos(M_PI*absX/2)+1.0)/4;
+            return (cos(M_PI*absX*0.5_df)+1.0_df)/4.0_df;
         }   
         else{
-            return 0.0;
+            return 0.0_df;
         }
     #endif //STENCIL
-    return 0;
+    return 0.0_df;
 }
 
 #endif //PARTICLE_MODEL

@@ -1,5 +1,5 @@
     multiplyTerm = rho * W0;
-    pics2 = 1.0 - cs2 * (mxx + myy + mzz);
+    pics2 = 1.0_df - cs2 * (mxx + myy + mzz);
 
     const dfloat mxxy = ux * mxy + uy * mxx - ux * ux * uy;
     const dfloat mxxz = ux * mxz + uz * mxx - ux * ux * uz;
@@ -9,7 +9,7 @@
     const dfloat myyz = uy * myz + uz * myy - uy * uy * uz;
     const dfloat mxyz = ux * myz + uy * mxz + uz * mxy - 2 * ux * uy * uz;
 
-    const dfloat one_minus_cs2 = 1.0 - cs2;
+    const dfloat one_minus_cs2 = 1.0_df - cs2;
 
     pop[ 0] = multiplyTerm * (pics2);
     multiplyTerm = rho * W1;

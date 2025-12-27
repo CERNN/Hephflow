@@ -31,6 +31,11 @@ int main() {
     /* -------------- ALLOCATION FOR GPU ------------- */
     deviceField.allocateDeviceMemoryDeviceField();
     //TODO : move these malocs to inside teh corresponding mallocs
+    #ifdef PARTICLE_MODEL
+    //forces from the particles into the wall
+    ParticleWallForces* d_pwForces;
+    cudaMalloc((void**)&d_pwForces, sizeof(ParticleWallForces));
+    #endif //PARTICLE_MODEL
     
     #ifdef DENSITY_CORRECTION
         checkCudaErrors(cudaMallocHost((void**)&(hostField.h_mean_rho), sizeof(dfloat)));
@@ -135,7 +140,7 @@ int main() {
         #endif //LOCAL_FORCES
 
         #ifdef PARTICLE_MODEL
-            deviceField.particleSimulationDeviceField(particlesSoA,streamsPart,step);
+            deviceField.particleSimulationDeviceField(particlesSoA,streamsPart,d_pwForces,step);
         #endif //PARTICLE_MODEL
 
         if(saveField.checkpoint){
@@ -156,6 +161,9 @@ int main() {
         if(saveField.reportSave){
             printf("\n--------------------------- Saving report %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
             deviceField.treatDataDeviceField(hostField, step);
+            #ifdef PARTICLE_MODEL
+            collectAndExportWallForces(d_pwForces,step);
+            #endif
         }
         
         if(saveField.macrSave){

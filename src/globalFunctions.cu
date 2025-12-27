@@ -3,8 +3,8 @@
 
 __host__ __device__
 dfloat clamp01(dfloat value) {
-    if (value < 0.0) return 0.0;
-    if (value > 1.0) return 1.0;
+    if (value < 0.0_df) return 0.0_df;
+    if (value > 1.0_df) return 1.0_df;
     return value;
 }
 
@@ -23,23 +23,23 @@ dfloat3 planeProjection(dfloat3 P, dfloat3 n, dfloat d) {
     // Copy original coordinates
     dfloat3 proj = P;
     
-    const dfloat EPSILON = 1e-6;
+    const dfloat EPSILON = 1e-6_df;
     // Update projection based on the direction of the normal vector
-    if (fabs(n.x - 1.0) < EPSILON) {
-        proj.x = 0.0;
-    } else if (fabs(n.x + 1.0) < EPSILON) {
+    if (fabs(n.x - 1.0_df) < EPSILON) {
+        proj.x = 0.0_df;
+    } else if (fabs(n.x + 1.0_df) < EPSILON) {
         proj.x = d;
     }
 
-    if (fabs(n.y - 1.0) < EPSILON) {
-        proj.y = 0.0;
-    } else if (fabs(n.y + 1.0) < EPSILON) {
+    if (fabs(n.y - 1.0_df) < EPSILON) {
+        proj.y = 0.0_df;
+    } else if (fabs(n.y + 1.0_df) < EPSILON) {
         proj.y = d;
     }
 
-    if (fabs(n.z - 1.0) < EPSILON) {
-        proj.z = 0.0;
-    } else if (fabs(n.z + 1.0) < EPSILON) {
+    if (fabs(n.z - 1.0_df) < EPSILON) {
+        proj.z = 0.0_df;
+    } else if (fabs(n.z + 1.0_df) < EPSILON) {
         proj.z = d;
     }
 
@@ -82,9 +82,9 @@ dfloat3 vector_normalize(dfloat3 v) {
     dfloat inv_length =  rsqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
     dfloat3 norm_v;
     if (isnan(inv_length)||isinf(inv_length)){
-        norm_v.x = 0.0;
-        norm_v.y = 0.0;
-        norm_v.z = 0.0;
+        norm_v.x = 0.0_df;
+        norm_v.y = 0.0_df;
+        norm_v.z = 0.0_df;
     }else{
         norm_v.x = v.x * inv_length;
         norm_v.y = v.y * inv_length;
@@ -98,16 +98,16 @@ dfloat point_to_point_distance_periodic(dfloat3 p1, dfloat3 p2) {
     dfloat3 delta = p1 - p2;
 
     #ifdef BC_X_PERIODIC
-    if (delta.x > NX / 2.0) delta.x -= NX;
-    if (delta.x < -NX / 2.0) delta.x += NX;
+    if (delta.x > NX / 2.0_df) delta.x -= NX;
+    if (delta.x < -NX / 2.0_df) delta.x += NX;
     #endif //BC_X_PERIODIC
     #ifdef BC_Y_PERIODIC
-    if (delta.y > NY / 2.0) delta.y -= NY;
-    if (delta.y < -NY / 2.0) delta.y += NY;
+    if (delta.y > NY / 2.0_df) delta.y -= NY;
+    if (delta.y < -NY / 2.0_df) delta.y += NY;
     #endif //BC_Y_PERIODIC
     #ifdef BC_Z_PERIODIC
-    if (delta.z > NZ / 2.0) delta.z -= NZ;
-    if (delta.z < -NZ / 2.0) delta.z += NZ;
+    if (delta.z > NZ / 2.0_df) delta.z -= NZ;
+    if (delta.z < -NZ / 2.0_df) delta.z += NZ;
     #endif //BC_Z_PERIODIC
 
     return sqrtf(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
@@ -118,7 +118,7 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2) {
     dfloat dx, dy, dz;
     // X direction
     #ifdef BC_X_PERIODIC
-    dx = abs(p1.x - p2.x) > ((NX-1) / 2.0) ?
+    dx = abs(p1.x - p2.x) > ((NX-1) / 2.0_df) ?
         (p1.x < p2.x ? (p1.x + (NX-1) - p2.x) : (p1.x - (NX-1) - p2.x))
         : p1.x - p2.x;
     #else
@@ -126,7 +126,7 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2) {
     #endif
     // Y direction
     #ifdef BC_Y_PERIODIC
-    dy = abs(p1.y - p2.y) > ((NY-1) / 2.0) ?
+    dy = abs(p1.y - p2.y) > ((NY-1) / 2.0_df) ?
         (p1.y < p2.y ? (p1.y + (NY-1) - p2.y) : (p1.y - (NY-1) - p2.y))
         : p1.y - p2.y;
     #else
@@ -134,7 +134,7 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2) {
     #endif
     // Z direction
     #ifdef BC_Z_PERIODIC
-    dz = abs(p1.z - p2.z) > ((NZ-1) / 2.0) ?
+    dz = abs(p1.z - p2.z) > ((NZ-1) / 2.0_df) ?
         (p1.z < p2.z ? (p1.z + (NZ-1) - p2.z) : (p1.z - (NZ-1) - p2.z))
         : p1.z - p2.z;
     #else
@@ -198,7 +198,7 @@ __device__
 dfloat3 constrain_to_segment(dfloat3 point, dfloat3 segStart, dfloat3 segEnd) {
     dfloat3 segDir = segEnd - segStart;
     dfloat segLengthSqr = dot_product(segDir,segDir);
-    if (segLengthSqr == 0.0) 
+    if (segLengthSqr == 0.0_df) 
         return segStart;  // The segment is a point
 
     dfloat t = dot_product((point - segStart), segDir) / segLengthSqr;
@@ -221,8 +221,8 @@ dfloat segment_segment_closest_points(dfloat3 p1, dfloat3 q1, dfloat3 p2, dfloat
     dfloat t = dot_product(p2-inPlaneA,inPlaneBA) / dot_product(inPlaneBA, inPlaneBA);
 
 
-    if (dot_product(inPlaneBA, inPlaneBA) == 0.0) {
-        t = 0.0;  // Handle case where inPlaneA and inPlaneB are the same (segments are parallel)
+    if (dot_product(inPlaneBA, inPlaneBA) == 0.0_df) {
+        t = 0.0_df;  // Handle case where inPlaneA and inPlaneB are the same (segments are parallel)
     }
 
     // Find the closest point on segment [p1, q1] to the line [p2, q2]
@@ -341,7 +341,7 @@ void inverse_3x3(dfloat A[3][3], dfloat result[3][3]) {
     dfloat adj[3][3];
     adjugate_3x3(A, adj);
     
-    dfloat inv_det = 1.0 / det;
+    dfloat inv_det = 1.0_df / det;
     
     // Compute the inverse matrix without loops
     result[0][0] = adj[0][0] * inv_det;
@@ -385,6 +385,25 @@ dfloat4 quart_multiplication(dfloat4 q1, dfloat4 q2){
     return q;
 }
 
+/**
+ *  @brief Normalize a quaternion to unit magnitude.
+ *  Prevents drift in quaternion magnitude after repeated multiplications.
+ *  Formula: q_normalized = q / ||q||
+ */
+__host__ __device__
+dfloat4 quart_normalize(dfloat4 q){
+    dfloat magnitude = sqrtf(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
+    
+    // Avoid division by zero
+    if (magnitude > 1.0e-10f) {
+        q.w /= magnitude;
+        q.x /= magnitude;
+        q.y /= magnitude;
+        q.z /= magnitude;
+    }
+    
+    return q;
+}
 
 // ****************************************************************************
 // **********************   CONVERSION OPERATIONS   ***************************
@@ -429,12 +448,12 @@ void quart_to_rotation_matrix(dfloat4 q, dfloat R[3][3]){
 
 __host__ __device__
 dfloat4 euler_to_quart(dfloat roll, dfloat pitch, dfloat yaw){
-    dfloat cr = cos(roll * 0.5);
-    dfloat sr = sin(roll * 0.5);
-    dfloat cp = cos(pitch * 0.5);
-    dfloat sp = sin(pitch * 0.5);
-    dfloat cy = cos(yaw * 0.5);
-    dfloat sy = sin(yaw * 0.5);
+    dfloat cr = cos(roll * 0.5_df);
+    dfloat sr = sin(roll * 0.5_df);
+    dfloat cp = cos(pitch * 0.5_df);
+    dfloat sp = sin(pitch * 0.5_df);
+    dfloat cy = cos(yaw * 0.5_df);
+    dfloat sy = sin(yaw * 0.5_df);
 
     dfloat4 q;
     q.w = cr * cp * cy + sr * sp * sy;
@@ -514,7 +533,7 @@ dfloat4 compute_rotation_quart(dfloat3 v1, dfloat3 v2) {
     dfloat dot = dot_product(v1, v2);
 
     // Calculate the angle of rotation
-    dfloat angle_d2 = acosf(dot)*0.5;
+    dfloat angle_d2 = acosf(dot)*0.5_df;
 
     // Calculate the axis of rotation
     dfloat3 axis = cross_product(v1, v2);
@@ -532,7 +551,7 @@ dfloat4 compute_rotation_quart(dfloat3 v1, dfloat3 v2) {
 __host__ __device__
 dfloat4 axis_angle_to_quart(dfloat3 axis, dfloat angle) {
     dfloat4 q;
-    angle = angle*0.5;
+    angle = angle*0.5_df;
     // Normalize the axis of rotation
     axis = vector_normalize(axis);
     
@@ -647,9 +666,9 @@ dfloat mom_trilinear_interp(
 
 __host__ __device__
 dfloat cubic_interp(dfloat p0, dfloat p1, dfloat p2, dfloat p3, dfloat t) {
-    dfloat a = -0.5*p0 + 1.5*p1 - 1.5*p2 + 0.5*p3;
-    dfloat b = p0 - 2.5*p1 + 2.0*p2 - 0.5*p3;
-    dfloat c = -0.5*p0 + 0.5*p2;
+    dfloat a = -0.5_df*p0 + 1.5_df*p1 - 1.5_df*p2 + 0.5_df*p3;
+    dfloat b = p0 - 2.5_df*p1 + 2.0_df*p2 - 0.5_df*p3;
+    dfloat c = -0.5_df*p0 + 0.5_df*p2;
     dfloat d = p1;
     return ((a*t + b)*t + c)*t + d;
 }

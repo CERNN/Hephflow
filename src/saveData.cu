@@ -700,6 +700,7 @@ std::string getSimInfoString(int step,dfloat MLUPS)
     strSimInfo << "                 FY: " << FY << "\n";
     strSimInfo << "                 FZ: " << FZ << "\n";
     strSimInfo << "         Save steps: " << MACR_SAVE << "\n";
+    strSimInfo << "       Report steps: " << REPORT_SAVE << "\n";
     strSimInfo << "             Nsteps: " << step << "\n";
     strSimInfo << "              MLUPS: " << MLUPS << "\n";
         strSimInfo << std::scientific << std::setprecision(0);
@@ -713,9 +714,25 @@ std::string getSimInfoString(int step,dfloat MLUPS)
     strSimInfo << "            BC mode: Moment Based \n";
     #endif //BC_MOMENT_BASED
     strSimInfo << "            BC type: " << STR(BC_PROBLEM) << "\n";
+    #ifdef BC_X_WALL
+    strSimInfo << "          BC. X-Dir: Wall \n";
+    #endif
+    #ifdef BC_X_PERIODIC
+    strSimInfo << "          BC. X-Dir: Periodic \n";
+    #endif
+    #ifdef BC_X_WALL
+    strSimInfo << "          BC. Y-Dir: Wall \n";
+    #endif
+    #ifdef BC_Y_PERIODIC
+    strSimInfo << "          BC. Y-Dir: Periodic \n";
+    #endif
+    #ifdef BC_Z_WALL
+    strSimInfo << "          BC. Z-Dir: Wall \n";
+    #endif
+    #ifdef BC_Z_PERIODIC
+    strSimInfo << "          BC. Z-Dir: Periodic \n";
+    #endif
     strSimInfo << "--------------------------------------------------------------------------------\n";
-
-
     #ifdef OMEGA_FIELD
     strSimInfo << "\n------------------------------ NON NEWTONIAN FLUID -----------------------------\n";
     strSimInfo << std::scientific << std::setprecision(6);
@@ -735,7 +752,46 @@ std::string getSimInfoString(int step,dfloat MLUPS)
     #endif // BINGHAM
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif // OMEGA_FIELD
+    #ifdef PARTICLE_MODEL
+    strSimInfo << "\n---------------------------------- PARTICLES -----------------------------------\n";
+    strSimInfo << std::scientific << std::setprecision(6);
+    strSimInfo << "   Number of particles: " << NUM_PARTICLES << "\n";
+    strSimInfo << "         Fluid density: " << FLUID_DENSITY << "\n";
+    strSimInfo << "                    GX: " << GX << "\n";
+    strSimInfo << "                    GY: " << GY << "\n";
+    strSimInfo << "                    GZ: " << GZ << "\n";
+    strSimInfo << "        Particles save: " << PARTICLES_SAVE << "\n";
+    #ifdef IBM_METHOD
+        strSimInfo << "\n------------------------------------- IBM --------------------------------------\n";
+        strSimInfo << "  Particles nodes save: " << IBM_PARTICLES_NODES_SAVE << "\n";
+        strSimInfo << "            Mesh scale: " << MESH_SCALE << "\n";
+        strSimInfo << "          Mesh coulomb: " << MESH_COULOMB << "\n";
+        strSimInfo << "         IBM thickness: " << IBM_THICKNESS << "\n";
+
+        strSimInfo << "          Stencil size: ";
+        #if defined STENCIL_2
+        strSimInfo << "2" << "\n";
+        #elif defined STENCIL_4
+        strSimInfo << "4" << "\n";
+        #else
+        strSimInfo << "Invalid" << "\n";
+        #endif
+    #endif //IBM_METHOD
+    #ifdef DEM_METHOD
+        strSimInfo << "\n------------------------------------- DEM --------------------------------------\n";
+        strSimInfo << " Part-Part Frict Coef.: " << PP_FRICTION_COEF << "\n";
+        strSimInfo << " Part-Wall Frict Coef.: " << PW_FRICTION_COEF << "\n";
+        strSimInfo << " Part-Part Rest. Coef.: " << PP_REST_COEF << "\n";
+        strSimInfo << " Part-Wall Rest. Coef.: " << PW_REST_COEF << "\n";
+        strSimInfo << " Particle Young's Mod.: " << PARTICLE_YOUNG_MODULUS << "\n";
+        strSimInfo << " Particle Poisson Rat.: " << PARTICLE_POISSON_RATIO << "\n";
+        strSimInfo << "     Wall Young's Mod.: " << WALL_YOUNG_MODULUS << "\n";
+        strSimInfo << "     Wall Poisson Rat.: " << WALL_POISSON_RATIO << "\n";
+        #endif //DEM_METHOD
+    strSimInfo << "--------------------------------------------------------------------------------\n";
+    #endif //PARTICLE_MODEL
     #ifdef LES_MODEL
+    strSimInfo << "\n------------------------------------- LES --------------------------------------\n";
     strSimInfo << "\t Smagorisky Constant:" << CONST_SMAGORINSKY <<"\n";
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif //LES

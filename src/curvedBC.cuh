@@ -20,9 +20,9 @@
 
 __host__ __device__
 dfloat curvedBoundaryExtrapolation(dfloat delta, dfloat pf1_value, dfloat pf2_value) {
-	const dfloat delta_r = sqrt(2.0); //TODO: CURRENTLY A MAGIC NUMBNER
+	const dfloat delta_r = sqrt(2.0_df); //TODO: CURRENTLY A MAGIC NUMBNER
 
-	return (delta * (delta - 2.0 * delta_r) / (delta_r * delta_r)) * pf1_value - (delta * (delta - delta_r) / (2.0 * delta_r * delta_r)) * pf2_value;
+	return (delta * (delta - 2.0_df * delta_r) / (delta_r * delta_r)) * pf1_value - (delta * (delta - delta_r) / (2.0_df * delta_r * delta_r)) * pf2_value;
 }
 
 __device__ inline 

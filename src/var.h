@@ -31,6 +31,11 @@
     #define VTK_DFLOAT_TYPE "double"
 #endif //DOUBLE_PRECISION
 
+__host__ __device__ 
+constexpr dfloat operator "" _df(long double val) {
+    return static_cast<dfloat>(val);
+}
+
 // Pow function to use
 #ifdef SINGLE_PRECISION
     #define POW_FUNCTION powf 
@@ -44,7 +49,7 @@
 /* ----------------------------- PROBLEM DEFINE ---------------------------- */
 
 
-#define BC_PROBLEM couette_spherical
+#define BC_PROBLEM 006_couetteSpherical
 
                                 
 constexpr bool console_flush = false;
@@ -85,27 +90,27 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};    // Which GPUs to use
 
 #define CASE_AXX_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/axx_bc_definition.inc)
 #define COLREC_AXX_RECONSTRUCTION STR(COLREC_DIRECTORY/AIJ_SCALAR/reconstruction_xx.inc)
-#define COLREC_AXX_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision.inc)
+#define COLREC_AXX_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision_xx.inc)
 
 #define CASE_AXY_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/axy_bc_definition.inc)
 #define COLREC_AXY_RECONSTRUCTION STR(COLREC_DIRECTORY/AIJ_SCALAR/reconstruction_xy.inc)
-#define COLREC_AXY_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision.inc)
+#define COLREC_AXY_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision_xy.inc)
 
 #define CASE_AXZ_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/axz_bc_definition.inc)
 #define COLREC_AXZ_RECONSTRUCTION STR(COLREC_DIRECTORY/AIJ_SCALAR/reconstruction_xz.inc)
-#define COLREC_AXZ_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision.inc)
+#define COLREC_AXZ_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision_xz.inc)
 
 #define CASE_AYY_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/ayy_bc_definition.inc)
 #define COLREC_AYY_RECONSTRUCTION STR(COLREC_DIRECTORY/AIJ_SCALAR/reconstruction_yy.inc)
-#define COLREC_AYY_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision.inc)
+#define COLREC_AYY_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision_yy.inc)
 
 #define CASE_AYZ_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/ayz_bc_definition.inc)
 #define COLREC_AYZ_RECONSTRUCTION STR(COLREC_DIRECTORY/AIJ_SCALAR/reconstruction_yz.inc)
-#define COLREC_AYZ_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision.inc)
+#define COLREC_AYZ_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision_yz.inc)
 
 #define CASE_AZZ_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/azz_bc_definition.inc)
 #define COLREC_AZZ_RECONSTRUCTION STR(COLREC_DIRECTORY/AIJ_SCALAR/reconstruction_zz.inc)
-#define COLREC_AZZ_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision.inc)
+#define COLREC_AZZ_COLLISION STR(COLREC_DIRECTORY/AIJ_SCALAR/collision_zz.inc)
 
 
 #define CASE_PARTICLE_CREATE STR(../../CASE_DIRECTORY/BC_PROBLEM/particleCreation.inc)
@@ -122,11 +127,11 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};    // Which GPUs to use
 
 
 constexpr dfloat constexprSqrt(dfloat x, dfloat curr, dfloat prev) {
-    return (curr == prev) ? curr : constexprSqrt(x, 0.5 * (curr + x / curr), curr);
+    return (curr == prev) ? curr : constexprSqrt(x, 0.5_df * (curr + x / curr), curr);
 }
 
 constexpr dfloat invSqrtNewton(dfloat x, dfloat curr, dfloat prev) {
-    return (curr == prev) ? curr : invSqrtNewton(x, curr * (1.5 - 0.5 * x * curr * curr), curr);
+    return (curr == prev) ? curr : invSqrtNewton(x, curr * (1.5_df - 0.5_df * x * curr * curr), curr);
 }
 
 constexpr dfloat sqrtt(dfloat x) {
@@ -137,7 +142,7 @@ constexpr dfloat sqrtt(dfloat x) {
 
 constexpr dfloat invSqrtt(dfloat x) {
     return (x > 0 && x < std::numeric_limits<dfloat>::infinity())
-        ? invSqrtNewton(x, 1.0 / x, 0)
+        ? invSqrtNewton(x, 1.0_df / x, 0)
         : std::numeric_limits<dfloat>::quiet_NaN();
 }
 
@@ -150,15 +155,15 @@ constexpr dfloat constexprLnHelper(dfloat y, int n, dfloat sum) {
     for (int i = 0; i < n - 1; ++i) {
         term *= y * y;
     }
-    return constexprLnHelper(y, n + 1, sum + term / (2.0 * n - 1.0));
+    return constexprLnHelper(y, n + 1, sum + term / (2.0_df * n - 1.0_df));
 }
 
 constexpr dfloat constexprLn(dfloat x) {
-    if (x <= 0.0) {
+    if (x <= 0.0_df) {
         return std::numeric_limits<dfloat>::quiet_NaN();
     }
-    dfloat y = (x - 1.0) / (x + 1.0);
-    return 2.0 * constexprLnHelper(y, 1, 0.0);
+    dfloat y = (x - 1.0_df) / (x + 1.0_df);
+    return 2.0_df * constexprLnHelper(y, 1, 0.0_df);
 }
 
 // Compile-time power of 2 checker
@@ -183,7 +188,7 @@ struct BlockDim {
 constexpr BlockDim findOptimalBlockDimensions(size_t maxElements) {
     int bestX = 1, bestY = 1, bestZ = 1;
     int closestVolume = 0;
-    float bestForm = 0.0;    
+    float bestForm = 0.0_df;    
     
     // Iterate over powers of 2 up to `maxElements` to find optimal dimensions
     for (int x = closestPowerOfTwo(maxElements); x >= 1; x /= 2) {
@@ -191,7 +196,7 @@ constexpr BlockDim findOptimalBlockDimensions(size_t maxElements) {
             for (int z = closestPowerOfTwo(maxElements / (x * y)); z >= 1; z /= 2) {
                 if (x * y * z <= maxElements) {
                     int volume = x * y * z;
-                    float form = 1.0/(1.0/x + 1.0/y + 1.0/z);
+                    float form = 1.0_df/(1.0_df/x + 1.0_df/y + 1.0_df/z);
                     if (volume > closestVolume) {
                         bestX = x;
                         bestY = y;

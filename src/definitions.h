@@ -17,20 +17,20 @@
 
 /* --------------------------- CONSTANTS --------------------------- */
 
-constexpr dfloat OMEGA = 1.0 / TAU;        // (tau)^-1
-constexpr dfloat OMEGAd2 = OMEGA/2.0; //OMEGA/2
-constexpr dfloat OMEGAd9 = OMEGA/9.0;  //OMEGA/9
-constexpr dfloat T_OMEGA = 1.0 - OMEGA; //1-OMEGA
-constexpr dfloat TT_OMEGA = 1.0 - 0.5*OMEGA; //1.0 - OMEGA/2 
-constexpr dfloat OMEGA_P1 = 1.0 + OMEGA; // 1+ OMEGA
-constexpr dfloat TT_OMEGA_T3 = TT_OMEGA*3.0; //3*(1-0.5*OMEGA)
+constexpr dfloat OMEGA = 1.0_df / TAU;        // (tau)^-1
+constexpr dfloat OMEGAd2 = OMEGA/2.0_df; //OMEGA/2
+constexpr dfloat OMEGAd9 = OMEGA/9.0_df;  //OMEGA/9
+constexpr dfloat T_OMEGA = 1.0_df - OMEGA; //1-OMEGA
+constexpr dfloat TT_OMEGA = 1.0_df - 0.5_df*OMEGA; //1.0_df - OMEGA/2 
+constexpr dfloat OMEGA_P1 = 1.0_df + OMEGA; // 1+ OMEGA
+constexpr dfloat TT_OMEGA_T3 = TT_OMEGA*3.0_df; //3*(1-0.5_df*OMEGA)
 
 #define SQRT_2  (1.41421356237309504880168872420969807856967187537)
 #define SQRT_10 (3.162277660168379331998893544432718533719555139325)
 
 
-constexpr dfloat ONESIXTH = 1.0/6.0;
-constexpr dfloat ONETHIRD = 1.0/3.0;
+constexpr dfloat ONESIXTH = 1.0_df/6.0_df;
+constexpr dfloat ONETHIRD = 1.0_df/3.0_df;
 
 /* --------------------------- AUXILIARY DEFINES --------------------------- */
 #define IN_HOST 1       // variable accessible only for host
@@ -145,7 +145,7 @@ const size_t MEM_SIZE_MAP_BC = sizeof(uint32_t) * NUMBER_LBM_NODES;
 const int N_THREADS = (NX%64?((NX%32||(NX<32))?NX:32):64); // NX or 32 or 64 
                                     // multiple of 32 for better performance.
 const int CURAND_SEED = 0;          // seed for random numbers for CUDA
-constexpr float CURAND_STD_DEV = 0.5; // standard deviation for random numbers 
+constexpr float CURAND_STD_DEV = 0.5_df; // standard deviation for random numbers 
                                     // in normal distribution
 
 

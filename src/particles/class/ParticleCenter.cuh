@@ -190,6 +190,18 @@ public:
     __host__ __device__ void setQPosOldZ(dfloat z);
     __host__ __device__ void setQPosOldW(dfloat w);
 
+    // Cumulative rotation quaternion (precision fix)
+    __host__ __device__ dfloat4 getQ_cumulative_rot() const;
+    __host__ __device__ dfloat getQCumulativeRotX() const;
+    __host__ __device__ dfloat getQCumulativeRotY() const;
+    __host__ __device__ dfloat getQCumulativeRotZ() const;
+    __host__ __device__ dfloat getQCumulativeRotW() const;
+    __host__ __device__ void setQ_cumulative_rot(const dfloat4& q_cumulative_rot);
+    __host__ __device__ void setQCumulativeRotX(dfloat x);
+    __host__ __device__ void setQCumulativeRotY(dfloat y);
+    __host__ __device__ void setQCumulativeRotZ(dfloat z);
+    __host__ __device__ void setQCumulativeRotW(dfloat w);
+
     // Force
     __host__ __device__ dfloat3 getF() const;
     __host__ __device__ dfloat getFX() const;
@@ -323,6 +335,17 @@ public:
     __host__ __device__ void setSemiAxis3Y(dfloat y);
     __host__ __device__ void setSemiAxis3Z(dfloat z);
 
+    // Initialize original semi-axes from current semi-axis values (call once at particle setup)
+    __host__ __device__ void initializeSemiAxesFromCurrent();
+
+    // Original semi-axis getters/setters (immutable references for precision fix)
+    __host__ __device__ dfloat3 getSemiAxis1Original() const;
+    __host__ __device__ void setSemiAxis1Original(const dfloat3& semiAxis1_original);
+    __host__ __device__ dfloat3 getSemiAxis2Original() const;
+    __host__ __device__ void setSemiAxis2Original(const dfloat3& semiAxis2_original);
+    __host__ __device__ dfloat3 getSemiAxis3Original() const;
+    __host__ __device__ void setSemiAxis3Original(const dfloat3& semiAxis3_original);
+
     // __host__ __device__ dfloat3 getPos() const;
     // __host__ __device__ dfloat getPosX() const;
     // __host__ __device__ dfloat getPosY() const;
@@ -345,6 +368,7 @@ protected:
     dfloat3 w_pos;      // Particle angular position
     dfloat4 q_pos; // Particle angular poistion defined by a quartenion
     dfloat4 q_pos_old; // Particle angular poistion defined by a quartenion
+    dfloat4 q_cumulative_rot; // Cumulative rotation quaternion for precision fix
     dfloat3 f;          // Sum of the forces acting on particle
     dfloat3 f_old;      // Old sum of the forces acting on particle
     dfloat3 M;          // Total momentum acting on particle
@@ -363,6 +387,9 @@ protected:
     dfloat3 semiAxis1;
     dfloat3 semiAxis2;
     dfloat3 semiAxis3;
+    dfloat3 semiAxis1_original; // Original semi-axis 1 (relative to particle center) - immutable reference for precision fix
+    dfloat3 semiAxis2_original; // Original semi-axis 2 (relative to particle center) - immutable reference for precision fix
+    dfloat3 semiAxis3_original; // Original semi-axis 3 (relative to particle center) - immutable reference for precision fix
     CollisionData collision;
 }; 
 
