@@ -548,7 +548,11 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
 
     pCenter->setMovable(particleCenter->getMovable());
 
-    pCenter->setSemiAxis1(dfloat3(r,r,r));
+    // Set semi-axes as absolute positions (particle center + offset)
+    dfloat3 center_pos = particleCenter->getPos();
+    pCenter->setSemiAxis1(center_pos + dfloat3(r, 0, 0));
+    pCenter->setSemiAxis2(center_pos + dfloat3(0, r, 0));
+    pCenter->setSemiAxis3(center_pos + dfloat3(0, 0, r));
 
     // for(int i = 0; i <MAX_ACTIVE_COLLISIONS;i++){
     //     this->pCenter.collision.collisionPartnerIDs[i] = -1;
