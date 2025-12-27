@@ -149,7 +149,6 @@ void IbmNodesSoA::copyNodesFromParticle(Particle *p, unsigned int pCenterIdx, Pa
 
         this->particleCenterIdx[nodesAdded+baseIdx] = pCenterIdx;
 
-        // PRECISION FIX: Store node positions initially, but compute and store relative offsets
         this->pos.copyValuesFromFloat3(node[i].getPos(), nodesAdded+baseIdx);
         
         // Compute and store relative offset (node position - particle center position)

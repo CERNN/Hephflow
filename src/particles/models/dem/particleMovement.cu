@@ -103,12 +103,7 @@ void updateParticleCenterVelocityAndRotation(
 
     // Update particle center velocity using its surface forces and the body forces
     dfloat3 g = {GX,GY,GZ};
-    // CRITICAL: Validate volume to prevent division by zero
     dfloat volume = pc_i->getVolume();
-    if (volume <= 0) {
-        printf("ERROR: Invalid particle volume %e at step %u\n", volume, step);
-        return;
-    }
     const dfloat inv_volume = 1 / volume;
     pc_i->setVel(pc_i->getVel_old() + (((pc_i->getF_old() + pc_i->getF())/2 + pc_i->getDP_internal())*inv_volume
                 + (pc_i->getDensity() - FLUID_DENSITY)*g) / (pc_i->getDensity()));
@@ -119,7 +114,6 @@ void updateParticleCenterVelocityAndRotation(
     // Update particle angular velocity  
 
     dfloat6 I = pc_i->getI();
-    // CRITICAL: Check inertia determinant before division to prevent NaN propagation
     dfloat I_det = I.zz*I.xy*I.xy + I.yy*I.xz*I.xz + I.xx*I.yz*I.yz - I.xx*I.yy*I.zz - 2*I.xy*I.xz*I.yz;
     if (!isfinite(I_det) || fabs(I_det) < 1e-15) {
         printf("ERROR: Invalid inertia determinant %e at step %u\n", I_det, step);
@@ -225,7 +219,6 @@ void updateParticlePosition(
     #endif //BC_X_WALL
     #ifdef BC_X_PERIODIC
         dfloat dx  = (pc_i->getVelX() + pc_i->getVelOldX())/2;
-        // CRITICAL: Proper modulo for periodic BC - handles negative and large values
         dfloat new_x = pc_i->getPosX() + dx;
         dfloat mod_x = std::fmod(new_x, (dfloat)NX);
         pc_i->setPosX((mod_x < 0) ? mod_x + (dfloat)NX : mod_x);
@@ -236,7 +229,6 @@ void updateParticlePosition(
     #endif //BC_Y_WALL
     #ifdef BC_Y_PERIODIC
         dfloat dy  = (pc_i->getVelY() + pc_i->getVelOldY())/2;
-        // CRITICAL: Proper modulo for periodic BC - handles negative and large values
         dfloat new_y = pc_i->getPosY() + dy;
         dfloat mod_y = std::fmod(new_y, (dfloat)NY);
         pc_i->setPosY((mod_y < 0) ? mod_y + (dfloat)NY : mod_y);
@@ -247,7 +239,6 @@ void updateParticlePosition(
     #endif //BC_Z_WALL
     #ifdef BC_Z_PERIODIC
         dfloat dz  = (pc_i->getVelZ() + pc_i->getVelOldZ())/2;
-        // CRITICAL: Proper modulo for periodic BC - handles negative and large values
         dfloat new_z = pc_i->getPosZ() + dz;
         dfloat mod_z = std::fmod(new_z, (dfloat)NZ_TOTAL);
         pc_i->setPosZ((mod_z < 0) ? mod_z + (dfloat)NZ_TOTAL : mod_z);
@@ -278,47 +269,10 @@ void updateParticlePosition(
     dfloat angle = w_norm;
     dfloat4 q = axis_angle_to_quart(axis, angle);
     
-    // DEBUG: Check if delta quaternion is identity or non-trivial
-    /*if (step % 100 == 0 && globalIdx < 1) {
-        dfloat q_mag = sqrtf(q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
-        printf("DEBUG PARTICLE %d STEP %u: w_norm=%e, axis=(x=%e,y=%e,z=%e), angle=%e\n", 
-               globalIdx, step, w_norm, axis.x, axis.y, axis.z, angle);
-        printf("DEBUG PARTICLE %d STEP %u: q_delta_before=(w=%e,x=%e,y=%e,z=%e), mag=%e\n", 
-               globalIdx, step, q.w, q.x, q.y, q.z, q_mag);
-        // Check if identity: identity has w≈1 and x,y,z≈0
-        bool is_identity = (fabsf(q.w - 1.0f) < 1e-5f && fabsf(q.x) < 1e-5f && fabsf(q.y) < 1e-5f && fabsf(q.z) < 1e-5f);
-        printf("DEBUG PARTICLE %d STEP %u: Is delta quaternion IDENTITY? %s\n", globalIdx, step, is_identity ? "YES (NO ROTATION)" : "NO (rotation active)");
-    }*/
-    
-    // PRECISION FIX: Update cumulative rotation quaternion
-    // Fetch current accumulated rotation from particle center
     dfloat4 q_cumulative = pc_i->getQ_cumulative_rot();
-    
-    // Compose new rotation into cumulative rotation
-    // CRITICAL: Quaternion multiplication order matters!
-    // We want: final_rotation = q_new * q_cumulative (apply cumulative first, then new rotation)
     q_cumulative = quart_multiplication(q, q_cumulative);
-    
-    // CRITICAL FIX: Re-normalize quaternion after multiplication
-    // Without this, the quaternion magnitude drifts away from 1.0 after many frames,
-    // causing scaling errors in position and orientation
     q_cumulative = quart_normalize(q_cumulative);
-    
-    // DEBUG: Print rotation updates with magnitude check
-    /*if (step % 100 == 0 && globalIdx < 1) {
-        dfloat q_mag = sqrtf(q_cumulative.w*q_cumulative.w + q_cumulative.x*q_cumulative.x + 
-                              q_cumulative.y*q_cumulative.y + q_cumulative.z*q_cumulative.z);
-        printf("DEBUG PARTICLE %d STEP %u: w_norm=%e, q_new=(w=%e,x=%e,y=%e,z=%e)\n", 
-               globalIdx, step, w_norm, q.w, q.x, q.y, q.z);
-        printf("DEBUG PARTICLE %d STEP %u: q_cumulative_normalized=(w=%e,x=%e,y=%e,z=%e), mag=%e\n", 
-               globalIdx, step, q_cumulative.w, q_cumulative.x, q_cumulative.y, q_cumulative.z, q_mag);
-        
-        // SANITY CHECK: Magnitude should ALWAYS be 1.0 after normalization
-        if (fabsf(q_mag - 1.0f) > 1e-4f) {
-            printf("WARNING PARTICLE %d STEP %u: QUATERNION MAGNITUDE DRIFT DETECTED! mag=%e (expected 1.0)\n", 
-                   globalIdx, step, q_mag);
-        }
-    }*/
+
     
     // Store updated cumulative rotation back to particle center
     pc_i->setQ_cumulative_rot(q_cumulative);
@@ -343,17 +297,7 @@ dfloat3 updateSemiAxis(
     const dfloat3 particle_center,
     const dfloat4 q_cumulative
 ){
-    // PRECISION FIX: Reconstruct semi-axis from first principles each frame
-    // This resets floating-point error accumulation to ~1e-7 per frame
-    // instead of growing unbounded with incremental updates
-    
-    // Rotate the original immutable offset by cumulative rotation
-    dfloat3 rotated_offset = rotate_vector_by_quart_R(semi_offset_original, q_cumulative);
-    
-    // Reconstruct semi-axis position from scratch
-    // Periodic wrapping is IMPLICIT: particle_center is already wrapped correctly
-    // by the center's position update kernel, so adding rotated_offset maintains
-    // synchronization with the center's periodic boundary behavior
+    const dfloat3 rotated_offset = rotate_vector_by_quart_R(semi_offset_original, q_cumulative);
     dfloat3 newSemi = {
         particle_center.x + rotated_offset.x,
         particle_center.y + rotated_offset.y,

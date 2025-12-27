@@ -87,11 +87,6 @@ void ibmParticleNodeMovement(
     if(!pc_i.getMovable())
         return;
 
-    // PRECISION FIX Phase 4: Reconstruct node position from immutable reference
-    // Instead of incrementally updating (which accumulates errors),
-    // we reconstruct the position each frame using:
-    // position = particle_center + rotate(original_relative_offset, cumulative_rotation)
-    
     // Get the original relative position (immutable reference set at initialization)
     dfloat3 original_offset = dfloat3(
         originalRelativePos.x[idx],
@@ -100,34 +95,17 @@ void ibmParticleNodeMovement(
     );
     
     // Fetch the cumulative rotation quaternion from particle center
-    // This stores the total accumulated rotation history
     dfloat4 q_cumulative = pc_i.getQ_cumulative_rot();
     
     // Rotate the original offset using the accumulated rotation
     dfloat3 rotated_offset = rotate_vector_by_quart_R(original_offset, q_cumulative);
     
     // Reconstruct node position from first principles
-    // This prevents error accumulation - we're not updating incrementally
     dfloat new_pos_x = pc_i.getPosX() + rotated_offset.x;
     dfloat new_pos_y = pc_i.getPosY() + rotated_offset.y;
     dfloat new_pos_z = pc_i.getPosZ() + rotated_offset.z;
     
-    // DEBUG: Verify rotation is being applied (print first few nodes)
-    /*if (idx < 1) {
-        printf("DEBUG IBM NODE %d: original_offset=(x=%e,y=%e,z=%e)\n", 
-               idx, original_offset.x, original_offset.y, original_offset.z);
-        printf("DEBUG IBM NODE %d: q_cumulative=(w=%e,x=%e,y=%e,z=%e)\n", 
-               idx, q_cumulative.w, q_cumulative.x, q_cumulative.y, q_cumulative.z);
-        printf("DEBUG IBM NODE %d: rotated_offset=(x=%e,y=%e,z=%e)\n", 
-               idx, rotated_offset.x, rotated_offset.y, rotated_offset.z);
-        printf("DEBUG IBM NODE %d: pc_center=(x=%e,y=%e,z=%e)\n", 
-               idx, pc_i.getPosX(), pc_i.getPosY(), pc_i.getPosZ());
-        printf("DEBUG IBM NODE %d: new_pos=(x=%e,y=%e,z=%e)\n", 
-               idx, new_pos_x, new_pos_y, new_pos_z);
-    }
-    */
     // Apply boundary conditions AFTER rotation to final position
-    // This ensures periodic wrapping only affects the final global position
     #ifdef BC_X_WALL
         pos.x[idx] = new_pos_x;
     #endif
@@ -168,13 +146,7 @@ void ibmForceInterpolationSpread(
 
     const dfloat3SoA posNode = particlesNodes->getPos();
 
-    // CRITICAL: Validate particle index before dereferencing
     int particleCenterIdx = particlesNodes->getParticleCenterIdx()[i];
-    if (particleCenterIdx < 0 || particleCenterIdx >= NUM_PARTICLES) {
-        printf("ERROR: Invalid particle center index %d at node %d\n", particleCenterIdx, i);
-        return;
-    }
-    
     ParticleCenter* pc_i = &pArray[particleCenterIdx];
 
     dfloat aux, aux1; // aux variable for many things
@@ -183,57 +155,12 @@ void ibmForceInterpolationSpread(
     const dfloat yIBM = posNode.y[i]; 
     const dfloat zIBM = posNode.z[i];
 
-    // CRITICAL: Validate IBM node positions to prevent invalid floor operations
-    if (!isfinite(xIBM) || !isfinite(yIBM) || !isfinite(zIBM)) {
-        printf("ERROR: Non-finite IBM node position at node %d: x=%e y=%e z=%e\n", i, xIBM, yIBM, zIBM);
-        return;
-    }
-    
-    // CRITICAL: Clamp IBM node positions to valid domain to prevent invalid indices
-    // Valid range depends on BC type, but we use conservative bounds
-    #ifdef BC_X_PERIODIC
-        if (xIBM < -1000 || xIBM > NX + 1000) {
-            printf("WARNING: IBM node %d has out-of-range X position: %e (domain: 0-%d)\n", i, xIBM, NX);
-            return;
-        }
-    #else
-        if (xIBM < -P_DIST || xIBM > NX + P_DIST) {
-            printf("WARNING: IBM node %d has out-of-range X position: %e (domain: 0-%d)\n", i, xIBM, NX);
-            return;
-        }
-    #endif
-
-    #ifdef BC_Y_PERIODIC
-        if (yIBM < -1000 || yIBM > NY + 1000) {
-            printf("WARNING: IBM node %d has out-of-range Y position: %e (domain: 0-%d)\n", i, yIBM, NY);
-            return;
-        }
-    #else
-        if (yIBM < -P_DIST || yIBM > NY + P_DIST) {
-            printf("WARNING: IBM node %d has out-of-range Y position: %e (domain: 0-%d)\n", i, yIBM, NY);
-            return;
-        }
-    #endif
-
-    #ifdef BC_Z_PERIODIC
-        if (zIBM < -1000 || zIBM > NZ_TOTAL + 1000) {
-            printf("WARNING: IBM node %d has out-of-range Z position: %e (domain: 0-%d)\n", i, zIBM, NZ_TOTAL);
-            return;
-        }
-    #else
-        if (zIBM < -P_DIST || zIBM > NZ_TOTAL + P_DIST) {
-            printf("WARNING: IBM node %d has out-of-range Z position: %e (domain: 0-%d)\n", i, zIBM, NZ_TOTAL);
-            return;
-        }
-    #endif
-
     const dfloat pos[3] = {xIBM, yIBM, zIBM};
 
     // Calculate stencils to use and the valid interval [xyz][idx]
     dfloat stencilVal[3][P_DIST*2];
 
     // First lattice position for each coordinate
-    // CRITICAL: Use safe casting to prevent integer overflow
     const int posBase[3] = {
         static_cast<int>(std::floor(xIBM)) - P_DIST + 1,
         static_cast<int>(std::floor(yIBM)) - P_DIST + 1,
@@ -309,12 +236,6 @@ void ibmForceInterpolationSpread(
     //compute stencil values
     for(int ii = 0; ii < 3; ii++){
         for(int jj=minIdx[ii]; jj <= maxIdx[ii]; jj++){
-            // CRITICAL: Bounds check to prevent array overflow
-            if(jj < 0 || jj >= P_DIST*2) {
-                printf("ERROR: Stencil index out of bounds: jj=%d, ii=%d, minIdx=%d, maxIdx=%d\n", 
-                       jj, ii, minIdx[ii], maxIdx[ii]);
-                return;
-            }
             stencilVal[ii][jj] = stencil(posBase[ii]+jj-(pos[ii]));
         }
     }
@@ -342,7 +263,6 @@ void ibmForceInterpolationSpread(
             zz = zg;
         #endif
         #ifdef BC_Z_PERIODIC
-            // CRITICAL: Proper modulo for periodic BC that handles negative numbers
             zz = ((zg % NZ) + NZ) % NZ;
         #endif
 
@@ -354,7 +274,6 @@ void ibmForceInterpolationSpread(
                 yy = yg;
             #endif
             #ifdef BC_Y_PERIODIC
-                // CRITICAL: Proper modulo for periodic BC that handles negative numbers
                 yy = ((yg % NY) + NY) % NY;
             #endif
             aux1 = stencilVal[2][zk]*stencilVal[1][yj];
@@ -366,14 +285,12 @@ void ibmForceInterpolationSpread(
                     xx = xg;
                 #endif
                 #ifdef BC_X_PERIODIC
-                    // CRITICAL: Proper modulo for periodic BC that handles negative numbers
                     xx = ((xg % NX) + NX) % NX;
                 #endif
 
                 // Dirac delta (kernel)
                 aux = aux1 * stencilVal[0][xi];
 
-                // CRITICAL: Validate fMom index before access
                 int momIdx_rho = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_RHO_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
                 int momIdx_ux = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
                 int momIdx_uy = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
@@ -405,7 +322,6 @@ void ibmForceInterpolationSpread(
     const dfloat y_pc = pc_i->getPosY();
     const dfloat z_pc = pc_i->getPosZ();
 
-    // CRITICAL: Store distance vectors BEFORE they are needed for deltaMomentum
     dfloat dx = xIBM - x_pc;
     dfloat dy = yIBM - y_pc;
     dfloat dz = zIBM - z_pc;
@@ -457,13 +373,6 @@ void ibmForceInterpolationSpread(
 
     const dfloat dA = particlesNodes->getS()[i];
     aux = 2 * rhoVar * dA * IBM_THICKNESS;
-
-    // CRITICAL: Check for NaN/Inf propagation
-    if (!isfinite(aux) || !isfinite(rhoVar) || !isfinite(uxVar) || !isfinite(uyVar) || !isfinite(uzVar)) {
-        printf("WARNING: Non-finite values at node %d, step %u: aux=%e rho=%e ux=%e uy=%e uz=%e\n", 
-               i, step, aux, rhoVar, uxVar, uyVar, uzVar);
-        return;
-    }
 
     dfloat3 deltaF;
     deltaF.x = aux * (uxVar - ux_calc);
