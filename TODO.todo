@@ -1,28 +1,39 @@
 
 Projects:
 
+## Memory Optimization
   ☐ Remove the duplicate arrays used for interface between blocks
     This can be done by storing the populations in the same location where it was retrived. 
     This will lead to performance decrease since is not coaslesced write.
      however it will reduce the memory ussage
-  ☐ There is some bug on it for now with parallel reduction, trying to figure out what is wrong
   ☐ Eliminate memory allocation for solid nodes (problem, a index array is necessary 10.1016/j.jocs.2022.101723)
-  ☐ Multi Block Implementation (Multi GPU) Nvidia NCCL implementation https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31880/
   ☐ Test the performance if instead of storing the populations in the shared memory, store the moments, which can be pulled and used to reconstructed the populations
       %it will increase the number of arithmetic operations, however the shared memory array will use 10 scalars per lattice instead of the 18 populations
       %allowing to use a higher block size than orginally planned. The performance might be benefical when using a D3Q27 velocity set since the reduced from to 26 to 10 scalars per lattice.
-  ☐ validate/verify the other collision methods.
-  ☐ Find a way to define the link between bc and the velocity set between the cases.
-  ☐ Incorporate thixotropic model (already need import from other project, depends on thermal model implementation)
-  ☐ Curved boundary conditions
-  ☐ Moving boudnary conditions (e.g. moving particles using voxels)
-  ☐ Implementation of DDF-Shift (density is done)
+
+## Bug Fixes & Verification
+  ☐ There is some bug on it for now with parallel reduction, trying to figure out what is wrong
   ☐ Verify checkpoint for IBM
+  ☐ validate/verify the other collision methods.
+
+## Performance & Scaling
+  ☐ Multi Block Implementation (Multi GPU) Nvidia NCCL implementation https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31880/
   ☐ Change collision tracking so it a linked list instead a fixed array. (need evaluate performance)
   ☐ Support domains with size that is not multiple of the block size. 
     ☐ Fix index function and popSave to save value from the middle of the block and not just from the first and last thread.
-  ☐ Find a better way to handle the wall velocity for the particle-wall collision
 
+## Boundary Conditions & Physics Models
+  ☐ Find a way to define the link between bc and the velocity set between the cases.
+  ☐ Curved boundary conditions
+  ☐ Moving boudnary conditions (e.g. moving particles using voxels)
+  ☐ Find a better way to handle the wall velocity for the particle-wall collision  
+  ☐ Implementation of DDF-Shift (density is done)
+  ☐ Incorporate thixotropic model (already need import from other project, depends on thermal model implementation)
+
+## Code Quality & Refactoring
+  ☐ Fix all the number for actual casting using DF(x) macro 
+     regex (?<![A-Za-z_])([0-9]+\.[0-9]*|\.[0-9]+|[0-9]+e[-+]?[0-9]+)
+      replace ($1)_df
 
 
 Archive:\
