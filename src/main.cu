@@ -31,12 +31,18 @@ int main() {
     /* -------------- ALLOCATION FOR GPU ------------- */
     deviceField.allocateDeviceMemoryDeviceField();
     //TODO : move these malocs to inside teh corresponding mallocs
+    #ifdef PARTICLE_MODEL
+    //forces from the particles into the wall
+    ParticleWallForces* d_pwForces;
+    cudaMalloc((void**)&d_pwForces, sizeof(ParticleWallForces));
+    #endif //PARTICLE_MODEL
+    
     #ifdef DENSITY_CORRECTION
         checkCudaErrors(cudaMallocHost((void**)&(hostField.h_mean_rho), sizeof(dfloat)));
         cudaMalloc((void**)&deviceField.d_mean_rho, sizeof(dfloat));  
     #endif //DENSITY_CORRECTION
 
-    // Setup Streams
+    /* -------------- Setup Streams ------------- */
     cudaStream_t streamsLBM[1];
     checkCudaErrors(cudaSetDevice(GPU_INDEX));
     checkCudaErrors(cudaStreamCreate(&streamsLBM[0]));
@@ -47,6 +53,8 @@ int main() {
     #endif //PARTICLE_MODEL
 
     step = INI_STEP;
+
+
     //Declaration of atomic flags to safely control the state of data saving in multiple threads.
     std::atomic<bool> savingMacrVtk(false);
     std::atomic<bool> savingMacrParticle(false);
@@ -56,7 +64,7 @@ int main() {
         savingMacrBin[i].store(false);
     }
 
-    //Initialize domain in the device by copying data from the host
+    /* -------------- Initialize domain in the device ------------- */
     deviceField.initializeDomainDeviceField(hostField, randomNumbers,  step, gridBlock, threadBlock);
 
     int ini_step = step;
@@ -75,6 +83,11 @@ int main() {
         saveParticlesInfo(&particlesSoA, step, savingMacrParticle);
 
     #endif //PARTICLE_MODEL
+
+    #ifdef CURVED_BOUNDARY_CONDITION
+        //Get number of curved boundary nodes
+        unsigned int numberCurvedBoundaryNodes = getNumberCurvedBoundaryNodes(hostField.hNodeType);
+    #endif //CURVE
 
     /* ------------------------------ TIMER EVENTS  ------------------------------ */
     checkCudaErrors(cudaSetDevice(GPU_INDEX));
@@ -114,6 +127,10 @@ int main() {
         if (err != cudaSuccess) {
             printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
         }
+        #ifdef CURVED_BOUNDARY_CONDITION
+           updateCurvedBoundaryVelocities << <1,numberCurvedBoundaryNodes>> >(deviceField.d_curvedBC_array,deviceField.d_fMom,numberCurvedBoundaryNodes);
+           cudaDeviceSynchronize();
+        #endif
 
         //swap interface pointers
         deviceField.swapGhostInterfacesDeviceField();
@@ -123,7 +140,7 @@ int main() {
         #endif //LOCAL_FORCES
 
         #ifdef PARTICLE_MODEL
-            deviceField.particleSimulationDeviceField(particlesSoA,streamsPart,step);
+            deviceField.particleSimulationDeviceField(particlesSoA,streamsPart,d_pwForces,step);
         #endif //PARTICLE_MODEL
 
         if(saveField.checkpoint){
@@ -144,6 +161,9 @@ int main() {
         if(saveField.reportSave){
             printf("\n--------------------------- Saving report %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
             deviceField.treatDataDeviceField(hostField, step);
+            #ifdef PARTICLE_MODEL
+            collectAndExportWallForces(d_pwForces,step);
+            #endif
         }
         
         if(saveField.macrSave){

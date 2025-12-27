@@ -11,6 +11,11 @@ typedef struct deviceField{
     dfloat* d_fMom;
     unsigned int* dNodeType;
 
+    #ifdef CURVED_BOUNDARY_CONDITION
+    CurvedBoundary** d_curvedBC;
+    CurvedBoundary* d_curvedBC_array;
+    #endif
+
     #ifdef DENSITY_CORRECTION
     dfloat* d_mean_rho;
     #endif //DENSITY_CORRECTION
@@ -25,8 +30,10 @@ typedef struct deviceField{
 
     void allocateDeviceMemoryDeviceField() {
         allocateDeviceMemory(
-            &d_fMom, &dNodeType, &ghostInterface
+            &d_fMom, &dNodeType, 
             BC_FORCES_PARAMS_PTR(d_)
+            CURVED_BC_PARAMS_PTR(d_)
+            &ghostInterface
         );
     }
 
@@ -40,6 +47,8 @@ typedef struct deviceField{
             BC_FORCES_PARAMS(d_)
             DENSITY_CORRECTION_PARAMS(h_)
             DENSITY_CORRECTION_PARAMS(d_)
+            CURVED_BC_PTRS(d_)
+            CURVED_BC_ARRAY(d_)
             &step, gridBlock, threadBlock);
     }
 
@@ -50,7 +59,11 @@ typedef struct deviceField{
     #endif //DENSITY_CORRECTION
 
     void gpuMomCollisionStreamDeviceField(dim3 gridBlock, dim3 threadBlock, unsigned int step, bool save){
-            gpuMomCollisionStream << <gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>> >(d_fMom, dNodeType,ghostInterface, DENSITY_CORRECTION_PARAMS(d_) BC_FORCES_PARAMS(d_) step, save);
+            gpuMomCollisionStream << <gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>> >(d_fMom, dNodeType,ghostInterface, DENSITY_CORRECTION_PARAMS(d_) BC_FORCES_PARAMS(d_) step, save
+        #ifdef CURVED_BOUNDARY_CONDITION
+        , d_curvedBC, d_curvedBC_array
+        #endif //CURVED_BOUNDARY_CONDITION
+        );
     }
 
     void swapGhostInterfacesDeviceField(){
@@ -64,8 +77,8 @@ typedef struct deviceField{
     #endif //LOCAL_FORCES
 
     #ifdef PARTICLE_MODEL
-    void particleSimulationDeviceField(ParticlesSoA &particlesSoA, cudaStream_t *streamsPart, unsigned int step){
-        particleSimulation(&particlesSoA,d_fMom,streamsPart,step);
+    void particleSimulationDeviceField(ParticlesSoA &particlesSoA, cudaStream_t *streamsPart, ParticleWallForces *d_pwForces,unsigned int step){
+        particleSimulation(&particlesSoA,d_fMom,streamsPart,d_pwForces,step);
     }
     #endif //PARTICLE_MODEL
 
@@ -79,6 +92,9 @@ typedef struct deviceField{
         #ifdef SECOND_DIST 
         interfaceCudaMemcpy(ghostInterface,ghostInterface.g_h_fGhost,ghostInterface.g_fGhost,cudaMemcpyDeviceToHost,GF);
         #endif //SECOND_DIST
+        #ifdef PHI_DIST 
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.phi_h_fGhost,ghostInterface.phi_fGhost,cudaMemcpyDeviceToHost,GF);
+        #endif //PHI_DIST
         #ifdef A_XX_DIST 
         interfaceCudaMemcpy(ghostInterface,ghostInterface.Axx_h_fGhost,ghostInterface.Axx_fGhost,cudaMemcpyDeviceToHost,GF);
         #endif //A_XX_DIST     
@@ -111,7 +127,8 @@ typedef struct deviceField{
         saveSimCheckpoint(d_fMom,ghostInterface,&step);
     }
 
-    void treatDataDeviceField(hostField &hostField, int step){
+    void treatDataDeviceField(hostField &hostField, 
+        int step){
         treatData(hostField.h_fMom, d_fMom,
         #if MEAN_FLOW
         hostField.m_fMom,
@@ -150,6 +167,5 @@ typedef struct deviceField{
         cudaFree(d_BC_Fz);
         #endif //_BC_FORCES
     }
-
 } DeviceField;
 #endif //__DEVICEFIELD_STRUCTS_H

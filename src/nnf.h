@@ -22,9 +22,9 @@
 
 #ifdef POWERLAW
 // Inputs
-constexpr dfloat N_INDEX = 0.5;                         // Power index
-constexpr dfloat K_CONSISTENCY = RHO_0*(TAU-0.5)/3;      // Consistency factor
-constexpr dfloat GAMMA_0 = 0;       // Truncated Power-Law. 
+constexpr dfloat N_INDEX = 0.5_df;                         // Power index
+constexpr dfloat K_CONSISTENCY = RHO_0*(TAU-0.5_df)/3.0_df;      // Consistency factor
+constexpr dfloat GAMMA_0 = 0.0_df;       // Truncated Power-Law. 
                                     // Leave as 0 to no truncate
 #define OMEGA_LAST_STEP // Needs omega from last step
 // Calculated variables
@@ -32,22 +32,22 @@ constexpr dfloat GAMMA_0 = 0;       // Truncated Power-Law.
 /* --------------------------------BINGHAM---------------------------------- */
 #ifdef BINGHAM
 // Inputs
-//constexpr dfloat S_Y= 0.005;
+//constexpr dfloat S_Y= 0.005_df;
 // Calculated variables
-constexpr dfloat OMEGA_P = (dfloat)(1.0) / (3.0*VISC+0.5);    // 1/tau_p = 1/(3*eta_p+0.5)
+constexpr dfloat OMEGA_P = (dfloat)(1.0_df) / (3.0_df*VISC+0.5_df);    // 1/tau_p = 1/(3*eta_p+0.5_df)
 #endif //BINGHAM
 /* ------------------------------KEE_TURCOTEE-------------------------------- */
 #ifdef BI_VISCOSITY
 // Inputs
-constexpr dfloat Bn = 0.4;
-constexpr dfloat S_Y = Bn*VISC*invSqrtt(2*L/(T_gravity_t_beta*T_DELTA_T));
-constexpr dfloat VISC_RATIO = 1.0/1000.0; // MU/MU_Y
+constexpr dfloat Bn = 0.4_df;
+constexpr dfloat S_Y = Bn*VISC*invSqrtt(2.0_df*L/(T_gravity_t_beta*T_DELTA_T));
+constexpr dfloat VISC_RATIO = 1.0_df/1000.0_df; // MU/MU_Y
 
 // Calculated variables
 constexpr dfloat ETA_Y = VISC / VISC_RATIO ;
-constexpr dfloat TAU_Y = 3*ETA_Y + 0.5;
-constexpr dfloat OMEGA_Y = 1.0/TAU_Y;
-constexpr dfloat OMEGA_P = 1 / (3.0*VISC+0.5);
+constexpr dfloat TAU_Y = 3.0_df*ETA_Y + 0.5_df;
+constexpr dfloat OMEGA_Y = 1.0_df/TAU_Y;
+constexpr dfloat OMEGA_P = 1.0_df / (3.0_df*VISC+0.5_df);
 constexpr dfloat GAMMA_C = S_Y / ETA_Y;
 
 #endif //BI_VISCOSITY
@@ -57,9 +57,9 @@ constexpr dfloat GAMMA_C = S_Y / ETA_Y;
 #ifdef KEE_TURCOTEE
 #define OMEGA_FIELD
 // Inputs
-constexpr dfloat S_Y = 0;
-constexpr dfloat t1 = 1e-3;
-constexpr dfloat eta_0 =  1e-3;
+constexpr dfloat S_Y = 0.0_df;
+constexpr dfloat t1 = 1e-3_df;
+constexpr dfloat eta_0 =  1e-3_df;
 
 #endif //KEE_TURCOTEE
 
@@ -80,20 +80,20 @@ constexpr dfloat eta_0 =  1e-3;
         omega = omegaOld; //initial guess
 
         dfloat fx, fx_dx;
-        const dfloat c_s_2 = 1.0/3.0;
+        const dfloat c_s_2 = 1.0_df/3.0_df;
         const dfloat a = K_CONSISTENCY*POW_FUNCTION(auxStressMag / (RHO_0 * c_s_2) ,N_INDEX);
-        const dfloat b = 0.5 * auxStressMag;
+        const dfloat b = 0.5_df * auxStressMag;
         const dfloat c = -auxStressMag;
 
-        if(auxStressMag < 1e-6)
+        if(auxStressMag < 1e-6_df)
             return omega = 0;
 
         //#pragma unroll
         for (int i = 0; i< 7;i++){
             fx = a * POW_FUNCTION (omega,N_INDEX) + b * omega + c;
-            fx_dx = a * N_INDEX * POW_FUNCTION (omega,N_INDEX - 1.0) + b ;
+            fx_dx = a * N_INDEX * POW_FUNCTION (omega,N_INDEX - 1.0_df) + b ;
 
-            if (abs(fx/fx_dx) < 1e-6){
+            if (abs(fx/fx_dx) < 1e-6_df){
                 break;
             } //convergence criteria
                 
@@ -114,8 +114,8 @@ constexpr dfloat eta_0 =  1e-3;
      */
     __device__ 
     dfloat __forceinline__ calcOmega_nnf(dfloat omegaOld, dfloat const auxStressMag, const int step){
-        return OMEGA_P * myMax(0.0, (1 - S_Y / auxStressMag));
-        //return OMEGA_P * myMax(0.0, (1 - S_Y * ((dfloat)(step - NNF_TRIGGER_STEP)/(NNF_TRIGGER_STEP_SIZE)) / auxStressMag));
+        return OMEGA_P * myMax(0.0_df, (1.0_df - S_Y / auxStressMag));
+        //return OMEGA_P * myMax(0.0_df, (1.0_df - S_Y * ((dfloat)(step - NNF_TRIGGER_STEP)/(NNF_TRIGGER_STEP_SIZE)) / auxStressMag));
     }
     #endif //BINGHAM
 
@@ -149,14 +149,14 @@ constexpr dfloat eta_0 =  1e-3;
         const dfloat D = -t1*B;
         const dfloat E = S_Y - auxStressMag;
 
-        if(auxStressMag < 1e-6)
+        if(auxStressMag < 1e-6_df)
             return omega = 0;
         //#pragma unroll
         for (int i = 0; i< 7;i++){
             fx = omega*(A+C*__expf(D*omega)) + E;
             fx_dx = A + C*__expf(D*omega)*(1+D*omega);
 
-            if (abs(fx/fx_dx) < 1e-6){
+            if (abs(fx/fx_dx) < 1e-6_df){
                 break;
             } //convergence criteria
                 

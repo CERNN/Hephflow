@@ -21,6 +21,17 @@
 #include "./../../globalFunctions.h"
 
 #ifdef PARTICLE_MODEL
+
+// Threads for IBM particles
+constexpr unsigned int THREADS_PARTICLES = NUM_PARTICLES > 64 ? 64 : NUM_PARTICLES;
+// Grid for IBM particles
+constexpr unsigned int GRID_PARTICLES = 
+    (NUM_PARTICLES % THREADS_PARTICLES ? 
+        (NUM_PARTICLES / THREADS_PARTICLES + 1)
+        : (NUM_PARTICLES / THREADS_PARTICLES));
+
+
+
 /*
 *   Struct for particle representation
 */

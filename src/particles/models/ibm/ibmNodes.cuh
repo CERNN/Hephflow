@@ -15,11 +15,12 @@
 #include "../../../globalStructs.h"
 #include "../../models/ibm/ibmVar.h"
 // #include "../../class/Particle.cuh"
-//#include "../../class/ParticleCenter.cuh"
+#include "../../class/ParticleCenter.cuh"
 #pragma once
 
 #ifdef PARTICLE_MODEL
 class Particle;
+class ParticleCenter;
 
 /*
 *   Class describe the IBM node properties
@@ -83,6 +84,7 @@ protected:
     dfloat3SoA vel_old; // vectors with nodes old velocities
     dfloat3SoA f;  // vectors with nodes forces
     dfloat3SoA deltaF;  // vectors with nodes forces variations
+    dfloat3SoA originalRelativePos; // vectors with original relative positions (node_pos - particle_center_pos) - immutable reference for precision
     dfloat* S; // vector node surface area
 
 public:
@@ -108,7 +110,7 @@ public:
      *  @param pCenterIdx: index of particle center for given particle nodes
      *  @param baseIdx: base index to use while copying
      */
-    __host__ void copyNodesFromParticle(Particle *particle, unsigned int pCenterIdx, unsigned int n_gpu);
+    __host__ void copyNodesFromParticle(Particle *particle, unsigned int pCenterIdx, ParticleCenter* pArray, unsigned int n_gpu);
  
     __host__ void updateNodesGPUs();
     __host__ void freeNodesAndCenters();
@@ -142,6 +144,9 @@ public:
     
     __host__ __device__ dfloat3SoA getDeltaF() const;
     __host__ __device__ void setDeltaF(const dfloat3SoA& deltaF);
+    
+    __host__ __device__ dfloat3SoA getOriginalRelativePos() const;
+    __host__ __device__ void setOriginalRelativePos(const dfloat3SoA& originalRelativePos);
    
     __host__ __device__ dfloat* getS() const;
     __host__ __device__ void setS(dfloat* S);

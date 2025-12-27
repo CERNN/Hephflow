@@ -261,7 +261,7 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
             this->pMethod[p]            = particles[p].getMethod();
             this->pCollideWall[p]       = particles[p].getCollideWall();
             this->pCollideParticle[p]   = particles[p].getCollideParticle();
-            this->nodesSoA[0].copyNodesFromParticle(&particles[p], p, 0);
+            this->nodesSoA[0].copyNodesFromParticle(&particles[p], p, this->pCenterArray, 0);
             if (firstIndex == -1) firstIndex = p;
             lastIndex = p;
         }
@@ -304,10 +304,10 @@ __host__
 void Particle::makeUniformBox(ParticleCenter *particleCenter)
 {
     // Particle density
-    pCenter->setDensity(2.0);
+    pCenter->setDensity(2.0_df);
     // Particle center position
-    pCenter->setPos({(NX-1)/2.0,(NY-1)/2.0,(NZ-1)/2.0});
-    pCenter->setPos_old({(NX-1)/2.0,(NY-1)/2.0,(NZ-1)/2.0});
+    pCenter->setPos({(NX-1)/2.0_df,(NY-1)/2.0_df,(NZ-1)/2.0_df});
+    pCenter->setPos_old({(NX-1)/2.0_df,(NY-1)/2.0_df,(NZ-1)/2.0_df});
     // Particle velocity
     pCenter->setVel({0,0,0});
     pCenter->setVel_old({0,0,0});
@@ -321,35 +321,35 @@ void Particle::makeUniformBox(ParticleCenter *particleCenter)
     pCenter->setQPosY(0);
     pCenter->setQPosZ(0);
 
-    pCenter->setQPosOldW(0.0);
-    pCenter->setQPosOldX(1.0);
-    pCenter->setQPosOldY(0.0);
-    pCenter->setQPosOldZ(0.0);
+    pCenter->setQPosOldW(0.0_df);
+    pCenter->setQPosOldX(1.0_df);
+    pCenter->setQPosOldY(0.0_df);
+    pCenter->setQPosOldZ(0.0_df);
 
     // Innertia momentum
-    pCenter->setIXX(1.0);
-    pCenter->setIYY(1.0);
-    pCenter->setIZZ(1.0);
+    pCenter->setIXX(1.0_df);
+    pCenter->setIYY(1.0_df);
+    pCenter->setIZZ(1.0_df);
 
-    pCenter->setIXY(0.0);
-    pCenter->setIXZ(0.0);
-    pCenter->setIYZ(0.0);
+    pCenter->setIXY(0.0_df);
+    pCenter->setIXZ(0.0_df);
+    pCenter->setIYZ(0.0_df);
 
-    pCenter->setFX(0.0);
-    pCenter->setFY(0.0);
-    pCenter->setFZ(0.0);
+    pCenter->setFX(0.0_df);
+    pCenter->setFY(0.0_df);
+    pCenter->setFZ(0.0_df);
 
-    pCenter->setFOldX(0.0);
-    pCenter->setFOldY(0.0);
-    pCenter->setFOldZ(0.0);
+    pCenter->setFOldX(0.0_df);
+    pCenter->setFOldY(0.0_df);
+    pCenter->setFOldZ(0.0_df);
 
-    pCenter->setMX(0.0);
-    pCenter->setMY(0.0);
-    pCenter->setMZ(0.0);
+    pCenter->setMX(0.0_df);
+    pCenter->setMY(0.0_df);
+    pCenter->setMZ(0.0_df);
 
-    pCenter->setMOldX(0.0);
-    pCenter->setMOldY(0.0);
-    pCenter->setMOldZ(0.0);
+    pCenter->setMOldX(0.0_df);
+    pCenter->setMOldY(0.0_df);
+    pCenter->setMOldZ(0.0_df);
 
     pCenter->setMovable(false);
 
@@ -376,12 +376,12 @@ void Particle::makeUniformBox(ParticleCenter *particleCenter)
         for (unsigned int j = 0; j < Ny; j++) {
             for (unsigned int k = 0; k < Nz; k++) {
                 dfloat3 pos_node;
-                pos_node.x = (i * dx) + dx/2.0;
-                pos_node.y = (j * dy) + dy/2.0;
-                pos_node.z = (k * dz) + dz/2.0;
+                pos_node.x = (i * dx) + dx/2.0_df;
+                pos_node.y = (j * dy) + dy/2.0_df;
+                pos_node.z = (k * dz) + dz/2.0_df;
 
                 this->nodes[nodeIndex].setPos(pos_node);
-                dfloat node_s = 1.0;
+                dfloat node_s = 1.0_df;
                 this->nodes[nodeIndex].setS(node_s);
 
                 nodeIndex++;
@@ -397,8 +397,8 @@ void Particle::makeRandomBox(ParticleCenter *particleCenter)
     // Particle density
     pCenter->setDensity(particleCenter->getDensity());
     // Particle center position
-    pCenter->setPos({(NX-1)/2.0,(NY-1)/2.0,(NZ-1)/2.0});
-    pCenter->setPos_old({(NX-1)/2.0,(NY-1)/2.0,(NZ-1)/2.0});
+    pCenter->setPos({(NX-1)/2.0_df,(NY-1)/2.0_df,(NZ-1)/2.0_df});
+    pCenter->setPos_old({(NX-1)/2.0_df,(NY-1)/2.0_df,(NZ-1)/2.0_df});
     // Particle velocity
     pCenter->setVel({0,0,0});
     pCenter->setVel_old({0,0,0});
@@ -412,35 +412,35 @@ void Particle::makeRandomBox(ParticleCenter *particleCenter)
     pCenter->setQPosY(0);
     pCenter->setQPosZ(0);
 
-    pCenter->setQPosOldW(0.0);
-    pCenter->setQPosOldX(1.0);
-    pCenter->setQPosOldY(0.0);
-    pCenter->setQPosOldZ(0.0);
+    pCenter->setQPosOldW(0.0_df);
+    pCenter->setQPosOldX(1.0_df);
+    pCenter->setQPosOldY(0.0_df);
+    pCenter->setQPosOldZ(0.0_df);
 
     // Innertia momentum
-    pCenter->setIXX(1.0);
-    pCenter->setIYY(1.0);
-    pCenter->setIZZ(1.0);
+    pCenter->setIXX(1.0_df);
+    pCenter->setIYY(1.0_df);
+    pCenter->setIZZ(1.0_df);
 
-    pCenter->setIXY(0.0);
-    pCenter->setIXZ(0.0);
-    pCenter->setIYZ(0.0);
+    pCenter->setIXY(0.0_df);
+    pCenter->setIXZ(0.0_df);
+    pCenter->setIYZ(0.0_df);
 
-    pCenter->setFX(0.0);
-    pCenter->setFY(0.0);
-    pCenter->setFZ(0.0);
+    pCenter->setFX(0.0_df);
+    pCenter->setFY(0.0_df);
+    pCenter->setFZ(0.0_df);
 
-    pCenter->setFOldX(0.0);
-    pCenter->setFOldY(0.0);
-    pCenter->setFOldZ(0.0);
+    pCenter->setFOldX(0.0_df);
+    pCenter->setFOldY(0.0_df);
+    pCenter->setFOldZ(0.0_df);
 
-    pCenter->setMX(0.0);
-    pCenter->setMY(0.0);
-    pCenter->setMZ(0.0);
+    pCenter->setMX(0.0_df);
+    pCenter->setMY(0.0_df);
+    pCenter->setMZ(0.0_df);
 
-    pCenter->setMOldX(0.0);
-    pCenter->setMOldY(0.0);
-    pCenter->setMOldZ(0.0);
+    pCenter->setMOldX(0.0_df);
+    pCenter->setMOldY(0.0_df);
+    pCenter->setMOldZ(0.0_df);
 
     pCenter->setMovable(false);
 
@@ -463,7 +463,7 @@ void Particle::makeRandomBox(ParticleCenter *particleCenter)
 
         this->nodes[nodeIndex].setPos(pos_node);
 
-        dfloat node_s = 1.0; // uniform weight
+        dfloat node_s = 1.0_df; // uniform weight
         this->nodes[nodeIndex].setS(node_s);
 
         nodeIndex++;
@@ -483,17 +483,17 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
     // Angles in polar coordinates and node area
     dfloat *theta, *zeta, *S;
 
-    dfloat phase = 0.0;
+    dfloat phase = 0.0_df;
 
     // Define the properties of the particle
-    dfloat r = particleCenter->getDiameter() / 2.0;
+    dfloat r = particleCenter->getDiameter() / 2.0_df;
     dfloat volume = r*r*r*4*M_PI/3;
 
     pCenter->setRadius(r);
     pCenter->setVolume(r*r*r*4*M_PI/3);
 
     // Particle area
-    pCenter->setS( 4.0 * M_PI * r * r);
+    pCenter->setS( 4.0_df * M_PI * r * r);
 
     // Particle density
     pCenter->setDensity(particleCenter->getDensity());
@@ -516,39 +516,43 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
     pCenter->setQPosY(0);
     pCenter->setQPosZ(0);
 
-    pCenter->setQPosOldW(0.0);
-    pCenter->setQPosOldX(1.0);
-    pCenter->setQPosOldY(0.0);
-    pCenter->setQPosOldZ(0.0);
+    pCenter->setQPosOldW(0.0_df);
+    pCenter->setQPosOldX(1.0_df);
+    pCenter->setQPosOldY(0.0_df);
+    pCenter->setQPosOldZ(0.0_df);
     
     // Innertia momentum
-    pCenter->setIXX(2.0 * volume * pCenter->getDensity() * r * r / 5.0);
-    pCenter->setIYY(2.0 * volume * pCenter->getDensity() * r * r / 5.0);
-    pCenter->setIZZ(2.0 * volume * pCenter->getDensity() * r * r / 5.0);
+    pCenter->setIXX(2.0_df * volume * pCenter->getDensity() * r * r / 5.0_df);
+    pCenter->setIYY(2.0_df * volume * pCenter->getDensity() * r * r / 5.0_df);
+    pCenter->setIZZ(2.0_df * volume * pCenter->getDensity() * r * r / 5.0_df);
 
-    pCenter->setIXY(0.0);
-    pCenter->setIXZ(0.0);
-    pCenter->setIYZ(0.0);
+    pCenter->setIXY(0.0_df);
+    pCenter->setIXZ(0.0_df);
+    pCenter->setIYZ(0.0_df);
 
-    pCenter->setFX(0.0);
-    pCenter->setFY(0.0);
-    pCenter->setFZ(0.0);
+    pCenter->setFX(0.0_df);
+    pCenter->setFY(0.0_df);
+    pCenter->setFZ(0.0_df);
 
-    pCenter->setFOldX(0.0);
-    pCenter->setFOldY(0.0);
-    pCenter->setFOldZ(0.0);
+    pCenter->setFOldX(0.0_df);
+    pCenter->setFOldY(0.0_df);
+    pCenter->setFOldZ(0.0_df);
 
-    pCenter->setMX(0.0);
-    pCenter->setMY(0.0);
-    pCenter->setMZ(0.0);
+    pCenter->setMX(0.0_df);
+    pCenter->setMY(0.0_df);
+    pCenter->setMZ(0.0_df);
 
-    pCenter->setMOldX(0.0);
-    pCenter->setMOldY(0.0);
-    pCenter->setMOldZ(0.0);
+    pCenter->setMOldX(0.0_df);
+    pCenter->setMOldY(0.0_df);
+    pCenter->setMOldZ(0.0_df);
 
     pCenter->setMovable(particleCenter->getMovable());
 
-    pCenter->setSemiAxis1(dfloat3(r,r,r));
+    // Set semi-axes as absolute positions (particle center + offset)
+    dfloat3 center_pos = particleCenter->getPos();
+    pCenter->setSemiAxis1(center_pos + dfloat3(r, 0, 0));
+    pCenter->setSemiAxis2(center_pos + dfloat3(0, r, 0));
+    pCenter->setSemiAxis3(center_pos + dfloat3(0, 0, r));
 
     // for(int i = 0; i <MAX_ACTIVE_COLLISIONS;i++){
     //     this->pCenter.collision.collisionPartnerIDs[i] = -1;
@@ -566,7 +570,7 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
     r -= BREUGEM_PARAMETER;
 
     // Number of layers in the sphere
-    nLayer = (unsigned int)(2.0 * sqrt(2) * r / MESH_SCALE + 1.0); 
+    nLayer = (unsigned int)(2.0_df * sqrt(2) * r / MESH_SCALE + 1.0_df); 
 
     nNodesLayer = (unsigned int*)malloc((nLayer+1) * sizeof(unsigned int));
     theta = (dfloat*)malloc((nLayer+1) * sizeof(dfloat));
@@ -576,9 +580,9 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
     this->numNodes = 0;
     for (int i = 0; i <= nLayer; i++) {
         // Angle of each layer
-        theta[i] = M_PI * ((dfloat)i / (dfloat)nLayer - 0.5); 
+        theta[i] = M_PI * ((dfloat)i / (dfloat)nLayer - 0.5_df); 
         // Determine the number of node per layer
-        nNodesLayer[i] = (unsigned int)(1.5 + cos(theta[i]) * nLayer * sqrt(3)); 
+        nNodesLayer[i] = (unsigned int)(1.5_df + cos(theta[i]) * nLayer * sqrt(3)); 
         // Total number of nodes on the sphere
         this->numNodes += nNodesLayer[i]; 
         zeta[i] = r * sin(theta[i]); // Height of each layer
@@ -587,7 +591,7 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
     
     for (int i = 0; i < nLayer; i++) {
         // Calculate the distance to the south pole to the mid distance of the layer and previous layer
-        S[i] = (zeta[i] + zeta[i + 1]) / 2.0 - zeta[0]; 
+        S[i] = (zeta[i] + zeta[i + 1]) / 2.0_df - zeta[0]; 
     }
     S[nLayer] = 2 * r;
     for (int i = 0; i <= nLayer; i++) {
@@ -633,8 +637,8 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
         for (int j = 0; j < nNodesLayer[i]; j++) {
             // Determine the properties of each node in the mid layers
             dfloat3 pos_nodeslayer;
-            pos_nodeslayer.x = r * cos(theta[i]) * cos((dfloat)j * 2.0 * M_PI / nNodesLayer[i] + phase);
-            pos_nodeslayer.y = r * cos(theta[i]) * sin((dfloat)j * 2.0 * M_PI / nNodesLayer[i] + phase);
+            pos_nodeslayer.x = r * cos(theta[i]) * cos((dfloat)j * 2.0_df * M_PI / nNodesLayer[i] + phase);
+            pos_nodeslayer.y = r * cos(theta[i]) * sin((dfloat)j * 2.0_df * M_PI / nNodesLayer[i] + phase);
             pos_nodeslayer.z = r * sin(theta[i]);
 
             this->nodes[nodeIndex].setPos(pos_nodeslayer);
@@ -688,7 +692,7 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
          cForce = (dfloat3*)malloc(numNodes * sizeof(dfloat3));
         IbmNodes* node_j;
 
-         scaleF = 0.1;
+         scaleF = 0.1_df;
          dfloat fx, fy, fz;
          for (unsigned int c = 0; c < MESH_COULOMB; c++) {
              for (int i = 0; i < numNodes; i++) {
@@ -778,7 +782,7 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
 void Particle::makeCapsule(ParticleCenter *particleCenter){
 
     //radius
-    dfloat r = particleCenter->getDiameter()/2.00;
+    dfloat r = particleCenter->getDiameter()/2.00_df;
 
     //length cylinder
     dfloat length = sqrt((particleCenter->getSemiAxis2().x - particleCenter->getSemiAxis1().x)*(particleCenter->getSemiAxis2().x - particleCenter->getSemiAxis1().x) + 
@@ -929,13 +933,13 @@ void Particle::makeCapsule(ParticleCenter *particleCenter){
     dfloat volume = r*r*r*4*M_PI/3 + M_PI*r*r*length;
     dfloat sphereVol = r*r*r*4*M_PI/3;
     dfloat cylinderVol = M_PI*r*r*length;
-    dfloat3 center = (particleCenter->getSemiAxis2() + particleCenter->getSemiAxis1())/2.0;
+    dfloat3 center = (particleCenter->getSemiAxis2() + particleCenter->getSemiAxis1())/2.0_df;
 
     pCenter->setRadius(r);
     pCenter->setVolume(sphereVol + cylinderVol);
 
     // Particle area
-    pCenter->setS(4.0 * M_PI * r * r + 2*M_PI*r*length);
+    pCenter->setS(4.0_df * M_PI * r * r + 2*M_PI*r*length);
     // Particle density
     pCenter->setDensity(particleCenter->getDensity());
 
@@ -968,9 +972,9 @@ void Particle::makeCapsule(ParticleCenter *particleCenter){
     In.yy = pCenter->getDensity() * (cylinderVol*(length*length/12 + r*r/4 ) + sphereVol * (2*r*r/5 + length*length/2 + 3*length*r/8));
     In.zz = pCenter->getDensity() * (cylinderVol*(length*length/12 + r*r/4 ) + sphereVol * (2*r*r/5 + length*length/2 + 3*length*r/8));
 
-    In.xy = 0.0;
-    In.xz = 0.0;
-    In.yz = 0.0;
+    In.xy = 0.0_df;
+    In.xz = 0.0_df;
+    In.yz = 0.0_df;
 
     dfloat4 q1 = compute_rotation_quart(dfloat3(1,0,0),vec);
     //rotate inertia 
@@ -986,21 +990,21 @@ void Particle::makeCapsule(ParticleCenter *particleCenter){
     pCenter->setQPosOldY(pCenter->getQPosY());
     pCenter->setQPosOldZ(pCenter->getQPosZ());
     
-    pCenter->setFX(0.0);
-    pCenter->setFY(0.0);
-    pCenter->setFZ(0.0);
+    pCenter->setFX(0.0_df);
+    pCenter->setFY(0.0_df);
+    pCenter->setFZ(0.0_df);
 
-    pCenter->setFOldX(0.0);
-    pCenter->setFOldY(0.0);
-    pCenter->setFOldZ(0.0);
+    pCenter->setFOldX(0.0_df);
+    pCenter->setFOldY(0.0_df);
+    pCenter->setFOldZ(0.0_df);
 
-    pCenter->setMX(0.0);
-    pCenter->setMY(0.0);
-    pCenter->setMZ(0.0);
+    pCenter->setMX(0.0_df);
+    pCenter->setMY(0.0_df);
+    pCenter->setMZ(0.0_df);
 
-    pCenter->setMOldX(0.0);
-    pCenter->setMOldY(0.0);
-    pCenter->setMOldZ(0.0);
+    pCenter->setMOldX(0.0_df);
+    pCenter->setMOldY(0.0_df);
+    pCenter->setMOldZ(0.0_df);
 
 
     // this->pCenter.movable = move;
@@ -1069,7 +1073,7 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
     b = particleCenter->getSemiAxis1().y;
     c = particleCenter->getSemiAxis1().z;
 
-    pCenter->setRadius(POW_FUNCTION(a*b*c,1.0/3.0));
+    pCenter->setRadius(POW_FUNCTION(a*b*c,1.0_df/3.0_df));
     pCenter->setVolume(a*b*c*4*M_PI/3);
 
     // Particle density
@@ -1090,36 +1094,36 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
 
     // Innertia momentum
     dfloat6 In;
-    In.xx = 0.2 * pCenter->getVolume() * pCenter->getDensity() * (b*b + c*c);
-    In.yy = 0.2 * pCenter->getVolume() * pCenter->getDensity() * (a*a + c*c);
-    In.zz = 0.2 * pCenter->getVolume() * pCenter->getDensity() * (a*a + b*b);
-    In.xy = 0.0;
-    In.xz = 0.0;
-    In.yz = 0.0;
+    In.xx = 0.2_df * pCenter->getVolume() * pCenter->getDensity() * (b*b + c*c);
+    In.yy = 0.2_df * pCenter->getVolume() * pCenter->getDensity() * (a*a + c*c);
+    In.zz = 0.2_df * pCenter->getVolume() * pCenter->getDensity() * (a*a + b*b);
+    In.xy = 0.0_df;
+    In.xz = 0.0_df;
+    In.yz = 0.0_df;
 
-    pCenter->setFX(0.0);
-    pCenter->setFY(0.0);
-    pCenter->setFZ(0.0);
+    pCenter->setFX(0.0_df);
+    pCenter->setFY(0.0_df);
+    pCenter->setFZ(0.0_df);
 
-    pCenter->setFOldX(0.0);
-    pCenter->setFOldY(0.0);
-    pCenter->setFOldZ(0.0);
+    pCenter->setFOldX(0.0_df);
+    pCenter->setFOldY(0.0_df);
+    pCenter->setFOldZ(0.0_df);
 
-    pCenter->setMX(0.0);
-    pCenter->setMY(0.0);
-    pCenter->setMZ(0.0);
+    pCenter->setMX(0.0_df);
+    pCenter->setMY(0.0_df);
+    pCenter->setMZ(0.0_df);
 
-    pCenter->setMOldX(0.0);
-    pCenter->setMOldY(0.0);
-    pCenter->setMOldZ(0.0);
+    pCenter->setMOldX(0.0_df);
+    pCenter->setMOldY(0.0_df);
+    pCenter->setMOldZ(0.0_df);
 
     // Particle area
-    dfloat p = 1.6075; //aproximation
+    dfloat p = 1.6075_df; //aproximation
     dfloat ab = POW_FUNCTION(a*b,p); 
     dfloat ac = POW_FUNCTION(a*c,p); 
     dfloat bc = POW_FUNCTION(b*c,p); 
 
-    pCenter->setS(4*M_PI*POW_FUNCTION((ab + ac + bc)/3,1.0/p));
+    pCenter->setS(4*M_PI*POW_FUNCTION((ab + ac + bc)/3.0_df,1.0_df/p));
 
     //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -1132,8 +1136,8 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
     ac = POW_FUNCTION(a*c,p); 
     bc = POW_FUNCTION(b*c,p); 
 
-    dfloat SS =  4*M_PI*POW_FUNCTION((ab + ac + bc)/3.0,1.0/p);
-    int numberNodes = (int)(SS * POW_FUNCTION(scaling, 3.0) /(4*M_PI/MESH_SCALE));
+    dfloat SS =  4*M_PI*POW_FUNCTION((ab + ac + bc)/3.0_df,1.0_df/p);
+    int numberNodes = (int)(SS * POW_FUNCTION(scaling, 3.0_df) /(4*M_PI/MESH_SCALE));
 
     // Particle num nodes
     this->numNodes = numberNodes;
@@ -1161,7 +1165,7 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
     }
 
     // Constants
-    dfloat base_k = 1.0; // Base Coulomb's constant (assuming unit charge)
+    dfloat base_k = 1.0_df; // Base Coulomb's constant (assuming unit charge)
     dfloat rij[3];
     dfloat r;
     dfloat F;
@@ -1171,9 +1175,9 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
     for (int iter = 0; iter < 300; iter++) {
         // Initialize force accumulator
         for (int i = 0; i < numberNodes; i++) {
-            fx[i] = 0.0;
-            fy[i] = 0.0;
-            fz[i] = 0.0;
+            fx[i] = 0.0_df;
+            fy[i] = 0.0_df;
+            fz[i] = 0.0_df;
         }
 
         // Compute pairwise forces and update positions
@@ -1283,14 +1287,14 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
     pCenter->setSemiAxis3(particleCenter->getPos() + c*scaling*dfloat3(0,0,1));
 
     vec = vector_normalize(vec);
-    if(angleMag != 0.0){
-        const dfloat q0 = cos(0.5*angleMag);
+    if(angleMag != 0.0_df){
+        const dfloat q0 = cos(0.5_df*angleMag);
 
-        const dfloat qi = (vec.x/angleMag) * sin (0.5*angleMag);
-        const dfloat qj = (vec.y/angleMag) * sin (0.5*angleMag);
-        const dfloat qk = (vec.z/angleMag) * sin (0.5*angleMag);
+        const dfloat qi = (vec.x/angleMag) * sin (0.5_df*angleMag);
+        const dfloat qj = (vec.y/angleMag) * sin (0.5_df*angleMag);
+        const dfloat qk = (vec.z/angleMag) * sin (0.5_df*angleMag);
 
-        const dfloat tq0m1 = (q0*q0) - 0.5;
+        const dfloat tq0m1 = (q0*q0) - 0.5_df;
 
         pCenter->setSemiAxis1(particleCenter->getPos() + a*scaling*dfloat3(1,0,0));
         pCenter->setSemiAxis2(particleCenter->getPos() + b*scaling*dfloat3(0,1,0));

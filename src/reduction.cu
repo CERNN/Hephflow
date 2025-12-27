@@ -181,8 +181,8 @@ void sumReductionThread_SE(dfloat* g_idata, dfloat* g_odata)
     unsigned int tid = threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * (threadIdx.z));
     //block index
     unsigned int bid = blockIdx.x + gridDim.x * (blockIdx.y + gridDim.y * (blockIdx.z));
-    //sdata[tid] = ((g_idata[ixx] - 1.0 - CONF_ZERO)*(g_idata[ixx] - 1.0 - CONF_ZERO) + (g_idata[iyy] - 1.0 - CONF_ZERO)*(g_idata[iyy] - 1.0 - CONF_ZERO) + (g_idata[izz] - 1.0 - CONF_ZERO)*(g_idata[izz] - 1.0 - CONF_ZERO));
-    sdata[tid] = (g_idata[ixx] + g_idata[iyy]+ g_idata[izz] - 3.0 - 3*CONF_ZERO);
+    //sdata[tid] = ((g_idata[ixx] - 1.0_df - CONF_ZERO)*(g_idata[ixx] - 1.0_df - CONF_ZERO) + (g_idata[iyy] - 1.0_df - CONF_ZERO)*(g_idata[iyy] - 1.0_df - CONF_ZERO) + (g_idata[izz] - 1.0_df - CONF_ZERO)*(g_idata[izz] - 1.0_df - CONF_ZERO));
+    sdata[tid] = (g_idata[ixx] + g_idata[iyy]+ g_idata[izz] - 3.0_df - 3.0_df*CONF_ZERO);
     __syncthreads();
     for (unsigned int s = (blockDim.x * blockDim.y * blockDim.z) / 2; s > 0; s >>= 1) {
         if (tid < s) {

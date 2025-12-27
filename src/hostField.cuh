@@ -15,10 +15,9 @@ typedef struct hostField{
     
     unsigned int* hNodeType;
 
-    int NThread = 4;
+    int NThread;
 
     #if NODE_TYPE_SAVE
-    NThread++;
     unsigned int* nodeTypeSave; 
     #endif //NODE_TYPE_SAVE
 
@@ -29,6 +28,10 @@ typedef struct hostField{
     #ifdef SECOND_DIST
     dfloat* C;
     #endif //SECOND_DIST
+
+    #ifdef PHI_DIST
+    dfloat* phi;
+    #endif //PHI_DIST
 
     #ifdef A_XX_DIST
     dfloat* Axx;
@@ -63,11 +66,13 @@ typedef struct hostField{
         #ifdef SECOND_DIST
         dfloat* m_c;
         #endif //SECOND_DIST
+        #ifdef PHI_DIST
+        dfloat* m_phi;
+        #endif //PHI_DIST
     #endif //MEAN_FLOW
 
     #ifdef BC_FORCES
         #ifdef SAVE_BC_FORCES
-        NThread += 3;
         dfloat* h_BC_Fx;
         dfloat* h_BC_Fy;
         dfloat* h_BC_Fz;
@@ -86,7 +91,10 @@ typedef struct hostField{
         #endif
         #ifdef SECOND_DIST
         , C(nullptr)
-        #endif
+        #endif //SECOND_DIST
+        #ifdef PHI_DIST
+        , phi(nullptr)
+        #endif //PHI_DIST
         #ifdef A_XX_DIST
         , Axx(nullptr)
         #endif
@@ -113,6 +121,9 @@ typedef struct hostField{
             #ifdef SECOND_DIST
             , m_c(nullptr)
             #endif
+            #ifdef PHI_DIST
+            , m_phi(nullptr)
+            #endif
         #endif
         #ifdef BC_FORCES
             #ifdef SAVE_BC_FORCES
@@ -128,6 +139,9 @@ typedef struct hostField{
         NThread++;
         #endif
         #ifdef SECOND_DIST
+        NThread++;
+        #endif
+        #ifdef PHI_DIST
         NThread++;
         #endif
         #ifdef A_XX_DIST
@@ -160,6 +174,7 @@ typedef struct hostField{
             &h_fMom, &rho, &ux, &uy, &uz
             OMEGA_FIELD_PARAMS_PTR
             SECOND_DIST_PARAMS_PTR
+            PHI_DIST_PARAMS_PTR
             A_XX_DIST_PARAMS_PTR
             A_XY_DIST_PARAMS_PTR
             A_XZ_DIST_PARAMS_PTR
@@ -168,6 +183,7 @@ typedef struct hostField{
             A_ZZ_DIST_PARAMS_PTR
             MEAN_FLOW_PARAMS_PTR
             MEAN_FLOW_SECOND_DIST_PARAMS_PTR
+            MEAN_FLOW_PHI_DIST_PARAMS_PTR
             #if NODE_TYPE_SAVE
             , &nodeTypeSave
             #endif //NODE_TYPE_SAVE
@@ -178,10 +194,13 @@ typedef struct hostField{
     void saveMacrHostField(unsigned int nSteps, std::atomic<bool>& savingMacrVtk, std::vector<std::atomic<bool>>& savingMacrBin, bool meanFlow){
         if(meanFlow){
             #if MEAN_FLOW
-                saveMacr(m_fMom,m_rho,m_ux,m_uy,m_uz, NodeType, OMEGA_FIELD_PARAMS
+                saveMacr(m_fMom,m_rho,m_ux,m_uy,m_uz, hNodeType, OMEGA_FIELD_PARAMS
                     #ifdef SECOND_DIST 
                     m_c,
                     #endif  //SECOND_DIST
+                    #ifdef PHI_DIST 
+                    m_phi,
+                    #endif  //PHI_DIST
                     NODE_TYPE_SAVE_PARAMS BC_FORCES_PARAMS(h_) nSteps, savingMacrVtk, savingMacrBin);
             #endif //MEAN_FLOW
         } else {
@@ -189,6 +208,9 @@ typedef struct hostField{
                 #ifdef SECOND_DIST 
                 C,
                 #endif //SECOND_DIST
+                #ifdef PHI_DIST 
+                phi,
+                #endif //PHI_DIST
                 #ifdef A_XX_DIST 
                 Axx,
                 #endif //A_XX_DIST
@@ -227,6 +249,9 @@ typedef struct hostField{
         #ifdef SECOND_DIST 
         cudaFree(C);
         #endif //SECOND_DIST
+        #ifdef PHI_DIST 
+        cudaFree(phi);
+        #endif //PHI_DIST
         #ifdef A_XX_DIST 
         cudaFree(Axx);
         #endif //A_XX_DIST
@@ -254,7 +279,10 @@ typedef struct hostField{
             cudaFree(m_uz);
             #ifdef SECOND_DIST
             cudaFree(m_c);
-            #endif //MEAN_FLOW
+            #endif //SECOND_DIST
+            #ifdef PHI_DIST
+            cudaFree(m_phi);
+            #endif //PHI_DIST
         #endif //MEAN_FLOW
     
         #ifdef BC_FORCES

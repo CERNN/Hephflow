@@ -46,50 +46,56 @@ __global__ void gpuInitialization_mom(
     dfloat rho = RHO_0, ux = U_0_X, uy = U_0_Y, uz = U_0_Z;
     #ifdef OMEGA_FIELD
     dfloat omega;
-    #endif
+    #endif //OMEGA_FIELD
     #ifdef SECOND_DIST 
-    dfloat cVar = 1.0;
-    dfloat qx_t30 = 3.0*cVar*(ux - 0.0);
-    dfloat qy_t30 = 3.0*cVar*(uy - 0.0);
-    dfloat qz_t30 = 3.0*cVar*(uz - 0.0);
-    #endif
-    #ifdef  CONFORMATION_TENSOR
+    dfloat cVar = 1.0_df;
+    dfloat qx_t30 = 3.0_df*(ux - 0.0_df);
+    dfloat qy_t30 = 3.0_df*(uy - 0.0_df);
+    dfloat qz_t30 = 3.0_df*(uz - 0.0_df);
+    #endif //SECOND_DIST
+    #ifdef PHI_DIST 
+    dfloat phiVar = 1.0_df;
+    dfloat phi_qx_t30 = 3.0_df*(ux - 0.0_df);
+    dfloat phi_qy_t30 = 3.0_df*(uy - 0.0_df);
+    dfloat phi_qz_t30 = 3.0_df*(uz - 0.0_df);
+    #endif //PHI_DIST
+    #ifdef CONFORMATION_TENSOR
         //assuming that velocity has grad = 0 
         #ifdef A_XX_DIST 
-        dfloat AxxVar = 1.0 + CONF_ZERO; 
-        dfloat Axx_qx_t30 = 3.0*AxxVar*(ux + 0.0);
-        dfloat Axx_qy_t30 = 3.0*AxxVar*(uy + 0.0);
-        dfloat Axx_qz_t30 = 3.0*AxxVar*(uz + 0.0);
+        dfloat AxxVar = 1.0_df + CONF_ZERO; 
+        dfloat Axx_qx_t30 = 3.0_df*AxxVar*(ux + 0.0_df);
+        dfloat Axx_qy_t30 = 3.0_df*AxxVar*(uy + 0.0_df);
+        dfloat Axx_qz_t30 = 3.0_df*AxxVar*(uz + 0.0_df);
         #endif
         #ifdef A_XY_DIST 
-        dfloat AxyVar = 1.0 + CONF_ZERO;
-        dfloat Axy_qx_t30 = 3.0*AxyVar*(ux + 0.0);
-        dfloat Axy_qy_t30 = 3.0*AxyVar*(uy + 0.0);
-        dfloat Axy_qz_t30 = 3.0*AxyVar*(uz + 0.0);
+        dfloat AxyVar = 1.0_df + CONF_ZERO;
+        dfloat Axy_qx_t30 = 3.0_df*AxyVar*(ux + 0.0_df);
+        dfloat Axy_qy_t30 = 3.0_df*AxyVar*(uy + 0.0_df);
+        dfloat Axy_qz_t30 = 3.0_df*AxyVar*(uz + 0.0_df);
         #endif
         #ifdef A_XZ_DIST 
-        dfloat AxzVar = 1.0 + CONF_ZERO;
-        dfloat Axz_qx_t30 = 3.0*AxzVar*(ux + 0.0);
-        dfloat Axz_qy_t30 = 3.0*AxzVar*(uy + 0.0);
-        dfloat Axz_qz_t30 = 3.0*AxzVar*(uz + 0.0);
+        dfloat AxzVar = 1.0_df + CONF_ZERO;
+        dfloat Axz_qx_t30 = 3.0_df*AxzVar*(ux + 0.0_df);
+        dfloat Axz_qy_t30 = 3.0_df*AxzVar*(uy + 0.0_df);
+        dfloat Axz_qz_t30 = 3.0_df*AxzVar*(uz + 0.0_df);
         #endif
         #ifdef A_YY_DIST 
-        dfloat AyyVar = 1.0 + CONF_ZERO;
-        dfloat Ayy_qx_t30 = 3.0*AyyVar*(ux + 0.0);
-        dfloat Ayy_qy_t30 = 3.0*AyyVar*(uy + 0.0);
-        dfloat Ayy_qz_t30 = 3.0*AyyVar*(uz + 0.0);
+        dfloat AyyVar = 1.0_df + CONF_ZERO;
+        dfloat Ayy_qx_t30 = 3.0_df*AyyVar*(ux + 0.0_df);
+        dfloat Ayy_qy_t30 = 3.0_df*AyyVar*(uy + 0.0_df);
+        dfloat Ayy_qz_t30 = 3.0_df*AyyVar*(uz + 0.0_df);
         #endif
         #ifdef A_YZ_DIST 
-        dfloat AyzVar = 1.0 + CONF_ZERO;
-        dfloat Ayz_qx_t30 = 3.0*AyzVar*(ux + 0.0);
-        dfloat Ayz_qy_t30 = 3.0*AyzVar*(uy + 0.0);
-        dfloat Ayz_qz_t30 = 3.0*AyzVar*(uz + 0.0);
+        dfloat AyzVar = 1.0_df + CONF_ZERO;
+        dfloat Ayz_qx_t30 = 3.0_df*AyzVar*(ux + 0.0_df);
+        dfloat Ayz_qy_t30 = 3.0_df*AyzVar*(uy + 0.0_df);
+        dfloat Ayz_qz_t30 = 3.0_df*AyzVar*(uz + 0.0_df);
         #endif
         #ifdef A_ZZ_DIST 
-        dfloat AzzVar = 1.0 + CONF_ZERO;
-        dfloat Azz_qx_t30 = 3.0*AzzVar*(ux + 0.0);
-        dfloat Azz_qy_t30 = 3.0*AzzVar*(uy + 0.0);
-        dfloat Azz_qz_t30 = 3.0*AzzVar*(uz + 0.0);
+        dfloat AzzVar = 1.0_df + CONF_ZERO;
+        dfloat Azz_qx_t30 = 3.0_df*AzzVar*(ux + 0.0_df);
+        dfloat Azz_qy_t30 = 3.0_df*AzzVar*(uy + 0.0_df);
+        dfloat Azz_qz_t30 = 3.0_df*AzzVar*(uz + 0.0_df);
         #endif
     #endif
 
@@ -113,11 +119,11 @@ __global__ void gpuInitialization_mom(
     for (int i = 0; i < Q; i++)
     {
         pop[i] = gpu_f_eq(w[i] * RHO_0,
-                          3 * (ux * cx[i] + uy * cy[i] + uz * cz[i]),
-                          1 - 1.5 * (ux * ux + uy * uy + uz * uz));
+                          3.0_df * (ux * cx[i] + uy * cy[i] + uz * cz[i]),
+                          1.0_df - 1.5_df * (ux * ux + uy * uy + uz * uz));
     }
     
-    dfloat invRho = 1.0/rho;
+    dfloat invRho = 1.0_df/rho;
     dfloat pixx =  (pop[1] + pop[2] + pop[7] + pop[8] + pop[9] + pop[10] + pop[13] + pop[14] + pop[15] + pop[16]) * invRho - cs2;
     dfloat pixy = ((pop[7] + pop[ 8]) - (pop[13] + pop[14])) * invRho;
     dfloat pixz = ((pop[9] + pop[10]) - (pop[15] + pop[16])) * invRho;
@@ -138,52 +144,65 @@ __global__ void gpuInitialization_mom(
     
     
     #ifdef SECOND_DIST 
-    dfloat invC= 1.0/cVar;
+    dfloat invC= 1.0_df/cVar;
 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = cVar;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qz_t30;
-    #endif 
+    #endif //SECOND_DIST
+
+        
+    #ifdef PHI_DIST 
+    dfloat invC= 1.0_df/phiVar;
+
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiVar;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qx_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qy_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qz_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    #endif //PHI_DIST
 
     #ifdef A_XX_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AxxVar;
-    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0;
+    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qz_t30;
     #endif 
     #ifdef A_XY_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AxyVar;
-    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0;
+    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qz_t30;
     #endif 
     #ifdef A_XZ_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AxzVar;
-    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0;
+    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qz_t30;
     #endif
     #ifdef A_YY_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AyyVar;
-    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0;
+    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qz_t30;
     #endif
     #ifdef A_YZ_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AyzVar;
-    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_YZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0;
+    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_YZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qz_t30;
     #endif
     #ifdef A_ZZ_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AzzVar;
-    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_ZZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0;
+    //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_ZZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qy_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qz_t30;
@@ -387,6 +406,74 @@ __global__ void gpuInitialization_pop(
             #endif                    
         }
     #endif //SECOND_DIST
+    #ifdef PHI_DIST 
+        
+        dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat invPhi = 1/phiVar;
+        dfloat phi_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat phi_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat phi_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+        dfloat phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
+        dfloat phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
+        dfloat phi_udz_t30 = PHI_DIFF_FLUC_COEF * (phi_qz_t30*invPhi - uz_t30);
+
+        #include COLREC_PHI_RECONSTRUCTION
+
+        if (threadIdx.x == 0) { //w
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
+            #ifdef D3G19
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            #endif            
+        }else if (threadIdx.x == (BLOCK_NX - 1)){                    
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
+            #ifdef D3G19
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
+            #endif    
+        }
+
+        if (threadIdx.y == 0)  { //s                             
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
+            #ifdef D3G19
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
+            #endif           
+        }else if (threadIdx.y == (BLOCK_NY - 1)){             
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
+            #ifdef D3G19
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
+            #endif        
+        }
+        
+        if (threadIdx.z == 0){ //b                          
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
+            #ifdef D3G19
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
+            #endif    
+        }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
+            #ifdef D3G19
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
+            #endif                    
+        }
+    #endif //PHI_DIST
     #ifdef A_XX_DIST 
         
         dfloat AxxVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -394,10 +481,6 @@ __global__ void gpuInitialization_pop(
         dfloat Axx_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat Axx_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat Axx_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-
-        dfloat Axx_udx_t30 = CONF_DIFF_FLUC_COEF * (Axx_qx_t30*invAxx - ux_t30);
-        dfloat Axx_udy_t30 = CONF_DIFF_FLUC_COEF * (Axx_qy_t30*invAxx - uy_t30);
-        dfloat Axx_udz_t30 = CONF_DIFF_FLUC_COEF * (Axx_qz_t30*invAxx - uz_t30);
 
         #include COLREC_AXX_RECONSTRUCTION
 
@@ -463,10 +546,6 @@ __global__ void gpuInitialization_pop(
         dfloat Axy_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat Axy_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
-        dfloat Axy_udx_t30 = CONF_DIFF_FLUC_COEF * (Axy_qx_t30*invAxy - ux_t30);
-        dfloat Axy_udy_t30 = CONF_DIFF_FLUC_COEF * (Axy_qy_t30*invAxy - uy_t30);
-        dfloat Axy_udz_t30 = CONF_DIFF_FLUC_COEF * (Axy_qz_t30*invAxy - uz_t30);
-
         #include COLREC_AXY_RECONSTRUCTION
 
         if (threadIdx.x == 0) { //w
@@ -530,10 +609,6 @@ __global__ void gpuInitialization_pop(
         dfloat Axz_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat Axz_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat Axz_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-
-        dfloat Axz_udx_t30 = CONF_DIFF_FLUC_COEF * (Axz_qx_t30*invAxz - ux_t30);
-        dfloat Axz_udy_t30 = CONF_DIFF_FLUC_COEF * (Axz_qy_t30*invAxz - uy_t30);
-        dfloat Axz_udz_t30 = CONF_DIFF_FLUC_COEF * (Axz_qz_t30*invAxz - uz_t30);
 
         #include COLREC_AXZ_RECONSTRUCTION
 
@@ -599,10 +674,6 @@ __global__ void gpuInitialization_pop(
         dfloat Ayy_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat Ayy_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
-        dfloat Ayy_udx_t30 = CONF_DIFF_FLUC_COEF * (Ayy_qx_t30*invAyy - ux_t30);
-        dfloat Ayy_udy_t30 = CONF_DIFF_FLUC_COEF * (Ayy_qy_t30*invAyy - uy_t30);
-        dfloat Ayy_udz_t30 = CONF_DIFF_FLUC_COEF * (Ayy_qz_t30*invAyy - uz_t30);
-
         #include COLREC_AYY_RECONSTRUCTION
 
         if (threadIdx.x == 0) { //w
@@ -667,9 +738,6 @@ __global__ void gpuInitialization_pop(
         dfloat Ayz_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat Ayz_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
-        dfloat Ayz_udx_t30 = CONF_DIFF_FLUC_COEF * (Ayz_qx_t30*invAyz - ux_t30);
-        dfloat Ayz_udy_t30 = CONF_DIFF_FLUC_COEF * (Ayz_qy_t30*invAyz - uy_t30);
-        dfloat Ayz_udz_t30 = CONF_DIFF_FLUC_COEF * (Ayz_qz_t30*invAyz - uz_t30);
 
         #include COLREC_AYZ_RECONSTRUCTION
 
@@ -734,10 +802,6 @@ __global__ void gpuInitialization_pop(
         dfloat Azz_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat Azz_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat Azz_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-
-        dfloat Azz_udx_t30 = CONF_DIFF_FLUC_COEF * (Azz_qx_t30*invAzz - ux_t30);
-        dfloat Azz_udy_t30 = CONF_DIFF_FLUC_COEF * (Azz_qy_t30*invAzz - uy_t30);
-        dfloat Azz_udz_t30 = CONF_DIFF_FLUC_COEF * (Azz_qz_t30*invAzz - uz_t30);
 
         #include COLREC_AZZ_RECONSTRUCTION
 
@@ -918,17 +982,30 @@ __host__ void hostInitialization_nodeType_bulk(
 }
 
 __host__ void hostInitialization_nodeType(
-    unsigned int *hNodeType)
-{
+    unsigned int *hNodeType
+    #ifdef CURVED_BOUNDARY_CONDITION
+    , unsigned int* numberCurvedBoundaryNodes
+    #endif
+){
     int x,y,z;
     unsigned int nodeType;
 
     for (x = 0; x<NX;x++){
         for (y = 0; y<NY;y++){
             for (z = 0; z<NZ_TOTAL;z++){
+                
                 #include CASE_BC_INIT
-                if (nodeType != BULK)
+
+                if (nodeType != BULK){
                     hNodeType[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] = (unsigned int)nodeType;
+
+                    #ifdef CURVED_BOUNDARY_CONDITION
+                    if ( (nodeType & (0b111 << 8)) == (0b101 << 8) ){ //mask bits 8,9,10 then compare with BC_CURVED_BC
+                        numberCurvedBoundaryNodes[0]++;
+                    }
+                    #endif
+                }
+
             }
         }
     }
@@ -947,10 +1024,29 @@ __global__ void gpuInitialization_force(
 
     size_t index = idxScalarGlobal(x, y, z);
 
-    d_BC_Fx[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0;
-    d_BC_Fy[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0;
-    d_BC_Fz[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0; 
+    d_BC_Fx[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0_df;
+    d_BC_Fy[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0_df;
+    d_BC_Fz[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = 0.0_df; 
 }
+
+
+#ifdef CURVED_BOUNDARY_CONDITION
+__global__ void deviceInitializeCurvedBC(
+    unsigned int *dNodeType, 
+    CurvedBoundary** d_curvedBC
+){
+    int x = threadIdx.x + blockDim.x * blockIdx.x;
+    int y = threadIdx.y + blockDim.y * blockIdx.y;
+    int z = threadIdx.z + blockDim.z * blockIdx.z;
+    if (x >= NX || y >= NY || z >= NZ)
+        return;
+    
+     d_curvedBC[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = nullptr;
+}
+#endif
+
+
+
 
 void read_xyz_file(
     const std::string& filename,
@@ -1028,6 +1124,11 @@ void define_voxel_bc(
     unsigned int index = idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ);
     if(dNodeType[index] == MISSING_DEFINITION){
         dNodeType[index] = bc_id(dNodeType,x,y,z);
+        #ifdef CURVED_BOUNDARY_CONDITION //TODO: this only works if is the only boundary conditiond being made, if there is an obstacle will stop working
+            if((dNodeType[index] != BULK )&& (dNodeType[index] != SOLID_NODE)){
+                dNodeType[index] += BC_CURVED_BC_CONCAV;
+            }
+        #endif
     }
 }
 
@@ -1186,3 +1287,77 @@ unsigned int bc_id(unsigned int *dNodeType, int x, int y, int z){
 
     return bc_d;
 }
+
+
+#ifdef CURVED_BOUNDARY_CONDITION
+    unsigned int getNumberCurvedBoundaryNodes(unsigned int *&hNodeType){
+        unsigned int numberCurvedBoundaryNodes = 0;
+        unsigned int nodeType;
+        for (size_t i = 0; i < NUMBER_LBM_NODES; i++) {
+            nodeType = hNodeType[i];
+            if((nodeType & (0b111 << 8)) == (0b101 << 8) ){ //mask bits 8,9,10 then compare with BC_CURVED_BC
+                    numberCurvedBoundaryNodes++;
+            }
+        }
+        return numberCurvedBoundaryNodes;
+    }
+
+
+    void allocateDeviceMemoryCurvedBoundary(CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array, unsigned int numberCurvedBoundaryNodes){
+        unsigned int memAllocated = 0;
+
+        cudaMalloc((void**)&d_curvedBC, sizeof(CurvedBoundary*) * NUMBER_LBM_NODES); //already allocated in
+        cudaMalloc((void**)&d_curvedBC_array, sizeof(CurvedBoundary) * numberCurvedBoundaryNodes);
+
+        memAllocated += sizeof(CurvedBoundary*) * NUMBER_LBM_NODES + sizeof(CurvedBoundary) * numberCurvedBoundaryNodes;
+
+        printf("Device Memory Allocated for Curved Boundary: %.2f MB \n", (float)memAllocated /(1024.0_df * 1024.0_df));
+    }
+
+
+    void initializeCurvedBoundaryArray(
+        unsigned int *&hNodeType, 
+        unsigned int *&dNodeType, 
+        CurvedBoundary** &d_curvedBC, 
+        CurvedBoundary* &d_curvedBC_array, 
+        unsigned int numberCurvedBoundaryNodes
+    ){
+        CurvedBoundary** h_curvedBC_ptrs = (CurvedBoundary**)malloc(sizeof(CurvedBoundary*) * NUMBER_LBM_NODES);
+        CurvedBoundary*  h_curvedBC_array = (CurvedBoundary*)malloc(sizeof(CurvedBoundary) * numberCurvedBoundaryNodes);
+
+        for (size_t i = 0; i < NUMBER_LBM_NODES; i++){
+            h_curvedBC_ptrs[i] = nullptr;
+        }
+
+        unsigned int curvedBCCount = 0;
+        unsigned int idx;
+        unsigned int nodeType;
+        for(int x = 0; x < NX; x++){
+            for(int y = 0; y < NY; y++){
+                for(int z = 0; z < NZ_TOTAL; z++){
+                    idx = idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ);
+                    nodeType = hNodeType[idx];
+                    if((nodeType & (0b111 << 8)) == (0b101 << 8) ){ //mask bits 8,9,10 then compare with 
+                        h_curvedBC_ptrs[idx] = d_curvedBC_array + curvedBCCount;
+                        #include CASE_CURVED_BC_DEF
+                        curvedBCCount++;
+                    }
+                }
+            }
+        }
+
+        // Copy the indices to device
+        cudaMemcpy(d_curvedBC, h_curvedBC_ptrs, sizeof(CurvedBoundary*) * NUMBER_LBM_NODES, cudaMemcpyHostToDevice);
+        // Copy the CurvedBoundary array to device
+        cudaMemcpy(d_curvedBC_array, h_curvedBC_array, sizeof(CurvedBoundary) * numberCurvedBoundaryNodes, cudaMemcpyHostToDevice);
+
+        free(h_curvedBC_ptrs);
+        free(h_curvedBC_array);
+    }
+
+    void initializeCurvedBoundaryDeviceField(unsigned int *&hNodeType, unsigned int *&dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array){
+        unsigned int numberCurvedBoundaryNodes = getNumberCurvedBoundaryNodes(hNodeType);
+        allocateDeviceMemoryCurvedBoundary(d_curvedBC, d_curvedBC_array, numberCurvedBoundaryNodes);
+        initializeCurvedBoundaryArray(hNodeType, dNodeType, d_curvedBC, d_curvedBC_array,numberCurvedBoundaryNodes);
+    }
+#endif //CURVED_BOUNDARY_CONDITION

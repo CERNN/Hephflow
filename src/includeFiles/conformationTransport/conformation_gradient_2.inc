@@ -113,16 +113,16 @@ dfloat Ayz_zp1 = s_pop[sharedIndexAyz + 6*haloNx*haloNy];
 dfloat Azz_zp1 = s_pop[sharedIndexAzz + 6*haloNx*haloNy];
 
 // Compute derivatives
-dfloat dAxxdx = (Axx_xp1 - Axx_xm1) *0.5;
-dfloat dAxydy = (Axy_yp1 - Axy_ym1) *0.5;
-dfloat dAxzdz = (Axz_zp1 - Axz_zm1) *0.5;
+dfloat dAxxdx = (Axx_xp1 - Axx_xm1) *0.5_df;
+dfloat dAxydy = (Axy_yp1 - Axy_ym1) *0.5_df;
+dfloat dAxzdz = (Axz_zp1 - Axz_zm1) *0.5_df;
 
-dfloat dAxydx = (Axy_xp1 - Axy_xm1) *0.5;
-dfloat dAyydy = (Ayy_yp1 - Ayy_ym1) *0.5;
-dfloat dAyzdz = (Ayz_zp1 - Ayz_zm1) *0.5;
+dfloat dAxydx = (Axy_xp1 - Axy_xm1) *0.5_df;
+dfloat dAyydy = (Ayy_yp1 - Ayy_ym1) *0.5_df;
+dfloat dAyzdz = (Ayz_zp1 - Ayz_zm1) *0.5_df;
 
-dfloat dAxzdx = (Axz_xp1 - Axz_xm1) *0.5;
-dfloat dAyzdy = (Ayz_yp1 - Ayz_ym1) *0.5;
-dfloat dAzzdz = (Azz_zp1 - Azz_zm1) *0.5;
+dfloat dAxzdx = (Axz_xp1 - Axz_xm1) *0.5_df;
+dfloat dAyzdy = (Ayz_yp1 - Ayz_ym1) *0.5_df;
+dfloat dAzzdz = (Azz_zp1 - Azz_zm1) *0.5_df;
 
 

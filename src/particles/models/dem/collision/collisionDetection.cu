@@ -9,7 +9,7 @@
 
 //collision
 __global__
-void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, unsigned int step){
+void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, ParticleWallForces *d_pwForces, unsigned int step){
     /* Maps a 1D array to a Floyd triangle, where the last row is for checking
     collision against the wall and the other ones to check collision between 
     particles, with index given by row/column. Example for 7 particles:
@@ -48,7 +48,7 @@ void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, uns
     */
     const unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if(idx > TOTAL_PCOLLISION_IBM_THREADS)
+    if(idx > TOTAL_PCOLLISION_THREADS)
         return;
     
     const unsigned int row = ceil((-1.0+sqrt((dfloat)1+8*(idx+1)))/2);
@@ -61,7 +61,7 @@ void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, uns
     if(row == NUM_PARTICLES){
         if(!pc_i->getMovable())
             return;
-        checkCollisionWalls(shape_i,pc_i,step);
+        checkCollisionWalls(shape_i,pc_i,d_pwForces,step);
     }else{    //Collision between particles
         ParticleCenter* pc_j = &pArray[row]; 
         ParticleShape* shape_j = &shape[row];
@@ -72,10 +72,10 @@ void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, uns
 }
 
 __device__
-void checkCollisionWalls(ParticleShape *shape, ParticleCenter* pc_i, unsigned int step){
+void checkCollisionWalls(ParticleShape *shape, ParticleCenter* pc_i, ParticleWallForces *d_pwForces, unsigned int step){
     switch (*shape) {
         case SPHERE:
-            checkCollisionWallsSphere(pc_i,step);
+            checkCollisionWallsSphere(pc_i,d_pwForces,step);
             break;
         case CAPSULE:
             checkCollisionWallsCapsule(pc_i,step);
@@ -87,10 +87,58 @@ void checkCollisionWalls(ParticleShape *shape, ParticleCenter* pc_i, unsigned in
             // Handle unknown particle types
             break;
     }  
+
+    //TODO: find a way to remove the double check
+    #if defined (EXTERNAL_DUCT_BC)
+        dfloat dist;
+        Wall wallData;
+        dfloat3 ductCenter = dfloat3(DUCT_CENTER_X, DUCT_CENTER_Y, pc_i->getPosZ());
+        dfloat3 endpoint;
+        dfloat3 closestOnA[1];
+        dfloat3 closestOnB[1];
+        dfloat cr[1];
+
+        switch (*shape) {
+            case SPHERE:
+                dist = vector_length(pc_i->getPos() - ductCenter);
+                if(EXTERNAL_DUCT_BC_RADIUS - dist < pc_i->getRadius()){
+                    wallData = determineCircularWall(pc_i->getPos(),EXTERNAL_DUCT_BC_RADIUS,-1);
+                    sphereWallCollision({pc_i, wallData, (dfloat)EXTERNAL_DUCT_BC_RADIUS - (pc_i->getRadius() + dist), step});
+                }
+                break;
+            case CAPSULE:
+                //two cases (it always collide on the hemispheres)
+                endpoint = pc_i->getSemiAxis1();
+                dist = vector_length(endpoint - ductCenter);
+                if (EXTERNAL_DUCT_BC_RADIUS - dist < pc_i->getRadius()){
+                    wallData = determineCircularWall(endpoint,EXTERNAL_DUCT_BC_RADIUS,-1);
+                    capsuleWallCollisionCap({pc_i, wallData, (dfloat)EXTERNAL_DUCT_BC_RADIUS - (pc_i->getRadius() + dist), step, endpoint});
+                }
+                
+                endpoint = pc_i->getSemiAxis2();
+                dist = vector_length(endpoint - ductCenter);
+                if( EXTERNAL_DUCT_BC_RADIUS - dist < pc_i->getRadius()){
+                    wallData = determineCircularWall(endpoint,EXTERNAL_DUCT_BC_RADIUS,-1);
+                    capsuleWallCollisionCap({pc_i, wallData, (dfloat)EXTERNAL_DUCT_BC_RADIUS - (pc_i->getRadius() + dist), step, endpoint});
+                }
+                break;
+            case ELLIPSOID:
+                dist = ellipsoidSegmentCollisionDistance(pc_i, dfloat3(DUCT_CENTER_X,DUCT_CENTER_Y,-EXTERNAL_DUCT_BC_RADIUS),dfloat3(DUCT_CENTER_X,DUCT_CENTER_Y,NZ_TOTAL+EXTERNAL_DUCT_BC_RADIUS), EXTERNAL_DUCT_BC_RADIUS,closestOnA,closestOnB,cr,-1,step);
+                if(dist < 0){
+                    wallData = determineCircularWall(closestOnA[0],EXTERNAL_DUCT_BC_RADIUS,-1);
+                    ellipsoidCylinderCollision({pc_i, wallData,-dist,step},closestOnB,cr,dfloat3(DUCT_CENTER_X,DUCT_CENTER_Y,-EXTERNAL_DUCT_BC_RADIUS),dfloat3(DUCT_CENTER_X,DUCT_CENTER_Y,NZ_TOTAL+EXTERNAL_DUCT_BC_RADIUS),EXTERNAL_DUCT_BC_RADIUS,-1);
+                }
+                break;
+            default:
+                break;
+        }  
+
+
+    #endif //(EXTERNAL_DUCT_BC)
 }
 
 __device__
-void checkCollisionWallsSphere(ParticleCenter* pc_i, unsigned int step) {
+void checkCollisionWallsSphere(ParticleCenter* pc_i, ParticleWallForces *d_pwForces, unsigned int step) {
     const dfloat3 pos_i = pc_i->getPos();
     const dfloat radius = pc_i->getRadius();
 
@@ -99,18 +147,18 @@ void checkCollisionWallsSphere(ParticleCenter* pc_i, unsigned int step) {
     int wallCount = 0;
 
     #ifdef BC_X_WALL
-    walls[wallCount++] = wall(dfloat3(1, 0, 0), 0);
-    walls[wallCount++] = wall(dfloat3(-1, 0, 0), (NX - 1));
+    walls[wallCount++] = wall(dfloat3(1, 0, 0), 0,dfloat3(0,-WALL_VEL_UY,-WALL_VEL_UZ));
+    walls[wallCount++] = wall(dfloat3(-1, 0, 0), (NX - 1),dfloat3(0,WALL_VEL_UY,WALL_VEL_UZ));
     #endif
 
     #ifdef BC_Y_WALL
-    walls[wallCount++] = wall(dfloat3(0, 1, 0), 0);
-    walls[wallCount++] = wall(dfloat3(0, -1, 0), (NY - 1));
+    walls[wallCount++] = wall(dfloat3(0, 1, 0), 0,dfloat3(-WALL_VEL_UX,0,-WALL_VEL_UZ));
+    walls[wallCount++] = wall(dfloat3(0, -1, 0), (NY - 1),dfloat3(WALL_VEL_UX,0,WALL_VEL_UZ));
     #endif
 
     #ifdef BC_Z_WALL
-    walls[wallCount++] = wall(dfloat3(0, 0, 1), 0);
-    walls[wallCount++] = wall(dfloat3(0, 0, -1), (NZ_TOTAL - 1));
+    walls[wallCount++] = wall(dfloat3(0, 0, 1), 0,dfloat3(-WALL_VEL_UX,-WALL_VEL_UY,0));
+    walls[wallCount++] = wall(dfloat3(0, 0, -1), (NZ_TOTAL - 1),dfloat3(WALL_VEL_UX,WALL_VEL_UY,0));
     #endif
 
     for (int i = 0; i < wallCount; ++i) {
@@ -126,7 +174,7 @@ void checkCollisionWallsSphere(ParticleCenter* pc_i, unsigned int step) {
         }
 
         if (distanceWall < radius) {
-            sphereWallCollision({pc_i, walls[i], radius - distanceWall, step});
+            sphereWallCollision({pc_i, walls[i], radius - distanceWall, step}, d_pwForces);
         }
     }
 }
@@ -279,22 +327,27 @@ void checkCollisionBetweenParticles( unsigned int column,unsigned int row,Partic
 // ------------------------------------------------------------------------ 
 
 
-__device__
 void sphereSphereCollisionCheck(unsigned int column,unsigned int row,ParticleCenter* pc_i, ParticleCenter* pc_j, int step){
     dfloat gap = sphereSphereGap(pc_i, pc_j);
-    if (gap < 0) {
-        dfloat3 diff_pos = getDiffPeriodic(pc_i->getPos(), pc_j->getPos());
-        dfloat mag_dist = vector_length(diff_pos);
-        dfloat3 normal = (mag_dist != 0) ? (diff_pos / mag_dist) : dfloat3{0.0, 0.0, 0.0};
+    dfloat3 diff_pos = getDiffPeriodic(pc_i->getPos(), pc_j->getPos());
+    dfloat mag_dist = vector_length(diff_pos);
+    dfloat3 normal = (mag_dist != 0) ? diff_pos / mag_dist : dfloat3{0,0,0};
 
-        CollisionContext ctx = {};
-        ctx.pc_i = pc_i;
-        ctx.pc_j = pc_j;
-        ctx.displacement = -gap; // overlap
-        ctx.step = step;
-        ctx.partnerID = row;
-        ctx.wall.normal = normal;
-        sphereSphereCollision(ctx);
+    CollisionContext ctx = {};
+    ctx.pc_i = pc_i;
+    ctx.pc_j = pc_j;
+    ctx.step = step;
+    ctx.partnerID = row;
+    ctx.wall.normal = normal;
+
+    if (gap < 0) {
+        ctx.displacement = -gap;
+        sphereSphereCollision(ctx); // Hertz
+    }
+    else {
+        //sphereSphereLubrication(ctx, gap);
+        //sphereSphereRepulsion(ctx, gap);
+        //sphereSphereAttraction(ctx, gap);
     }
 }
 
@@ -431,6 +484,100 @@ dfloat sphereSphereGap(ParticleCenter* pc_i, ParticleCenter* pc_j) {
     
     // Return the gap between the spheres.
     return dist - (r1 + r2);
+}
+
+#ifdef CURVED_BOUNDARY_CONDITION
+__device__
+Wall determineCircularWall(dfloat3 pos_i, dfloat R, dfloat dir){
+    Wall tempWall;
+
+    dfloat3 center = dfloat3(DUCT_CENTER_X,DUCT_CENTER_Y,0.0);
+
+    tempWall.normal = dfloat3( dir * (pos_i.x-DUCT_CENTER_X), dir * (pos_i.y-DUCT_CENTER_Y),0.0);
+    tempWall.normal = vector_normalize(tempWall.normal);
+
+    dfloat3 contactPoint = dfloat3(center - R * tempWall.normal);
+
+    tempWall.distance = vector_length(contactPoint - pos_i);
+
+    return tempWall;
+}
+#endif
+
+__device__
+dfloat ellipsoidSegmentCollisionDistance( ParticleCenter* pc_i, dfloat3 P1, dfloat3 P2, dfloat cRadius ,dfloat3 contactPoint1[1], dfloat3 contactPoint2[1], dfloat cr[1], int cyDir, unsigned int step){
+    dfloat RE[3][3];
+    dfloat R2[3][3];
+    dfloat dist, error;
+    dfloat3 new_sphere_center1, new_sphere_center2;
+    dfloat3 closest_point1, closest_point2;
+
+
+    //obtain semi-axis values
+    dfloat a = vector_length(pc_i->getSemiAxis1() - pc_i->getPos());
+    dfloat b = vector_length(pc_i->getSemiAxis2() - pc_i->getPos());
+    dfloat c = vector_length(pc_i->getSemiAxis3() - pc_i->getPos());
+
+    rotationMatrixFromVectors((pc_i->getSemiAxis1() - pc_i->getPos())/a,(pc_i->getSemiAxis2() - pc_i->getPos())/b,(pc_i->getSemiAxis3() - pc_i->getPos())/c,RE);
+
+
+    //projection of center into segment
+    dfloat3 proj = segmentProjection(pc_i->getPos(),P1,P2,cRadius,cyDir);
+    dfloat3 dir = pc_i->getPos() - proj;
+    dfloat3 t = ellipsoid_intersection(pc_i,RE,proj,dir,dfloat3(0,0,0));
+    dfloat3 inter1 = proj + t.x*dir;
+    dfloat3 inter2 = proj + t.y*dir;
+    
+
+    if (vector_length(inter1 - proj) < vector_length(inter2 - proj)){
+        closest_point2 = inter1;
+    }else{
+        closest_point2 = inter2;
+    }    
+
+    dfloat r = 3; //TODO: FIND A BETTER WAY TI DETERMINE IT
+
+    //compute normal vector at intersection
+    dfloat3 normal2 = ellipsoid_normal(pc_i,RE,closest_point2,cr,dfloat3(0,0,0));
+
+
+    //Compute the centers of the spheres in the opposite direction of the normals
+    dfloat3 sphere_center2 = closest_point2 - r * normal2;
+
+    //Iteration loop
+    dfloat max_iters = 20;
+    dfloat tolerance = 1e-3;
+    for(int i = 0; i< max_iters;i++){
+        proj = segmentProjection(sphere_center2,P1,P2,cRadius, cyDir);
+        dir = sphere_center2 - proj;
+        t = ellipsoid_intersection(pc_i,RE,proj,dir,dfloat3(0,0,0));
+
+        inter1 = proj + t.x*dir;
+        inter2 = proj + t.y*dir;
+
+        if (vector_length(inter1 - proj) < vector_length(inter2 - proj)){
+            closest_point2 = inter1;
+        }else{
+            closest_point2 = inter2;
+        }        
+
+        normal2 = ellipsoid_normal(pc_i,RE,closest_point2,cr,dfloat3(0,0,0));
+        new_sphere_center2 = closest_point2 - r * normal2;
+
+        error = vector_length(new_sphere_center2 - sphere_center2);
+        if (error < tolerance ){
+            break;      
+        }else{
+            //update values
+            sphere_center2 = new_sphere_center2;
+        }
+    }
+
+
+    contactPoint1[0] = proj;
+    contactPoint2[0] = closest_point2;
+    dist = vector_length(sphere_center2 - proj) - r;
+    return dist;
 }
 
 #endif //PARTICLE_MODEL

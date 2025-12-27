@@ -17,20 +17,20 @@
 
 /* --------------------------- CONSTANTS --------------------------- */
 
-constexpr dfloat OMEGA = 1.0 / TAU;        // (tau)^-1
-constexpr dfloat OMEGAd2 = OMEGA/2.0; //OMEGA/2
-constexpr dfloat OMEGAd9 = OMEGA/9.0;  //OMEGA/9
-constexpr dfloat T_OMEGA = 1.0 - OMEGA; //1-OMEGA
-constexpr dfloat TT_OMEGA = 1.0 - 0.5*OMEGA; //1.0 - OMEGA/2 
-constexpr dfloat OMEGA_P1 = 1.0 + OMEGA; // 1+ OMEGA
-constexpr dfloat TT_OMEGA_T3 = TT_OMEGA*3.0; //3*(1-0.5*OMEGA)
+constexpr dfloat OMEGA = 1.0_df / TAU;        // (tau)^-1
+constexpr dfloat OMEGAd2 = OMEGA/2.0_df; //OMEGA/2
+constexpr dfloat OMEGAd9 = OMEGA/9.0_df;  //OMEGA/9
+constexpr dfloat T_OMEGA = 1.0_df - OMEGA; //1-OMEGA
+constexpr dfloat TT_OMEGA = 1.0_df - 0.5_df*OMEGA; //1.0_df - OMEGA/2 
+constexpr dfloat OMEGA_P1 = 1.0_df + OMEGA; // 1+ OMEGA
+constexpr dfloat TT_OMEGA_T3 = TT_OMEGA*3.0_df; //3*(1-0.5_df*OMEGA)
 
 #define SQRT_2  (1.41421356237309504880168872420969807856967187537)
 #define SQRT_10 (3.162277660168379331998893544432718533719555139325)
 
 
-constexpr dfloat ONESIXTH = 1.0/6.0;
-constexpr dfloat ONETHIRD = 1.0/3.0;
+constexpr dfloat ONESIXTH = 1.0_df/6.0_df;
+constexpr dfloat ONETHIRD = 1.0_df/3.0_df;
 
 /* --------------------------- AUXILIARY DEFINES --------------------------- */
 #define IN_HOST 1       // variable accessible only for host
@@ -116,9 +116,11 @@ const size_t BLOCK_GHOST_SIZE = BLOCK_FACE_XY + BLOCK_FACE_XZ + BLOCK_FACE_YZ;
 const size_t BLOCK_SIZE = BLOCK_LBM_SIZE + BLOCK_GHOST_SIZE;
 //const size_t BLOCK_SIZE = (BLOCK_NX + 1) * (BLOCK_NY + 1) * (BLOCK_NZ + 1);
 
-const size_t NUM_BLOCK_X = NX / BLOCK_NX;
-const size_t NUM_BLOCK_Y = NY / BLOCK_NY;
-const size_t NUM_BLOCK_Z = NZ / BLOCK_NZ;
+//TODO: in order to support domains with size that are not multiple of the block size need fix the index function where the transfer populations occur for periodic domains. 
+const size_t NUM_BLOCK_X = (NX / BLOCK_NX) + (NX % BLOCK_NX > 0 ? 1 : 0);
+const size_t NUM_BLOCK_Y = (NY / BLOCK_NY) + (NY % BLOCK_NY > 0 ? 1 : 0);
+const size_t NUM_BLOCK_Z = (NZ / BLOCK_NZ) + (NZ % BLOCK_NZ > 0 ? 1 : 0);
+
 const size_t NUM_BLOCK = NUM_BLOCK_X * NUM_BLOCK_Y * NUM_BLOCK_Z;
 
 const size_t NUMBER_LBM_NODES = NUM_BLOCK * BLOCK_LBM_SIZE;
@@ -143,7 +145,7 @@ const size_t MEM_SIZE_MAP_BC = sizeof(uint32_t) * NUMBER_LBM_NODES;
 const int N_THREADS = (NX%64?((NX%32||(NX<32))?NX:32):64); // NX or 32 or 64 
                                     // multiple of 32 for better performance.
 const int CURAND_SEED = 0;          // seed for random numbers for CUDA
-constexpr float CURAND_STD_DEV = 0.5; // standard deviation for random numbers 
+constexpr float CURAND_STD_DEV = 0.5_df; // standard deviation for random numbers 
                                     // in normal distribution
 
 
@@ -245,6 +247,16 @@ constexpr int MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_SIZE_POP, myMax(VEL_GRAD_
 #endif //SECOND_DIST
 
 
+#ifdef PHI_DIST
+    #define PHI_DIST_PARAMS_DECLARATION_PTR ,dfloat** phi
+    #define PHI_DIST_PARAMS_PTR ,&phi
+#else
+    #define PHI_DIST_PARAMS_DECLARATION_PTR
+    #define PHI_DIST_PARAMS_PTR
+#endif //SECOND_DIST
+
+
+
 #ifdef A_XX_DIST
     #define A_XX_DIST_PARAMS_DECLARATION_PTR ,dfloat** Axx
     #define A_XX_DIST_PARAMS_PTR ,&Axx
@@ -305,11 +317,20 @@ constexpr int MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_SIZE_POP, myMax(VEL_GRAD_
         #define MEAN_FLOW_SECOND_DIST_PARAMS_DECLARATION_PTR
         #define MEAN_FLOW_SECOND_DIST_PARAMS_PTR
     #endif //SECOND_DIST
+    #ifdef PHI_DIST
+        #define MEAN_FLOW_PHI_DIST_PARAMS_DECLARATION_PTR ,dfloat** phi_c
+        #define MEAN_FLOW_PHI_DIST_PARAMS_PTR , &phi_c
+    #else
+        #define MEAN_FLOW_PHI_DIST_PARAMS_DECLARATION_PTR
+        #define MEAN_FLOW_PHI_DIST_PARAMS_PTR
+    #endif //PHI_DIST
 #else
     #define MEAN_FLOW_PARAMS_DECLARATION_PTR
     #define MEAN_FLOW_PARAMS_PTR
     #define MEAN_FLOW_SECOND_DIST_PARAMS_DECLARATION_PTR
     #define MEAN_FLOW_SECOND_DIST_PARAMS_PTR
+    #define MEAN_FLOW_PHI_DIST_PARAMS_DECLARATION_PTR
+    #define MEAN_FLOW_PHI_DIST_PARAMS_PTR
 #endif //MEAN_FLOW
 
 
@@ -330,6 +351,33 @@ constexpr int MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_SIZE_POP, myMax(VEL_GRAD_
     #define DENSITY_CORRECTION_PARAMS_DECLARATION_PTR
     #define DENSITY_CORRECTION_PARAMS_PTR
 #endif //DENSITY_CORRECTION
+
+#ifdef CURVED_BOUNDARY_CONDITION
+    #define CURVED_BC_PARAMS_DECLARATION_PTR(PREFIX) CurvedBoundary*** PREFIX##curvedBC,
+    #define CURVED_BC_PARAMS_PTR(PREFIX) &PREFIX##curvedBC,
+#else
+    #define CURVED_BC_PARAMS_DECLARATION_PTR(PREFIX)
+    #define CURVED_BC_PARAMS_PTR(PREFIX)
+#endif
+
+#ifdef CURVED_BOUNDARY_CONDITION
+    #define CURVED_BC_PTRS_DECL(PREFIX) \
+        CurvedBoundary** PREFIX##curvedBC,
+
+    #define CURVED_BC_ARRAY_DECL(PREFIX) \
+        CurvedBoundary* PREFIX##curvedBC_array,
+
+    #define CURVED_BC_PTRS(PREFIX) \
+        PREFIX##curvedBC,
+
+    #define CURVED_BC_ARRAY(PREFIX) \
+        PREFIX##curvedBC_array,
+#else
+    #define CURVED_BC_PTRS_DECL(PREFIX)
+    #define CURVED_BC_ARRAY_DECL(PREFIX)
+    #define CURVED_BC_PTRS(PREFIX)
+    #define CURVED_BC_ARRAY(PREFIX)
+#endif
 
 
 #endif //!__DEFINITIONS_H

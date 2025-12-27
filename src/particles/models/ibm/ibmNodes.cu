@@ -87,6 +87,9 @@ __host__ __device__ void IbmNodesSoA::setFZ(const dfloat& fz) { this->f.z[0] = f
 __host__ __device__ dfloat3SoA IbmNodesSoA::getDeltaF() const { return this->deltaF; }
 __host__ __device__ void IbmNodesSoA::setDeltaF(const dfloat3SoA& deltaF) { this->deltaF = deltaF; }
 
+__host__ __device__ dfloat3SoA IbmNodesSoA::getOriginalRelativePos() const { return this->originalRelativePos; }
+__host__ __device__ void IbmNodesSoA::setOriginalRelativePos(const dfloat3SoA& originalRelativePos) { this->originalRelativePos = originalRelativePos; }
+
 __host__ __device__ dfloat* IbmNodesSoA::getS() const { return this->S; }
 __host__ __device__ void IbmNodesSoA::setS(dfloat* S) { this->S = S; }
 
@@ -99,6 +102,7 @@ void IbmNodesSoA::allocateMemory(unsigned int numMaxNodes)
     this->vel_old.allocateMemory((size_t) numMaxNodes);
     this->f.allocateMemory((size_t) numMaxNodes);
     this->deltaF.allocateMemory((size_t) numMaxNodes);
+    this->originalRelativePos.allocateMemory((size_t) numMaxNodes);
 
     checkCudaErrors(
         cudaMallocManaged((void**)&(this->S), sizeof(dfloat) * numMaxNodes));
@@ -116,6 +120,7 @@ void IbmNodesSoA::freeMemory()
     this->vel_old.freeMemory();
     this->f.freeMemory();
     this->deltaF.freeMemory();
+    this->originalRelativePos.freeMemory();
 
     cudaFree(this->S);
     cudaFree(this->particleCenterIdx);
@@ -127,11 +132,14 @@ bool is_inside_gpu(dfloat3 pos, unsigned int n_gpu){
 }
 
 __host__
-void IbmNodesSoA::copyNodesFromParticle(Particle *p, unsigned int pCenterIdx, unsigned int n_gpu)
+void IbmNodesSoA::copyNodesFromParticle(Particle *p, unsigned int pCenterIdx, ParticleCenter* pArray, unsigned int n_gpu)
 {
     const int baseIdx = this->numNodes;
     int nodesAdded = 0;
     IbmNodes* node = p->getNode();
+    
+    // Get particle center position for computing relative offsets
+    dfloat3 pc_pos = pArray[pCenterIdx].getPos();
 
     for (int i = 0; i < p->getNumNodes(); i++)
     {
@@ -142,6 +150,17 @@ void IbmNodesSoA::copyNodesFromParticle(Particle *p, unsigned int pCenterIdx, un
         this->particleCenterIdx[nodesAdded+baseIdx] = pCenterIdx;
 
         this->pos.copyValuesFromFloat3(node[i].getPos(), nodesAdded+baseIdx);
+        
+        // Compute and store relative offset (node position - particle center position)
+        // This immutable reference prevents error accumulation
+        dfloat3 node_pos = node[i].getPos();
+        dfloat3 relative_pos = dfloat3(
+            node_pos.x - pc_pos.x,
+            node_pos.y - pc_pos.y,
+            node_pos.z - pc_pos.z
+        );
+        this->originalRelativePos.copyValuesFromFloat3(relative_pos, nodesAdded+baseIdx);
+        
         this->vel.copyValuesFromFloat3(node[i].getVel(), nodesAdded+baseIdx);
         this->vel_old.copyValuesFromFloat3(node[i].getVelOld(), nodesAdded+baseIdx);
         this->f.copyValuesFromFloat3(node[i].getF(), nodesAdded+baseIdx);
@@ -162,6 +181,7 @@ void IbmNodesSoA::leftShiftNodesSoA(int idx, int left_shift){
     this->vel_old.leftShift(idx, left_shift);
     this->f.leftShift(idx, left_shift);
     this->deltaF.leftShift(idx, left_shift);
+    this->originalRelativePos.leftShift(idx, left_shift);
 }
 
 
