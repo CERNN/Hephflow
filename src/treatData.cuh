@@ -151,17 +151,6 @@ void omegaProfile(
 
 
 /**
- *  @brief Change field vector order to be used saved in binary
- *  @param h_fMom: Pointer to the host array containing the current macroscopic moments.
- *  @param omega: host omega field if non-Newtonian
- *  @param step: Current time step
- */
-__host__
-void probeExport(
-    dfloat* fMom, OMEGA_FIELD_PARAMS_DECLARATION unsigned int step
-);
-
-/**
  *  @brief Calculate the Nusselt number based on the temperature field
  *  @param h_fMom: Pointer to the host array containing the current macroscopic moments.
  *  @param fMom: Pointer to the device array containing the current macroscopic moments.

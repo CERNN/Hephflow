@@ -634,57 +634,6 @@ void omegaProfile(
 
 
 
-__host__
-void probeExport(dfloat* fMom, OMEGA_FIELD_PARAMS_DECLARATION unsigned int step){
-    std::ostringstream strDataInfo("");
-    strDataInfo << std::scientific;
-    strDataInfo << std::setprecision(6);
-    strDataInfo <<"step "<< step;
-
-
-    int probeNumber = 7;
-    
-    //probe locations
-                //0        1       2       3        4       5   6
-    int x[7] = {probe_x,(NX/4),(NX/4),(3*NX/4),(3*NX/4),(NX/4),(NX/4)};
-    int y[7] = {probe_y,(NY/4),(3*NY/4),(3*NY/4),(NY/4),(NY/4),(NY/4)};
-    int z[7] = {probe_z,probe_z,probe_z,probe_z,probe_z,(NZ_TOTAL/4),(3*NZ_TOTAL/4)};
-
-    dfloat* rho;
-
-    dfloat* ux;
-    dfloat* uy;
-    dfloat* uz;
-    
-    checkCudaErrors(cudaMallocHost((void**)&(rho), sizeof(dfloat)));    
-    checkCudaErrors(cudaMallocHost((void**)&(ux), sizeof(dfloat)));
-    checkCudaErrors(cudaMallocHost((void**)&(uy), sizeof(dfloat)));
-    checkCudaErrors(cudaMallocHost((void**)&(uz), sizeof(dfloat)));    
-
-    checkCudaErrors(cudaDeviceSynchronize());
-    for(int i=0; i< probeNumber; i++){
-        checkCudaErrors(cudaMemcpy(rho, fMom + idxMom(x[i]%BLOCK_NX, y[i]%BLOCK_NY, z[i]%BLOCK_NZ, M_RHO_INDEX, x[i]/BLOCK_NX, y[i]/BLOCK_NY, z[i]/BLOCK_NZ),
-        sizeof(dfloat), cudaMemcpyDeviceToHost));
-        checkCudaErrors(cudaMemcpy(ux , fMom + idxMom(x[i]%BLOCK_NX, y[i]%BLOCK_NY, z[i]%BLOCK_NZ, M_UX_INDEX, x[i]/BLOCK_NX, y[i]/BLOCK_NY, z[i]/BLOCK_NZ),
-        sizeof(dfloat), cudaMemcpyDeviceToHost));
-        checkCudaErrors(cudaMemcpy(uy , fMom + idxMom(x[i]%BLOCK_NX, y[i]%BLOCK_NY, z[i]%BLOCK_NZ, M_UY_INDEX, x[i]/BLOCK_NX, y[i]/BLOCK_NY, z[i]/BLOCK_NZ),
-        sizeof(dfloat), cudaMemcpyDeviceToHost));
-        checkCudaErrors(cudaMemcpy(uz , fMom + idxMom(x[i]%BLOCK_NX, y[i]%BLOCK_NY, z[i]%BLOCK_NZ, M_UZ_INDEX, x[i]/BLOCK_NX, y[i]/BLOCK_NY, z[i]/BLOCK_NZ),
-        sizeof(dfloat), cudaMemcpyDeviceToHost));
-
-        strDataInfo <<"\t"<< *ux << "\t" << *uy << "\t" << *uz;
-
-    }
-    saveTreatData("_probeData",strDataInfo.str(),step);
-
-    cudaFree(rho);
-    cudaFree(ux);
-    cudaFree(uy);
-    cudaFree(uz);
-
-}
-
-
 
 __host__
 void computeNusseltNumber(
