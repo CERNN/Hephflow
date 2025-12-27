@@ -4,7 +4,7 @@
 constexpr dfloat RE = 10;
 
 constexpr int SCALE = 1;
-constexpr int N_STEPS = 10000;
+constexpr int N_STEPS = 2000000;
 constexpr int N = 320 * SCALE;
 constexpr int NX = N;        // size x of the grid 
 constexpr int NY = N;        // size y of the grid
