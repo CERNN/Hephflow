@@ -1,11 +1,10 @@
 #define PARTICLE_MODEL 
-#define TREAT_DATA_INCLUDE
 
 constexpr dfloat RE = 10;
 
 constexpr int SCALE = 1;
 constexpr int N_STEPS = 10000;
-constexpr int N = 320 * SCALE;
+constexpr int N = 128 * SCALE;
 constexpr int NX = N;        // size x of the grid 
 constexpr int NY = N;        // size y of the grid
 constexpr int NZ = N;        // size z of the grid in one GPU
@@ -61,7 +60,7 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
     #define DEM_METHOD
     #define LOCAL_FORCES
     //number of particles
-    #define NUM_PARTICLES 391 // 391 / 782 / 1565 / 2347 / 3129
+    #define NUM_PARTICLES 1
 
     constexpr dfloat GX = 0.0;
     constexpr dfloat GY = 0.0;
