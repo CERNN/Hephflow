@@ -1,7 +1,7 @@
 /* ============================================================================
  * MODEL CONFIGURATION
- * Case: 001_parallelPlates_D3Q19
- * Description: Poiseuille flow between parallel plates
+ * Case: 003_viscoelasticCircularDuct
+ * Description: Viscoelastic flow in circular duct (FENE-P model)
  * ========================================================================== */
 
 /* --------------------- VELOCITY SET --------------------- */
@@ -14,9 +14,10 @@
 
 /* --------------------- PHYSICS MODELS --------------------- */
 // Enable specific physics models (uncomment to activate)
+#define FENE_P                        // FENE-P viscoelastic model
+//#define BINGHAM                       // Bingham viscoplastic model
 //#define THERMAL_MODEL                 // Thermal coupling
 //#define PARTICLE_MODEL                // IBM particle simulation
-//#define FENE_P                        // FENE-P viscoelastic model
 
 /* --------------------- LES MODELS --------------------- */
 // Uncomment the one to use. Comment all to simulate newtonian fluid
@@ -28,5 +29,6 @@
 
 //#define RANDOM_NUMBERS true    // to generate random numbers 
                                // (useful for turbulence)
+
 
 

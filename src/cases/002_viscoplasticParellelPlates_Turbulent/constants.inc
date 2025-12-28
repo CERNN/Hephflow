@@ -1,53 +1,61 @@
-//#define BINGHAM
-#define TREAT_DATA_INCLUDE
+/* ============================================================================
+ * CONSTANTS CONFIGURATION
+ * Case: 002_viscoplasticParellelPlates_Turbulent
+ * Description: Turbulent viscoplastic flow between parallel plates (Bingham)
+ * ========================================================================== */
 
-constexpr int N_STEPS = 1360000;
+/* --------------------- TIME STEPPING --------------------- */
+constexpr int N_STEPS = 1360000;            // Total simulation steps
+constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
-constexpr dfloat U_TAU = 0.00579;     // friction velocity
-constexpr int del = 96;               // integral lenght scale
+/* --------------------- DIMENSIONLESS NUMBERS --------------------- */
+constexpr dfloat RE = 180.0;                // Reynolds number
+constexpr dfloat Bn = 0.1;                  // Bingham number (0 < Bn < 0.5)
 
-constexpr unsigned int N = del;       // (32 multiple for better performance)
-constexpr unsigned int NX = 2*del;    // size x of the grid 
-constexpr unsigned int NY = 2*del;    // size y of the grid
-constexpr unsigned int NZ = 16*del; //4*del/dZ;    // size z of the grid
-constexpr int NZ_TOTAL = NZ;       // size z of the grid
+/* --------------------- TURBULENCE PARAMETERS --------------------- */
+constexpr dfloat U_TAU = 0.00579;           // Friction velocity
+constexpr int del = 96;                     // Integral length scale
 
-constexpr dfloat U_MAX = U_TAU;       // max velocity
-constexpr dfloat RHO_0 = 1.0;         // initial rho
+/* --------------------- GRID DIMENSIONS --------------------- */
+constexpr unsigned int N = del;             // Reference grid size
+constexpr unsigned int NX = 2*del;          // Grid size in X (192)
+constexpr unsigned int NY = 2*del;          // Grid size in Y (192)
+constexpr unsigned int NZ = 16*del;         // Grid size in Z (1536)
+constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
-constexpr dfloat RE = 180.0;	  // Reynolds number
-constexpr dfloat Bn = 0.1;	      // Bingham number (0 < Bi < 0.5)
+/* --------------------- REFERENCE VALUES --------------------- */
+constexpr dfloat U_MAX = U_TAU;             // Maximum/reference velocity
+constexpr dfloat RHO_0 = 1.0;               // Initial density
+constexpr dfloat L = N;                     // Reference length
 
-constexpr dfloat VISC = del*U_TAU/RE;// kinematic viscosity for Re_tau = 180
-constexpr dfloat TAU = 3.0*VISC + 0.5;// relaxation time
-constexpr dfloat S_Y = Bn*U_MAX*U_MAX; //yield-stress
+/* --------------------- BODY FORCES --------------------- */
+constexpr dfloat FX = 0.0;                  // Force in X direction
+constexpr dfloat FY = 0.0;                  // Force in Y direction
+constexpr dfloat FZ = U_TAU*U_TAU/del;      // Force in Z direction (flow driving)
 
-constexpr dfloat L = N;
+/* --------------------- INITIAL CONDITIONS --------------------- */
+constexpr dfloat U_0_X = 0.0;               // Initial velocity X
+constexpr dfloat U_0_Y = 0.0;               // Initial velocity Y
+constexpr dfloat U_0_Z = 0.0;               // Initial velocity Z
 
-constexpr dfloat FX = 0.0;        // force in x
-constexpr dfloat FY = 0.0;        // force in y
-constexpr dfloat FZ = U_TAU*U_TAU/del;        // force in z (flow direction in most cases)
-
-// value for the velocity initial condition in the domain
-constexpr dfloat U_0_X = 0.0;
-constexpr dfloat U_0_Y = 0.0;
-constexpr dfloat U_0_Z = 0.0;
-
-// values options for boundary conditions //not used yet
-__device__ const dfloat UX_BC[4] =  {0, 0, 0, 0};
-__device__ const dfloat UY_BC[4] =  {0, 0, 0, 0};
-__device__ const dfloat UZ_BC[4] =  {0, 0, 0, 0};
+/* --------------------- BOUNDARY CONDITION VALUES --------------------- */
+__device__ const dfloat UX_BC[4] = {0, 0, 0, 0};
+__device__ const dfloat UY_BC[4] = {0, 0, 0, 0};
+__device__ const dfloat UZ_BC[4] = {0, 0, 0, 0};
 __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
-
+/* --------------------- BOUNDARY CONDITION TYPES --------------------- */
 #define BC_X_PERIODIC
 #define BC_Y_WALL
 #define BC_Z_PERIODIC
 
-constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
+/* --------------------- FLUID PROPERTIES --------------------- */
+constexpr dfloat VISC = del*U_TAU/RE;       // Kinematic viscosity for Re_tau = 180
+constexpr dfloat TAU = 3.0*VISC + 0.5;      // Relaxation time
+constexpr dfloat S_Y = Bn*U_MAX*U_MAX;      // Yield stress (Bingham)
+constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 
 /* --------------------- INITIALIZATION LOADING DEFINES -------------------- */
-constexpr int INI_STEP = 0; // initial simulation step (0 default)
 #define LOAD_CHECKPOINT false   // loads simulation checkpoint from folder 
                                 // (folder name defined below)
 

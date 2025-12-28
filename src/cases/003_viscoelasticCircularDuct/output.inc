@@ -1,12 +1,12 @@
 /* ============================================================================
  * OUTPUT CONFIGURATION
- * Case: 003_viscoelasitcParallelPlates_D3Q19
- * Description: Viscoelastic flow between parallel plates (FENE-P model)
+ * Case: 003_viscoelasticCircularDuct
+ * Description: Viscoelastic flow through circular duct (FENE-P model)
  * ========================================================================== */
 
 /* --------------------- FILE IDENTIFICATION --------------------- */
 #define ID_SIM "000"                        // Simulation identifier
-#define PATH_FILES "ViscoelasticParallelPlates"  // Output folder name
+#define PATH_FILES "ViscoelasticCircularDuct" // Output folder name
 
 /* --------------------- DATA TREATMENT --------------------- */
 //#define TREAT_DATA                        // Enable custom data treatment (see treatData.cu)
@@ -20,15 +20,19 @@
 #define MEAN_FLOW (false)                   // Compute time-averaged flow fields
 
 /* --------------------- NODE TYPE OUTPUT --------------------- */
-#define NODE_TYPE_SAVE (false)              // Save boundary condition node types
+#define NODE_TYPE_SAVE (true)               // Save boundary condition node types
 
 /* --------------------- OUTPUT CONTROL --------------------- */
 #define ONLY_FINAL_MACRO (false)            // Save only final timestep macroscopic
-#define MACR_SAVE (64000)                   // Macroscopic save frequency (steps)
-#define REPORT_SAVE (false)                 // Console report frequency (steps), false = disabled
+#define MACR_SAVE (1)                       // Macroscopic save frequency (steps)
+#define REPORT_SAVE (false)                 // Console report frequency (steps)
 #define VTK_SAVE (true)                     // Enable VTK output for visualization
 #define BIN_SAVE (false)                    // Enable binary output
 
 /* --------------------- BOUNDARY FORCES --------------------- */
 //#define BC_FORCES                         // Compute boundary forces
 //#define SAVE_BC_FORCES                    // Save boundary forces to file
+
+/* --------------------- PARTICLE TRACER --------------------- */
+//#define PARTICLE_TRACER                   // Trace massless particles in flow
+#define PARTICLE_TRACER_SAVE false          // Save tracer particles

@@ -1,7 +1,7 @@
 /* ============================================================================
  * MODEL CONFIGURATION
- * Case: 001_parallelPlates_D3Q19
- * Description: Poiseuille flow between parallel plates
+ * Case: 003_viscoelasitcCouette_D3Q19
+ * Description: Viscoelastic Couette flow (FENE-P model)
  * ========================================================================== */
 
 /* --------------------- VELOCITY SET --------------------- */
@@ -14,9 +14,10 @@
 
 /* --------------------- PHYSICS MODELS --------------------- */
 // Enable specific physics models (uncomment to activate)
+#define FENE_P                        // FENE-P viscoelastic model
+//#define BINGHAM                       // Bingham viscoplastic model
 //#define THERMAL_MODEL                 // Thermal coupling
 //#define PARTICLE_MODEL                // IBM particle simulation
-//#define FENE_P                        // FENE-P viscoelastic model
 
 /* --------------------- LES MODELS --------------------- */
 // Uncomment the one to use. Comment all to simulate newtonian fluid
@@ -24,9 +25,12 @@
 //#define MODEL_CONST_SMAGORINSKY //https://doi.org/10.1016/j.jcp.2005.03.022
 
 /* --------------------- OTHER DEFINITIONS --------------------- */
-//#define DENSITY_CORRECTION
+//#define DENSITY_CORRECTION //WE ENABLE DUE TO FORCE COMPONENT IN THE DIRECTION OF THE WALL, MAKING IT LOSE MASS
 
-//#define RANDOM_NUMBERS true    // to generate random numbers 
+#define RANDOM_NUMBERS true    // to generate random numbers 
                                // (useful for turbulence)
+
+#define TREAT_DATA_INCLUDE     // Include data treatment routines
+
 
 

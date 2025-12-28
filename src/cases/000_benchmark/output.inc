@@ -1,18 +1,34 @@
-/* ----------------------------- OUTPUT DEFINES ---------------------------- */
-#define ID_SIM "000"            // prefix for simulation's files
-#define PATH_FILES "Benchmark"  // path to save simulation's files
-#define TREATFIELD (false) //treat data over the entire field
-#define TREATPOINT (false) //treat data in a single or several points
-#define TREATLINE (false) //save the macro in a line
-#define SAVEDATA (false) //save treat data
-#define CONSOLEPRINT (false) // print the console the data is being saved
-#define MEAN_FLOW (false) // store the mean flow of the domain (used to calculate turbulent statistics)
-#define NODE_TYPE_SAVE (false) //save the bc conditions, usefull for drawing the surface
-#define ONLY_FINAL_MACRO (true) //save only the last time step macroscopic
-#define MACR_SAVE (false)
-#define REPORT_SAVE (false)
-#define VTK_SAVE (true)
-#define BIN_SAVE (false)
+/* ============================================================================
+ * OUTPUT CONFIGURATION
+ * Case: 000_benchmark
+ * ========================================================================== */
 
-//#define BC_FORCES //create scalar field to export the reaction forces from BC;
-//#define SAVE_BC_FORCES // define if it will export BC force field to bin
+/* --------------------- FILE IDENTIFICATION --------------------- */
+#define ID_SIM "000"                        // Simulation identifier
+#define PATH_FILES "Benchmark"              // Output folder name
+
+/* --------------------- DATA TREATMENT --------------------- */
+//#define TREAT_DATA                        // Enable custom data treatment
+#define SAVEDATA (false)                    // Save treated data to file
+#define CONSOLEPRINT (false)                // Print treated data to console
+
+/* --------------------- FLOW STATISTICS --------------------- */
+#define MEAN_FLOW (false)                   // Compute time-averaged flow fields
+
+/* --------------------- OUTPUT CONTROL --------------------- */
+#define ONLY_FINAL_MACRO (true)             // Save only final timestep macroscopic
+#define MACR_SAVE (false)                   // Macroscopic save frequency
+#define REPORT_SAVE (false)                 // Console report frequency
+#define VTK_SAVE (true)                     // Enable VTK output
+#define BIN_SAVE (false)                    // Enable binary output
+
+/* --------------------- CHECKPOINT CONFIGURATION --------------------- */
+#define LOAD_CHECKPOINT false               // Load simulation from checkpoint
+#define SIMULATION_FOLDER_LOAD_CHECKPOINT "TEST"
+#define CHECKPOINT_SAVE false               // Save checkpoints during simulation
+#define LOAD_FIELD false                    // Load initial field from file
+#define LOAD_FIELD_STEP 0                   // Timestep to load field from
+
+/* --------------------- BOUNDARY FORCES --------------------- */
+//#define BC_FORCES                         // Compute boundary forces
+//#define SAVE_BC_FORCES                    // Save boundary forces to file

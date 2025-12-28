@@ -1,7 +1,7 @@
 /* ============================================================================
  * CONSTANTS CONFIGURATION
- * Case: 003_viscoelasitcParallelPlates_D3Q19
- * Description: Viscoelastic flow between parallel plates (FENE-P model)
+ * Case: 003_viscoelasitcCouette_D3Q19
+ * Description: Viscoelastic Couette flow (FENE-P model)
  * ========================================================================== */
 
 /* --------------------- DIMENSIONLESS NUMBERS --------------------- */
@@ -12,17 +12,17 @@ constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- GRID DIMENSIONS --------------------- */
 constexpr int N = 128 * SCALE;              // Reference grid size
-constexpr int NX = 8;                       // Grid size in X
+constexpr int NX = 4;                       // Grid size in X
 constexpr int NY = N;                       // Grid size in Y
-constexpr int NZ = 8;                       // Grid size in Z
+constexpr int NZ = 4;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */
-constexpr dfloat U_MAX = 0.0;               // Maximum/reference velocity
+constexpr dfloat U_MAX = 0.0125;            // Maximum/reference velocity
 constexpr dfloat L = N;                     // Reference length
 
 /* --------------------- VISCOELASTIC PARAMETERS --------------------- */
-constexpr dfloat U_C = 0.01;                // Characteristic velocity
+constexpr dfloat U_C = 2*U_MAX;             // Characteristic velocity
 constexpr dfloat SUM_VISC = (U_C*L)/RE;     // Total viscosity
 constexpr dfloat BETA = 0.1;                // Viscosity ratio (R_v)
 constexpr dfloat VISC = BETA * SUM_VISC;    // Solvent kinematic viscosity
@@ -31,11 +31,11 @@ constexpr dfloat t_c = L/U_C;               // Characteristic time
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int CONFORMATION_SWITCH = 0;      // Step to switch on conformation
-constexpr int N_STEPS = 60*t_c;             // Total simulation steps
+constexpr int N_STEPS = 8*20*t_c;           // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- BODY FORCES --------------------- */
-constexpr dfloat FX = 8.0*SUM_VISC*U_C/NY/NY; // Force in X direction (flow driving)
+constexpr dfloat FX = 0.0;                  // Force in X direction
 constexpr dfloat FY = 0.0;                  // Force in Y direction
 constexpr dfloat FZ = 0.0;                  // Force in Z direction
 
@@ -69,6 +69,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 #define LOAD_FIELD_STEP 0
 
 /* --------------------- FENE-P VISCOELASTIC MODEL CONFIGURATION --------------------- */
+
 #ifdef FENE_P
     #define OLDROYD_B
     #define CONVECTION_DIFFUSION_TRANSPORT
@@ -86,10 +87,10 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
     #define COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
 
-    constexpr dfloat CONF_ZERO = (dfloat)(10.0);
+    constexpr dfloat CONF_ZERO = (dfloat)(2.0);
 
     constexpr dfloat nu_p = SUM_VISC - VISC;
-    constexpr dfloat Weissenberg_number = 1.0;
+    constexpr dfloat Weissenberg_number = 8.0;
 
     constexpr dfloat LAMBDA = Weissenberg_number*t_c;
     constexpr dfloat inv_lambda = 1.0/LAMBDA;
@@ -97,7 +98,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
     //ADVECTION-DIFFUSIONS CONSTANTS
     constexpr dfloat CONF_DIFFUSIVITY_RATIO = 100; //OR Pr in malaspinas
-    constexpr dfloat CONF_DIFFUSIVITY = VISC/CONF_DIFFUSIVITY_RATIO; // alpha
+    constexpr dfloat CONF_DIFFUSIVITY = VISC/CONF_DIFFUSIVITY_RATIO; // a0lpha
 
     constexpr dfloat CONF_DIFF_REF = (1.0/6);
     constexpr dfloat CONF_TAU = CONF_DIFF_REF*3+0.5;
