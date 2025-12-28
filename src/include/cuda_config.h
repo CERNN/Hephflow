@@ -20,7 +20,7 @@ constexpr float CURAND_STD_DEV = 0.5_df; // standard deviation for random number
 
 // Enable dynamic shared memory to allow larger block sizes
 // Comment out to use statically allocated shared memory (default CUDA limit ~48KB)
-#define DYNAMIC_SHARED_MEMORY 
+// #define DYNAMIC_SHARED_MEMORY 
 
 #ifdef DYNAMIC_SHARED_MEMORY
     // Validate that we have enough shared memory for the requested block size

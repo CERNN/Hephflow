@@ -34,7 +34,7 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 006_couetteSpherical
+#define BC_PROBLEM 000_ibmBenchmark
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 
@@ -42,8 +42,8 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 
 /* ============================= CASE INCLUDES ============================= */
 
-#include CASE_CONSTANTS
 #include CASE_MODEL
+#include CASE_CONSTANTS
 #include CASE_OUTPUTS
 
 /* ======================== PROJECT HEADER INCLUDES ======================== */
