@@ -19,7 +19,7 @@
 #include <cuda_runtime.h>
 #include <builtin_types.h>
 #include "globalFunctions.h"
-#include "errorDef.h"
+#include "include/errorDef.h"
 #include "var.h"
 #include "nodeTypeMap.h"
 

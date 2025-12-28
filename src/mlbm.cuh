@@ -18,10 +18,10 @@
 #include <builtin_types.h>
 #include "globalFunctions.h"
 #include "var.h"
-#include "includeFiles/interface.h"
+#include "include/interface.h"
 #include "nodeTypeMap.h"
 #ifdef OMEGA_FIELD
-    #include "nnf.h"
+    #include "include/nnf.h"
 #endif //OMEGA_FIELD
 
 

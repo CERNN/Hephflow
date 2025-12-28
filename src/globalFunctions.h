@@ -16,7 +16,7 @@
 #include <builtin_types.h> // for device variables
 #include "var.h"
 #include "globalStructs.h"
-#include "./includeFiles/interface.h"
+#include "./include/interface.h"
 #ifdef PARTICLE_MODEL
 #include "particles/models/ibm/ibmVar.h"
 #endif //PARTICLE_MODEL

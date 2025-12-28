@@ -12,7 +12,7 @@
 #define __GLOBAL_STRUCTS_H
 
 #include "var.h"
-#include "errorDef.h"
+#include "include/errorDef.h"
 
 /*
 *   Struct for dfloat in x, y, z

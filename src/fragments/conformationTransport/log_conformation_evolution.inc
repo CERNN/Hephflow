@@ -249,7 +249,7 @@ if(step%2 == 0){
 
 
 
-#include "includeFiles/conformationTransport/log_conformation_gradient.inc"
+#include "fragments/conformationTransport/log_conformation_gradient.inc"
 
 //need compute the eigen values /vectors -> store those -> then exponential the values and multiply by the vectors.
 

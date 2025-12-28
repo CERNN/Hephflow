@@ -37,10 +37,10 @@
 #endif //PARTICLE_MODEL
 
 #ifdef OMEGA_FIELD
-    #include "nnf.h"
+    #include "include/nnf.h"
 #endif //OMEGA_FIELD
 
-#include "errorDef.h"
+#include "include/errorDef.h"
 //#include "structs.h"
 //#include "globalFunctions.h"
 #include "lbmInitialization.cuh"

@@ -1,4 +1,4 @@
-#include "./../var.h"
+#include "../var.h"
 
 #ifndef __INTERFACE_BC_H
 #define __INTERFACE_BC_H

@@ -43,7 +43,7 @@
 #include <curand.h>
 #include <cuda_runtime.h>
 #include <builtin_types.h>
-#include "errorDef.h"
+#include "include/errorDef.h"
 #include "globalStructs.h"
 #include <atomic>
 

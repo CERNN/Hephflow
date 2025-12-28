@@ -11,23 +11,23 @@
 #include "var_types.h"    // for dfloat type
 #include "cuda_utils.h"   // for BlockDim
 #include "utils.h"        // for myMax
-#include "arrayIndex.h"   // for domain size definitions
+#include "../arrayIndex.h"   // for domain size definitions
 
 /* ============================= VELOCITY SETS ============================= */
 
 #ifdef D3Q19
-    #include "includeFiles/velocitySets/D3Q19.inc"
+    #include "fragments/velocitySets/D3Q19.inc"
 #endif //D3Q19
 #ifdef D3Q27
-    #include "includeFiles/velocitySets/D3Q27.inc"
+    #include "fragments/velocitySets/D3Q27.inc"
 #endif //D3Q27
 
 // #define SECOND_DIST
 #ifdef D3G7
-    #include "includeFiles/velocitySets/D3G7.inc"
+    #include "fragments/velocitySets/D3G7.inc"
 #endif //D3G7
 #ifdef D3G19
-    #include "includeFiles/velocitySets/D3G19.inc"
+    #include "fragments/velocitySets/D3G19.inc"
 #endif //D3G19
 
 /* ========================== MEMORY SIZE CONSTANTS ======================== */

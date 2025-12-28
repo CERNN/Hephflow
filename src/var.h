@@ -17,11 +17,11 @@
 #include <math.h>
 
 // Project type definitions and utilities
-#include "var_types.h"
-#include "utils.h"
-#include "constexpr_math.h"
-#include "cuda_utils.h"
-#include "endian_utils.h"
+#include "include/var_types.h"
+#include "include/utils.h"
+#include "include/constexpr_math.h"
+#include "include/cuda_utils.h"
+#include "include/endian_utils.h"
 
 /* ======================== SIMULATION CONFIGURATION ======================= */
 
@@ -38,7 +38,7 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 
-#include "case_definitions.h"
+#include "include/case_definitions.h"
 
 /* ============================= CASE INCLUDES ============================= */
 
@@ -49,7 +49,7 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 /* ======================== PROJECT HEADER INCLUDES ======================== */
 
 #include "definitions.h"
-#include "nnf.h"
+#include "include/nnf.h"
 
 /* ======================== COMPILE-TIME ASSERTIONS ======================== */
 

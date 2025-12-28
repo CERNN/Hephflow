@@ -15,11 +15,11 @@
 
 /* ============================= MODULAR INCLUDES ============================= */
 
-#include "math_constants.h"    // Mathematical constants
-#include "feature_config.h"     // Feature flags and model macros
-#include "memory_layout.h"      // Memory calculations and block layout
-#include "cuda_config.h"        // CUDA-specific settings
-#include "function_macros.h"    // Function parameter macros
+#include "include/math_constants.h"    // Mathematical constants
+#include "include/feature_config.h"     // Feature flags and model macros
+#include "include/memory_layout.h"      // Memory calculations and block layout
+#include "include/cuda_config.h"        // CUDA-specific settings
+#include "include/function_macros.h"    // Function parameter macros
 
 /* ========================== AUXILIARY DEFINITIONS ======================== */
 

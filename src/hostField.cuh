@@ -3,7 +3,7 @@
 #define __HOSTFIELD_STRUCTS_H
 
 #include "var.h"
-#include "errorDef.h"
+#include "include/errorDef.h"
 #include "main.cuh"
 
 typedef struct hostField{

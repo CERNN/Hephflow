@@ -1,6 +1,6 @@
 #include "saveData.cuh"
 #ifdef OMEGA_FIELD
-#include "nnf.h"
+#include "include/nnf.h"
 #endif //OMEGA_FIELD
 
 std::filesystem::path getExecutablePath() {

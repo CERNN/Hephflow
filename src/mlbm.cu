@@ -136,7 +136,7 @@ __global__ void gpuMomCollisionStream(
 
     //need to compute the gradient before the moments are recalculated
     #ifdef COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
-        #include "includeFiles/velocity_gradient.inc"
+        #include "fragments/velocity_gradient.inc"
     #endif //COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
     
@@ -161,10 +161,10 @@ __global__ void gpuMomCollisionStream(
         #endif //A_ZZ_DIST
 
         #ifdef COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
-            #include "includeFiles/conformationTransport/conformation_gradient.inc"   
+            #include "fragments/conformationTransport/conformation_gradient.inc"   
         #endif //COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
 
-        #include "includeFiles/conformationTransport/conformation_evolution.inc"
+        #include "fragments/conformationTransport/conformation_evolution.inc"
     #endif //CONFORMATION_TENSOR
 
     #ifdef CONVECTION_DIFFUSION_TRANSPORT
@@ -181,9 +181,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */        
-            #include "includeFiles/g_popLoad.inc"
+            #include "fragments/g_popLoad.inc"
 
 
             if(nodeType != BULK){
@@ -211,8 +211,8 @@ __global__ void gpuMomCollisionStream(
             phiVar -= PHI_ZERO;
 
 
-            #include "includeFiles/phase_gradient.inc"
-            #include "includeFiles/normal_gradient.inc"
+            #include "fragments/phase_gradient.inc"
+            #include "fragments/normal_gradient.inc"
 
             dfloat Fs_x = - phi_sigma * curvature * pnx * mod_grad;
             dfloat Fs_y = - phi_sigma * curvature * pny * mod_grad;
@@ -240,9 +240,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */        
-            #include "includeFiles/phi_popLoad.inc"
+            #include "fragments/phi_popLoad.inc"
 
 
             if(nodeType != BULK){
@@ -279,9 +279,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "includeFiles/conformationTransport/popLoad_Axx.inc"
+            #include "fragments/conformationTransport/popLoad_Axx.inc"
 
             if(nodeType != BULK){
                  #include CASE_AXX_BC_DEF
@@ -311,9 +311,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "includeFiles/conformationTransport/popLoad_Axy.inc"
+            #include "fragments/conformationTransport/popLoad_Axy.inc"
 
             if(nodeType != BULK){
                     #include CASE_AXY_BC_DEF
@@ -343,9 +343,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "includeFiles/conformationTransport/popLoad_Axz.inc"
+            #include "fragments/conformationTransport/popLoad_Axz.inc"
 
             if(nodeType != BULK){
                     #include CASE_AXZ_BC_DEF
@@ -375,9 +375,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "includeFiles/conformationTransport/popLoad_Ayy.inc"
+            #include "fragments/conformationTransport/popLoad_Ayy.inc"
 
             if(nodeType != BULK){
                     #include CASE_AYY_BC_DEF
@@ -407,9 +407,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "includeFiles/conformationTransport/popLoad_Ayz.inc"
+            #include "fragments/conformationTransport/popLoad_Ayz.inc"
 
             if(nodeType != BULK){
                     #include CASE_AYZ_BC_DEF
@@ -439,9 +439,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "includeFiles/conformationTransport/popLoad_Azz.inc"
+            #include "fragments/conformationTransport/popLoad_Azz.inc"
 
             if(nodeType != BULK){
                     #include CASE_AZZ_BC_DEF
@@ -532,7 +532,7 @@ __global__ void gpuMomCollisionStream(
 
     /* load pop from global in cover nodes */
 
-    #include "includeFiles/popLoad.inc"
+    #include "fragments/popLoad.inc"
 
     dfloat invRho;
 
@@ -713,7 +713,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_G_RECONSTRUCTION
 
-            #include "includeFiles/g_popSave.inc"
+            #include "fragments/g_popSave.inc"
             
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = cVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qx_t30;
@@ -724,7 +724,7 @@ __global__ void gpuMomCollisionStream(
         #ifdef PHI_DIST 
             #include COLREC_PHI_RECONSTRUCTION
 
-            #include "includeFiles/phi_popSave.inc"
+            #include "fragments/phi_popSave.inc"
             
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qx_t30;
@@ -736,7 +736,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_AXX_RECONSTRUCTION
 
-            #include "includeFiles/conformationTransport/popSave_Axx.inc"
+            #include "fragments/conformationTransport/popSave_Axx.inc"
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AxxVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qx_t30;
@@ -747,7 +747,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_AXY_RECONSTRUCTION
 
-            #include "includeFiles/conformationTransport/popSave_Axy.inc"
+            #include "fragments/conformationTransport/popSave_Axy.inc"
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AxyVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qx_t30;
@@ -758,7 +758,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_AXZ_RECONSTRUCTION
 
-            #include "includeFiles/conformationTransport/popSave_Axz.inc"
+            #include "fragments/conformationTransport/popSave_Axz.inc"
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AxzVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qx_t30;
@@ -769,7 +769,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_AYY_RECONSTRUCTION
 
-            #include "includeFiles/conformationTransport/popSave_Ayy.inc"
+            #include "fragments/conformationTransport/popSave_Ayy.inc"
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AyyVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qx_t30;
@@ -780,7 +780,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_AYZ_RECONSTRUCTION
 
-            #include "includeFiles/conformationTransport/popSave_Ayz.inc"
+            #include "fragments/conformationTransport/popSave_Ayz.inc"
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AyzVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qx_t30;
@@ -791,7 +791,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_AZZ_RECONSTRUCTION
 
-            #include "includeFiles/conformationTransport/popSave_Azz.inc"
+            #include "fragments/conformationTransport/popSave_Azz.inc"
 
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AzzVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qx_t30;
@@ -800,13 +800,13 @@ __global__ void gpuMomCollisionStream(
         #endif //A_ZZ_DIST
     #endif //CONVECTION_DIFFUSION_TRANSPORT
 
-    #include "includeFiles/popSave.inc"
+    #include "fragments/popSave.inc"
 
     //save velocities in the end in order to load next step to compute the gradient
     #ifdef COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
-    //#include "includeFiles/velSave.inc"
+    //#include "fragments/velSave.inc"
     //save conformation tensor components in the halo
-    //#include "includeFIles/conformationTransport/confSave.inc"
+    //#include "fragments/conformationTransport/confSave.inc"
     #endif //COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
 }
