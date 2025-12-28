@@ -49,7 +49,7 @@ constexpr dfloat operator "" _df(long double val) {
 /* ----------------------------- PROBLEM DEFINE ---------------------------- */
 
 
-#define BC_PROBLEM 006_couetteSpherical
+#define BC_PROBLEM 000_benchmark
 
                                 
 constexpr bool console_flush = false;
