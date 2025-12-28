@@ -58,14 +58,24 @@ void sumReductionThread(dfloat* g_idata, dfloat* g_odata, int m_index)
     unsigned int tid = threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * (threadIdx.z));
     //block index
     unsigned int bid = blockIdx.x + gridDim.x * (blockIdx.y + gridDim.y * (blockIdx.z));
+    //total number of threads in block
+    unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
 
     sdata[tid] = g_idata[i];
     __syncthreads();
-    for (unsigned int s = (blockDim.x * blockDim.y * blockDim.z) / 2; s > 0; s >>= 1) {
-        if (tid < s) {
-            sdata[tid] += sdata[tid + s];
+    
+    // Reduction that handles non-power-of-2 block sizes
+    for (unsigned int s = blockSize; s > 1; ) {
+        unsigned int half = s / 2;
+        if (tid < half) {
+            // If s is odd, thread (half-1) also needs to add the middle element
+            sdata[tid] += sdata[tid + half];
+            if ((s & 1) && tid == 0) {
+                sdata[0] += sdata[s - 1];
+            }
         }
         __syncthreads();
+        s = half;
     }
     
     if (tid == 0) {
@@ -87,6 +97,8 @@ void sumReductionThread_TKE(dfloat* g_idata, dfloat* g_odata, dfloat *meanMom)
     unsigned int tid = threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * (threadIdx.z));
     //block index
     unsigned int bid = blockIdx.x + gridDim.x * (blockIdx.y + gridDim.y * (blockIdx.z));
+    //total number of threads in block
+    unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
 
     dfloat fluc_ux = (g_idata[ix] - meanMom[ix])*(g_idata[ix] - meanMom[ix]);
     dfloat fluc_uy = (g_idata[iy] - meanMom[iy])*(g_idata[iy] - meanMom[iy]);
@@ -94,11 +106,18 @@ void sumReductionThread_TKE(dfloat* g_idata, dfloat* g_odata, dfloat *meanMom)
 
     sdata[tid] = (fluc_ux*fluc_ux + fluc_uy*fluc_uy + fluc_uz*fluc_uz)/2;
     __syncthreads();
-    for (unsigned int s = (blockDim.x * blockDim.y * blockDim.z) / 2; s > 0; s >>= 1) {
-        if (tid < s) {
-            sdata[tid] += sdata[tid + s];
+    
+    // Reduction that handles non-power-of-2 block sizes
+    for (unsigned int s = blockSize; s > 1; ) {
+        unsigned int half = s / 2;
+        if (tid < half) {
+            sdata[tid] += sdata[tid + half];
+            if ((s & 1) && tid == 0) {
+                sdata[0] += sdata[s - 1];
+            }
         }
         __syncthreads();
+        s = half;
     }
     
     if (tid == 0) {
@@ -120,14 +139,23 @@ void sumReductionThread_rho(dfloat* g_idata, dfloat* g_odata)
     unsigned int tid = threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * (threadIdx.z));
     //block index
     unsigned int bid = blockIdx.x + gridDim.x * (blockIdx.y + gridDim.y * (blockIdx.z));
+    //total number of threads in block
+    unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
 
     sdata[tid] = (g_idata[ix]);
     __syncthreads();
-    for (unsigned int s = (blockDim.x * blockDim.y * blockDim.z) / 2; s > 0; s >>= 1) {
-        if (tid < s) {
-            sdata[tid] += sdata[tid + s];
+    
+    // Reduction that handles non-power-of-2 block sizes
+    for (unsigned int s = blockSize; s > 1; ) {
+        unsigned int half = s / 2;
+        if (tid < half) {
+            sdata[tid] += sdata[tid + half];
+            if ((s & 1) && tid == 0) {
+                sdata[0] += sdata[s - 1];
+            }
         }
         __syncthreads();
+        s = half;
     }
     
     if (tid == 0) {
@@ -150,14 +178,23 @@ void sumReductionThread_KE(dfloat* g_idata, dfloat* g_odata)
     unsigned int tid = threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * (threadIdx.z));
     //block index
     unsigned int bid = blockIdx.x + gridDim.x * (blockIdx.y + gridDim.y * (blockIdx.z));
+    //total number of threads in block
+    unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
 
     sdata[tid] = (g_idata[ip] + RHO_0)*(g_idata[ix]*g_idata[ix] + g_idata[iy]*g_idata[iy]+g_idata[iz]*g_idata[iz])/(2*F_M_I_SCALE*F_M_I_SCALE);
     __syncthreads();
-    for (unsigned int s = (blockDim.x * blockDim.y * blockDim.z) / 2; s > 0; s >>= 1) {
-        if (tid < s) {
-            sdata[tid] += sdata[tid + s];
+    
+    // Reduction that handles non-power-of-2 block sizes
+    for (unsigned int s = blockSize; s > 1; ) {
+        unsigned int half = s / 2;
+        if (tid < half) {
+            sdata[tid] += sdata[tid + half];
+            if ((s & 1) && tid == 0) {
+                sdata[0] += sdata[s - 1];
+            }
         }
         __syncthreads();
+        s = half;
     }
     
     if (tid == 0) {
@@ -181,14 +218,24 @@ void sumReductionThread_SE(dfloat* g_idata, dfloat* g_odata)
     unsigned int tid = threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * (threadIdx.z));
     //block index
     unsigned int bid = blockIdx.x + gridDim.x * (blockIdx.y + gridDim.y * (blockIdx.z));
+    //total number of threads in block
+    unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
+    
     //sdata[tid] = ((g_idata[ixx] - 1.0_df - CONF_ZERO)*(g_idata[ixx] - 1.0_df - CONF_ZERO) + (g_idata[iyy] - 1.0_df - CONF_ZERO)*(g_idata[iyy] - 1.0_df - CONF_ZERO) + (g_idata[izz] - 1.0_df - CONF_ZERO)*(g_idata[izz] - 1.0_df - CONF_ZERO));
     sdata[tid] = (g_idata[ixx] + g_idata[iyy]+ g_idata[izz] - 3.0_df - 3.0_df*CONF_ZERO);
     __syncthreads();
-    for (unsigned int s = (blockDim.x * blockDim.y * blockDim.z) / 2; s > 0; s >>= 1) {
-        if (tid < s) {
-            sdata[tid] += sdata[tid + s];
+    
+    // Reduction that handles non-power-of-2 block sizes
+    for (unsigned int s = blockSize; s > 1; ) {
+        unsigned int half = s / 2;
+        if (tid < half) {
+            sdata[tid] += sdata[tid + half];
+            if ((s & 1) && tid == 0) {
+                sdata[0] += sdata[s - 1];
+            }
         }
         __syncthreads();
+        s = half;
     }
     
     if (tid == 0) {
@@ -210,14 +257,23 @@ void sumReductionScalar(dfloat* g_idata, dfloat* g_odata)
     unsigned int tid = threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * (threadIdx.z));
     //block index
     unsigned int bid = blockIdx.x + gridDim.x * (blockIdx.y + gridDim.y * (blockIdx.z));
+    //total number of threads in block
+    unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
 
     sdata[tid] = g_idata[i];
     __syncthreads();
-    for (unsigned int s = (blockDim.x * blockDim.y * blockDim.z) / 2; s > 0; s >>= 1) {
-        if (tid < s) {
-            sdata[tid] += sdata[tid + s];
+    
+    // Reduction that handles non-power-of-2 block sizes
+    for (unsigned int s = blockSize; s > 1; ) {
+        unsigned int half = s / 2;
+        if (tid < half) {
+            sdata[tid] += sdata[tid + half];
+            if ((s & 1) && tid == 0) {
+                sdata[0] += sdata[s - 1];
+            }
         }
         __syncthreads();
+        s = half;
     }
     
     if (tid == 0) {
@@ -239,14 +295,23 @@ void sumReductionBlock(dfloat* g_idata, dfloat* g_odata)
     unsigned int tid = threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * (threadIdx.z));
     //block index
     unsigned int bid = blockIdx.x + gridDim.x * (blockIdx.y + gridDim.y * (blockIdx.z));
+    //total number of threads in block
+    unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
 
     sdata[tid] = g_idata[i];
     __syncthreads();
-    for (unsigned int s = (blockDim.x * blockDim.y * blockDim.z) / 2; s > 0; s >>= 1) {
-        if (tid < s) {
-            sdata[tid] += sdata[tid + s];
+    
+    // Reduction that handles non-power-of-2 block sizes
+    for (unsigned int s = blockSize; s > 1; ) {
+        unsigned int half = s / 2;
+        if (tid < half) {
+            sdata[tid] += sdata[tid + half];
+            if ((s & 1) && tid == 0) {
+                sdata[0] += sdata[s - 1];
+            }
         }
         __syncthreads();
+        s = half;
     }
     
     if (tid == 0) {
