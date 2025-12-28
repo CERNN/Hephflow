@@ -37,19 +37,17 @@ constexpr size_t BYTES_PER_MB = (1 << 20);
 
 /* ====================== SHARED MEMORY CONFIGURATION ====================== */
 
-// Calculate maximum number of elements in a block
-//#define DYNAMIC_SHARED_MEMORY
-#ifdef DYNAMIC_SHARED_MEMORY
-    #if (defined(SM_90) || defined(SM_100) || defined(SM_120))
-        constexpr size_t SHARED_MEMORY_SIZE = 232448;  // sm90
-    #endif
-    #if (defined(SM_80)) || (defined(SM_87))
-        constexpr size_t SHARED_MEMORY_SIZE = 166912;  // sm80
-    #endif
-    #if (defined(SM_86) || defined(SM_89))
-        constexpr size_t SHARED_MEMORY_SIZE = 101376;  // sm86
-    #endif
-#endif //DYNAMIC_SHARED_MEMORY
+// Architecture-specific maximum shared memory sizes (for opt-in dynamic shared memory)
+// These are the max bytes available when using cudaFuncAttributeMaxDynamicSharedMemorySize
+#if (defined(SM_90) || defined(SM_100) || defined(SM_120))
+    constexpr size_t GPU_MAX_SHARED_MEMORY = 232448;  // sm90+
+#elif (defined(SM_80)) || (defined(SM_87))
+    constexpr size_t GPU_MAX_SHARED_MEMORY = 166912;  // sm80/87
+#elif (defined(SM_86) || defined(SM_89))
+    constexpr size_t GPU_MAX_SHARED_MEMORY = 101376;  // sm86/89
+#else
+    constexpr size_t GPU_MAX_SHARED_MEMORY = 49152;   // default (sm75 and below)
+#endif
 
 // Note: Q-dependent calculations are in definitions.h after velocity sets are included
 

@@ -18,10 +18,19 @@ constexpr float CURAND_STD_DEV = 0.5_df; // standard deviation for random number
 
 /* ======================== DYNAMIC SHARED MEMORY MACROS =================== */
 
-//FUNCTION DECLARATION MACROS
+// Enable dynamic shared memory to allow larger block sizes
+// Comment out to use statically allocated shared memory (default CUDA limit ~48KB)
+#define DYNAMIC_SHARED_MEMORY 
+
 #ifdef DYNAMIC_SHARED_MEMORY
+    // Validate that we have enough shared memory for the requested block size
+    static_assert(MAX_SHARED_MEMORY_SIZE <= GPU_MAX_SHARED_MEMORY, 
+        "MAX_SHARED_MEMORY_SIZE exceeds GPU_MAX_SHARED_MEMORY for this architecture");
     #define DYNAMIC_SHARED_MEMORY_PARAMS ,MAX_SHARED_MEMORY_SIZE
 #else
+    // Static shared memory - limited to ~48KB
+    static_assert(MAX_SHARED_MEMORY_SIZE <= 49152, 
+        "MAX_SHARED_MEMORY_SIZE exceeds 48KB static limit. Enable DYNAMIC_SHARED_MEMORY.");
     #define DYNAMIC_SHARED_MEMORY_PARAMS
 #endif //DYNAMIC_SHARED_MEMORY
 
