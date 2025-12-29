@@ -144,6 +144,10 @@ int main() {
            updateCurvedBoundaryVelocities << <1,numberCurvedBoundaryNodes>> >(deviceField.d_curvedBC_array,deviceField.d_fMom,numberCurvedBoundaryNodes);
            cudaDeviceSynchronize();
         #endif
+        #ifdef PHI_DIST
+            gpuComputePhaseNormals<<<gridBlock, threadBlock>>>(deviceField.d_fMom, deviceField.dNodeType);
+            cudaDeviceSynchronize();
+        #endif //PHI_DIST
 
         //swap interface pointers
         deviceField.swapGhostInterfacesDeviceField();

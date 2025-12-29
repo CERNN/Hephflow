@@ -207,10 +207,10 @@ __global__ void gpuMomCollisionStream(
             dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             phiVar -= PHI_ZERO;
 
-            /*
-            #include "fragments/phase_gradient.inc"
-            #include "fragments/normal_gradient.inc"
-            #include "fragments/phase_coupling_forces.inc"
+            
+            #include "fragments/phiTransport/phase_gradient.inc"
+            #include "fragments/phiTransport/normal_gradient.inc"
+            #include "fragments/phiTransport/phase_coupling_forces.inc"
                 L_Fx += F_phase_x;
                 L_Fy += F_phase_y;
                 L_Fz += F_phase_z;
@@ -218,14 +218,13 @@ __global__ void gpuMomCollisionStream(
             phi_for_sharp = fmaxf(0.0_df, fminf(1.0_df, phi_for_sharp));
             dfloat phiSource = 0.0_df;
             #ifdef INTERFACE_SHARPENING
-                #include "fragments/phi_sharpening.inc"
+                #include "fragments/phiTransport/phi_sharpening.inc"
                 phiSource += phiSharpSource;
             #else
                 dfloat phiSharpSource = 0.0_df;
             #endif //INTERFACE_SHARPENING
-            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_GRAD_MAG_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = mod_grad;
-            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_SHARP_SOURCE_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiSharpSource;
-            */
+
+
 
             phiVar += PHI_ZERO; //TODO:maybe remove the - and + and make the special add then only to correct the gradient
             dfloat invPhi = 1/phiVar;
@@ -249,7 +248,7 @@ __global__ void gpuMomCollisionStream(
                 #include CASE_PHI_BC_DEF
             }else{
                 phiVar = gNode[0] + gNode[1] + gNode[2] + gNode[3] + gNode[4] + gNode[5] + gNode[6] + gNode[7] + gNode[8] + gNode[9] + gNode[10] + gNode[11] + gNode[12] + gNode[13] + gNode[14] + gNode[15] + gNode[16] + gNode[17] + gNode[18];
-                phiVar = phiVar;// + phiSource; //TODO SOURCE TEM
+                phiVar = phiVar + phiSource; //TODO SOURCE TEM
                 //clamp 
                 if(phiVar > PHI_TWO + PHI_ZERO)
                     phiVar = PHI_TWO + PHI_ZERO;
@@ -836,3 +835,118 @@ void gpuResetMacroForces(dfloat *fMom){
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = FZ;
 }
 #endif //LOCAL_FORCES
+
+
+#ifdef PHI_DIST
+
+__global__ void gpuComputePhaseNormals(
+    dfloat *fMom, 
+    unsigned int *dNodeType
+)
+{
+    const int x = threadIdx.x + blockDim.x * blockIdx.x;
+    const int y = threadIdx.y + blockDim.y * blockIdx.y;
+    const int z = threadIdx.z + blockDim.z * blockIdx.z;
+    
+    if (x >= NX || y >= NY || z >= NZ)
+        return;
+    
+    unsigned int nodeType = dNodeType[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z, blockIdx.x, blockIdx.y, blockIdx.z)];
+    if (nodeType == 0b11111111) return;
+    
+    const int tx = threadIdx.x;
+    const int ty = threadIdx.y;
+    const int tz = threadIdx.z;
+    
+    const int bx = blockIdx.x;
+    const int by = blockIdx.y;
+    const int bz = blockIdx.z;
+
+    // Helper lambda to get phi at neighbor position with periodic BC
+    auto getPhi = [&](int dx, int dy, int dz) -> dfloat {
+        int nx = (x + dx + NX) % NX;
+        int ny = (y + dy + NY) % NY;
+        int nz = (z + dz + NZ) % NZ;
+        int ntx = nx % BLOCK_NX;
+        int nty = ny % BLOCK_NY;
+        int ntz = nz % BLOCK_NZ;
+        int nbx = nx / BLOCK_NX;
+        int nby = ny / BLOCK_NY;
+        int nbz = nz / BLOCK_NZ;
+        return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)] - PHI_ZERO;
+    };
+
+    // Load phi at current node
+    dfloat phiVar = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)] - PHI_ZERO;
+
+    // Load phi at all D3Q19 neighbors
+    // Axis-aligned neighbors (weight 1/18)
+    dfloat phi_xm1 = getPhi(-1, 0, 0);
+    dfloat phi_xp1 = getPhi(+1, 0, 0);
+    dfloat phi_ym1 = getPhi(0, -1, 0);
+    dfloat phi_yp1 = getPhi(0, +1, 0);
+    dfloat phi_zm1 = getPhi(0, 0, -1);
+    dfloat phi_zp1 = getPhi(0, 0, +1);
+    
+    // Edge neighbors (weight 1/36)
+    dfloat phi_xm1_ym1 = getPhi(-1, -1, 0);
+    dfloat phi_xp1_ym1 = getPhi(+1, -1, 0);
+    dfloat phi_xm1_yp1 = getPhi(-1, +1, 0);
+    dfloat phi_xp1_yp1 = getPhi(+1, +1, 0);
+    dfloat phi_xm1_zm1 = getPhi(-1, 0, -1);
+    dfloat phi_xp1_zm1 = getPhi(+1, 0, -1);
+    dfloat phi_xm1_zp1 = getPhi(-1, 0, +1);
+    dfloat phi_xp1_zp1 = getPhi(+1, 0, +1);
+    dfloat phi_ym1_zm1 = getPhi(0, -1, -1);
+    dfloat phi_yp1_zm1 = getPhi(0, +1, -1);
+    dfloat phi_ym1_zp1 = getPhi(0, -1, +1);
+    dfloat phi_yp1_zp1 = getPhi(0, +1, +1);
+
+    // Isotropic gradient using D3Q19 lattice weights
+    // grad_phi = (1/cs^2) * sum_i w_i * c_i * phi(x + c_i)
+    // For D3Q19: cs^2 = 1/3, so factor is 3
+    // Axis weights: 1/18, Edge weights: 1/36
+    // After multiplying by 3: axis -> 1/6, edge -> 1/12
+    
+    constexpr dfloat w_axis = 1.0_df / 6.0_df;   // 3 * (1/18)
+    constexpr dfloat w_edge = 1.0_df / 12.0_df;  // 3 * (1/36)
+    
+    dfloat dphidx = w_axis * (phi_xp1 - phi_xm1)
+                  + w_edge * (phi_xp1_ym1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xm1_yp1
+                            + phi_xp1_zm1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xm1_zp1);
+    
+    dfloat dphidy = w_axis * (phi_yp1 - phi_ym1)
+                  + w_edge * (phi_xm1_yp1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xp1_ym1
+                            + phi_yp1_zm1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_ym1_zp1);
+    
+    dfloat dphidz = w_axis * (phi_zp1 - phi_zm1)
+                  + w_edge * (phi_xm1_zp1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xp1_zm1
+                            + phi_ym1_zp1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_yp1_zm1);
+
+    // Wall corrections: fall back to one-sided differences at boundaries
+    if ((nodeType & 0b01010101) == 0b01010101) { // wall west
+        dphidx = (phi_xp1 - phiVar);
+    }
+    if ((nodeType & 0b10101010) == 0b10101010) { // wall east
+        dphidx = (phiVar - phi_xm1);
+    }
+    if ((nodeType & 0b00110011) == 0b00110011) { // wall south
+        dphidy = (phi_yp1 - phiVar);
+    }
+    if ((nodeType & 0b11001100) == 0b11001100) { // wall north
+        dphidy = (phiVar - phi_ym1);
+    }
+    if ((nodeType & 0b00001111) == 0b00001111) { // wall back
+        dphidz = (phi_zp1 - phiVar);
+    }
+    if ((nodeType & 0b11110000) == 0b11110000) { // wall front
+        dphidz = (phiVar - phi_zm1);
+    }
+
+    // Store gradients to global memory
+    fMom[idxMom(tx, ty, tz, M3_NX_INDEX, bx, by, bz)] = dphidx;
+    fMom[idxMom(tx, ty, tz, M3_NY_INDEX, bx, by, bz)] = dphidy;
+    fMom[idxMom(tx, ty, tz, M3_NZ_INDEX, bx, by, bz)] = dphidz;
+}
+
+#endif // PHI_DIST

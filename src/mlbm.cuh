@@ -57,4 +57,16 @@ __global__
 void gpuResetMacroForces(dfloat *fMom);
 #endif //LOCAL_FORCES
 
+
+/**
+ * @brief Compute phase field gradients and normals, store to global memory
+ * @param fMom Pointer to the device array containing the current macroscopic moments.
+ * @param dNodeType Pointer to the device array containing the node type information.
+ */
+__global__ void gpuComputePhaseNormals(
+    dfloat *fMom, 
+    unsigned int *dNodeType
+);
+
+
 #endif //__MLBM_H
