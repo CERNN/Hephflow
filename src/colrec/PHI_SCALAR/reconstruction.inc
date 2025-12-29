@@ -1,25 +1,32 @@
+// Phase field equilibrium reconstruction: g_eq = w * phi * (1 + as2 * (c.u))
+// phi_qx_t30 = as2 * ux (already scaled appropriately for the velocity set)
+
 multiplyTerm = phiVar * gW0;
 pics2 = 1.0_df;
 
-gNode[ 0] = multiplyTerm * (pics2);
+gNode[ 0] = multiplyTerm * pics2;
 multiplyTerm = phiVar * gW1;
-gNode[ 1] = multiplyTerm * (pics2 + phi_qx_t30 );
-gNode[ 2] = multiplyTerm * (pics2 - phi_qx_t30 );
-gNode[ 3] = multiplyTerm * (pics2 + phi_qy_t30 );
-gNode[ 4] = multiplyTerm * (pics2 - phi_qy_t30 );
-gNode[ 5] = multiplyTerm * (pics2 + phi_qz_t30 );
-gNode[ 6] = multiplyTerm * (pics2 - phi_qz_t30 );
+gNode[ 1] = multiplyTerm * (pics2 + phi_qx_t30);
+gNode[ 2] = multiplyTerm * (pics2 - phi_qx_t30);
+gNode[ 3] = multiplyTerm * (pics2 + phi_qy_t30);
+gNode[ 4] = multiplyTerm * (pics2 - phi_qy_t30);
+gNode[ 5] = multiplyTerm * (pics2 + phi_qz_t30);
+gNode[ 6] = multiplyTerm * (pics2 - phi_qz_t30);
+
+#ifdef D3G19
+// Edge neighbors for D3G19 (19 velocities)
 multiplyTerm = phiVar * gW2;
-gNode[ 7] = multiplyTerm * (pics2 + phi_qx_t30 + phi_qy_t30 );
-gNode[ 8] = multiplyTerm * (pics2 - phi_qx_t30 - phi_qy_t30 );
-gNode[ 9] = multiplyTerm * (pics2 + phi_qx_t30 + phi_qz_t30 );
-gNode[10] = multiplyTerm * (pics2 - phi_qx_t30 - phi_qz_t30 );
-gNode[11] = multiplyTerm * (pics2 + phi_qy_t30 + phi_qz_t30 );
-gNode[12] = multiplyTerm * (pics2 - phi_qy_t30 - phi_qz_t30 );
-gNode[13] = multiplyTerm * (pics2 + phi_qx_t30 - phi_qy_t30 );
-gNode[14] = multiplyTerm * (pics2 - phi_qx_t30 + phi_qy_t30 );
-gNode[15] = multiplyTerm * (pics2 + phi_qx_t30 - phi_qz_t30 );
-gNode[16] = multiplyTerm * (pics2 - phi_qx_t30 + phi_qz_t30 );
-gNode[17] = multiplyTerm * (pics2 + phi_qy_t30 - phi_qz_t30 );
-gNode[18] = multiplyTerm * (pics2 - phi_qy_t30 + phi_qz_t30 );
+gNode[ 7] = multiplyTerm * (pics2 + phi_qx_t30 + phi_qy_t30);
+gNode[ 8] = multiplyTerm * (pics2 - phi_qx_t30 - phi_qy_t30);
+gNode[ 9] = multiplyTerm * (pics2 + phi_qx_t30 + phi_qz_t30);
+gNode[10] = multiplyTerm * (pics2 - phi_qx_t30 - phi_qz_t30);
+gNode[11] = multiplyTerm * (pics2 + phi_qy_t30 + phi_qz_t30);
+gNode[12] = multiplyTerm * (pics2 - phi_qy_t30 - phi_qz_t30);
+gNode[13] = multiplyTerm * (pics2 + phi_qx_t30 - phi_qy_t30);
+gNode[14] = multiplyTerm * (pics2 - phi_qx_t30 + phi_qy_t30);
+gNode[15] = multiplyTerm * (pics2 + phi_qx_t30 - phi_qz_t30);
+gNode[16] = multiplyTerm * (pics2 - phi_qx_t30 + phi_qz_t30);
+gNode[17] = multiplyTerm * (pics2 + phi_qy_t30 - phi_qz_t30);
+gNode[18] = multiplyTerm * (pics2 - phi_qy_t30 + phi_qz_t30);
+#endif
 
