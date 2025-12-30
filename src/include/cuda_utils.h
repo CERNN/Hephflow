@@ -64,4 +64,35 @@ constexpr BlockDim findOptimalBlockDimensions(size_t maxElements) {
     return {bestX, bestY, bestZ};
 }
 
+#ifdef DYNAMIC_SHARED_MEMORY
+// Configure dynamic shared memory for kernels that opt-in to larger shared memory.
+// Returns 0 on success, non-zero on error.
+inline int configureDynamicSharedMemory(int gpuIndex)
+{
+    int maxShared = 0;
+    cudaError_t err = cudaDeviceGetAttribute(&maxShared, cudaDevAttrMaxSharedMemoryPerBlockOptin, gpuIndex);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Failed to query device shared memory attribute: %s\n", cudaGetErrorString(err));
+        return 1;
+    }
+
+    printf("Dynamic shared memory: requesting %d bytes (GPU max opt-in: %d bytes)\n", MAX_SHARED_MEMORY_SIZE, maxShared);
+    
+    if (MAX_SHARED_MEMORY_SIZE > maxShared) {
+        fprintf(stderr, "ERROR: Requested shared memory (%d bytes) exceeds device max (%d bytes)\n", MAX_SHARED_MEMORY_SIZE, maxShared);
+        fprintf(stderr, "Try reducing BLOCK_NX/NY/NZ in memory_layout.h\n");
+        return 1;
+    }
+
+    cudaError_t sharedMemErr = cudaFuncSetAttribute(gpuMomCollisionStream, cudaFuncAttributeMaxDynamicSharedMemorySize, MAX_SHARED_MEMORY_SIZE);
+    if (sharedMemErr != cudaSuccess) {
+        fprintf(stderr, "ERROR: Failed to set dynamic shared memory attribute: %s\n", cudaGetErrorString(sharedMemErr));
+        return 1;
+    }
+
+    printf("Successfully configured dynamic shared memory: %d bytes\n", MAX_SHARED_MEMORY_SIZE);
+    return 0;
+}
+#endif //DYNAMIC_SHARED_MEMORY
+
 #endif //__CUDA_UTILS_H

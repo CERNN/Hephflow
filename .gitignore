@@ -36,3 +36,4 @@ src/CUDA/x64
 *.test
 ./bin
 *.ptx
+.dev-tools/

@@ -30,14 +30,16 @@ int main() {
     
     /* -------------- ALLOCATION FOR GPU ------------- */
     deviceField.allocateDeviceMemoryDeviceField();
-    //TODO : move these malocs to inside teh corresponding mallocs
+    
     #ifdef PARTICLE_MODEL
+    //TODO: should be inside particleField
     //forces from the particles into the wall
     ParticleWallForces* d_pwForces;
     cudaMalloc((void**)&d_pwForces, sizeof(ParticleWallForces));
     #endif //PARTICLE_MODEL
     
     #ifdef DENSITY_CORRECTION
+        //TODO: move the functions to inside deviceField and hostField
         checkCudaErrors(cudaMallocHost((void**)&(hostField.h_mean_rho), sizeof(dfloat)));
         cudaMalloc((void**)&deviceField.d_mean_rho, sizeof(dfloat));  
     #endif //DENSITY_CORRECTION
@@ -72,6 +74,7 @@ int main() {
     printf("Domain Initialized. Starting simulation\n"); if(console_flush) fflush(stdout);
     
     #ifdef PARTICLE_MODEL
+        //TODO: create a particleField data structure, to store the particle functions and structs.
         //memory allocation for particles in host and device
         ParticlesSoA particlesSoA;
         Particle *particles;
@@ -81,13 +84,13 @@ int main() {
         initializeParticle(particlesSoA, particles, &step, gridBlock, threadBlock);
         while (savingMacrParticle) std::this_thread::yield();
         saveParticlesInfo(&particlesSoA, step, savingMacrParticle);
-
     #endif //PARTICLE_MODEL
 
     #ifdef CURVED_BOUNDARY_CONDITION
         //Get number of curved boundary nodes
+        //TODO: this should be a property of deviceField
         unsigned int numberCurvedBoundaryNodes = getNumberCurvedBoundaryNodes(hostField.hNodeType);
-    #endif //CURVE
+    #endif //CURVED_BOUNDARY_CONDITION
 
     /* ------------------------------ TIMER EVENTS  ------------------------------ */
     checkCudaErrors(cudaSetDevice(GPU_INDEX));
@@ -97,27 +100,7 @@ int main() {
     /* ------------------------------ LBM LOOP ------------------------------ */
 
     #ifdef DYNAMIC_SHARED_MEMORY
-        int maxShared;
-        checkCudaErrors(cudaDeviceGetAttribute(&maxShared, cudaDevAttrMaxSharedMemoryPerBlockOptin, GPU_INDEX));
-        printf("Dynamic shared memory: requesting %d bytes (GPU max opt-in: %d bytes)\n", 
-               MAX_SHARED_MEMORY_SIZE, maxShared);
-        if (MAX_SHARED_MEMORY_SIZE > maxShared) {
-            printf("ERROR: Requested shared memory (%d bytes) exceeds device max (%d bytes)\n", 
-                   MAX_SHARED_MEMORY_SIZE, maxShared);
-            printf("Try reducing BLOCK_NX/NY/NZ in memory_layout.h\n");
-            return 1;
-        }
-        // Set the maximum dynamic shared memory size for the kernel
-        cudaError_t sharedMemErr = cudaFuncSetAttribute(
-            gpuMomCollisionStream, 
-            cudaFuncAttributeMaxDynamicSharedMemorySize, 
-            MAX_SHARED_MEMORY_SIZE);
-        if (sharedMemErr != cudaSuccess) {
-            printf("ERROR: Failed to set dynamic shared memory attribute: %s\n", 
-                   cudaGetErrorString(sharedMemErr));
-            return 1;
-        }
-        printf("Successfully configured dynamic shared memory: %d bytes\n", MAX_SHARED_MEMORY_SIZE);
+        if (configureDynamicSharedMemory(GPU_INDEX)) return 1;
     #endif //DYNAMIC_SHARED_MEMORY
    
     /* --------------------------------------------------------------------- */
@@ -128,100 +111,92 @@ int main() {
 
         SaveField saveField;
 
-        #ifdef DENSITY_CORRECTION
-        deviceField.mean_rhoDeviceField(step)
-        #endif //DENSITY_CORRECTION
-
+        // update saving flags
         saveField.flagsUpdate(step);
-
-        // ghost interface should be inside the deviceField struct
+        //------------------------- Main LBM Kernels -------------------------
         deviceField.gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save);
-        cudaError_t err = cudaGetLastError();
-        if (err != cudaSuccess) {
-            printf("Main kernel launch failed: %s\n", cudaGetErrorString(err));
-        }
-        err = cudaDeviceSynchronize();
-        if (err != cudaSuccess) {
-            printf("Main kernel sync error: %s\n", cudaGetErrorString(err));
-        }
-        #ifdef CURVED_BOUNDARY_CONDITION
-           const int curvedBCBlockSize = 256;
-           const int curvedBCGridSize = (numberCurvedBoundaryNodes + curvedBCBlockSize - 1) / curvedBCBlockSize;
-           updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize>>>(deviceField.d_curvedBC_array, deviceField.d_fMom, numberCurvedBoundaryNodes);
-           err = cudaGetLastError();
-           if (err != cudaSuccess) {
-               printf("CurvedBC kernel launch failed: %s\n", cudaGetErrorString(err));
-           }
-           err = cudaDeviceSynchronize();
-           if (err != cudaSuccess) {
-               printf("CurvedBC sync error: %s\n", cudaGetErrorString(err));
-           }
-        #endif
-        #ifdef PHI_DIST
-            gpuComputePhaseNormals<<<gridBlock, threadBlock>>>(deviceField.d_fMom, deviceField.dNodeType);
-            cudaDeviceSynchronize();
-        #endif //PHI_DIST
-
-        //swap interface pointers
+        // swap interface pointers
         deviceField.swapGhostInterfacesDeviceField();
-        
+        CHECK_KERNEL_ERR("Stream Collision kernel");
+
+        //------------------------- Auxiliary Kernels -------------------------
         #ifdef LOCAL_FORCES
             deviceField.gpuResetMacroForcesDeviceField(gridBlock, threadBlock);
+            CHECK_KERNEL_ERR("Force Reset kernel");
         #endif //LOCAL_FORCES
-
+        #ifdef CURVED_BOUNDARY_CONDITION
+            //kernel used for adding curved boundary information
+            //TODO: move this function to inside of deviceField
+           updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize>>>(deviceField.d_curvedBC_array, deviceField.d_fMom, numberCurvedBoundaryNodes);
+           CHECK_KERNEL_ERR("Curved BC kernel");
+        #endif //CURVED_BOUNDARY_CONDITION
+        #ifdef PHI_DIST
+            //kernel used to compute the gradients of phi
+            //TODO: move this function to inside of deviceField
+            gpuComputePhaseNormals<<<gridBlock, threadBlock>>>(deviceField.d_fMom, deviceField.dNodeType);
+            CHECK_KERNEL_ERR("Phi gradients kernel");
+            cudaDeviceSynchronize();
+        #endif //PHI_DIST
+        #ifdef DENSITY_CORRECTION
+            deviceField.mean_rhoDeviceField(step);
+            CHECK_KERNEL_ERR("Density correction kernel");
+        #endif //DENSITY_CORRECTION
         #ifdef PARTICLE_MODEL
             deviceField.particleSimulationDeviceField(particlesSoA,streamsPart,d_pwForces,step);
         #endif //PARTICLE_MODEL
 
+        //------------------------- Saving Data -------------------------
+        // Saving checkpoint     
         if(saveField.checkpoint){
-            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
-            // throwing a warning for being used without being initialized. But does not matter since we are overwriting it;
+            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
             deviceField.cudaMemcpyDeviceField(hostField);
             deviceField.interfaceCudaMemcpyDeviceField(true);       
             deviceField.saveSimCheckpointHostDeviceField(hostField, step);
-            
             #ifdef PARTICLE_MODEL
                 printf("Starting saveSimCheckpointParticle...\t"); fflush(stdout);
                 saveSimCheckpointParticle(particlesSoA, &step);
-            #endif //PARTICLE_MODEL
-            
+            #endif //PARTICLE_MODEL    
+            if(console_flush){fflush(stdout);} 
         }
        
-        // Saving data checks
+        // Saving treat data  checks
         if(saveField.reportSave){
-            printf("\n--------------------------- Saving report %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
+            printf("\n--------------------------- Saving report %06d ---------------------------\n", step);
             deviceField.treatDataDeviceField(hostField, step);
             #ifdef PARTICLE_MODEL
             collectAndExportWallForces(d_pwForces,step);
             #endif
+            if(console_flush){fflush(stdout);}
         }
         
         if(saveField.macrSave){
+            // TODO: do something with this, it just shouldnt be on main.cu
             #if defined BC_FORCES && defined SAVE_BC_FORCES
                 deviceField.saveBcForces(hostField);
             #endif //BC_FORCES && SAVE_BC_FORCES
 
+            //copy data from device to host
             checkCudaErrors(cudaDeviceSynchronize()); 
             deviceField.cudaMemcpyDeviceField(hostField);
 
-            printf("\n--------------------------- Saving macro %06d ---------------------------\n", step); if(console_flush){fflush(stdout);}
+            printf("\n--------------------------- Saving macro %06d ---------------------------\n", step);
 
-            if(!ONLY_FINAL_MACRO){
-                hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
-            }
+            if(!ONLY_FINAL_MACRO){ hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);}
 
+            //TODO: move this to treat data, no reason to stay on main as separate identity
             #ifdef BC_FORCES
                 deviceField.totalBcDragDeviceField(step);
             #endif //BC_FORCES
+            if(console_flush){fflush(stdout);}
         }
 
         #ifdef PARTICLE_MODEL
             if (saveField.particleSave){
                 printf("\n------------------------- Saving particles %06d -------------------------\n", step);
-                if(console_flush){fflush(stdout);}
                 while (savingMacrParticle) std::this_thread::yield();
                 saveParticlesInfo(&particlesSoA, step, savingMacrParticle);
             }
+            if(console_flush){fflush(stdout);}
         #endif //PARTICLE_MODEL
 
     } 
@@ -235,23 +210,24 @@ int main() {
     //Calculate MLUPS
 
     dfloat MLUPS = recordElapsedTime(start_step, stop_step, step, ini_step);
-    printf("MLUPS: %f\n",MLUPS);
+    printf("MLUPS: %f\n",MLUPS); if(console_flush){fflush(stdout);}     
     
     /* ------------------------------ POST ------------------------------ */
     deviceField.cudaMemcpyDeviceField(hostField);
 
+    // TODO: do something with this, it just shouldnt be on main.cu
     #if defined BC_FORCES && defined SAVE_BC_FORCES
     deviceField.saveBcForces(hostField);
     #endif //BC_FORCES && SAVE_BC_FORCES
 
-    if(console_flush){fflush(stdout);}
     hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
 
     if(CHECKPOINT_SAVE){
-        printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
+        printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
         deviceField.cudaMemcpyDeviceField(hostField);
         deviceField.interfaceCudaMemcpyDeviceField(false); 
         deviceField.saveSimCheckpointDeviceField(step);
+        if(console_flush){fflush(stdout);}
     }
 
     checkCudaErrors(cudaDeviceSynchronize());

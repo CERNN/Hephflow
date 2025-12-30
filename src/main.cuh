@@ -52,6 +52,7 @@
     #include "curvedBC.cuh"
 #endif
 
+//TODO: maybe move to inside deviceField?
 /**
  *  @brief Swaps the pointers of two dfloat variables.
  *  @param pt1: reference to the first dfloat pointer to be swapped
@@ -64,6 +65,7 @@ void interfaceSwap(dfloat* &pt1, dfloat* &pt2) {
     pt2 = temp;
 }
 
+//TODO: find a way to move this functions to cuda_utils.h
 /**
  * @brief Initializes CUDA events for timing.
  * @param start Reference to the start event.
@@ -82,6 +84,7 @@ void initializeCudaEvents(cudaEvent_t &start, cudaEvent_t &stop, cudaEvent_t &st
     checkCudaErrors(cudaEventRecord(start_step, 0));
 }
 
+//TODO: find a way to move this functions to cuda_utils.h, maybe the way is to pass NUMBER_LBM_NODES in the function to fix the include issues 
 /**
  * @brief Records the elapsed time between two CUDA events and calculates MLUPS.
  * @param start_step Reference to the start event for a step.

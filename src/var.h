@@ -54,8 +54,8 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 /* ======================== COMPILE-TIME ASSERTIONS ======================== */
 
 // Ensure domain dimensions are compatible with block sizes
-static_assert(NX >= BLOCK_NX, "NX must be >= BLOCK_NX, Update block size in definitions.h or increase domain in constants.inc");
-static_assert(NY >= BLOCK_NY, "NY must be >= BLOCK_NY, Update block size in definitions.h or increase domain in constants.inc");
-static_assert(NZ >= BLOCK_NZ, "NZ must be >= BLOCK_NZ, Update block size in definitions.h or increase domain in constants.inc");
+static_assert(NX >= BLOCK_NX, "NX must be >= BLOCK_NX, Update block size in memory_layout.h or increase domain in constants.inc");
+static_assert(NY >= BLOCK_NY, "NY must be >= BLOCK_NY, Update block size in memory_layout.h or increase domain in constants.inc");
+static_assert(NZ >= BLOCK_NZ, "NZ must be >= BLOCK_NZ, Update block size in memory_layout.h or increase domain in constants.inc");
 
 #endif //__VAR_H
