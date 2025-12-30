@@ -1,7 +1,8 @@
 #define PHASE_MODEL 
+#define INTERFACE_SHARPENING  // Enable interface sharpening (disable if mobility is low)
 
 constexpr int SCALE = 1;
-constexpr int N_STEPS = 400000;
+constexpr int N_STEPS = 5000; // Debug: short run to check gradients
 constexpr int N = 128 * SCALE;
 constexpr int NX = N;        // size x of the grid 
 constexpr int NY = N;        // size y of the grid
@@ -27,9 +28,9 @@ __device__ const dfloat UY_BC[4] =  {0, 0, 0, 0};
 __device__ const dfloat UZ_BC[4] =  {0, 0, 0, 0};
 __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
-#define BC_X_WALL
-#define BC_Y_WALL
-#define BC_Z_WALL
+#define BC_X_PERIODIC
+#define BC_Y_PERIODIC
+#define BC_Z_PERIODIC
 
 constexpr dfloat TAU = 0.55;//0.5 + 3.0*VISC;     // relaxation time
 constexpr dfloat VISC = (TAU-0.5)/3;
@@ -38,7 +39,8 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
 
 #ifdef PHASE_MODEL
     #define CONVECTION_DIFFUSION_TRANSPORT
-    #define D3G19
+    #define D3G19    // 19-velocity phase field (D3Q19 weights, as2=3)
+    //#define D3G7   // 7-velocity phase field (D3Q7 weights, as2=4) - matches Allen-Cahn
 
     #define PHI_DIST
 
@@ -49,18 +51,31 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
     constexpr dfloat PHI_ALPHA = 0.05;
     constexpr dfloat PHI_ZERO = (dfloat)(10.0);
     
-    //model constanst
-    constexpr dfloat phi_sigma = 1e-4; //surface tension coeficiet
+    //model constants
+    constexpr dfloat phi_sigma = 1e-2; //surface tension coefficient (increased from 1e-4)
     constexpr dfloat phi_del = 3; //interface width
     constexpr dfloat phi_beta = 12.0*phi_sigma / phi_del;
     constexpr dfloat phi_kappa = 3.0*phi_sigma*phi_del/2;
+    
+    //density coupling constants
+    constexpr dfloat phi_rho_l = 1.0;    // liquid density
+    constexpr dfloat phi_rho_g = 0.9;    // gas density (10% difference)
+    constexpr dfloat phi_drho = phi_rho_l - phi_rho_g; // density difference
+    
+    //interface sharpening coefficient (larger values = sharper interface)
+    constexpr dfloat phi_sharp_c = 0.45; // disabled for testing
+    
+    // Force coupling control flags (for debugging)
+    #define PHI_FORCE_FS_ENABLED 1 // Surface tension force (DISABLED for test)
+    #define PHI_FORCE_FP_ENABLED 0  // Pressure gradient force (DISABLED)
+    #define PHI_FORCE_FN_ENABLED 0  // Viscous stress force (disabled for now)
 
     //ADVECTION-DIFFUSIONS CONSTANTS
-    constexpr dfloat PHI_DIFFUSIVITY_RATIO = 1000; //OR Pr in malaspinas
+    constexpr dfloat PHI_DIFFUSIVITY_RATIO = 1; //OR Pr in malaspinas
     constexpr dfloat PHI_DIFFUSIVITY = VISC/PHI_DIFFUSIVITY_RATIO; // a0lpha
 
     constexpr dfloat PHI_DIFF_REF = (1.0/6);
-    constexpr dfloat PHI_TAU = PHI_DIFFUSIVITY*3+0.5;
+    constexpr dfloat PHI_TAU = PHI_DIFF_REF*3+0.5;
     constexpr dfloat PHI_OMEGA  = 1.0/PHI_TAU;
     constexpr dfloat PHI_TT_OMEGA = 1.0-0.5*PHI_OMEGA;
 

@@ -1,20 +1,39 @@
-/* ----------------------------- OUTPUT DEFINES ---------------------------- */
-#define ID_SIM "000"            // prefix for simulation's files
-#define PATH_FILES "ViscoplasticJet"  // path to save simulation's files
-#define TREATFIELD (false) //treat data over the entire field
-#define TREATPOINT (false) //treat data in a single or several points
-#define TREATLINE (false) //save the macro in a line
-#define SAVEDATA (false) //save treat data
-#define CONSOLEPRINT (false) // print the console the data is being saved
-#define MEAN_FLOW (false) // store the mean flow of the domain (used to calculate turbulent statistics)
-#define NODE_TYPE_SAVE (false) //save the bc conditions, usefull for drawing the surface
-#define ONLY_FINAL_MACRO (false) //save only the last time step macroscopic
-#define MACR_SAVE (false)
-#define REPORT_SAVE (false)
-#define VTK_SAVE (true)
-#define BIN_SAVE (false)
+/* ============================================================================
+ * OUTPUT CONFIGURATION
+ * Case: 002_viscoplasticJet
+ * Description: Viscoplastic jet flow (Bingham fluid)
+ * ========================================================================== */
 
+/* --------------------- FILE IDENTIFICATION --------------------- */
+#define ID_SIM "000"                        // Simulation identifier
+#define PATH_FILES "ViscoplasticJet"       // Output folder name
 
-//#define BC_FORCES //create scalar field to export the reaction forces from BC;
-//#define SAVE_BC_FORCES // define if it will export BC force field to bin
+/* --------------------- DATA TREATMENT --------------------- */
+//#define TREAT_DATA                        // Enable custom data treatment (see treatData.cu)
+#define TREATFIELD (false)                  // Treat data over entire field
+#define TREATPOINT (false)                  // Treat data at specific points
+#define TREATLINE (false)                   // Save macroscopic along a line
+#define SAVEDATA (false)                    // Save treated data to file
+#define CONSOLEPRINT (false)                // Print treated data to console
+
+/* --------------------- FLOW STATISTICS --------------------- */
+#define MEAN_FLOW (false)                   // Compute time-averaged flow fields
+
+/* --------------------- NODE TYPE OUTPUT --------------------- */
+#define NODE_TYPE_SAVE (false)              // Save boundary condition node types
+
+/* --------------------- OUTPUT CONTROL --------------------- */
+#define ONLY_FINAL_MACRO (false)            // Save only final timestep macroscopic
+#define MACR_SAVE (false)                   // Macroscopic save frequency (steps), false = disabled
+#define REPORT_SAVE (false)                 // Console report frequency (steps), false = disabled
+#define VTK_SAVE (true)                     // Enable VTK output for visualization
+#define BIN_SAVE (false)                    // Enable binary output
+
+/* --------------------- BOUNDARY FORCES --------------------- */
+//#define BC_FORCES                         // Compute boundary forces
+//#define SAVE_BC_FORCES                    // Save boundary forces to file
+
+/* --------------------- PARTICLE TRACER --------------------- */
+//#define PARTICLE_TRACER                   // Trace massless particles in flow
+#define PARTICLE_TRACER_SAVE false          // Save tracer particles
 

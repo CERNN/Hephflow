@@ -18,10 +18,10 @@
 #include <builtin_types.h>
 #include "globalFunctions.h"
 #include "var.h"
-#include "includeFiles/interface.h"
+#include "include/interface.h"
 #include "nodeTypeMap.h"
 #ifdef OMEGA_FIELD
-    #include "nnf.h"
+    #include "include/nnf.h"
 #endif //OMEGA_FIELD
 
 
@@ -56,5 +56,17 @@ void gpuMomCollisionStream(
 __global__
 void gpuResetMacroForces(dfloat *fMom);
 #endif //LOCAL_FORCES
+
+
+/**
+ * @brief Compute phase field gradients and normals, store to global memory
+ * @param fMom Pointer to the device array containing the current macroscopic moments.
+ * @param dNodeType Pointer to the device array containing the node type information.
+ */
+__global__ void gpuComputePhaseNormals(
+    dfloat *fMom, 
+    unsigned int *dNodeType
+);
+
 
 #endif //__MLBM_H

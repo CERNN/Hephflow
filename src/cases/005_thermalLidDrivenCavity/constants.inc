@@ -61,7 +61,7 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
     constexpr dfloat T_Q_INTERNAL_D_Cp = 0.0;
 
     __device__ const dfloat gravity_vector[3] =  {0.0, 0.0, 0.0};
-
+ 
     constexpr dfloat T_DIFF_REF = (1.0/6);
     constexpr dfloat G_TAU = T_DIFF_REF*3+0.5;
     constexpr dfloat G_OMEGA  = 1.0/G_TAU;

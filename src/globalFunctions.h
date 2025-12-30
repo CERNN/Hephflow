@@ -16,7 +16,7 @@
 #include <builtin_types.h> // for device variables
 #include "var.h"
 #include "globalStructs.h"
-#include "./includeFiles/interface.h"
+#include "./include/interface.h"
 #ifdef PARTICLE_MODEL
 #include "particles/models/ibm/ibmVar.h"
 #endif //PARTICLE_MODEL
@@ -812,6 +812,12 @@ __host__ __device__
 dfloat6 rotate_inertia_by_quart(dfloat4 q, dfloat6 I6);
 
 
+__host__ __device__
+dfloat mom_bilinear_interp_xy(dfloat x, dfloat y, int z, const int mom, dfloat *fMom);
+__host__ __device__
+dfloat mom_bilinear_interp_xz(dfloat x, int y, dfloat z, const int mom, dfloat *fMom);
+__host__ __device__
+dfloat mom_bilinear_interp_yz(int x, dfloat y, dfloat z, const int mom, dfloat *fMom);
 __host__ __device__
 dfloat mom_trilinear_interp(dfloat x, dfloat y, dfloat z, const int mom , dfloat *fMom);
 __host__ __device__

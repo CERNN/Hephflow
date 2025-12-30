@@ -1,91 +1,98 @@
-#define PARTICLE_MODEL
+/* ============================================================================
+ * CONSTANTS CONFIGURATION
+ * Case: 000_ibmBenchmark
+ * Description: IBM performance benchmark with 1000 particles in periodic domain
+ * 
+ * Note: Physics model flags are defined in model.inc
+ * ========================================================================== */
 
-constexpr dfloat RE = 500;
+/* --------------------- SIMULATION SCALE --------------------- */
+constexpr dfloat RE = 500;                  // Reynolds number
+constexpr int SCALE = 1;                    // Grid scaling factor
 
-constexpr int SCALE = 1;
-constexpr int N_STEPS = 50000;
-constexpr int N = 256 * SCALE;
-constexpr int NX = N;        // size x of the grid 
-constexpr int NY = N;        // size y of the grid
-constexpr int NZ = N;        // size z of the grid in one GPU
-constexpr int NZ_TOTAL = NZ;       // size z of the grid
+/* --------------------- TIME STEPPING --------------------- */
+constexpr int N_STEPS = 1000;               // Total simulation steps
+constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
-constexpr dfloat U_MAX = 0.0;  
-constexpr dfloat L = N;
+/* --------------------- GRID DIMENSIONS --------------------- */
+constexpr int N = 256 * SCALE;              // Reference grid size
+constexpr int NX = N;                       // Grid size in X
+constexpr int NY = N;                       // Grid size in Y
+constexpr int NZ = N;                       // Grid size in Z (single GPU)
+constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
-constexpr dfloat FX = 0.0;        // force in x
-constexpr dfloat FY = 0.0;        // force in y
-constexpr dfloat FZ = 1e-7;        // force in z (flow direction in most cases)
+/* --------------------- REFERENCE VALUES --------------------- */
+constexpr dfloat U_MAX = 0.0;               // Maximum/reference velocity
+constexpr dfloat L = N;                     // Reference length
 
-// value for the velocity initial condition in the domain
-constexpr dfloat U_0_X = 0.0;
-constexpr dfloat U_0_Y = 0.0;
-constexpr dfloat U_0_Z = 0.0;
-constexpr dfloat RHO_0 = 1.0;
+/* --------------------- BODY FORCES --------------------- */
+constexpr dfloat FX = 0.0;                  // Force in X direction
+constexpr dfloat FY = 0.0;                  // Force in Y direction
+constexpr dfloat FZ = 1e-7;                 // Force in Z direction (flow direction)
 
-// values options for boundary conditions //not used yet
-__device__ const dfloat UX_BC[4] =  {0, 0, 0, 0};
-__device__ const dfloat UY_BC[4] =  {0, 0, 0, 0};
-__device__ const dfloat UZ_BC[4] =  {0, 0, 0, 0};
+/* --------------------- INITIAL CONDITIONS --------------------- */
+constexpr dfloat RHO_0 = 1.0;               // Initial density
+constexpr dfloat U_0_X = 0.0;               // Initial velocity X
+constexpr dfloat U_0_Y = 0.0;               // Initial velocity Y
+constexpr dfloat U_0_Z = 0.0;               // Initial velocity Z
+
+/* --------------------- BOUNDARY CONDITION VALUES --------------------- */
+__device__ const dfloat UX_BC[4] = {0, 0, 0, 0};
+__device__ const dfloat UY_BC[4] = {0, 0, 0, 0};
+__device__ const dfloat UZ_BC[4] = {0, 0, 0, 0};
 __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
-
+/* --------------------- BOUNDARY CONDITION TYPES --------------------- */
 #define BC_X_PERIODIC
 #define BC_Y_PERIODIC
 #define BC_Z_PERIODIC
 
-constexpr dfloat VISC = U_MAX * NX / RE;
-constexpr dfloat TAU = 0.8;     // relaxation time
+/* --------------------- FLUID PROPERTIES --------------------- */
+constexpr dfloat VISC = U_MAX * NX / RE;    // Kinematic viscosity
+constexpr dfloat TAU = 0.8;                 // Relaxation time
 constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
 
-/* --------------------- INITIALIZATION LOADING DEFINES -------------------- */
-constexpr int INI_STEP = 0;
-#define LOAD_CHECKPOINT false   // loads simulation checkpoint from folder 
-                                // (folder name defined below)
-
-
-// Folder with simulation to load data from last checkpoint. 
-// WITHOUT ID_SIM (change it in ID_SIM) AND "/" AT THE END
-#define SIMULATION_FOLDER_LOAD_CHECKPOINT "TEST"
-// Interval to make checkpoint to save all simulation data and restart from it.
-// It must not be very frequent (10000 or more), because it takes a long time
-#define CHECKPOINT_SAVE false // the frequency on which the simulation checkpoint is saved
-#define LOAD_FIELD false
-#define LOAD_FIELD_STEP 0
+/* ============================================================================
+ * PARTICLE/IBM MODEL PARAMETERS
+ * Requires #define PARTICLE_MODEL in model.inc
+ * ========================================================================== */
 
 #ifdef PARTICLE_MODEL
-    #define IBM_METHOD
-    #define DEM_METHOD
-    #define LOCAL_FORCES
-    //number of particles
-    #define NUM_PARTICLES 1000
+#define IBM_METHOD
+#define DEM_METHOD
+#define LOCAL_FORCES
 
-    constexpr dfloat GX = 0.0;
-    constexpr dfloat GY = 0.0;
-    constexpr dfloat GZ = 0.0;
+#define NUM_PARTICLES 1000                  // Number of particles
 
-    constexpr dfloat FLUID_DENSITY = 1.0;
+// Gravity acceleration
+constexpr dfloat GX = 0.0;
+constexpr dfloat GY = 0.0;
+constexpr dfloat GZ = 0.0;
 
+// Fluid density
+constexpr dfloat FLUID_DENSITY = 1.0;
 
-    #ifdef DEM_METHOD
-        constexpr dfloat PP_FRICTION_COEF = 0.1; // friction coeficient particle particle -- case
-        constexpr dfloat PW_FRICTION_COEF = 0.1; // friction coeficient particle wall -- case
-        constexpr dfloat PP_REST_COEF = 0.9; // restitution coeficient particle particle -- case
-        constexpr dfloat PW_REST_COEF = 0.9; // restitution coeficient particle wall-- case
-        //#define REST_COEF_CORRECTION
+#ifdef DEM_METHOD
+// Friction coefficients
+constexpr dfloat PP_FRICTION_COEF = 0.1;    // Particle-particle friction
+constexpr dfloat PW_FRICTION_COEF = 0.1;    // Particle-wall friction
 
+// Restitution coefficients
+constexpr dfloat PP_REST_COEF = 0.9;        // Particle-particle restitution
+constexpr dfloat PW_REST_COEF = 0.9;        // Particle-wall restitution
 
-        //material properties
-        constexpr dfloat PARTICLE_YOUNG_MODULUS = 0.5; //-- case
-        constexpr dfloat PARTICLE_POISSON_RATIO = 0.3; //-- case
+// Material properties - Particles
+constexpr dfloat PARTICLE_YOUNG_MODULUS = 0.5;
+constexpr dfloat PARTICLE_POISSON_RATIO = 0.3;
 
+// Material properties - Walls
+constexpr dfloat WALL_YOUNG_MODULUS = 100.0;
+constexpr dfloat WALL_POISSON_RATIO = 0.3;
 
-        constexpr dfloat WALL_YOUNG_MODULUS = 100.0; //-- case
-        constexpr dfloat WALL_POISSON_RATIO = 0.3; //-- case
-
-        // Sphere-wall collision constants (compile-time)
-        constexpr dfloat SPHERE_WALL_DAMPING_CONST = (-2.0 * constexprLn(PW_REST_COEF) / (sqrtt(M_PI * M_PI + constexprLn(PW_REST_COEF) * constexprLn(PW_REST_COEF))));
-        constexpr dfloat SPHERE_SPHERE_DAMPING_CONST = (-2.0 * constexprLn(PP_REST_COEF) / (sqrtt(M_PI * M_PI + constexprLn(PP_REST_COEF) * constexprLn(PP_REST_COEF))));
-
-    #endif //DEM_METHOD
-#endif //PARTICLE_MODEL
+// Damping constants (computed from restitution coefficients)
+constexpr dfloat SPHERE_WALL_DAMPING_CONST = (-2.0 * constexprLn(PW_REST_COEF) / 
+    (sqrtt(M_PI * M_PI + constexprLn(PW_REST_COEF) * constexprLn(PW_REST_COEF))));
+constexpr dfloat SPHERE_SPHERE_DAMPING_CONST = (-2.0 * constexprLn(PP_REST_COEF) / 
+    (sqrtt(M_PI * M_PI + constexprLn(PP_REST_COEF) * constexprLn(PP_REST_COEF))));
+#endif
+#endif

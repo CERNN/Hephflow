@@ -1,53 +1,63 @@
-#define FENE_P
+/* ============================================================================
+ * CONSTANTS CONFIGURATION
+ * Case: 003_viscoelasitcParallelPlates_D3Q19
+ * Description: Viscoelastic flow between parallel plates (FENE-P model)
+ * ========================================================================== */
 
-constexpr dfloat RE = 1;
+/* --------------------- DIMENSIONLESS NUMBERS --------------------- */
+constexpr dfloat RE = 1;                    // Reynolds number
 
-constexpr int SCALE = 1;
-constexpr int N = 128 * SCALE;
-constexpr int NX = 8;        // size x of the grid 
-constexpr int NY = N;        // size y of the grid
-constexpr int NZ = 8;        // size z of the grid in one GPU
-constexpr int NZ_TOTAL = NZ;       // size z of the grid
+/* --------------------- SIMULATION SCALE --------------------- */
+constexpr int SCALE = 1;                    // Grid scaling factor
 
-constexpr dfloat U_MAX = 0.0;  
+/* --------------------- GRID DIMENSIONS --------------------- */
+constexpr int N = 128 * SCALE;              // Reference grid size
+constexpr int NX = 8;                       // Grid size in X
+constexpr int NY = N;                       // Grid size in Y
+constexpr int NZ = 8;                       // Grid size in Z
+constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
-constexpr dfloat L = N;
+/* --------------------- REFERENCE VALUES --------------------- */
+constexpr dfloat U_MAX = 0.0;               // Maximum/reference velocity
+constexpr dfloat L = N;                     // Reference length
 
-constexpr dfloat U_C = 0.01;
-constexpr dfloat SUM_VISC = (U_C*L)/RE;
-constexpr dfloat BETA = 0.1; //R_v
-constexpr dfloat VISC = BETA * SUM_VISC;
-constexpr dfloat TAU = 0.5 + 3.0*VISC;     // relaxation time
-constexpr dfloat t_c = L/U_C;
-constexpr int CONFORMATION_SWITCH = 0;
-constexpr int N_STEPS = 60*t_c;
+/* --------------------- VISCOELASTIC PARAMETERS --------------------- */
+constexpr dfloat U_C = 0.01;                // Characteristic velocity
+constexpr dfloat SUM_VISC = (U_C*L)/RE;     // Total viscosity
+constexpr dfloat BETA = 0.1;                // Viscosity ratio (R_v)
+constexpr dfloat VISC = BETA * SUM_VISC;    // Solvent kinematic viscosity
+constexpr dfloat TAU = 0.5 + 3.0*VISC;      // Relaxation time
+constexpr dfloat t_c = L/U_C;               // Characteristic time
 
-constexpr dfloat FX = 8.0*SUM_VISC*U_C/NY/NY;        // force in x
-constexpr dfloat FY = 0.0;        // force in y
-constexpr dfloat FZ = 0.0;        // force in z (flow direction in most cases)
+/* --------------------- TIME STEPPING --------------------- */
+constexpr int CONFORMATION_SWITCH = 0;      // Step to switch on conformation
+constexpr int N_STEPS = 60*t_c;             // Total simulation steps
+constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
-// value for the velocity initial condition in the domain
-constexpr dfloat U_0_X = 0.0;
-constexpr dfloat U_0_Y = 0.0;
-constexpr dfloat U_0_Z = 0.0;
-constexpr dfloat RHO_0 = 1.0;
+/* --------------------- BODY FORCES --------------------- */
+constexpr dfloat FX = 8.0*SUM_VISC*U_C/NY/NY; // Force in X direction (flow driving)
+constexpr dfloat FY = 0.0;                  // Force in Y direction
+constexpr dfloat FZ = 0.0;                  // Force in Z direction
 
-// values options for boundary conditions //not used yet
-__device__ const dfloat UX_BC[4] =  {0, 0, 0, 0};
-__device__ const dfloat UY_BC[4] =  {0, 0, 0, 0};
-__device__ const dfloat UZ_BC[4] =  {0, 0, 0, 0};
+/* --------------------- INITIAL CONDITIONS --------------------- */
+constexpr dfloat U_0_X = 0.0;               // Initial velocity X
+constexpr dfloat U_0_Y = 0.0;               // Initial velocity Y
+constexpr dfloat U_0_Z = 0.0;               // Initial velocity Z
+constexpr dfloat RHO_0 = 1.0;               // Initial density
+
+/* --------------------- BOUNDARY CONDITION VALUES --------------------- */
+__device__ const dfloat UX_BC[4] = {0, 0, 0, 0};
+__device__ const dfloat UY_BC[4] = {0, 0, 0, 0};
+__device__ const dfloat UZ_BC[4] = {0, 0, 0, 0};
 __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
-
+/* --------------------- BOUNDARY CONDITION TYPES --------------------- */
 #define BC_X_PERIODIC
 #define BC_Y_WALL
 #define BC_Z_PERIODIC
 
 /* --------------------- INITIALIZATION LOADING DEFINES -------------------- */
-constexpr int INI_STEP = 0; // initial simulation step (0 default)
-#define LOAD_CHECKPOINT false   // loads simulation checkpoint from folder 
-                                // (folder name defined below)
-
+#define LOAD_CHECKPOINT false   // loads simulation checkpoint from folder
 
 // Folder with simulation to load data from last checkpoint. 
 // WITHOUT ID_SIM (change it in ID_SIM) AND "/" AT THE END
@@ -58,6 +68,7 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
 #define LOAD_FIELD false
 #define LOAD_FIELD_STEP 0
 
+/* --------------------- FENE-P VISCOELASTIC MODEL CONFIGURATION --------------------- */
 #ifdef FENE_P
     #define OLDROYD_B
     #define CONVECTION_DIFFUSION_TRANSPORT
@@ -86,7 +97,7 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
 
     //ADVECTION-DIFFUSIONS CONSTANTS
     constexpr dfloat CONF_DIFFUSIVITY_RATIO = 100; //OR Pr in malaspinas
-    constexpr dfloat CONF_DIFFUSIVITY = VISC/CONF_DIFFUSIVITY_RATIO; // a0lpha
+    constexpr dfloat CONF_DIFFUSIVITY = VISC/CONF_DIFFUSIVITY_RATIO; // alpha
 
     constexpr dfloat CONF_DIFF_REF = (1.0/6);
     constexpr dfloat CONF_TAU = CONF_DIFF_REF*3+0.5;

@@ -31,7 +31,7 @@
     #include <mach-o/dyld.h>
 #endif
 
-#include "errorDef.h"
+#include "include/errorDef.h"
 #include "globalFunctions.h"
 #include "var.h"
 #ifdef PARTICLE_MODEL

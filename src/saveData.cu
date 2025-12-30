@@ -1,6 +1,6 @@
 #include "saveData.cuh"
 #ifdef OMEGA_FIELD
-#include "nnf.h"
+#include "include/nnf.h"
 #endif //OMEGA_FIELD
 
 std::filesystem::path getExecutablePath() {
@@ -832,9 +832,6 @@ std::string getSimInfoString(int step,dfloat MLUPS)
     strSimInfo << "         Phi Offset: " << PHI_ZERO << "\n";
     strSimInfo << "            PHI_TAU: " << PHI_TAU << "\n";
     strSimInfo << "          PHI_OMEGA: " << PHI_OMEGA << "\n";
-    strSimInfo << "      PHI_DIFF_FLUC: " << PHI_DIFF_FLUC << "\n";
-    strSimInfo << "            PHI_AAA: " << PHI_AAA << "\n";
-    strSimInfo << " PHI_DIFF_FLUC_COEF: " << PHI_DIFF_FLUC_COEF << "\n";
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif// PHASE_MODEL
     #if defined(FENE_P) || defined(OLDROYD_B)

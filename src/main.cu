@@ -98,13 +98,26 @@ int main() {
 
     #ifdef DYNAMIC_SHARED_MEMORY
         int maxShared;
-        cudaDeviceGetAttribute(&maxShared, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0);
+        checkCudaErrors(cudaDeviceGetAttribute(&maxShared, cudaDevAttrMaxSharedMemoryPerBlockOptin, GPU_INDEX));
+        printf("Dynamic shared memory: requesting %d bytes (GPU max opt-in: %d bytes)\n", 
+               MAX_SHARED_MEMORY_SIZE, maxShared);
         if (MAX_SHARED_MEMORY_SIZE > maxShared) {
-            printf("Requested %d bytes exceeds device max %d bytes\n", MAX_SHARED_MEMORY_SIZE, maxShared);
-        }else{
-            printf("Using %d bytes of dynamic shared memory of a max of %d bytes\n", MAX_SHARED_MEMORY_SIZE, maxShared);
-            cudaFuncSetAttribute(&gpuMomCollisionStream, cudaFuncAttributeMaxDynamicSharedMemorySize DYNAMIC_SHARED_MEMORY_PARAMS); // DOESNT WORK: DYNAMICALLY SHARED MEMORY HAS WORSE PERFORMANCE
+            printf("ERROR: Requested shared memory (%d bytes) exceeds device max (%d bytes)\n", 
+                   MAX_SHARED_MEMORY_SIZE, maxShared);
+            printf("Try reducing BLOCK_NX/NY/NZ in memory_layout.h\n");
+            return 1;
         }
+        // Set the maximum dynamic shared memory size for the kernel
+        cudaError_t sharedMemErr = cudaFuncSetAttribute(
+            gpuMomCollisionStream, 
+            cudaFuncAttributeMaxDynamicSharedMemorySize, 
+            MAX_SHARED_MEMORY_SIZE);
+        if (sharedMemErr != cudaSuccess) {
+            printf("ERROR: Failed to set dynamic shared memory attribute: %s\n", 
+                   cudaGetErrorString(sharedMemErr));
+            return 1;
+        }
+        printf("Successfully configured dynamic shared memory: %d bytes\n", MAX_SHARED_MEMORY_SIZE);
     #endif //DYNAMIC_SHARED_MEMORY
    
     /* --------------------------------------------------------------------- */
@@ -125,12 +138,29 @@ int main() {
         deviceField.gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save);
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
-            printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
+            printf("Main kernel launch failed: %s\n", cudaGetErrorString(err));
+        }
+        err = cudaDeviceSynchronize();
+        if (err != cudaSuccess) {
+            printf("Main kernel sync error: %s\n", cudaGetErrorString(err));
         }
         #ifdef CURVED_BOUNDARY_CONDITION
-           updateCurvedBoundaryVelocities << <1,numberCurvedBoundaryNodes>> >(deviceField.d_curvedBC_array,deviceField.d_fMom,numberCurvedBoundaryNodes);
-           cudaDeviceSynchronize();
+           const int curvedBCBlockSize = 256;
+           const int curvedBCGridSize = (numberCurvedBoundaryNodes + curvedBCBlockSize - 1) / curvedBCBlockSize;
+           updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize>>>(deviceField.d_curvedBC_array, deviceField.d_fMom, numberCurvedBoundaryNodes);
+           err = cudaGetLastError();
+           if (err != cudaSuccess) {
+               printf("CurvedBC kernel launch failed: %s\n", cudaGetErrorString(err));
+           }
+           err = cudaDeviceSynchronize();
+           if (err != cudaSuccess) {
+               printf("CurvedBC sync error: %s\n", cudaGetErrorString(err));
+           }
         #endif
+        #ifdef PHI_DIST
+            gpuComputePhaseNormals<<<gridBlock, threadBlock>>>(deviceField.d_fMom, deviceField.dNodeType);
+            cudaDeviceSynchronize();
+        #endif //PHI_DIST
 
         //swap interface pointers
         deviceField.swapGhostInterfacesDeviceField();

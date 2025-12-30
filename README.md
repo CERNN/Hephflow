@@ -32,10 +32,11 @@ Hephflow builds on the codebase of the previous project [VISCOPLASTIC-LBM](https
 ## Quick Start
 
 1. **Install CUDA Toolkit**: Download from [Nvidia's website](https://developer.nvidia.com/cuda-toolkit)
-2. **Modify compile script** (if needed): Edit `src/compile.sh` or `src/compile_linux.sh` based on your GPU's compute capability
-3. **Compile**: Run `sh compile.sh <VELOCITY_SET> <CASE_ID>` (e.g., `sh compile.sh D3Q19 000`)
-4. **Run**: Execute the compiled binary from the build directory
-5. **Post-process**: Use the Python scripts in the `post/` folder to convert binary output to Paraview-compatible formats  
+2. **Set active case**: Edit `src/var.h` and change `#define BC_PROBLEM` to your desired case (e.g., `001_lidDrivenCavity_3D`)
+3. **Compile**: Run `sh compile.sh <VELOCITY_SET> <CASE_ID>` (e.g., `sh compile.sh D3Q19 001`)
+   - The script auto-detects your GPU's compute capability via `nvidia-smi`
+4. **Run**: Execute the compiled binary from the `bin/` directory
+5. **Visualize**: Open generated `.vtk` files directly in ParaView (no post-processing needed for VTK output)  
 
 
 ## Installation Guide
@@ -58,17 +59,19 @@ To compile and run Hephflow, you will need:
    - Follow the installation instructions for your operating system
    - Verify installation by running `nvcc --version` in your terminal
 
-2. **Configure Compilation Script**:
-   - On Windows: Use `src/compile.sh` (automatically detects GPU compute capability via nvidia-smi)
-   - On Linux: Use `src/compile_linux.sh` and set the `CC` variable to your GPU's compute capability
-   - Refer to the script comments for guidance on modifying parameters
+2. **Select Simulation Case**:
+   - Edit `src/var.h` and modify `#define BC_PROBLEM` to select your case
+   - Available cases are in `src/cases/` directory (e.g., `001_lidDrivenCavity_3D`)
+   - Each case contains required `.inc` files defining the simulation parameters
 
 3. **Compile the Project**:
    ```bash
    cd src
    sh compile.sh <VELOCITY_SET> <CASE_ID>
    ```
-   Example: `sh compile.sh D3Q19 000`
+   Example: `sh compile.sh D3Q19 001`
+   - The script automatically detects your GPU's compute capability via `nvidia-smi`
+   - Compiled executable will be saved to `bin/` directory
 
 4. **Verify Compilation**:
    - Check for the compiled executable in the build directory
@@ -78,30 +81,43 @@ To compile and run Hephflow, you will need:
 
 ### Output Files
 
-The simulation generates:
-- **Binary output files**: Contain macroscopic quantities such as density, velocity, and pressure fields
-- **Information file**: Describes simulation parameters (lattice size, relaxation time, velocity set, collision model, etc.)
+The simulation generates multiple output formats based on case configuration:
 
-To convert these binary files into formats compatible with visualization software (e.g., ParaView), use the provided Python post-processing tools. 
+- **VTK files** (`.vtk`): Direct ParaView-compatible output containing density, velocity, and other scalar/vector fields
+- **Binary files** (`.bin`): Raw binary output for each macroscopic variable (optional)
+- **Simulation info** (`.txt`): Contains simulation parameters, performance metrics (MLUPS), and case details
+- **Checkpoint files**: Complete simulation state for restart capabilities
 
-## Post Processing
+**Output configuration** is controlled per case via the `output.inc` file:
+- `VTK_SAVE (true)`: Enable direct VTK output (recommended)
+- `BIN_SAVE (true)`: Enable binary output for custom post-processing
+- `CHECKPOINT_SAVE (true)`: Enable simulation restart functionality 
 
-### Requirements
+## Visualization and Post-Processing
 
-To process the output binary files, you will need:
+### Direct ParaView Visualization (Recommended)
+
+Hephflow generates **native VTK output** that can be directly opened in ParaView:
+
+1. **Enable VTK output**: Set `VTK_SAVE (true)` in your case's `output.inc` file
+2. **Run simulation**: VTK files are generated automatically during execution
+3. **Open in ParaView**: Load `.vtk` files directly - no conversion needed
+
+### Binary Post-Processing (Advanced Users)
+
+For custom analysis of binary output files:
+
+**Requirements:**
 - Python 3.6 or higher
 - Dependencies: `glob`, `numpy`, `os`, `pyevtk`, `matplotlib`
 
-### Converting Binary Output to Paraview Format
-
-Use the Python post-processing script to convert binary files to `.vtr` format (compatible with ParaView):
-
+**Usage:**
 ```bash
 cd post
 python bin2VTK.py "PATH_TO_OUTPUT/SIMULATION_ID"
 ```
 
-This will generate VTK files that can be imported into ParaView for visualization and analysis.
+**Note:** Direct VTK output is recommended for most users as it eliminates the need for post-processing.
 
 ## File Structure
 
@@ -116,13 +132,13 @@ The following table provides an overview of key files and directories in the pro
 | 5 | `definitions.h` | LBM constants and macro definitions |
 | 6 | `arrayIndex.h` | Index calculation functions for moment ordering |
 | 7 | `auxFunctions.cu`/`auxFunctions.cuh` | Auxiliary GPU functions |
-| 8 | `cases/` | Folder containing simulation case definitions |
-| 9 | `cases/<CASE_ID>/bc_definition.inc` | Mathematical moment equations for boundary conditions |
-| 10 | `cases/<CASE_ID>/bc_initialization.inc` | Boundary condition flag definitions |
-| 11 | `cases/<CASE_ID>/constants.inc` | Simulation parameters (mesh size, velocity, relaxation times) |
-| 12 | `cases/<CASE_ID>/flow_initialization.inc` | Initial flow field setup |
-| 13 | `cases/<CASE_ID>/model.inc` | Model selection (velocity set, collision operator) |
-| 14 | `cases/<CASE_ID>/output.inc` | Output and data export configuration |
+| 8 | `cases/` | Template-based simulation case definitions (35+ cases available) |
+| 9 | `cases/<CASE_ID>/constants.inc` | Grid size, Reynolds number, physical parameters, forces |
+| 10 | `cases/<CASE_ID>/model.inc` | Velocity set, collision model, physics models selection |
+| 11 | `cases/<CASE_ID>/bc_initialization.inc` | Boundary condition node type assignment |
+| 12 | `cases/<CASE_ID>/bc_definition.inc` | Mathematical boundary condition implementation |
+| 13 | `cases/<CASE_ID>/flow_initialization.inc` | Initial velocity and density field setup |
+| 14 | `cases/<CASE_ID>/output.inc` | Data saving configuration (VTK, binary, checkpoints) |
 | 15 | `colrec/` | Collision and reconstruction implementations for various lattice models |
 | 16 | `includeFiles/popSave` | Kernel for loading populations from global memory |
 | 17 | `includeFiles/popLoad` | Kernel for saving populations to global memory |
@@ -138,33 +154,85 @@ The following table provides an overview of key files and directories in the pro
 | 27 | `saveData.cu`/`saveData.cuh` | Data serialization and output functions |
 | 28 | `post/` | Post-processing utilities for result visualization |
 
-## Creating a Boundary Case
+## Creating and Using Simulation Cases
 
-To define a new simulation case, create the following files in the `src/cases/` directory:
+Hephflow uses a **template-based case system** where each simulation is defined by a set of `.inc` files. The active case is selected at compile time via the `BC_PROBLEM` macro.
 
-### Required Files
+### Case Selection
 
-1. **`bc_definition`**: Defines the mathematical moment equations (0th to 2nd order) and boundary condition implementations
-2. **`bc_initialization`**: Sets boundary condition flags for each node type
-3. **`constants`**: Specifies simulation parameters:
-   - Mesh dimensions (Nx, Ny, Nz)
-   - Flow velocity and Mach number
-   - Relaxation times (tau values)
-4. **`flow_initialization`**: Defines initial velocity and density fields
-5. **`model`**: Specifies model parameters:
-   - Velocity set (D2Q9, D3Q19, D3Q27, etc.)
-   - Collision operator (MRT, CUMULATIVE, etc.)
-6. **`output`**: Configures data export:
-   - Output frequency
-   - Variables to save
-   - File paths
+1. **Choose a case**: Browse available cases in `src/cases/` directory
+2. **Set active case**: Edit `src/var.h` and modify:
+   ```cpp
+   #define BC_PROBLEM 001_lidDrivenCavity_3D  // Change this line
+   ```
+3. **Compile**: Run `sh compile.sh <VELOCITY_SET> <CASE_ID>`
 
-### Optional Files
+### Example of Available Case Categories
 
-For advanced simulations, additional files may be required:
-- **Thermal models**: Temperature and heat flux moment definitions
-- **Non-Newtonian models**: Viscosity and stress tensor calculations
-- **Multiphase models**: Phase field and interfacial tension parameters
+**Basic Flow Validation Cases:**
+- `001_lidDrivenCavity_2D/3D` - Square cavity with moving lid
+- `001_parallelPlates_D3Q19/D3Q27` - Poiseuille flow validation  
+- `001_taylorGreen` - Analytical vortex decay
+- `001_squaredDuct` - Rectangular duct flow
+- `001_voxel` - Complex geometry via voxelization
+
+### Required Case Files
+
+Each case directory must contain these 6 files:
+
+1. **`constants.inc`**: Physical and numerical parameters
+   ```cpp
+   constexpr int NX = 256;        // Grid size X
+   constexpr int NY = 256;        // Grid size Y  
+   constexpr int NZ = 256;        // Grid size Z
+   constexpr dfloat RE = 500;     // Reynolds number
+   constexpr dfloat U_MAX = 0.01; // Maximum velocity
+   constexpr dfloat TAU = 0.8;    // Relaxation time
+   // Sets boundary types for domain boundaries
+   #define BC_X_WALL    // X boundaries are walls
+   #define BC_Y_WALL    // Y boundaries are walls  
+   #define BC_Z_WALL    // Z boundaries are walls
+   // #define THERMAL_MODEL       // Enable thermal physics
+   // #define PARTICLE_MODEL      // Enable particles
+   ```
+
+2. **`model.inc`**: Physics model and velocity set selection
+   ```cpp
+   #define D3Q19                  // Velocity set
+   #define MR_LBM_2ND_ORDER               // Collision model
+   ```
+
+3. **`bc_initialization.inc`**: Boundary condition node assignment
+   ```cpp
+   // Defines node type based on the lattice location
+   ```
+
+4. **`bc_definition.inc`**: Mathematical boundary condition implementation
+   ```cpp
+   // Defines moment equations for each boundary type
+   // Complex file - usually copied from similar case
+   ```
+
+5. **`flow_initialization.inc`**: Initial conditions
+   ```cpp
+   // Set initial velocity and density fields
+   ```
+
+6. **`output.inc`**: Data saving configuration  
+   ```cpp
+   #define VTK_SAVE (true)        // Enable VTK output
+   #define BIN_SAVE (false)       // Disable binary output
+   #define CHECKPOINT_SAVE (false) // Disable checkpoints
+   #define ID_SIM "001"           // Output file prefix
+   #define PATH_FILES "MyCase"     // Output directory name
+   ```
+
+### Creating a New Case
+
+1. Copy a similar case directory. Example `cp -r 001_lidDrivenCavity_3D 001_myNewCase`
+2. Modify the 6 `.inc` files for your specific problem
+3. Update `BC_PROBLEM` in `var.h` to point to your new case
+
 
 ## Using Voxels for Immersed Bodies
 
@@ -201,32 +269,32 @@ The following table summarizes performance benchmarks on various NVIDIA GPUs. Pe
 
 | GPU | Compute Capability | Frequency | Memory | Block Size | MLUPs | Notes |
 |-----|---|---|---|---|---|---|
-| RTX 4090 OC | 89 | 3.0 GHz | 1.5 GHz | 8×8×8 | 9,075 | Overclocked |
-| RTX 4090 | 89 | 2.8 GHz | 1.3 GHz | 8×8×8 | 7,899 | Stock |
-| RTX 4060 | 89 | 2.8 GHz | 2.1 GHz | 8×8×8 | 2,167 | - |
-| RTX 4060 | 89 | 2.8 GHz | 2.1 GHz | 8×8×4 | 1,932 | Reduced block |
-| RTX 3060 OC | 86 | 2.0 GHz | 2.0 GHz | 8×8×8 | 3,083 | Overclocked |
-| RTX 3060 | 86 | 1.8 GHz | 1.8 GHz | 8×8×8 | 2,755 | Stock |
+| RTX 4090 OC | 89 | 3.0 GHz | 1.5 GHz | 8×8×8 | 9075 | Overclocked |
+| RTX 4090 | 89 | 2.8 GHz | 1.3 GHz | 8×8×8 | 7899 | Stock |
+| RTX 4060 | 89 | 2.8 GHz | 2.1 GHz | 8×8×8 | 2167 | - |
+| RTX 4060 | 89 | 2.8 GHz | 2.1 GHz | 8×8×4 | 1932 | Reduced block |
+| RTX 3060 OC | 86 | 2.0 GHz | 2.0 GHz | 8×8×8 | 3083 | Overclocked |
+| RTX 3060 | 86 | 1.8 GHz | 1.8 GHz | 8×8×8 | 2755 | Stock |
 
 ### Datacenter GPUs
 
 | GPU | Compute Capability | Frequency | Memory | Block Size | MLUPs | Notes |
 |-----|---|---|---|---|---|---|
-| A100 | 80 | 1.3 GHz | 1.5 GHz | 16×8×8 | 10,243 | Dynamic shared mem |
-| A100 | 80 | 1.3 GHz | 1.5 GHz | 8×8×8 | 11,390 | Peak performance |
+| A100 | 80 | 1.3 GHz | 1.5 GHz | 16×8×8 | 10243 | Dynamic shared mem |
+| A100 | 80 | 1.3 GHz | 1.5 GHz | 8×8×8 | 11390 |  |
 
 ### Legacy GPUs (Maxwell & Kepler Architecture)
 
 | GPU | Compute Capability | Frequency | Memory | Block Size | MLUPs | Notes |
 |-----|---|---|---|---|---|---|
-| RTX 2060 | 75 | 1.9 GHz | 1.7 GHz | 8×8×8 | 2,397 | - |
-| GTX 1660 | 75 | 1.9 GHz | 2.0 GHz | 8×8×8 | 1,323 | - |
-| GTX 1660 | 75 | 1.9 GHz | 2.0 GHz | 8×8×4 | 1,248 | Reduced block |
-| GTX 1660 | 75 | 1.9 GHz | 2.0 GHz | 16×4×4 | 1,213 | Reduced block |
+| RTX 2060 | 75 | 1.9 GHz | 1.7 GHz | 8×8×8 | 2397 | - |
+| GTX 1660 | 75 | 1.9 GHz | 2.0 GHz | 8×8×8 | 1323 | - |
+| GTX 1660 | 75 | 1.9 GHz | 2.0 GHz | 8×8×4 | 1248 | Reduced block |
+| GTX 1660 | 75 | 1.9 GHz | 2.0 GHz | 16×4×4 | 1213 | Reduced block |
 | T600 | 75 | 1.5 GHz | 1.25 GHz | 8×8×8 | 881 | Memory-limited (84%) |
 | K20x | 35 | 0.7 GHz | 1.3 GHz | 8×8×4 | 730 | Memory-limited (47%) |
 | K20x | 35 | 0.7 GHz | 1.3 GHz | 8×8×8 | 670 | Memory-limited (40%) |
-| K80 | 35 | 0.8 GHz | 1.2 GHz | 8×8×8 | 1,142 | Single GPU |
+| K80 | 35 | 0.8 GHz | 1.2 GHz | 8×8×8 | 1142 | Single GPU |
 
 ### Notes
 
