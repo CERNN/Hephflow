@@ -13,14 +13,18 @@ const dfloat3 wall = duct_center + unit_normal * max_radius;
 h_curvedBC_array[curvedBCCount].w = wall;
 
 h_curvedBC_array[curvedBCCount].delta = vector_length(wall - b);
+h_curvedBC_array[curvedBCCount].delta_r = lattice_dx;
 
-const dfloat3 pf1 = wall + unit_normal * (1.0 * lattice_dx);
+// For concave boundary (duct), fluid points go INWARD (opposite to outward normal)
+const dfloat3 inward_normal = -unit_normal;
+
+const dfloat3 pf1 = wall + inward_normal * (1.0 * lattice_dx);
 h_curvedBC_array[curvedBCCount].pf1 = pf1;
 
-const dfloat3 pf2 = wall + unit_normal * (2.0 * lattice_dx);
+const dfloat3 pf2 = wall + inward_normal * (2.0 * lattice_dx);
 h_curvedBC_array[curvedBCCount].pf2 = pf2;
 
-const dfloat3 pf3 = wall + unit_normal * (3.0 * lattice_dx);
+const dfloat3 pf3 = wall + inward_normal * (3.0 * lattice_dx);
 h_curvedBC_array[curvedBCCount].pf3 = pf3;
 
 

@@ -138,11 +138,24 @@ int main() {
         deviceField.gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save);
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
-            printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
+            printf("Main kernel launch failed: %s\n", cudaGetErrorString(err));
+        }
+        err = cudaDeviceSynchronize();
+        if (err != cudaSuccess) {
+            printf("Main kernel sync error: %s\n", cudaGetErrorString(err));
         }
         #ifdef CURVED_BOUNDARY_CONDITION
-           updateCurvedBoundaryVelocities << <1,numberCurvedBoundaryNodes>> >(deviceField.d_curvedBC_array,deviceField.d_fMom,numberCurvedBoundaryNodes);
-           cudaDeviceSynchronize();
+           const int curvedBCBlockSize = 256;
+           const int curvedBCGridSize = (numberCurvedBoundaryNodes + curvedBCBlockSize - 1) / curvedBCBlockSize;
+           updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize>>>(deviceField.d_curvedBC_array, deviceField.d_fMom, numberCurvedBoundaryNodes);
+           err = cudaGetLastError();
+           if (err != cudaSuccess) {
+               printf("CurvedBC kernel launch failed: %s\n", cudaGetErrorString(err));
+           }
+           err = cudaDeviceSynchronize();
+           if (err != cudaSuccess) {
+               printf("CurvedBC sync error: %s\n", cudaGetErrorString(err));
+           }
         #endif
         #ifdef PHI_DIST
             gpuComputePhaseNormals<<<gridBlock, threadBlock>>>(deviceField.d_fMom, deviceField.dNodeType);

@@ -528,13 +528,12 @@ __global__ void gpuMomCollisionStream(
             dfloat uy0 = 0.0_df;
             dfloat uz0 = 0.0_df;
             
-            //array index for the d_curvedBC_array
+            // Retrieve wall velocity from curved boundary condition data
             CurvedBoundary* curvedBC = d_curvedBC[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)];
-            if(curvedBC!= nullptr){
-                CurvedBoundary aa = *curvedBC;
-                ux0 = aa.vel.x;
-                uy0 = aa.vel.y;
-                uz0 = aa.vel.z;
+            if(curvedBC != nullptr){
+                ux0 = curvedBC->vel.x;
+                uy0 = curvedBC->vel.y;
+                uz0 = curvedBC->vel.z;
             }
         #endif //CURVED_BOUNDARY_CONDITION
             

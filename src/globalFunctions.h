@@ -813,6 +813,12 @@ dfloat6 rotate_inertia_by_quart(dfloat4 q, dfloat6 I6);
 
 
 __host__ __device__
+dfloat mom_bilinear_interp_xy(dfloat x, dfloat y, int z, const int mom, dfloat *fMom);
+__host__ __device__
+dfloat mom_bilinear_interp_xz(dfloat x, int y, dfloat z, const int mom, dfloat *fMom);
+__host__ __device__
+dfloat mom_bilinear_interp_yz(int x, dfloat y, dfloat z, const int mom, dfloat *fMom);
+__host__ __device__
 dfloat mom_trilinear_interp(dfloat x, dfloat y, dfloat z, const int mom , dfloat *fMom);
 __host__ __device__
 dfloat cubic_interp(dfloat p0, dfloat p1, dfloat p2, dfloat p3, dfloat t);

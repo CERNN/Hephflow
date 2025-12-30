@@ -174,10 +174,10 @@
 
 #ifdef CURVED_BOUNDARY_CONDITION
     #define CURVED_BC_PTRS_DECL(PREFIX) \
-        CurvedBoundary** PREFIX##curvedBC,
+        CurvedBoundary** &PREFIX##curvedBC,
 
     #define CURVED_BC_ARRAY_DECL(PREFIX) \
-        CurvedBoundary* PREFIX##curvedBC_array,
+        CurvedBoundary* &PREFIX##curvedBC_array,
 
     #define CURVED_BC_PTRS(PREFIX) \
         PREFIX##curvedBC,

@@ -1322,6 +1322,7 @@ unsigned int bc_id(unsigned int *dNodeType, int x, int y, int z){
                     numberCurvedBoundaryNodes++;
             }
         }
+        printf("Found %u curved boundary nodes\n", numberCurvedBoundaryNodes);
         return numberCurvedBoundaryNodes;
     }
 
