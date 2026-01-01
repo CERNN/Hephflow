@@ -1,5 +1,5 @@
 /* ============================================================================
- * SIMULATION CONSTANTS
+ * CONSTANTS CONFIGURATION
  * Case: 003_viscoelasticFourRollMill
  * Description: Viscoelastic four-roll mill flow (FENE-P model)
  * ========================================================================== */
