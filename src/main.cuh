@@ -41,6 +41,7 @@
 #endif //OMEGA_FIELD
 
 #include "include/errorDef.h"
+#include "include/cuda_utils.cuh"
 //#include "structs.h"
 //#include "globalFunctions.h"
 #include "lbmInitialization.cuh"
@@ -63,47 +64,6 @@ void interfaceSwap(dfloat* &pt1, dfloat* &pt2) {
     dfloat *temp = pt1;
     pt1 = pt2;
     pt2 = temp;
-}
-
-//TODO: find a way to move this functions to cuda_utils.h
-/**
- * @brief Initializes CUDA events for timing.
- * @param start Reference to the start event.
- * @param stop Reference to the stop event.
- * @param start_step Reference to the start event for a step.
- * @param stop_step Reference to the stop event for a step.
- */
-void initializeCudaEvents(cudaEvent_t &start, cudaEvent_t &stop, cudaEvent_t &start_step, cudaEvent_t &stop_step) {
-    checkCudaErrors(cudaSetDevice(GPU_INDEX));
-    checkCudaErrors(cudaEventCreate(&start));
-    checkCudaErrors(cudaEventCreate(&stop));
-    checkCudaErrors(cudaEventCreate(&start_step));
-    checkCudaErrors(cudaEventCreate(&stop_step));
-
-    checkCudaErrors(cudaEventRecord(start, 0));
-    checkCudaErrors(cudaEventRecord(start_step, 0));
-}
-
-//TODO: find a way to move this functions to cuda_utils.h, maybe the way is to pass NUMBER_LBM_NODES in the function to fix the include issues 
-/**
- * @brief Records the elapsed time between two CUDA events and calculates MLUPS.
- * @param start_step Reference to the start event for a step.
- * @param stop_step Reference to the stop event for a step.
- * @param step Current simulation step.
- * @param ini_step Initial simulation step.
- * @return The calculated MLUPS (Mega Lattice Updates Per Second).
- */
-dfloat recordElapsedTime(cudaEvent_t &start_step, cudaEvent_t &stop_step, int step, int ini_step) {
-    checkCudaErrors(cudaEventRecord(stop_step, 0));
-    checkCudaErrors(cudaEventSynchronize(stop_step));
-    
-    float elapsedTime;
-    checkCudaErrors(cudaEventElapsedTime(&elapsedTime, start_step, stop_step));
-    elapsedTime *= 0.001;
-
-    size_t nodesUpdatedSync = (step - ini_step) * NUMBER_LBM_NODES;
-    dfloat MLUPS = (nodesUpdatedSync / 1e6) / elapsedTime;
-    return MLUPS;
 }
 
 /**

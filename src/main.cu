@@ -163,7 +163,7 @@ int main() {
 
     //Calculate MLUPS
 
-    dfloat MLUPS = recordElapsedTime(start_step, stop_step, step, ini_step);
+    dfloat MLUPS = recordElapsedTime(start_step, stop_step, step, ini_step, NUMBER_LBM_NODES);
     printf("MLUPS: %f\n",MLUPS); if(console_flush){fflush(stdout);}     
     
     /* ------------------------------ POST ------------------------------ */

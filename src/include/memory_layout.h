@@ -9,7 +9,7 @@
 #define __MEMORY_LAYOUT_H
 
 #include "var_types.h"    // for dfloat type
-#include "cuda_utils.h"   // for BlockDim
+#include "cuda_utils.cuh"   // for BlockDim
 #include "utils.h"        // for myMax
 #include "../arrayIndex.h"   // for domain size definitions
 

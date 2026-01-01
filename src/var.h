@@ -20,7 +20,7 @@
 #include "include/var_types.h"
 #include "include/utils.h"
 #include "include/constexpr_math.h"
-#include "include/cuda_utils.h"
+#include "include/cuda_utils.cuh"
 #include "include/endian_utils.h"
 
 /* ======================== SIMULATION CONFIGURATION ======================= */

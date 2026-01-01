@@ -1,14 +1,18 @@
 /**
- *  @file cuda_utils.h
- *  @brief CUDA utilities and block dimension optimization
+ *  @file cuda_utils.cuh
+ *  @brief CUDA utilities, timing functions and block dimension optimization
  *  @version 0.4.0
- *  @date 27/12/2025
+ *  @date 31/12/2025
  */
 
 #ifndef __CUDA_UTILS_H
 #define __CUDA_UTILS_H
 
+#include <cuda.h>
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
 #include "var_types.h"  // for dfloat type
+#include "errorDef.h"
 
 /* ======================= COMPILE-TIME UTILITIES ========================= */
 
@@ -94,5 +98,46 @@ inline int configureDynamicSharedMemory(int gpuIndex)
     return 0;
 }
 #endif //DYNAMIC_SHARED_MEMORY
+
+/* ======================= CUDA TIMING UTILITIES ========================= */
+
+/**
+ * @brief Initializes CUDA events for timing.
+ * @param start Reference to the start event.
+ * @param stop Reference to the stop event.
+ * @param start_step Reference to the start event for a step.
+ * @param stop_step Reference to the stop event for a step.
+ */
+inline void initializeCudaEvents(cudaEvent_t &start, cudaEvent_t &stop, cudaEvent_t &start_step, cudaEvent_t &stop_step) {
+    checkCudaErrors(cudaEventCreate(&start));
+    checkCudaErrors(cudaEventCreate(&stop));
+    checkCudaErrors(cudaEventCreate(&start_step));
+    checkCudaErrors(cudaEventCreate(&stop_step));
+
+    checkCudaErrors(cudaEventRecord(start, 0));
+    checkCudaErrors(cudaEventRecord(start_step, 0));
+}
+
+/**
+ * @brief Records the elapsed time between two CUDA events and calculates MLUPS.
+ * @param start_step Reference to the start event for a step.
+ * @param stop_step Reference to the stop event for a step.
+ * @param step Current simulation step.
+ * @param ini_step Initial simulation step.
+ * @param numberLbmNodes Number of LBM nodes being updated per step.
+ * @return The calculated MLUPS (Mega Lattice Updates Per Second).
+ */
+inline dfloat recordElapsedTime(cudaEvent_t &start_step, cudaEvent_t &stop_step, int step, int ini_step, size_t numberLbmNodes) {
+    checkCudaErrors(cudaEventRecord(stop_step, 0));
+    checkCudaErrors(cudaEventSynchronize(stop_step));
+    
+    float elapsedTime;
+    checkCudaErrors(cudaEventElapsedTime(&elapsedTime, start_step, stop_step));
+    elapsedTime *= 0.001;
+
+    size_t nodesUpdatedSync = (step - ini_step) * numberLbmNodes;
+    dfloat MLUPS = (nodesUpdatedSync / 1e6) / elapsedTime;
+    return MLUPS;
+}
 
 #endif //__CUDA_UTILS_H
