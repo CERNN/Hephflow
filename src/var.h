@@ -34,7 +34,7 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 000_ibmBenchmark
+#define BC_PROBLEM 000_benchmark
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 
