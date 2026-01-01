@@ -2,6 +2,9 @@
 #include "hostField.cuh"
 #include "deviceField.cuh"
 #include "saveField.cuh"
+#ifdef PARTICLE_MODEL
+#include "particleField.cuh"
+#endif //PARTICLE_MODEL
 
 using namespace std;
 
@@ -32,10 +35,9 @@ int main() {
     deviceField.allocateDeviceMemoryDeviceField();
     
     #ifdef PARTICLE_MODEL
-    //TODO: should be inside particleField
-    //forces from the particles into the wall
-    ParticleWallForces* d_pwForces;
-    cudaMalloc((void**)&d_pwForces, sizeof(ParticleWallForces));
+    // Particle field initialization and allocation
+    ParticleField particleField;
+    particleField.allocateMemory();
     #endif //PARTICLE_MODEL
     
     #ifdef DENSITY_CORRECTION
@@ -50,8 +52,7 @@ int main() {
     checkCudaErrors(cudaStreamCreate(&streamsLBM[0]));
     checkCudaErrors(cudaDeviceSynchronize());
     #ifdef PARTICLE_MODEL
-    cudaStream_t streamsPart[1];
-    checkCudaErrors(cudaStreamCreate(&streamsPart[0]));
+    particleField.setupStreams();
     #endif //PARTICLE_MODEL
 
     step = INI_STEP;
@@ -74,16 +75,9 @@ int main() {
     printf("Domain Initialized. Starting simulation\n"); if(console_flush) fflush(stdout);
     
     #ifdef PARTICLE_MODEL
-        //TODO: create a particleField data structure, to store the particle functions and structs.
-        //memory allocation for particles in host and device
-        ParticlesSoA particlesSoA;
-        Particle *particles;
-        particles = (Particle*) malloc(sizeof(Particle)*NUM_PARTICLES);
-        
-        // particle initialization with position, velocity, and solver method
-        initializeParticle(particlesSoA, particles, &step, gridBlock, threadBlock);
-        while (savingMacrParticle) std::this_thread::yield();
-        saveParticlesInfo(&particlesSoA, step, savingMacrParticle);
+        // Initialize particle field with position, velocity, and solver method
+        particleField.initialize(&step, gridBlock, threadBlock);
+        particleField.saveInfo(step, savingMacrParticle);
     #endif //PARTICLE_MODEL
 
     #ifdef CURVED_BOUNDARY_CONDITION
@@ -142,7 +136,7 @@ int main() {
             CHECK_KERNEL_ERR("Density correction kernel");
         #endif //DENSITY_CORRECTION
         #ifdef PARTICLE_MODEL
-            deviceField.particleSimulationDeviceField(particlesSoA,streamsPart,d_pwForces,step);
+            particleField.simulationStep(deviceField.d_fMom, step);
         #endif //PARTICLE_MODEL
 
         //------------------------- Saving Data -------------------------
@@ -153,8 +147,7 @@ int main() {
             deviceField.interfaceCudaMemcpyDeviceField(true);       
             deviceField.saveSimCheckpointHostDeviceField(hostField, step);
             #ifdef PARTICLE_MODEL
-                printf("Starting saveSimCheckpointParticle...\t"); fflush(stdout);
-                saveSimCheckpointParticle(particlesSoA, &step);
+                particleField.saveCheckpoint(step);
             #endif //PARTICLE_MODEL    
             if(console_flush){fflush(stdout);} 
         }
@@ -164,7 +157,7 @@ int main() {
             printf("\n--------------------------- Saving report %06d ---------------------------\n", step);
             deviceField.treatDataDeviceField(hostField, step);
             #ifdef PARTICLE_MODEL
-            collectAndExportWallForces(d_pwForces,step);
+            particleField.exportWallForces(step);
             #endif
             if(console_flush){fflush(stdout);}
         }
@@ -193,8 +186,7 @@ int main() {
         #ifdef PARTICLE_MODEL
             if (saveField.particleSave){
                 printf("\n------------------------- Saving particles %06d -------------------------\n", step);
-                while (savingMacrParticle) std::this_thread::yield();
-                saveParticlesInfo(&particlesSoA, step, savingMacrParticle);
+                particleField.saveInfo(step, savingMacrParticle);
             }
             if(console_flush){fflush(stdout);}
         #endif //PARTICLE_MODEL
@@ -240,7 +232,7 @@ int main() {
 
     while (savingMacrVtk) std::this_thread::yield();
     #ifdef PARTICLE_MODEL
-    while (savingMacrParticle) std::this_thread::yield();
+    particleField.waitForSaving(savingMacrParticle);
     #endif
     for (size_t i = 0; i < savingMacrBin.size(); ++i) {
         while (savingMacrBin[i]) std::this_thread::yield();
@@ -251,10 +243,10 @@ int main() {
     hostField.freeHostField();
     deviceField.freeDeviceField();
 
-    // Free particle
+    // Free particle field
     #ifdef PARTICLE_MODEL
-        free(particles);
-        particlesSoA.freeNodesAndCenters();
+        particleField.freeMemory();
+        particleField.destroyStreams();
     #endif //PARTICLE_MODEL
 
     return 0;

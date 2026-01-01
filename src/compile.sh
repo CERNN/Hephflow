@@ -38,7 +38,7 @@ if [[ "$1" = "D3Q19" || "$1" = "D3Q27" ]]; then
         $(find . -name '*.cu') \
         -diag-suppress 39 \
         -diag-suppress 179 \
-        -lcudadevrt -lcurand -o ./../bin/$2sim_$1_sm${CC}
+        -lcudadevrt -lcurand -o ./../bin/$2sim_$1_sm${CC} 2>&1 | tee compile_log.txt
 else
     echo "Input error, example of usage is:"
     echo "sh compile.sh D3Q19 011"

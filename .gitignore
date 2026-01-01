@@ -37,3 +37,4 @@ src/CUDA/x64
 ./bin
 *.ptx
 .dev-tools/
+compile_log.txt

@@ -1053,48 +1053,4 @@ void initializeDomain(
     #endif //RANDOM_NUMBERS
 }
 
-
-#ifdef PARTICLE_MODEL
-/**
- * @brief Initialize particles in the simulation domain, including creation and updating of particle data structures.
- * @param particlesSoA Reference to the ParticlesSoA data structure
- * @param particles Pointer to the array of Particle structures
- * @param step Pointer to the current simulation step
- * @param gridBlock CUDA grid dimensions for kernel launches
- * @param threadBlock CUDA thread block dimensions for kernel launches
- */
-__host__
-void initializeParticle(ParticlesSoA& particlesSoA, Particle *particles, int *step, dim3 gridBlock, dim3 threadBlock){
-
-    printf("Creating particles...\t"); fflush(stdout);
-    particlesSoA.createParticles(particles);
-    printf("Particles created!\n"); fflush(stdout);
-
-    particlesSoA.updateParticlesAsSoA(particles);
-    printf("Update ParticlesAsSoA!\n"); fflush(stdout);
-
-    int checkpoint_state = 0;
-    // Checar se exite checkpoint
-    if(LOAD_CHECKPOINT)
-    {
-        checkpoint_state = loadSimCheckpointParticle(particlesSoA, step);
-       
-    }else{
-        if(checkpoint_state != 0){
-            step = INI_STEP;
-            dim3 gridInit = gridBlock;
-            // Initialize ghost nodes
-            gridInit.z += 1;
-            
-            checkCudaErrors(cudaSetDevice(GPU_INDEX));
-            // Initialize populations
-            //gpuInitialization<<<gridInit, threads>>>(pop[i], macr[i], randomNumbers[i]);
-            checkCudaErrors(cudaDeviceSynchronize());
-
-            getLastCudaError("Initialization error");
-        }
-    }
-
-}
-#endif // PARTICLE_MODEL
 #endif // MAIN_CUH
