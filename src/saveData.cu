@@ -56,45 +56,53 @@ void writeBigEndian(std::ofstream& ofs, const T* data, size_t count) {
 }
 
 __host__
-void saveMacr(
-    dfloat* h_fMom,
-    dfloat* rho,
-    dfloat* ux,
-    dfloat* uy,
-    dfloat* uz,
-    unsigned int* hNodeType,
-    OMEGA_FIELD_PARAMS_DECLARATION
-    #ifdef SECOND_DIST 
-    dfloat* C,
-    #endif //SECOND_DIST
-    #ifdef PHI_DIST 
-    dfloat* phi,
-    #endif //PHI_DIST
-    #ifdef A_XX_DIST 
-    dfloat* Axx,
-    #endif //A_XX_DIST
-    #ifdef A_XY_DIST 
-    dfloat* Axy,
-    #endif //A_XY_DIST
-    #ifdef A_XZ_DIST 
-    dfloat* Axz,
-    #endif //A_XZ_DIST
-    #ifdef A_YY_DIST 
-    dfloat* Ayy,
-    #endif //A_YY_DIST
-    #ifdef A_YZ_DIST 
-    dfloat* Ayz,
-    #endif //A_YZ_DIST
-    #ifdef A_ZZ_DIST 
-    dfloat* Azz,
-    #endif //A_ZZ_DIST
-    NODE_TYPE_SAVE_PARAMS_DECLARATION
-    BC_FORCES_PARAMS_DECLARATION(h_) 
-    unsigned int nSteps,
-    std::atomic<bool>& savingMacrVtk,
-    std::vector<std::atomic<bool>>& savingMacrBin
-){
-
+void saveMacr(const SaveDataParams* params)
+{
+    // Unpack parameters from struct
+    dfloat* h_fMom = params->h_fMom;
+    dfloat* rho = params->h_rho;
+    dfloat* ux = params->h_ux;
+    dfloat* uy = params->h_uy;
+    dfloat* uz = params->h_uz;
+    unsigned int* hNodeType = params->h_nodeType;
+    #ifdef OMEGA_FIELD
+    dfloat* omega = params->h_omega;
+    #endif
+    #ifdef SECOND_DIST
+    dfloat* C = params->h_C;
+    #endif
+    #ifdef PHI_DIST
+    dfloat* phi = params->h_phi;
+    #endif
+    #ifdef A_XX_DIST
+    dfloat* Axx = params->h_Axx;
+    #endif
+    #ifdef A_XY_DIST
+    dfloat* Axy = params->h_Axy;
+    #endif
+    #ifdef A_XZ_DIST
+    dfloat* Axz = params->h_Axz;
+    #endif
+    #ifdef A_YY_DIST
+    dfloat* Ayy = params->h_Ayy;
+    #endif
+    #ifdef A_YZ_DIST
+    dfloat* Ayz = params->h_Ayz;
+    #endif
+    #ifdef A_ZZ_DIST
+    dfloat* Azz = params->h_Azz;
+    #endif
+    #if NODE_TYPE_SAVE
+    unsigned int* nodeTypeData = params->h_nodeTypeSave;
+    #endif
+    #ifdef BC_FORCES
+    dfloat* h_BC_Fx = params->h_BC_Fx;
+    dfloat* h_BC_Fy = params->h_BC_Fy;
+    dfloat* h_BC_Fz = params->h_BC_Fz;
+    #endif
+    unsigned int nSteps = params->nSteps;
+    std::atomic<bool>& savingMacrVtk = *params->savingMacrVtk;
+    std::vector<std::atomic<bool>>& savingMacrBin = *params->savingMacrBin;
 
     //linearize
     size_t indexMacr;
@@ -191,37 +199,52 @@ void saveMacr(
         std::string strFileVtk, strFileVtr;
         strFileVtk = getVarFilename("vtk", nSteps, ".vtk");
         while (savingMacrVtk) std::this_thread::yield();
-        saveVarVTK(
-                strFileVtk, 
-                rho,ux,uy,uz, OMEGA_FIELD_PARAMS
-                    #ifdef SECOND_DIST 
-                    C,
-                    #endif //SECOND_DIST
-                    #ifdef PHI_DIST 
-                    phi,
-                    #endif //PHI_DIST
-                    #ifdef A_XX_DIST 
-                    Axx,
-                    #endif //A_XX_DIST
-                    #ifdef A_XY_DIST 
-                    Axy,
-                    #endif //A_XY_DIST
-                    #ifdef A_XZ_DIST 
-                    Axz,
-                    #endif //A_XZ_DIST
-                    #ifdef A_YY_DIST 
-                    Ayy,
-                    #endif //A_YY_DIST
-                    #ifdef A_YZ_DIST 
-                    Ayz,
-                    #endif //A_YZ_DIST
-                    #ifdef A_ZZ_DIST 
-                    Azz,
-                    #endif //A_ZZ_DIST
-                    NODE_TYPE_SAVE_PARAMS BC_FORCES_PARAMS(h_) 
-                    nSteps,
-                    savingMacrVtk   
-                );
+        
+        SaveDataParams saveVarVtkParams;
+        saveVarVtkParams.vtkFilename = strFileVtk.c_str();
+        saveVarVtkParams.h_rho = rho;
+        saveVarVtkParams.h_ux = ux;
+        saveVarVtkParams.h_uy = uy;
+        saveVarVtkParams.h_uz = uz;
+        #ifdef OMEGA_FIELD
+        saveVarVtkParams.h_omega = omega;
+        #endif
+        #ifdef SECOND_DIST
+        saveVarVtkParams.h_C = C;
+        #endif
+        #ifdef PHI_DIST
+        saveVarVtkParams.h_phi = phi;
+        #endif
+        #ifdef A_XX_DIST
+        saveVarVtkParams.h_Axx = Axx;
+        #endif
+        #ifdef A_XY_DIST
+        saveVarVtkParams.h_Axy = Axy;
+        #endif
+        #ifdef A_XZ_DIST
+        saveVarVtkParams.h_Axz = Axz;
+        #endif
+        #ifdef A_YY_DIST
+        saveVarVtkParams.h_Ayy = Ayy;
+        #endif
+        #ifdef A_YZ_DIST
+        saveVarVtkParams.h_Ayz = Ayz;
+        #endif
+        #ifdef A_ZZ_DIST
+        saveVarVtkParams.h_Azz = Azz;
+        #endif
+        #if NODE_TYPE_SAVE
+        saveVarVtkParams.h_nodeTypeSave = nodeTypeData;
+        #endif
+        #ifdef BC_FORCES
+        saveVarVtkParams.h_BC_Fx = h_BC_Fx;
+        saveVarVtkParams.h_BC_Fy = h_BC_Fy;
+        saveVarVtkParams.h_BC_Fz = h_BC_Fz;
+        #endif
+        saveVarVtkParams.nSteps = nSteps;
+        saveVarVtkParams.savingMacrVtk = &savingMacrVtk;
+        
+        saveVarVTK(&saveVarVtkParams);
     }
     if (BIN_SAVE){
         strFileRho = getVarFilename("rho", nSteps, ".bin");
@@ -438,43 +461,53 @@ std::vector<int> convertPointToCellIntMode(
     return cellField;
 }
 
-void saveVarVTK(
-    std::string filename, 
-    dfloat* rho,
-    dfloat* ux,
-    dfloat* uy,
-    dfloat* uz,
-    OMEGA_FIELD_PARAMS_DECLARATION
-    #ifdef SECOND_DIST 
-    dfloat* C,
-    #endif //SECOND_DIST
-    #ifdef PHI_DIST 
-    dfloat* phi,
-    #endif //PHI_DIST
-    #ifdef A_XX_DIST 
-    dfloat* Axx,
-    #endif //A_XX_DIST
-    #ifdef A_XY_DIST 
-    dfloat* Axy,
-    #endif //A_XY_DIST
-    #ifdef A_XZ_DIST 
-    dfloat* Axz,
-    #endif //A_XY_DIST
-    #ifdef A_YY_DIST 
-    dfloat* Ayy,
-    #endif //A_YY_DIST
-    #ifdef A_YZ_DIST 
-    dfloat* Ayz,
-    #endif //A_YZ_DIST
-    #ifdef A_ZZ_DIST 
-    dfloat* Azz,
-    #endif //A_ZZ_DIST
-    NODE_TYPE_SAVE_PARAMS_DECLARATION
-    BC_FORCES_PARAMS_DECLARATION(h_) 
-    unsigned int nSteps,
-    std::atomic<bool>& savingMacrVtk
-    )
+void saveVarVTK(const SaveDataParams* params)
 {
+    // Unpack parameters from struct
+    std::string filename = params->vtkFilename;
+    dfloat* rho = params->h_rho;
+    dfloat* ux = params->h_ux;
+    dfloat* uy = params->h_uy;
+    dfloat* uz = params->h_uz;
+    #ifdef OMEGA_FIELD
+    dfloat* omega = params->h_omega;
+    #endif
+    #ifdef SECOND_DIST
+    dfloat* C = params->h_C;
+    #endif
+    #ifdef PHI_DIST
+    dfloat* phi = params->h_phi;
+    #endif
+    #ifdef A_XX_DIST
+    dfloat* Axx = params->h_Axx;
+    #endif
+    #ifdef A_XY_DIST
+    dfloat* Axy = params->h_Axy;
+    #endif
+    #ifdef A_XZ_DIST
+    dfloat* Axz = params->h_Axz;
+    #endif
+    #ifdef A_YY_DIST
+    dfloat* Ayy = params->h_Ayy;
+    #endif
+    #ifdef A_YZ_DIST
+    dfloat* Ayz = params->h_Ayz;
+    #endif
+    #ifdef A_ZZ_DIST
+    dfloat* Azz = params->h_Azz;
+    #endif
+    #if NODE_TYPE_SAVE
+    unsigned int* nodeTypeData = params->h_nodeTypeSave;
+    #endif
+    #ifdef BC_FORCES
+    dfloat* h_BC_Fx = params->h_BC_Fx;
+    dfloat* h_BC_Fy = params->h_BC_Fy;
+    dfloat* h_BC_Fz = params->h_BC_Fz;
+    #endif
+    unsigned int nSteps = params->nSteps;
+    std::atomic<bool>& savingMacrVtk = *params->savingMacrVtk;
+
+    // Function body starts here
     const char* VTK_TYPE = nullptr;
 
     if (std::is_same<dfloat, float>::value) {

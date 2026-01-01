@@ -1,16 +1,29 @@
 #include "mlbm.cuh"
 
-__global__ void gpuMomCollisionStream(
-    dfloat *fMom, unsigned int *dNodeType,ghostInterfaceData ghostInterface,
-    DENSITY_CORRECTION_PARAMS_DECLARATION(d_)
-    BC_FORCES_PARAMS_DECLARATION(d_)
-    unsigned int step,
-    bool save
-    #ifdef CURVED_BOUNDARY_CONDITION
-    , CurvedBoundary** d_curvedBC, CurvedBoundary* d_curvedBC_array
-    #endif //CURVED_BOUNDARY_CONDITION
-    )
+__global__ void gpuMomCollisionStream(DeviceKernelParams params)
 {
+    // Unpack parameters from struct (passed by value - CUDA optimized!)
+    dfloat *fMom = params.fMom;
+    unsigned int *dNodeType = params.dNodeType;
+    ghostInterfaceData ghostInterface = params.ghostInterface;
+    unsigned int step = params.step;
+    bool save = params.save;
+    
+    #ifdef DENSITY_CORRECTION
+    dfloat* d_mean_rho = params.d_mean_rho;
+    #endif //DENSITY_CORRECTION
+    
+    #ifdef BC_FORCES
+    dfloat* d_BC_Fx = params.d_BC_Fx;
+    dfloat* d_BC_Fy = params.d_BC_Fy;
+    dfloat* d_BC_Fz = params.d_BC_Fz;
+    #endif //BC_FORCES
+    
+    #ifdef CURVED_BOUNDARY_CONDITION
+    CurvedBoundary** d_curvedBC = params.d_curvedBC;
+    CurvedBoundary* d_curvedBC_array = params.d_curvedBC_array;
+    #endif //CURVED_BOUNDARY_CONDITION
+
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;

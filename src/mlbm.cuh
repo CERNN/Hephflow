@@ -27,26 +27,17 @@
 
 /**
  *  @brief Updates macroscopics and then performs collision and streaming
- *  @param fMom: Pointer to the device array containing the current macroscopic moments.
- *  @param ghostInterface interface block transfer information
- *  @param d_mean_rho: mean density, used for density correction
- *  @param d_BC_Fx: boundary condition force x
- *  @param d_BC_Fy: boundary condition force x
- *  @param d_BC_Fz: boundary condition force x
- *  @param step: Current time step
- *  @param save: if is necessary save some data
+ *  @param params: Structure containing all kernel parameters
+ *             - fMom: Pointer to the device array containing the current macroscopic moments.
+ *             - ghostInterface: interface block transfer information
+ *             - d_mean_rho: mean density, used for density correction
+ *             - d_BC_Fx/Fy/Fz: boundary condition forces
+ *             - step: Current time step
+ *             - save: if is necessary save some data
+ *             - d_curvedBC/d_curvedBC_array: curved boundary condition data
  */
 __global__
-void gpuMomCollisionStream(
-    dfloat *fMom, unsigned int *dNodeType, ghostInterfaceData ghostInterface,
-    DENSITY_CORRECTION_PARAMS_DECLARATION(d_)
-    BC_FORCES_PARAMS_DECLARATION(d_)
-    unsigned int step,
-    bool save
-    #ifdef CURVED_BOUNDARY_CONDITION
-    , CurvedBoundary** d_curvedBC, CurvedBoundary* d_curvedBC_array
-    #endif //CURVED_BOUNDARY_CONDITION
-    );
+void gpuMomCollisionStream(DeviceKernelParams params);
 
 #ifdef LOCAL_FORCES
 /**

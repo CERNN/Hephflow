@@ -13,6 +13,10 @@
 
 #include "var.h"
 #include "include/errorDef.h"
+#include "include/interface.h"
+#include <atomic>
+#include <vector>
+#include <string>
 
 /*
 *   Struct for dfloat in x, y, z
@@ -511,6 +515,137 @@ struct ParticleWallForce {
 struct ParticleWallForces {
     ParticleWallForce bottom;
     ParticleWallForce top;
+};
+
+// ============================================================================
+// DEVICE KERNEL PARAMETER STRUCTURES
+// ============================================================================
+
+/**
+ * @struct DeviceKernelParams
+ * @brief Parameters for gpuMomCollisionStream kernel
+ * @details Consolidates all parameters previously passed via scattered macros
+ *          Passed by value for optimal CUDA performance
+ */
+struct DeviceKernelParams {
+    // Core parameters
+    dfloat *fMom;                           ///< Device array of macroscopic moments
+    unsigned int *dNodeType;                ///< Device array of node type information
+    ghostInterfaceData ghostInterface;      ///< Ghost interface block transfer data
+    unsigned int step;                      ///< Current time step
+    bool save;                              ///< Whether to save data
+
+    // Conditional parameters with #ifdef guards
+    #ifdef DENSITY_CORRECTION
+    dfloat* d_mean_rho;                     ///< Mean density for density correction
+    #endif //DENSITY_CORRECTION
+    
+    #ifdef BC_FORCES
+    dfloat* d_BC_Fx;                        ///< Boundary condition force X component
+    dfloat* d_BC_Fy;                        ///< Boundary condition force Y component
+    dfloat* d_BC_Fz;                        ///< Boundary condition force Z component
+    #endif //BC_FORCES
+    
+    #ifdef CURVED_BOUNDARY_CONDITION
+    CurvedBoundary** d_curvedBC;            ///< Curved boundary condition data
+    CurvedBoundary* d_curvedBC_array;       ///< Curved boundary condition array
+    #endif //CURVED_BOUNDARY_CONDITION
+};
+
+// ============================================================================
+// HOST FUNCTION PARAMETER STRUCTURES
+// ============================================================================
+
+/**
+ * @struct SaveDataParams
+ * @brief Unified parameters for saveMacr() and saveVarVTK() host functions
+ * @details Consolidates all save operation parameters (macroscopic and VTK)
+ *          Optional filename for VTK output; omit for binary macroscopic saves
+ */
+struct SaveDataParams {
+    // Core fields
+    dfloat* h_fMom;
+    dfloat* h_rho;
+    dfloat* h_ux;
+    dfloat* h_uy;
+    dfloat* h_uz;
+    unsigned int* h_nodeType;
+    
+    // Optional: filename for VTK saves (empty/nullptr for binary saves)
+    const char* vtkFilename;
+    
+    // Optional fields (compiled conditionally)
+    #ifdef OMEGA_FIELD
+    dfloat* h_omega;
+    #endif
+    
+    #ifdef SECOND_DIST
+    dfloat* h_C;
+    #endif
+    
+    #ifdef PHI_DIST
+    dfloat* h_phi;
+    #endif
+    
+    #ifdef A_XX_DIST
+    dfloat* h_Axx;
+    #endif
+    #ifdef A_XY_DIST
+    dfloat* h_Axy;
+    #endif
+    #ifdef A_XZ_DIST
+    dfloat* h_Axz;
+    #endif
+    #ifdef A_YY_DIST
+    dfloat* h_Ayy;
+    #endif
+    #ifdef A_YZ_DIST
+    dfloat* h_Ayz;
+    #endif
+    #ifdef A_ZZ_DIST
+    dfloat* h_Azz;
+    #endif
+    
+    #if NODE_TYPE_SAVE
+    unsigned int* h_nodeTypeSave;
+    #endif
+    
+    #ifdef BC_FORCES
+    dfloat* h_BC_Fx;
+    dfloat* h_BC_Fy;
+    dfloat* h_BC_Fz;
+    #endif
+    
+    // Metadata
+    unsigned int nSteps;
+    std::atomic<bool>* savingMacrVtk;
+    std::vector<std::atomic<bool>>* savingMacrBin;
+};
+
+/**
+ * @struct TreatDataParams
+ * @brief Parameters for treatData() host function
+ * @details Consolidates all post-processing treatment parameters
+ *          Passed by pointer for cleaner function signatures
+ */
+struct TreatDataParams {
+    // Core fields
+    dfloat* h_fMom;
+    dfloat* d_fMom;
+    
+    // Optional fields (compiled conditionally)
+    #if MEAN_FLOW
+    dfloat* d_fMom_mean;
+    #endif
+    
+    #ifdef BC_FORCES
+    dfloat* d_BC_Fx;
+    dfloat* d_BC_Fy;
+    dfloat* d_BC_Fz;
+    #endif
+    
+    // Metadata
+    unsigned int step;
 };
 
 

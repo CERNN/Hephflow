@@ -1,19 +1,20 @@
 #include "treatData.cuh"
 
 __host__
-void treatData(
-    dfloat* h_fMom,
-    dfloat* fMom,
+void treatData(const TreatDataParams* params)
+{
+    // Unpack parameters from struct
+    dfloat* h_fMom = params->h_fMom;
+    dfloat* fMom = params->d_fMom;
     #if MEAN_FLOW
-    dfloat* fMom_mean,
-    #endif//MEAN_FLOW
+    dfloat* fMom_mean = params->d_fMom_mean;
+    #endif
     #ifdef BC_FORCES
-    dfloat* d_BC_Fx,
-    dfloat* d_BC_Fy, 
-    dfloat* d_BC_Fz,
-    #endif//BC_FORCES
-    unsigned int step
-){
+    dfloat* d_BC_Fx = params->d_BC_Fx;
+    dfloat* d_BC_Fy = params->d_BC_Fy;
+    dfloat* d_BC_Fz = params->d_BC_Fz;
+    #endif
+    unsigned int step = params->step;
 
     #ifdef TREAT_DATA_INCLUDE
     #include CASE_TREAT_DATA
