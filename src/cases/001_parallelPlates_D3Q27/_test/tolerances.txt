@@ -1,0 +1,13 @@
+# Test Tolerance Thresholds for 001_parallelPlates_D3Q19
+# L2 error norm computed from velocity profile comparison with analytical Poiseuille solution
+
+# Absolute L2 error threshold (normalized by number of points)
+# Acceptable error tolerance for this well-studied benchmark case
+L2_ERROR_ABSOLUTE_TOL = 1.26e-2
+
+# Test metadata
+CASE_NAME = 001_parallelPlates_D3Q19
+CASE_TYPE = analytical  # Has exact analytical solution (Poiseuille flow)
+PHYSICS_TYPE = Newtonian_flow
+TEST_METRIC = L2_error_velocity_profile
+DESCRIPTION = Compare numerical velocity profile against Poiseuille analytical solution

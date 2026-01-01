@@ -135,6 +135,10 @@ int main() {
             #endif
             if(console_flush){fflush(stdout);}
         }
+
+        #ifdef TESTS
+            #include CASE_TEST_METRIC
+        #endif //TESTS
         
         if(saveField.macrSave){
             //copy data from device to host

@@ -70,4 +70,7 @@
 // Particle creation
 #define CASE_PARTICLE_CREATE STR(../../CASE_DIRECTORY/BC_PROBLEM/particleCreation.inc)
 
+// Physics regression test metric
+#define CASE_TEST_METRIC STR(CASE_DIRECTORY/BC_PROBLEM/_test/test_metric.inc)
+
 #endif //__CASE_DEFINITIONS_H
