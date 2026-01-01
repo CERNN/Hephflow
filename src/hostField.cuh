@@ -191,6 +191,12 @@ typedef struct hostField{
         );
     }
 
+    #ifdef DENSITY_CORRECTION
+    void allocateDensityCorrectionMemory(){
+        checkCudaErrors(cudaMallocHost((void**)&(h_mean_rho), sizeof(dfloat)));
+    }
+    #endif //DENSITY_CORRECTION
+
     void saveMacrHostField(unsigned int nSteps, std::atomic<bool>& savingMacrVtk, std::vector<std::atomic<bool>>& savingMacrBin, bool meanFlow){
         if(meanFlow){
             #if MEAN_FLOW

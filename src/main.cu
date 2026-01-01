@@ -41,9 +41,9 @@ int main() {
     #endif //PARTICLE_MODEL
     
     #ifdef DENSITY_CORRECTION
-        //TODO: move the functions to inside deviceField and hostField
-        checkCudaErrors(cudaMallocHost((void**)&(hostField.h_mean_rho), sizeof(dfloat)));
-        cudaMalloc((void**)&deviceField.d_mean_rho, sizeof(dfloat));  
+        // Allocate density correction memory in both host and device fields
+        hostField.allocateDensityCorrectionMemory();
+        deviceField.allocateDensityCorrectionMemory();
     #endif //DENSITY_CORRECTION
 
     /* -------------- Setup Streams ------------- */
@@ -80,12 +80,6 @@ int main() {
         particleField.saveInfo(step, savingMacrParticle);
     #endif //PARTICLE_MODEL
 
-    #ifdef CURVED_BOUNDARY_CONDITION
-        //Get number of curved boundary nodes
-        //TODO: this should be a property of deviceField
-        unsigned int numberCurvedBoundaryNodes = getNumberCurvedBoundaryNodes(hostField.hNodeType);
-    #endif //CURVED_BOUNDARY_CONDITION
-
     /* ------------------------------ TIMER EVENTS  ------------------------------ */
     checkCudaErrors(cudaSetDevice(GPU_INDEX));
     cudaEvent_t start, stop, start_step, stop_step;
@@ -114,27 +108,7 @@ int main() {
         CHECK_KERNEL_ERR("Stream Collision kernel");
 
         //------------------------- Auxiliary Kernels -------------------------
-        #ifdef LOCAL_FORCES
-            deviceField.gpuResetMacroForcesDeviceField(gridBlock, threadBlock);
-            CHECK_KERNEL_ERR("Force Reset kernel");
-        #endif //LOCAL_FORCES
-        #ifdef CURVED_BOUNDARY_CONDITION
-            //kernel used for adding curved boundary information
-            //TODO: move this function to inside of deviceField
-           updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize>>>(deviceField.d_curvedBC_array, deviceField.d_fMom, numberCurvedBoundaryNodes);
-           CHECK_KERNEL_ERR("Curved BC kernel");
-        #endif //CURVED_BOUNDARY_CONDITION
-        #ifdef PHI_DIST
-            //kernel used to compute the gradients of phi
-            //TODO: move this function to inside of deviceField
-            gpuComputePhaseNormals<<<gridBlock, threadBlock>>>(deviceField.d_fMom, deviceField.dNodeType);
-            CHECK_KERNEL_ERR("Phi gradients kernel");
-            cudaDeviceSynchronize();
-        #endif //PHI_DIST
-        #ifdef DENSITY_CORRECTION
-            deviceField.mean_rhoDeviceField(step);
-            CHECK_KERNEL_ERR("Density correction kernel");
-        #endif //DENSITY_CORRECTION
+        deviceField.halfStepKernels(gridBlock, threadBlock, step);
         #ifdef PARTICLE_MODEL
             particleField.simulationStep(deviceField.d_fMom, step);
         #endif //PARTICLE_MODEL
@@ -163,23 +137,11 @@ int main() {
         }
         
         if(saveField.macrSave){
-            // TODO: do something with this, it just shouldnt be on main.cu
-            #if defined BC_FORCES && defined SAVE_BC_FORCES
-                deviceField.saveBcForces(hostField);
-            #endif //BC_FORCES && SAVE_BC_FORCES
-
             //copy data from device to host
             checkCudaErrors(cudaDeviceSynchronize()); 
             deviceField.cudaMemcpyDeviceField(hostField);
-
             printf("\n--------------------------- Saving macro %06d ---------------------------\n", step);
-
             if(!ONLY_FINAL_MACRO){ hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);}
-
-            //TODO: move this to treat data, no reason to stay on main as separate identity
-            #ifdef BC_FORCES
-                deviceField.totalBcDragDeviceField(step);
-            #endif //BC_FORCES
             if(console_flush){fflush(stdout);}
         }
 
@@ -206,11 +168,6 @@ int main() {
     
     /* ------------------------------ POST ------------------------------ */
     deviceField.cudaMemcpyDeviceField(hostField);
-
-    // TODO: do something with this, it just shouldnt be on main.cu
-    #if defined BC_FORCES && defined SAVE_BC_FORCES
-    deviceField.saveBcForces(hostField);
-    #endif //BC_FORCES && SAVE_BC_FORCES
 
     hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
 

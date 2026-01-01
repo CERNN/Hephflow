@@ -14,6 +14,7 @@ typedef struct deviceField{
     #ifdef CURVED_BOUNDARY_CONDITION
     CurvedBoundary** d_curvedBC;
     CurvedBoundary* d_curvedBC_array;
+    unsigned int numberCurvedBoundaryNodes;  // Number of curved boundary nodes
     #endif
 
     #ifdef DENSITY_CORRECTION
@@ -37,6 +38,12 @@ typedef struct deviceField{
         );
     }
 
+    #ifdef DENSITY_CORRECTION
+    void allocateDensityCorrectionMemory(){
+        cudaMalloc((void**)&d_mean_rho, sizeof(dfloat));
+    }
+    #endif //DENSITY_CORRECTION
+
     void initializeDomainDeviceField(hostField &hostField, dfloat **&randomNumbers, int &step, dim3 gridBlock, dim3 threadBlock){
         initializeDomain(ghostInterface,     
             d_fMom, hostField.h_fMom, 
@@ -50,7 +57,20 @@ typedef struct deviceField{
             CURVED_BC_PTRS(d_)
             CURVED_BC_ARRAY(d_)
             &step, gridBlock, threadBlock);
+        
+        #ifdef CURVED_BOUNDARY_CONDITION
+            // Initialize curved boundary node count
+            numberCurvedBoundaryNodes = getNumberCurvedBoundaryNodes(hostField.hNodeType);
+        #endif //CURVED_BOUNDARY_CONDITION
     }
+
+    #ifdef CURVED_BOUNDARY_CONDITION
+    void updateCurvedBoundaryVelocitiesDeviceField(){
+        const int curvedBCBlockSize = 256;
+        const int curvedBCGridSize = (numberCurvedBoundaryNodes + curvedBCBlockSize - 1) / curvedBCBlockSize;
+        updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize>>>(d_curvedBC_array, d_fMom, numberCurvedBoundaryNodes);
+    }
+    #endif //CURVED_BOUNDARY_CONDITION
 
     #ifdef DENSITY_CORRECTION
     void mean_rhoDeviceField(size_t step){
@@ -66,8 +86,34 @@ typedef struct deviceField{
         );
     }
 
+    #ifdef PHI_DIST
+    void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock){
+        gpuComputePhaseNormals<<<gridBlock, threadBlock>>>(d_fMom, dNodeType);
+        cudaDeviceSynchronize();
+    }
+    #endif //PHI_DIST
+
     void swapGhostInterfacesDeviceField(){
         swapGhostInterfaces(ghostInterface);
+    }
+
+    void halfStepKernels(dim3 gridBlock, dim3 threadBlock, size_t step){
+        #ifdef LOCAL_FORCES
+            gpuResetMacroForcesDeviceField(gridBlock, threadBlock);
+            CHECK_KERNEL_ERR("Force Reset kernel");
+        #endif //LOCAL_FORCES
+        #ifdef CURVED_BOUNDARY_CONDITION
+            updateCurvedBoundaryVelocitiesDeviceField();
+            CHECK_KERNEL_ERR("Curved BC kernel");
+        #endif //CURVED_BOUNDARY_CONDITION
+        #ifdef PHI_DIST
+            computePhaseNormalsDeviceField(gridBlock, threadBlock);
+            CHECK_KERNEL_ERR("Phi gradients kernel");
+        #endif //PHI_DIST
+        #ifdef DENSITY_CORRECTION
+            mean_rhoDeviceField(step);
+            CHECK_KERNEL_ERR("Density correction kernel");
+        #endif //DENSITY_CORRECTION
     }
     
     #ifdef LOCAL_FORCES
@@ -117,6 +163,13 @@ typedef struct deviceField{
 
     void cudaMemcpyDeviceField(hostField &hostField){
         checkCudaErrors(cudaMemcpy(hostField.h_fMom, d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
+        
+        // Copy BC forces arrays if enabled
+        #if defined BC_FORCES && defined SAVE_BC_FORCES
+        checkCudaErrors(cudaMemcpy(hostField.h_BC_Fx, d_BC_Fx, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(hostField.h_BC_Fy, d_BC_Fy, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(hostField.h_BC_Fz, d_BC_Fz, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+        #endif //BC_FORCES && SAVE_BC_FORCES
     }
 
     void saveSimCheckpointHostDeviceField(hostField &hostField, int &step){
@@ -133,14 +186,11 @@ typedef struct deviceField{
         #if MEAN_FLOW
         hostField.m_fMom,
         #endif //MEAN_FLOW
+        #ifdef BC_FORCES
+        d_BC_Fx, d_BC_Fy, d_BC_Fz,
+        #endif //BC_FORCES
         step);
     }
-
-    #ifdef BC_FORCES
-    void totalBcDragDeviceField(size_t step){
-        totalBcDrag(d_BC_Fx, d_BC_Fy, d_BC_Fz, step);
-    }
-    #endif //BC_FORCES
 
     #if defined BC_FORCES && defined SAVE_BC_FORCES
     void saveBcForces(hostField &hostField){

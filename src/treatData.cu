@@ -7,6 +7,11 @@ void treatData(
     #if MEAN_FLOW
     dfloat* fMom_mean,
     #endif//MEAN_FLOW
+    #ifdef BC_FORCES
+    dfloat* d_BC_Fx,
+    dfloat* d_BC_Fy, 
+    dfloat* d_BC_Fz,
+    #endif//BC_FORCES
     unsigned int step
 ){
 
@@ -85,7 +90,6 @@ void mean_moment(dfloat *fMom, dfloat *meanMom, int m_index, size_t step, int ta
     
 }
 
-//TODO: there is some error in the sum when the blocks arent equal
 __host__ 
 void totalKineticEnergy(
     dfloat *fMom, 

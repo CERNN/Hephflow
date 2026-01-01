@@ -1,9 +1,6 @@
 
 #include "auxFunctions.cuh"
 
-
-
-//TODO: there is some error in the sum when the blocks arent equal
 __host__ 
 void mean_rho(
     dfloat *fMom, 
