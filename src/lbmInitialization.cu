@@ -59,6 +59,12 @@ __global__ void gpuInitialization_mom(
     dfloat phi_qy_t30 = 3.0_df*phiVar*(uy - 0.0_df);
     dfloat phi_qz_t30 = 3.0_df*phiVar*(uz - 0.0_df);
     #endif //PHI_DIST
+    #ifdef LAMBDA_DIST 
+    dfloat lambdaVar = 0.0_df + LAMBDA_ZERO;
+    dfloat lambda_qx_t30 = 3.0_df*lambdaVar*(ux - 0.0_df);
+    dfloat lambda_qy_t30 = 3.0_df*lambdaVar*(uy - 0.0_df);
+    dfloat lambda_qz_t30 = 3.0_df*lambdaVar*(uz - 0.0_df);
+    #endif //LAMBDA_DIST
     #ifdef CONFORMATION_TENSOR
         //assuming that velocity has grad = 0 
         #ifdef A_XX_DIST 
@@ -164,6 +170,13 @@ __global__ void gpuInitialization_mom(
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
     #endif //PHI_DIST
+
+    #ifdef LAMBDA_DIST 
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LAMBDA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambdaVar;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qx_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qy_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qz_t30;
+    #endif //LAMBDA_DIST
 
     #ifdef A_XX_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AxxVar;

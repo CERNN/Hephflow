@@ -469,6 +469,11 @@ typedef struct ghostInterfaceData  {
         ghostData Azz_gGhost;
         ghostData Azz_h_fGhost;
     #endif //A_ZZ_DIST
+    #ifdef LAMBDA_DIST
+        ghostData lambda_fGhost;
+        ghostData lambda_gGhost;
+        ghostData lambda_h_fGhost;
+    #endif //LAMBDA_DIST
 
 } GhostInterfaceData;
 
@@ -585,6 +590,10 @@ struct SaveDataParams {
     
     #ifdef PHI_DIST
     dfloat* h_phi;
+    #endif
+    
+    #ifdef LAMBDA_DIST
+    dfloat* h_lambda;
     #endif
     
     #ifdef A_XX_DIST

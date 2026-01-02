@@ -49,6 +49,10 @@ typedef struct hostField{
     dfloat* phi;
     #endif //PHI_DIST
 
+    #ifdef LAMBDA_DIST
+    dfloat* lambda;
+    #endif //LAMBDA_DIST
+
     #ifdef A_XX_DIST
     dfloat* Axx;
     #endif //A_XX_DIST
@@ -85,6 +89,9 @@ typedef struct hostField{
         #ifdef PHI_DIST
         dfloat* m_phi;
         #endif //PHI_DIST
+        #ifdef LAMBDA_DIST
+        dfloat* m_lambda;
+        #endif //LAMBDA_DIST
     #endif //MEAN_FLOW
 
     #ifdef BC_FORCES
@@ -111,6 +118,9 @@ typedef struct hostField{
         #ifdef PHI_DIST
         , phi(nullptr)
         #endif //PHI_DIST
+        #ifdef LAMBDA_DIST
+        , lambda(nullptr)
+        #endif //LAMBDA_DIST
         #ifdef A_XX_DIST
         , Axx(nullptr)
         #endif
@@ -211,6 +221,11 @@ typedef struct hostField{
         memAllocated += MEM_SIZE_SCALAR;
         #endif //PHI_DIST
 
+        #ifdef LAMBDA_DIST
+        checkCudaErrors(cudaMallocHost((void**)&lambda, MEM_SIZE_SCALAR));
+        memAllocated += MEM_SIZE_SCALAR;
+        #endif //LAMBDA_DIST
+
         #ifdef A_XX_DIST
         checkCudaErrors(cudaMallocHost((void**)&Axx, MEM_SIZE_SCALAR));
         memAllocated += MEM_SIZE_SCALAR;
@@ -251,6 +266,10 @@ typedef struct hostField{
         checkCudaErrors(cudaMallocHost((void**)&m_phi, MEM_SIZE_SCALAR));
         memAllocated += MEM_SIZE_SCALAR;
         #endif //PHI_DIST
+        #ifdef LAMBDA_DIST
+        checkCudaErrors(cudaMallocHost((void**)&m_lambda, MEM_SIZE_SCALAR));
+        memAllocated += MEM_SIZE_SCALAR;
+        #endif //LAMBDA_DIST
         #endif // MEAN_FLOW
 
         #ifdef BC_FORCES
@@ -301,6 +320,9 @@ typedef struct hostField{
                 #ifdef PHI_DIST
                 saveMacrParams.h_phi = m_phi;
                 #endif
+                #ifdef LAMBDA_DIST
+                saveMacrParams.h_lambda = m_lambda;
+                #endif
                 #if NODE_TYPE_SAVE
                 saveMacrParams.h_nodeTypeSave = nodeTypeSave;
                 #endif
@@ -326,6 +348,9 @@ typedef struct hostField{
             #endif
             #ifdef PHI_DIST
             saveMacrParams.h_phi = phi;
+            #endif
+            #ifdef LAMBDA_DIST
+            saveMacrParams.h_lambda = lambda;
             #endif
             #ifdef A_XX_DIST
             saveMacrParams.h_Axx = Axx;

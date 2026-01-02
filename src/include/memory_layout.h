@@ -30,6 +30,7 @@
     #include "fragments/velocitySets/D3G19.inc"
 #endif //D3G19
 
+
 /* ========================== MEMORY SIZE CONSTANTS ======================== */
 
 constexpr size_t BYTES_PER_GB = (1 << 30);

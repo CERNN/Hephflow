@@ -1,0 +1,25 @@
+# Reference baseline data for 001_parallelPlates_D3Q19
+# Generated from known-good simulation
+# Date: 2026-01-01
+# Branch: main (or reference branch)
+# Kernel version: baseline
+
+# Test run parameters
+REFERENCE_STEP,200000
+REFERENCE_DATE,2026-01-01
+REFERENCE_COMMIT,baseline
+
+# Expected L2 error metrics (baseline values)
+# These values are obtained from a validated simulation run
+# and serve as the reference for regression testing
+
+EXPECTED_L2_ERROR_ABSOLUTE,2.49e-2
+
+# Tolerance band (±% relative to expected value)
+# Allows for small variations between runs due to numerical precision
+TOLERANCE_BAND_PERCENT,5.0
+
+# Additional baseline metrics
+EXPECTED_MAX_UZ_NUMERICAL,0.041235
+EXPECTED_MAX_UZ_ANALYTICAL,0.041600
+EXPECTED_CONVERGENCE_BEHAVIOR,monotonic_decrease

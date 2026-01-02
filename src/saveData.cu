@@ -74,6 +74,9 @@ void saveMacr(const SaveDataParams* params)
     #ifdef PHI_DIST
     dfloat* phi = params->h_phi;
     #endif
+    #ifdef LAMBDA_DIST
+    dfloat* lambda = params->h_lambda;
+    #endif
     #ifdef A_XX_DIST
     dfloat* Axx = params->h_Axx;
     #endif
@@ -126,6 +129,9 @@ void saveMacr(const SaveDataParams* params)
                 #ifdef PHI_DIST 
                 phi[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M3_PHI_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - PHI_ZERO;
                 #endif //PHI_DIST
+                #ifdef LAMBDA_DIST 
+                lambda[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M4_LAMBDA_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - LAMBDA_ZERO;
+                #endif //LAMBDA_DIST
                 #ifdef A_XX_DIST 
                 Axx[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, A_XX_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - CONF_ZERO;
                 #endif //A_XX_DIST
@@ -214,6 +220,9 @@ void saveMacr(const SaveDataParams* params)
         #endif
         #ifdef PHI_DIST
         saveVarVtkParams.h_phi = phi;
+        #endif
+        #ifdef LAMBDA_DIST
+        saveVarVtkParams.h_lambda = lambda;
         #endif
         #ifdef A_XX_DIST
         saveVarVtkParams.h_Axx = Axx;
@@ -478,6 +487,9 @@ void saveVarVTK(const SaveDataParams* params)
     #ifdef PHI_DIST
     dfloat* phi = params->h_phi;
     #endif
+    #ifdef LAMBDA_DIST
+    dfloat* lambda = params->h_lambda;
+    #endif
     #ifdef A_XX_DIST
     dfloat* Axx = params->h_Axx;
     #endif
@@ -561,6 +573,11 @@ void saveVarVTK(const SaveDataParams* params)
                 writeBigEndian(ofs, phi, N);
             #endif //PHI_DIST
 
+            #ifdef LAMBDA_DIST
+                ofs << "SCALARS lambda " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, lambda, N);
+            #endif //LAMBDA_DIST
 
             #ifdef CONFORMATION_TENSOR
                 ofs << "TENSORS6 Aij " << VTK_TYPE << "\n";
@@ -639,6 +656,13 @@ void saveVarVTK(const SaveDataParams* params)
                     << "LOOKUP_TABLE default\n";
                 writeBigEndian(ofs, PHI_cell.data(), Ncells);
             #endif //PHI_DIST
+
+            #ifdef LAMBDA_DIST
+                auto lambda_cell = convertPointToCellScalar(lambda,NX,NY,NZ);
+                ofs << "SCALARS lambda  " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, lambda_cell.data(), Ncells);
+            #endif //LAMBDA_DIST
 
             #ifdef CONFORMATION_TENSOR
                 auto A_cell = convertPointToCellTensor6(Axx,Ayy,Azz,Axy,Ayz,Axz,NX,NY,NZ);

@@ -86,6 +86,10 @@ typedef struct deviceField{
                     interfaceCudaMemcpy(ghostInterface, ghostInterface.phi_fGhost, ghostInterface.phi_h_fGhost, cudaMemcpyHostToDevice, GF);
                 #endif //PHI_DIST
 
+                #ifdef LAMBDA_DIST
+                    interfaceCudaMemcpy(ghostInterface, ghostInterface.lambda_fGhost, ghostInterface.lambda_h_fGhost, cudaMemcpyHostToDevice, GF);
+                #endif //LAMBDA_DIST
+
                 #ifdef A_XX_DIST
                     interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx_fGhost, ghostInterface.Axx_h_fGhost, cudaMemcpyHostToDevice, GF);
                 #endif //A_XX_DIST
@@ -176,6 +180,9 @@ typedef struct deviceField{
         #ifdef PHI_DIST
             interfaceCudaMemcpy(ghostInterface, ghostInterface.phi_gGhost, ghostInterface.phi_fGhost, cudaMemcpyDeviceToDevice, GF);
         #endif //PHI_DIST
+        #ifdef LAMBDA_DIST
+            interfaceCudaMemcpy(ghostInterface, ghostInterface.lambda_gGhost, ghostInterface.lambda_fGhost, cudaMemcpyDeviceToDevice, GF);
+        #endif //LAMBDA_DIST
         #ifdef A_XX_DIST
             interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx_gGhost, ghostInterface.Axx_fGhost, cudaMemcpyDeviceToDevice, GF);
         #endif //A_XX_DIST
@@ -315,6 +322,9 @@ typedef struct deviceField{
         #ifdef PHI_DIST 
         interfaceCudaMemcpy(ghostInterface,ghostInterface.phi_h_fGhost,ghostInterface.phi_fGhost,cudaMemcpyDeviceToHost,GF);
         #endif //PHI_DIST
+        #ifdef LAMBDA_DIST 
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.lambda_h_fGhost,ghostInterface.lambda_fGhost,cudaMemcpyDeviceToHost,GF);
+        #endif //LAMBDA_DIST
         #ifdef A_XX_DIST 
         interfaceCudaMemcpy(ghostInterface,ghostInterface.Axx_h_fGhost,ghostInterface.Axx_fGhost,cudaMemcpyDeviceToHost,GF);
         #endif //A_XX_DIST     

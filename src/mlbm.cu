@@ -200,7 +200,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */        
-            #include "fragments/g_popLoad.inc"
+            #include "fragments/gTransport/g_popLoad.inc"
 
 
             if(nodeType != BULK){
@@ -255,7 +255,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */        
-            #include "fragments/phi_popLoad.inc"
+            #include "fragments/phiTransport/phi_popLoad.inc"
 
             if(nodeType != BULK){
                 #include CASE_PHI_BC_DEF
@@ -275,6 +275,49 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 phi_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
             }
         #endif //PHI_DIST
+        #ifdef LAMBDA_DIST 
+
+            dfloat lambdaVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LAMBDA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            // Compute source term before reconstruction
+            dfloat lambdaSource = 0.0_df;
+                
+            #include "fragments/lambdaTransport/lambda_evolution.inc"
+
+            dfloat invLambda = 1.0_df/(lambdaVar);
+            dfloat lambda_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat lambda_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat lambda_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            dfloat lambda_udx_t30 = LAMBDA_DIFF_FLUC_COEF * (lambda_qx_t30*invLambda - ux_t30);
+            dfloat lambda_udy_t30 = LAMBDA_DIFF_FLUC_COEF * (lambda_qy_t30*invLambda - uy_t30);
+            dfloat lambda_udz_t30 = LAMBDA_DIFF_FLUC_COEF * (lambda_qz_t30*invLambda - uz_t30);
+
+            #include  COLREC_LAMBDA_RECONSTRUCTION
+
+            __syncthreads();
+
+            #include "fragments/convection_diffusion_streaming.inc"
+            /* load pop from global in cover nodes */        
+            #include "fragments/lambdaTransport/lambda_popLoad.inc"
+
+            if(nodeType != BULK){
+                #include CASE_LAMBDA_BC_DEF
+            }else{
+                dfloat lambdaFromPop = gNode[0] + gNode[1] + gNode[2] + gNode[3] + gNode[4] + gNode[5] + gNode[6] + gNode[7] + gNode[8] + gNode[9] + gNode[10] + gNode[11] + gNode[12] + gNode[13] + gNode[14] + gNode[15] + gNode[16] + gNode[17] + gNode[18];
+                
+                // Apply source term (build/break kinetics)
+                lambdaVar = lambdaFromPop + lambdaSource;
+                
+                // Clamp to [LAMBDA_ZERO, LAMBDA_ZERO + 1]
+                lambdaVar = fmaxf(LAMBDA_ZERO, fminf(LAMBDA_ZERO + 1.0_df, lambdaVar));
+                invLambda = 1.0_df/lambdaVar;
+
+                lambda_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
+                lambda_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
+                lambda_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
+            }
+        #endif //LAMBDA_DIST
           #ifdef A_XX_DIST
             dfloat invAxx = 1/AxxVar;
             dfloat Axx_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -713,7 +756,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             
             #include COLREC_G_RECONSTRUCTION
 
-            #include "fragments/g_popSave.inc"
+            #include "fragments/gTransport/g_popSave.inc"
             
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = cVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qx_t30;
@@ -728,7 +771,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include COLREC_PHI_RECONSTRUCTION
 
-            #include "fragments/phi_popSave.inc"
+            #include "fragments/phiTransport/phi_popSave.inc"
             
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qx_t30;
@@ -736,6 +779,21 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qz_t30;
 
         #endif //PHI_DIST
+        #ifdef LAMBDA_DIST 
+            lambda_udx_t30 = LAMBDA_DIFF_FLUC_COEF * (lambda_qx_t30*invLambda - ux_t30);
+            lambda_udy_t30 = LAMBDA_DIFF_FLUC_COEF * (lambda_qy_t30*invLambda - uy_t30);
+            lambda_udz_t30 = LAMBDA_DIFF_FLUC_COEF * (lambda_qz_t30*invLambda - uz_t30);
+
+            #include COLREC_LAMBDA_RECONSTRUCTION
+
+            #include "fragments/lambdaTransport/lambda_popSave.inc"
+            
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LAMBDA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambdaVar;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qx_t30;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qy_t30;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qz_t30;
+
+        #endif //LAMBDA_DIST
         #ifdef A_XX_DIST
             Axx_udx_t30 = CONF_DIFF_FLUC_COEF * (Axx_qx_t30*invAxx - ux_t30);
             Axx_udy_t30 = CONF_DIFF_FLUC_COEF * (Axx_qy_t30*invAxx - uy_t30);

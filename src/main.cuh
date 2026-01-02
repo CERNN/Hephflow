@@ -117,6 +117,21 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.phi_gGhost.Z_0);
         cudaFree(ghostInterface.phi_gGhost.Z_1);
     #endif //PHI_DIST
+    #ifdef LAMBDA_DIST
+        cudaFree(ghostInterface.lambda_fGhost.X_0);
+        cudaFree(ghostInterface.lambda_fGhost.X_1);
+        cudaFree(ghostInterface.lambda_fGhost.Y_0);
+        cudaFree(ghostInterface.lambda_fGhost.Y_1);
+        cudaFree(ghostInterface.lambda_fGhost.Z_0);
+        cudaFree(ghostInterface.lambda_fGhost.Z_1);
+
+        cudaFree(ghostInterface.lambda_gGhost.X_0);
+        cudaFree(ghostInterface.lambda_gGhost.X_1);
+        cudaFree(ghostInterface.lambda_gGhost.Y_0);
+        cudaFree(ghostInterface.lambda_gGhost.Y_1);
+        cudaFree(ghostInterface.lambda_gGhost.Z_0);
+        cudaFree(ghostInterface.lambda_gGhost.Z_1);
+    #endif //LAMBDA_DIST
     #ifdef A_XX_DIST
         cudaFree(ghostInterface.Axx_fGhost.X_0);
         cudaFree(ghostInterface.Axx_fGhost.X_1);
@@ -231,6 +246,14 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
             cudaFree(ghostInterface.phi_h_fGhost.Z_0);
             cudaFree(ghostInterface.phi_h_fGhost.Z_1);
         #endif //PHI_DIST
+        #ifdef LAMBDA_DIST
+            cudaFree(ghostInterface.lambda_h_fGhost.X_0);
+            cudaFree(ghostInterface.lambda_h_fGhost.X_1);
+            cudaFree(ghostInterface.lambda_h_fGhost.Y_0);
+            cudaFree(ghostInterface.lambda_h_fGhost.Y_1);
+            cudaFree(ghostInterface.lambda_h_fGhost.Z_0);
+            cudaFree(ghostInterface.lambda_h_fGhost.Z_1);
+        #endif //LAMBDA_DIST
         #ifdef A_XX_DIST
             cudaFree(ghostInterface.Axx_h_fGhost.X_0);
             cudaFree(ghostInterface.Axx_h_fGhost.X_1);
@@ -350,6 +373,15 @@ void swapGhostInterfaces(GhostInterfaceData& ghostInterface) {
     interfaceSwap(ghostInterface.phi_fGhost.Z_1, ghostInterface.phi_gGhost.Z_1);
     #endif //PHI_DIST
 
+    #ifdef LAMBDA_DIST
+    interfaceSwap(ghostInterface.lambda_fGhost.X_0, ghostInterface.lambda_gGhost.X_0);
+    interfaceSwap(ghostInterface.lambda_fGhost.X_1, ghostInterface.lambda_gGhost.X_1);
+    interfaceSwap(ghostInterface.lambda_fGhost.Y_0, ghostInterface.lambda_gGhost.Y_0);
+    interfaceSwap(ghostInterface.lambda_fGhost.Y_1, ghostInterface.lambda_gGhost.Y_1);
+    interfaceSwap(ghostInterface.lambda_fGhost.Z_0, ghostInterface.lambda_gGhost.Z_0);
+    interfaceSwap(ghostInterface.lambda_fGhost.Z_1, ghostInterface.lambda_gGhost.Z_1);
+    #endif //LAMBDA_DIST
+
 
     #ifdef A_XX_DIST
     interfaceSwap(ghostInterface.Axx_fGhost.X_0, ghostInterface.Axx_gGhost.X_0);
@@ -467,6 +499,24 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
 
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
 #endif //PHI_DIST
+
+#ifdef LAMBDA_DIST
+    cudaMalloc((void **)&(ghostInterface.lambda_fGhost.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
+    cudaMalloc((void **)&(ghostInterface.lambda_fGhost.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
+    cudaMalloc((void **)&(ghostInterface.lambda_fGhost.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
+    cudaMalloc((void **)&(ghostInterface.lambda_fGhost.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
+    cudaMalloc((void **)&(ghostInterface.lambda_fGhost.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.lambda_fGhost.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+
+    cudaMalloc((void **)&(ghostInterface.lambda_gGhost.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
+    cudaMalloc((void **)&(ghostInterface.lambda_gGhost.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
+    cudaMalloc((void **)&(ghostInterface.lambda_gGhost.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
+    cudaMalloc((void **)&(ghostInterface.lambda_gGhost.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
+    cudaMalloc((void **)&(ghostInterface.lambda_gGhost.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.lambda_gGhost.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+
+    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+#endif //LAMBDA_DIST
 
 #ifdef A_XX_DIST
     cudaMalloc((void **)&(ghostInterface.Axx_fGhost.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);

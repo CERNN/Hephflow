@@ -42,6 +42,11 @@
 #define COLREC_PHI_RECONSTRUCTION STR(COLREC_DIRECTORY/PHI_SCALAR/reconstruction.inc)
 #define COLREC_PHI_COLLISION STR(COLREC_DIRECTORY/PHI_SCALAR/collision.inc)
 
+// Lambda scalar field definitions
+#define CASE_LAMBDA_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/lambda_bc_definition.inc)
+#define COLREC_LAMBDA_RECONSTRUCTION STR(COLREC_DIRECTORY/LAMBDA_SCALAR/reconstruction.inc)
+#define COLREC_LAMBDA_COLLISION STR(COLREC_DIRECTORY/LAMBDA_SCALAR/collision.inc)
+
 // Aij tensor field definitions (stress tensor components)
 #define CASE_AXX_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/axx_bc_definition.inc)
 #define COLREC_AXX_RECONSTRUCTION STR(COLREC_DIRECTORY/AIJ_SCALAR/reconstruction_xx.inc)
