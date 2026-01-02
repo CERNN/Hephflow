@@ -63,6 +63,9 @@ constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 /* --------------------- BINGHAM MODEL --------------------- */
 #define BINGHAM
 constexpr dfloat Bn = 0.08;                 // Bingham number
+constexpr dfloat S_Y = Bn*L/(U_MAX*VISC); // Yield stress
+// Fluid properties macro for this case - expands to initializer list
+#define CASE_NNF_PROPS { FLUID_BINGHAM, false, { S_Y, 1.0 / TAU } }
 
 /* --------------------- THERMAL PARAMETERS --------------------- */
 constexpr bool T_BOUYANCY = true;           // Enable buoyancy

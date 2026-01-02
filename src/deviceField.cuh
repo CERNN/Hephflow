@@ -27,6 +27,10 @@ typedef struct deviceField{
         dfloat* d_BC_Fz;
     #endif //_BC_FORCES
 
+    #ifdef NON_NEWTONIAN_FLUID
+    fluidProps nnfProps;                     ///< Non-Newtonian fluid properties
+    #endif //NON_NEWTONIAN_FLUID
+
     void allocateDeviceMemoryDeviceField() {
         unsigned int memAllocated = 0;
 
@@ -262,6 +266,10 @@ typedef struct deviceField{
         params.d_curvedBC = d_curvedBC;
         params.d_curvedBC_array = d_curvedBC_array;
         #endif //CURVED_BOUNDARY_CONDITION
+        
+        #ifdef NON_NEWTONIAN_FLUID
+        params.nnfProps = nnfProps;
+        #endif //NON_NEWTONIAN_FLUID
         
         // Pass struct by value - CUDA handles this efficiently
         gpuMomCollisionStream<<<gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>>>(params);

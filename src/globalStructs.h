@@ -540,6 +540,10 @@ struct DeviceKernelParams {
     unsigned int step;                      ///< Current time step
     bool save;                              ///< Whether to save data
 
+    #ifdef NON_NEWTONIAN_FLUID
+    fluidProps nnfProps;                    ///< Non-Newtonian fluid properties
+    #endif //NON_NEWTONIAN_FLUID
+
     // Conditional parameters with #ifdef guards
     #ifdef DENSITY_CORRECTION
     dfloat* d_mean_rho;                     ///< Mean density for density correction

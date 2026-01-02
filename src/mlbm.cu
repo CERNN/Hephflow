@@ -24,6 +24,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     CurvedBoundary* d_curvedBC_array = params.d_curvedBC_array;
     #endif //CURVED_BOUNDARY_CONDITION
 
+    #ifdef NON_NEWTONIAN_FLUID
+    const fluidProps nnfProps = params.nnfProps;
+    #endif //NON_NEWTONIAN_FLUID
+
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;
@@ -61,6 +65,8 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     dfloat m_yy_t45   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MYY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
     dfloat m_yz_t90   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MYZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
     dfloat m_zz_t45   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MZZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+  
 
     #ifdef OMEGA_FIELD
         //dfloat omegaVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_OMEGA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -277,7 +283,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
         #endif //PHI_DIST
         #ifdef LAMBDA_DIST 
 
-            dfloat lambdaVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LAMBDA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            lambdaVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LAMBDA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
             // Compute source term before reconstruction
             dfloat lambdaSource = 0.0_df;
@@ -682,8 +688,12 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     #endif //COMPUTE_SHEAR
     // MOMENTS DETERMINED, COMPUTE OMEGA IF NON-NEWTONIAN FLUID
     #if defined(OMEGA_FIELD)
+            #ifndef LAMBDA_DIST
+              dfloat lambdaVar = 1.0_df;
+            #endif
             #ifdef NON_NEWTONIAN_FLUID 
-                omegaVar = calcOmega_nnf(omegaVar, auxStressMag,step);
+                dfloat gammaDot = omegaVar * auxStressMag * as2;
+                omegaVar = calcOmega(nnfProps, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
             #endif //NON_NEWTONIAN_FLUID
 
             #ifdef LES_MODEL

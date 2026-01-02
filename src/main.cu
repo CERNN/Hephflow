@@ -34,6 +34,10 @@ int main() {
     /* -------------- ALLOCATION FOR GPU ------------- */
     deviceField.allocateDeviceMemoryDeviceField();
     
+    #ifdef NON_NEWTONIAN_FLUID
+    deviceField.nnfProps = CASE_NNF_PROPS;
+    #endif //NON_NEWTONIAN_FLUID
+    
     #ifdef PARTICLE_MODEL
     // Particle field initialization and allocation
     ParticleField particleField;
@@ -189,7 +193,12 @@ int main() {
     #endif //MEAN_FLOW
     
     //Save info file
-    saveSimInfo(step,MLUPS);
+    //TODO: fix this later so it doesnt have defines
+    #ifdef NON_NEWTONIAN_FLUID
+    saveSimInfo(step, MLUPS, deviceField.nnfProps);
+    #else
+    saveSimInfo(step, MLUPS, {});
+    #endif //NON_NEWTONIAN_FLUID
 
     while (savingMacrVtk) std::this_thread::yield();
     #ifdef PARTICLE_MODEL

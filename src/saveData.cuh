@@ -47,6 +47,10 @@
 #include "globalStructs.h"
 #include <atomic>
 
+#ifdef OMEGA_FIELD
+#include "non_newtonian/nnf_types.h"
+#endif //OMEGA_FIELD
+
 __host__
 std::filesystem::path getExecutablePath();
 
@@ -190,8 +194,9 @@ std::string getSimInfoString(int step,dfloat MLUPS);
 *   Save simulation's information
  *  @param info: simulation's informations
  *  @param MLUPS: Mega Lattice Updates Per Second
+ *  @param nnfProps: Non-Newtonian fluid properties (optional)
 */
-void saveSimInfo(int step,dfloat MLUPS);
+void saveSimInfo(int step, dfloat MLUPS, const fluidProps& nnfProps = {});
 
 
 

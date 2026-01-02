@@ -37,7 +37,7 @@
 #endif //PARTICLE_MODEL
 
 #ifdef OMEGA_FIELD
-    #include "include/nnf.h"
+    #include "non_newtonian/nnf.h"
 #endif //OMEGA_FIELD
 
 #include "include/errorDef.h"

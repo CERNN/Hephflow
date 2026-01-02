@@ -18,6 +18,7 @@
 
 // Project type definitions and utilities
 #include "include/var_types.h"
+#include "non_newtonian/nnf_types.h"
 #include "include/utils.h"
 #include "include/constexpr_math.h"
 #include "include/cuda_utils.cuh"
@@ -34,11 +35,12 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 004_lambdaTransport
+#define BC_PROBLEM 002_viscoplasticParellelPlates
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 
 #include "include/case_definitions.h"
+
 
 /* ============================= CASE INCLUDES ============================= */
 
@@ -49,7 +51,6 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 /* ======================== PROJECT HEADER INCLUDES ======================== */
 
 #include "definitions.h"
-#include "include/nnf.h"
 
 /* ======================== COMPILE-TIME ASSERTIONS ======================== */
 

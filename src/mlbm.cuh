@@ -20,9 +20,7 @@
 #include "var.h"
 #include "include/interface.h"
 #include "nodeTypeMap.h"
-#ifdef OMEGA_FIELD
-    #include "include/nnf.h"
-#endif //OMEGA_FIELD
+#include "non_newtonian/nnf.h"
 
 
 /**
