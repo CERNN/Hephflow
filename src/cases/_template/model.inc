@@ -16,7 +16,7 @@
 
 /* --------------------- COLLISION METHOD --------------------- */
 // Choose ONE collision operator
-// See src/colrec/ folder for available collision-reconstruction implementations
+// See src/collision_reconstruction/ folder for available collision-reconstruction implementations
 #define COLLISION_TYPE MR_LBM_2ND_ORDER
 //#define COLLISION_TYPE MR_LBM_3RD_ORDER
 //#define COLLISION_TYPE MR_LBM_4TH_ORDER

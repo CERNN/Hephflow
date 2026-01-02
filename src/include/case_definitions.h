@@ -28,7 +28,7 @@
 #define VOXEL_BC_DEFINE STR(../../CASE_DIRECTORY/voxel/bc_definition.inc)
 
 // Collision-reconstruction files
-#define COLREC_DIRECTORY colrec
+#define COLREC_DIRECTORY collision_reconstruction
 #define COLREC_COLLISION STR(COLREC_DIRECTORY/COLLISION_TYPE/collision.inc)
 #define COLREC_RECONSTRUCTION STR(COLREC_DIRECTORY/COLLISION_TYPE/reconstruction.inc)
 
