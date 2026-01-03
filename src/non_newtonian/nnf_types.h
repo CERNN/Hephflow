@@ -12,11 +12,6 @@
 
 #include "../include/var_types.h"
 
-// Default LAMBDA_ZERO if not defined (when lambda transport not enabled)
-#ifndef LAMBDA_ZERO
-#define LAMBDA_ZERO 1.0_df
-#endif
-
 enum fluidType { FLUID_POWERLAW, FLUID_BINGHAM, FLUID_BI_VISCOSITY, FLUID_KEE_TURCOTEE, FLUID_HERSCHEL_BULKLEY, FLUID_THIXO };
 enum thixoModel { THIXO_MOORE1959, THIXO_WORRALL1964, THIXO_HOUSKA1980, THIXO_TOORMAN1997 };
 

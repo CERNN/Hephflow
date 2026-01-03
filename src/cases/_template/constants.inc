@@ -67,6 +67,16 @@ constexpr dfloat N_INDEX = 0.5;                          // Power-law index (n <
 constexpr dfloat K_CONSISTENCY = RHO_0*(TAU-0.5)/3.0;    // Consistency factor
 constexpr dfloat GAMMA_0 = 0.0;                          // Truncation (0 = no truncation)
 #define OMEGA_LAST_STEP                                  // Uses omega from previous step
+static inline fluidProps makeCaseNnfProps(){
+    fluidProps fp{};
+    fp.type = FLUID_POWERLAW;
+    fp.hasLambda = false;
+    fp.u.powerlaw.n_index = N_INDEX;
+    fp.u.powerlaw.k_consistency = K_CONSISTENCY;
+    fp.u.powerlaw.gamma_0 = GAMMA_0;
+    return fp;
+}
+#define CASE_NNF_PROPS makeCaseNnfProps()
 #endif
 
 /* --------------------- BINGHAM MODEL --------------------- */
@@ -74,6 +84,15 @@ constexpr dfloat GAMMA_0 = 0.0;                          // Truncation (0 = no t
 constexpr dfloat Bn = 0.1;                               // Bingham number
 constexpr dfloat S_Y = Bn * U_MAX * U_MAX;               // Yield stress
 constexpr dfloat OMEGA_P = 1.0 / (3.0*VISC + 0.5);       // Plastic relaxation parameter
+static inline fluidProps makeCaseNnfProps(){
+    fluidProps fp{};
+    fp.type = FLUID_BINGHAM;
+    fp.hasLambda = false;
+    fp.u.bingham.s_y = S_Y;
+    fp.u.bingham.omega_p = OMEGA_P;
+    return fp;
+}
+#define CASE_NNF_PROPS makeCaseNnfProps()
 #endif
 
 /* --------------------- BI-VISCOSITY MODEL --------------------- */
@@ -85,6 +104,20 @@ constexpr dfloat TAU_Y = 3.0*ETA_Y + 0.5;                // High shear relaxatio
 constexpr dfloat OMEGA_Y = 1.0/TAU_Y;                    // High shear omega
 constexpr dfloat OMEGA_P = 1.0 / (3.0*VISC + 0.5);       // Low shear omega
 // Note: S_Y and GAMMA_C require thermal parameters if using thermal coupling
+static inline fluidProps makeCaseNnfProps(){
+    fluidProps fp{};
+    fp.type = FLUID_BI_VISCOSITY;
+    fp.hasLambda = false;
+    fp.u.bi.s_y = Bn * U_MAX * U_MAX;
+    fp.u.bi.visc_ratio = VISC_RATIO;
+    fp.u.bi.eta_y = ETA_Y;
+    fp.u.bi.tau_y = TAU_Y;
+    fp.u.bi.omega_y = OMEGA_Y;
+    fp.u.bi.omega_p = OMEGA_P;
+    fp.u.bi.gamma_c = 0.0_df;
+    return fp;
+}
+#define CASE_NNF_PROPS makeCaseNnfProps()
 #endif
 
 /* --------------------- KEE-TURCOTTE MODEL (EXPERIMENTAL) --------------------- */
@@ -92,6 +125,39 @@ constexpr dfloat OMEGA_P = 1.0 / (3.0*VISC + 0.5);       // Low shear omega
 constexpr dfloat S_Y = 0.0;                              // Yield stress
 constexpr dfloat t1 = 1e-3;                              // Time scale parameter
 constexpr dfloat eta_0 = 1e-3;                           // Reference viscosity
+static inline fluidProps makeCaseNnfProps(){
+    fluidProps fp{};
+    fp.type = FLUID_KEE_TURCOTEE;
+    fp.hasLambda = false;
+    fp.u.kee.s_y = S_Y;
+    fp.u.kee.t1 = t1;
+    fp.u.kee.eta_0 = eta_0;
+    return fp;
+}
+#define CASE_NNF_PROPS makeCaseNnfProps()
+#endif
+
+/* --------------------- THIXOTROPIC (LAMBDA) MODEL --------------------- */
+#ifdef LAMBDA_MODEL
+// Transported lambda field requires LAMBDA_DIST and LAMBDA_MODEL in model.inc
+// Provide build and break rates plus equilibrium structure parameter
+constexpr dfloat LAMBDA_K1 = 3.0e-4;                      // Breakdown rate
+constexpr dfloat LAMBDA_K2 = 1.0;                        // Build-up rate
+constexpr dfloat THIXO_LAMBDA_0 = 1.0;                   // Equilibrium lambda
+
+// Map the thixotropic parameters into fluidProps for host/device consumption
+static inline fluidProps makeCaseNnfProps(){
+    fluidProps fp{};
+    fp.type = FLUID_THIXO;
+    fp.hasLambda = true;
+    fp.u.thixo.model = THIXO_MOORE1959;
+    fp.u.thixo.u.moore1959.k1 = LAMBDA_K1;
+    fp.u.thixo.u.moore1959.k2 = LAMBDA_K2;
+    fp.u.thixo.u.moore1959.lambda_0 = THIXO_LAMBDA_0;
+    fp.u.thixo.u.moore1959.eta_0 = 1.0_df;
+    return fp;
+}
+#define CASE_NNF_PROPS makeCaseNnfProps()
 #endif
 
 

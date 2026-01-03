@@ -63,8 +63,7 @@ constexpr dfloat LAMBDA_ZERO = 10.0;             // Initial lambda value (fully 
 /* --------------------- LAMBDA KINETICS --------------------- */
 constexpr dfloat LAMBDA_K1 = 1.0;            //  Breakdown-ratemultiplier
 constexpr dfloat LAMBDA_K2 = 3e-4;            // Build-rate multiplier
-
-// Build/break timescales (in lattice units)
+constexpr dfloat THIXO_LAMBDA_0 = 1.0;       // Equilibrium structure parameter for Moore1959
 
 /* --------------------- LAMBDA TRANSPORT PARAMETERS --------------------- */
 constexpr dfloat LAMBDA_DIFFUSIVITY_RATIO = 100.0; // Diffusivity ratio (like Prandtl number)
@@ -79,5 +78,22 @@ constexpr dfloat LAMBDA_TT_OMEGA = 1.0-0.5*LAMBDA_OMEGA; // TRT parameter
 constexpr dfloat LAMBDA_DIFF_FLUC = LAMBDA_DIFFUSIVITY - LAMBDA_DIFF_REF;
 constexpr dfloat LAMBDA_AAA = (3*LAMBDA_DIFF_FLUC*LAMBDA_OMEGA);
 constexpr dfloat LAMBDA_DIFF_FLUC_COEF = LAMBDA_AAA/(1.0+LAMBDA_AAA);
+
+/* --------------------- NON-NEWTONIAN FLUID PROPERTIES --------------------- */
+// Moore1959 thixotropic model: k1 (breakdown), k2 (build), lambda_0 (eq struct param)
+static inline fluidProps makeCaseNnfProps()
+{
+	fluidProps fp{};
+	fp.type = FLUID_THIXO;
+	fp.hasLambda = true;
+	fp.u.thixo.model = THIXO_MOORE1959;
+	fp.u.thixo.u.moore1959.k1 = LAMBDA_K1;
+	fp.u.thixo.u.moore1959.k2 = LAMBDA_K2;
+	fp.u.thixo.u.moore1959.lambda_0 = THIXO_LAMBDA_0;
+	fp.u.thixo.u.moore1959.eta_0 = 1.0_df;
+	return fp;
+}
+
+#define CASE_NNF_PROPS makeCaseNnfProps()
 
 /* ----- END CONSTANTS CONFIGURATION ----- */

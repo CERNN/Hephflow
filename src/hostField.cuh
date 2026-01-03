@@ -170,6 +170,9 @@ typedef struct hostField{
         #ifdef PHI_DIST
         NThread++;
         #endif
+        #ifdef LAMBDA_DIST
+        NThread++;
+        #endif
         #ifdef A_XX_DIST
         NThread++;
         #endif

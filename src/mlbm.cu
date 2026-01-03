@@ -283,12 +283,16 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
         #endif //PHI_DIST
         #ifdef LAMBDA_DIST 
 
-            lambdaVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LAMBDA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat lambdaVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LAMBDA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
-            // Compute source term before reconstruction
-            dfloat lambdaSource = 0.0_df;
-                
-            #include "fragments/lambdaTransport/lambda_evolution.inc"
+            // Compute source term using function-based dispatch
+            dfloat lambdaSource = computeLambdaSourceFromStress(
+                nnfProps,
+                rhoVar, ux_t30, uy_t30, uz_t30,
+                m_xx_t45, m_yy_t45, m_zz_t45,
+                m_xy_t90, m_xz_t90, m_yz_t90,
+                omegaVar, lambdaVar
+            );
 
             dfloat invLambda = 1.0_df/(lambdaVar);
             dfloat lambda_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];

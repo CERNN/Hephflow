@@ -194,6 +194,7 @@ void saveMacr(const SaveDataParams* params)
     std::string strFileOmega;
     std::string strFileC;
     std::string strFilePhi;
+    std::string strFileLambda;
     std::string strFileBc; 
     std::string strFileFx, strFileFy, strFileFz;
     std::string strFileAxx, strFileAxy, strFileAxz, strFileAyy, strFileAyz, strFileAzz;
@@ -268,6 +269,9 @@ void saveMacr(const SaveDataParams* params)
         #ifdef PHI_DIST 
         strFilePhi = getVarFilename("phi", nSteps, ".bin");
         #endif //PHI_DIST
+        #ifdef LAMBDA_DIST
+        strFileLambda = getVarFilename("lambda", nSteps, ".bin");
+        #endif //LAMBDA_DIST
         #ifdef A_XX_DIST 
         strFileAxx = getVarFilename("Axx", nSteps, ".bin");
         #endif //A_XX_DIST
@@ -311,6 +315,9 @@ void saveMacr(const SaveDataParams* params)
         #ifdef PHI_DIST
         varArray.push_back(phi); fileArray.push_back(strFilePhi);
         #endif //PHI_DIST
+        #ifdef LAMBDA_DIST
+        varArray.push_back(lambda); fileArray.push_back(strFileLambda);
+        #endif //LAMBDA_DIST
         #ifdef A_XX_DIST
         varArray.push_back(Axx); fileArray.push_back(strFileAxx);
         #endif

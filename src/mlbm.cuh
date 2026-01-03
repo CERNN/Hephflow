@@ -21,6 +21,7 @@
 #include "include/interface.h"
 #include "nodeTypeMap.h"
 #include "non_newtonian/nnf.h"
+#include "fragments/lambdaTransport/lambda_evolution.cuh"
 
 
 /**
