@@ -16,6 +16,12 @@
     #define COMPUTE_SHEAR
 #endif  //POWERLAW || BINGHAM || BI_VISCOSITY
 
+#if defined(LAMBDA_MODEL)
+    #define OMEGA_FIELD
+    #define NON_NEWTONIAN_FLUID
+    #define COMPUTE_SHEAR
+#endif //LAMBDA_MODEL
+
 #if defined(LES_MODEL)
     #define OMEGA_FIELD
     #define COMPUTE_SHEAR

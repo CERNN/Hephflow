@@ -16,7 +16,7 @@
 
 /* --------------------- COLLISION METHOD --------------------- */
 // Choose ONE collision operator
-// See src/colrec/ folder for available collision-reconstruction implementations
+// See src/collision_reconstruction/ folder for available collision-reconstruction implementations
 #define COLLISION_TYPE MR_LBM_2ND_ORDER
 //#define COLLISION_TYPE MR_LBM_3RD_ORDER
 //#define COLLISION_TYPE MR_LBM_4TH_ORDER
@@ -31,14 +31,16 @@
 //#define DENSITY_CORRECTION              // Correct density drift
 //#define RANDOM_NUMBERS true             // Enable random number generation
 
-/* --------------------- NON-NEWTONIAN FLUID MODELS --------------------- */
-// Uncomment ONE model and set #define OMEGA_FIELD below
-// See src/include/nnf.h for implementation details
+/* --------------------- NON-NEWTONIAN / THIXOTROPIC FLUIDS --------------------- */
+// Choose ONE model and declare its properties in constants.inc via CASE_NNF_PROPS
+// See src/include/nnf.h and src/non_newtonian/nnf_types.h for details
 //#define POWERLAW                        // Power-law model (shear thinning/thickening)
 //#define BINGHAM                         // Bingham viscoplastic model
 //#define BI_VISCOSITY                    // Bi-viscosity model
 //#define KEE_TURCOTEE                    // Kee-Turcotte model (experimental)
+//#define LAMBDA_MODEL                    // Thixotropic model (enables lambda transport)
 
-// Enable variable viscosity field for non-Newtonian fluids
-//#define OMEGA_FIELD
-//#define NON_NEWTONIAN_FLUID
+// Enable variable viscosity / lambda fields for non-Newtonian fluids
+//#define OMEGA_FIELD                     // Required for POWERLAW/BINGHAM/BI_VISCOSITY
+//#define NON_NEWTONIAN_FLUID             // Required when using CASE_NNF_PROPS
+//#define LAMBDA_DIST                     // Extra scalar distribution for lambda transport (when LAMBDA_MODEL)

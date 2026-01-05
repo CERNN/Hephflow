@@ -139,7 +139,7 @@ The following table provides an overview of key files and directories in the pro
 | 12 | `cases/<CASE_ID>/bc_definition.inc` | Mathematical boundary condition implementation |
 | 13 | `cases/<CASE_ID>/flow_initialization.inc` | Initial velocity and density field setup |
 | 14 | `cases/<CASE_ID>/output.inc` | Data saving configuration (VTK, binary, checkpoints) |
-| 15 | `colrec/` | Collision and reconstruction implementations for various lattice models |
+| 15 | `collision_reconstruction/` | Collision and reconstruction implementations for various lattice models |
 | 16 | `includeFiles/popSave` | Kernel for loading populations from global memory |
 | 17 | `includeFiles/popLoad` | Kernel for saving populations to global memory |
 | 18 | `includeFiles/interface` | Boundary condition interface definitions (wall, periodic) |

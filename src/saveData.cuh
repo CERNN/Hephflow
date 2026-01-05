@@ -47,6 +47,10 @@
 #include "globalStructs.h"
 #include <atomic>
 
+#ifdef OMEGA_FIELD
+#include "non_newtonian/nnf_types.h"
+#endif //OMEGA_FIELD
+
 __host__
 std::filesystem::path getExecutablePath();
 
@@ -55,36 +59,6 @@ std::filesystem::path folderSetup();
 
 template<typename T>
 void writeBigEndian(std::ofstream& ofs, const T* data, size_t count);
-
-
-/**
- *  @brief Change field vector order to be used saved in binary
- *  @param h_fMom: Pointer to the host array containing the current macroscopic moments.
- *  @param rho: rho field
- *  @param ux: ux field
- *  @param uy: uy field
- *  @param uz: uz field
- *  @param step: Current time step
-*/
-__host__
-void linearMacr(dfloat* h_fMom, dfloat* rho, dfloat* ux, dfloat* uy, dfloat* uz, OMEGA_FIELD_PARAMS_DECLARATION
-    #ifdef SECOND_DIST 
-    dfloat* C,
-    #endif //SECOND_DIST
-    #ifdef PHI_DIST 
-    dfloat* phi,
-    #endif //PHI_DIST
-    #if NODE_TYPE_SAVE
-    dfloat* nodeTypeSave,
-    unsigned int* hNodeType,
-    #endif //NODE_TYPE_SAVE
-    #if defined BC_FORCES && defined SAVE_BC_FORCES
-    dfloat* h_BC_Fx,
-    dfloat* h_BC_Fy,
-    dfloat* h_BC_Fz,
-    #endif // BC_FORCES && SAVE_BC_FORCES
-    unsigned int step
-);
 
 
 /**
@@ -97,37 +71,7 @@ void linearMacr(dfloat* h_fMom, dfloat* rho, dfloat* ux, dfloat* uy, dfloat* uz,
  *  @param nSteps: number of steps of the simulation
 */
 __host__
-void saveMacr(dfloat* h_fMom, dfloat* rho, dfloat* ux, dfloat* uy, dfloat* uz, unsigned int* hNodeType, OMEGA_FIELD_PARAMS_DECLARATION
-    #ifdef SECOND_DIST 
-    dfloat* C,
-    #endif //SECOND_DIST
-    #ifdef PHI_DIST 
-    dfloat* phi,
-    #endif //PHI_DIST
-    #ifdef A_XX_DIST 
-    dfloat* Axx,
-    #endif //A_XX_DIST
-    #ifdef A_XY_DIST 
-    dfloat* Axy,
-    #endif //A_XY_DIST
-    #ifdef A_XZ_DIST 
-    dfloat* Axz,
-    #endif //A_XZ_DIST
-    #ifdef A_YY_DIST 
-    dfloat* Ayy,
-    #endif //A_YY_DIST
-    #ifdef A_YZ_DIST 
-    dfloat* Ayz,
-    #endif //A_YZ_DIST
-    #ifdef A_ZZ_DIST 
-    dfloat* Azz,
-    #endif //A_ZZ_DIST
-    NODE_TYPE_SAVE_PARAMS_DECLARATION
-    BC_FORCES_PARAMS_DECLARATION(h_) 
-    unsigned int nSteps,
-    std::atomic<bool>& savingMacrVtk,
-    std::vector<std::atomic<bool>>& savingMacrBin
-);
+void saveMacr(const SaveDataParams* params);
 
 /*
  *  @brief Save array content to binary file
@@ -223,42 +167,7 @@ std::vector<int> convertPointToCellIntMode(
  *  @brief Save field on vtk file
  *  @param var_name: name of the variable
 */
-void saveVarVTK(
-    std::string strFileVtk, 
-    dfloat* rho,
-    dfloat* ux,
-    dfloat* uy,
-    dfloat* uz,
-    OMEGA_FIELD_PARAMS_DECLARATION
-    #ifdef SECOND_DIST 
-    dfloat* C,
-    #endif //SECOND_DIST
-    #ifdef PHI_DIST 
-    dfloat* phi,
-    #endif //PHI_DIST
-    #ifdef A_XX_DIST 
-    dfloat* Axx,
-    #endif //A_XX_DIST
-    #ifdef A_XY_DIST 
-    dfloat* Axy,
-    #endif //A_XY_DIST
-    #ifdef A_XZ_DIST 
-    dfloat* Axz,
-    #endif //A_XZ_DIST
-    #ifdef A_YY_DIST 
-    dfloat* Ayy,
-    #endif //A_YY_DIST
-    #ifdef A_YZ_DIST 
-    dfloat* Ayz,
-    #endif //A_YZ_DIST
-    #ifdef A_ZZ_DIST 
-    dfloat* Azz,
-    #endif //A_ZZ_DIST
-    NODE_TYPE_SAVE_PARAMS_DECLARATION
-    BC_FORCES_PARAMS_DECLARATION(h_) 
-    unsigned int nSteps,
-    std::atomic<bool>& savingMacrVtk
-);
+void saveVarVTK(const SaveDataParams* params);
 
 /**
  *  @brief Get variable filename
@@ -285,8 +194,9 @@ std::string getSimInfoString(int step,dfloat MLUPS);
 *   Save simulation's information
  *  @param info: simulation's informations
  *  @param MLUPS: Mega Lattice Updates Per Second
+ *  @param nnfProps: Non-Newtonian fluid properties (optional)
 */
-void saveSimInfo(int step,dfloat MLUPS);
+void saveSimInfo(int step, dfloat MLUPS, const fluidProps& nnfProps = {});
 
 
 

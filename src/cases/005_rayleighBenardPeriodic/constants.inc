@@ -1,53 +1,69 @@
-#define THERMAL_MODEL 
-//#define BINGHAM
+/* ============================================================================
+ * CONSTANTS CONFIGURATION
+ * Case: Rayleigh-Benard Convection (Periodic)
+ * Description: Thermal convection with periodic boundary conditions
+ * ========================================================================== */
 
+/* --------------------- SIMULATION SCALE --------------------- */
+constexpr int SCALE = 1;                    // Grid scaling factor
 
+/* --------------------- TIME STEPPING --------------------- */
+constexpr int N_STEPS = 10000;              // Total simulation steps
+constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
-constexpr int SCALE = 1;
-constexpr int N_STEPS = 10000;
-constexpr int N = 64 * SCALE;
-constexpr int NX = N;        // size x of the grid 
-constexpr int NY = N;        // size y of the grid
-constexpr int NZ = 4;        // size z of the grid in one GPU
-constexpr int NZ_TOTAL = NZ;       // size z of the grid
+/* --------------------- GRID DIMENSIONS --------------------- */
+constexpr int N = 64 * SCALE;               // Reference grid size
+constexpr int NX = N;                       // Grid size in X
+constexpr int NY = N;                       // Grid size in Y
+constexpr int NZ = 4;                       // Grid size in Z
+constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
-constexpr dfloat U_MAX = 0.0;  
-constexpr dfloat L = N;
+/* --------------------- REFERENCE VALUES --------------------- */
+constexpr dfloat U_MAX = 0.0;               // Maximum/reference velocity
+constexpr dfloat L = N;                     // Reference length
 
-constexpr dfloat FX = 0.0;        // force in x
-constexpr dfloat FY = 0.0;        // force in y
-constexpr dfloat FZ = 0.0;        // force in z (flow direction in most cases)
+/* --------------------- BODY FORCES --------------------- */
+constexpr dfloat FX = 0.0;                  // Force in X direction
+constexpr dfloat FY = 0.0;                  // Force in Y direction
+constexpr dfloat FZ = 0.0;                  // Force in Z direction
 
-// value for the velocity initial condition in the domain
-constexpr dfloat U_0_X = 0.0;
-constexpr dfloat U_0_Y = 0.0;
-constexpr dfloat U_0_Z = 0.0;
-constexpr dfloat RHO_0 = 1.0;
+/* --------------------- INITIAL CONDITIONS --------------------- */
+constexpr dfloat RHO_0 = 1.0;               // Initial density
+constexpr dfloat U_0_X = 0.0;               // Initial velocity X
+constexpr dfloat U_0_Y = 0.0;               // Initial velocity Y
+constexpr dfloat U_0_Z = 0.0;               // Initial velocity Z
 
-// values options for boundary conditions //not used yet
-__device__ const dfloat UX_BC[4] =  {0, 0, 0, 0};
-__device__ const dfloat UY_BC[4] =  {0, 0, 0, 0};
-__device__ const dfloat UZ_BC[4] =  {0, 0, 0, 0};
+/* --------------------- BOUNDARY CONDITION VALUES --------------------- */
+__device__ const dfloat UX_BC[4] = {0, 0, 0, 0};
+__device__ const dfloat UY_BC[4] = {0, 0, 0, 0};
+__device__ const dfloat UZ_BC[4] = {0, 0, 0, 0};
 __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
+/* --------------------- BOUNDARY CONDITION TYPES --------------------- */
 #define BC_X_WALL
 #define BC_Y_PERIODIC
 #define BC_Z_PERIODIC
 
-constexpr dfloat TAU = 0.55;//0.5 + 3.0*VISC;     // relaxation time
-constexpr dfloat VISC = (TAU-0.5)/3;
-constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
+/* --------------------- FLUID PROPERTIES --------------------- */
+constexpr dfloat VISC = (0.55 - 0.5) / 3;   // Kinematic viscosity
+constexpr dfloat TAU = 0.55;                // Relaxation time
+constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 
+/* ============================================================================
+ * THERMAL FLUID PARAMETERS
+ * Uncomment the section corresponding to the model enabled in model.inc
+ * ========================================================================== */
 
-#ifdef THERMAL_MODEL
-    #define SECOND_DIST
-    #define CONVECTION_DIFFUSION_TRANSPORT
+/* --------------------- THERMAL MODEL DEFINITIONS --------------------- */
+#define THERMAL_MODEL
+#define SECOND_DIST
+#define CONVECTION_DIFFUSION_TRANSPORT
+#define D3G19
 
-    #define D3G19
-
-    constexpr bool T_BOUYANCY = true;
-    constexpr dfloat T_PR_NUMBER = 10; //Prandtl Number
-    constexpr dfloat T_RA_NUMBER = 100000.0; // Rayleigh Number
+/* --------------------- THERMAL PARAMETERS --------------------- */
+constexpr bool T_BOUYANCY = true;           // Enable buoyancy
+constexpr dfloat T_PR_NUMBER = 10;          // Prandtl number
+constexpr dfloat T_RA_NUMBER = 100000.0;    // Rayleigh number
     constexpr dfloat T_GR_NUMBER = T_RA_NUMBER/T_PR_NUMBER; //Grashof number
 
     constexpr dfloat T_DELTA_T = 1; //temperature difference

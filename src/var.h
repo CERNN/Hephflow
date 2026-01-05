@@ -18,9 +18,10 @@
 
 // Project type definitions and utilities
 #include "include/var_types.h"
+#include "non_newtonian/nnf_types.h"
 #include "include/utils.h"
 #include "include/constexpr_math.h"
-#include "include/cuda_utils.h"
+#include "include/cuda_utils.cuh"
 #include "include/endian_utils.h"
 
 /* ======================== SIMULATION CONFIGURATION ======================= */
@@ -34,11 +35,12 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 000_ibmBenchmark
+#define BC_PROBLEM 002_viscoplasticParellelPlates
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 
 #include "include/case_definitions.h"
+
 
 /* ============================= CASE INCLUDES ============================= */
 
@@ -49,13 +51,12 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 /* ======================== PROJECT HEADER INCLUDES ======================== */
 
 #include "definitions.h"
-#include "include/nnf.h"
 
 /* ======================== COMPILE-TIME ASSERTIONS ======================== */
 
 // Ensure domain dimensions are compatible with block sizes
-static_assert(NX >= BLOCK_NX, "NX must be >= BLOCK_NX, Update block size in definitions.h or increase domain in constants.inc");
-static_assert(NY >= BLOCK_NY, "NY must be >= BLOCK_NY, Update block size in definitions.h or increase domain in constants.inc");
-static_assert(NZ >= BLOCK_NZ, "NZ must be >= BLOCK_NZ, Update block size in definitions.h or increase domain in constants.inc");
+static_assert(NX >= BLOCK_NX, "NX must be >= BLOCK_NX, Update block size in memory_layout.h or increase domain in constants.inc");
+static_assert(NY >= BLOCK_NY, "NY must be >= BLOCK_NY, Update block size in memory_layout.h or increase domain in constants.inc");
+static_assert(NZ >= BLOCK_NZ, "NZ must be >= BLOCK_NZ, Update block size in memory_layout.h or increase domain in constants.inc");
 
 #endif //__VAR_H

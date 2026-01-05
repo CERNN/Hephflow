@@ -1,5 +1,5 @@
 /* ============================================================================
- * SIMULATION CONSTANTS
+ * CONSTANTS CONFIGURATION
  * Case: 003_viscoelasticTaylorGreen
  * Description: Viscoelastic Taylor-Green vortex (FENE-P model)
  * ========================================================================== */

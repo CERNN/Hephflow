@@ -38,14 +38,7 @@
  *  @param nSteps: number of steps of the simulation
  */
 __host__
-void treatData(
-    dfloat* h_fMom,
-    dfloat* fMom,
-    #if MEAN_FLOW
-    dfloat* fMom_mean,
-    #endif//MEAN_FLOW
-    unsigned int step
-);
+void treatData(const TreatDataParams* params);
 
 
 

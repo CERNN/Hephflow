@@ -1,5 +1,5 @@
 /* ============================================================================
- * SIMULATION CONSTANTS
+ * CONSTANTS CONFIGURATION
  * Case: 003_viscoelasticCircularDuct
  * Description: Viscoelastic flow through circular duct (FENE-P model)
  * ========================================================================== */

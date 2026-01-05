@@ -9,7 +9,7 @@
 #define __MEMORY_LAYOUT_H
 
 #include "var_types.h"    // for dfloat type
-#include "cuda_utils.h"   // for BlockDim
+#include "cuda_utils.cuh"   // for BlockDim
 #include "utils.h"        // for myMax
 #include "../arrayIndex.h"   // for domain size definitions
 
@@ -29,6 +29,7 @@
 #ifdef D3G19
     #include "fragments/velocitySets/D3G19.inc"
 #endif //D3G19
+
 
 /* ========================== MEMORY SIZE CONSTANTS ======================== */
 
@@ -62,7 +63,6 @@ constexpr BlockDim optimalBlockDimArray = findOptimalBlockDimensions(MAX_ELEMENT
 
 /* =========================== BLOCK DEFINITIONS =========================== */
 
-//TODO: fix, is giving incompatibility issues with parallel reduction
 #define BLOCK_NX 8
 #define BLOCK_NY 8
 #define BLOCK_NZ 8

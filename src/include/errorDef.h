@@ -8,6 +8,24 @@
 #include <cuda_runtime.h>
 #include <builtin_types.h>
 
+// ------------------ CUDA kernel error check macro ------------------
+// Use `CHECK_KERNEL_ERR("label")` after a kernel launch to report launch/sync errors.
+// Generates a unique temporary variable per expansion using `__LINE__` to avoid name collisions.
+#ifndef QUIET_MAIN
+#define CUDA_CONCAT_INNER(a, b) a##b
+#define CUDA_CONCAT(a, b) CUDA_CONCAT_INNER(a, b)
+#define CHECK_KERNEL_ERR(label) do { \
+    cudaError_t CUDA_CONCAT(_err_, __LINE__) = cudaGetLastError(); \
+    if (CUDA_CONCAT(_err_, __LINE__) != cudaSuccess) { fprintf(stderr, "%s launch failed: %s\n", label, cudaGetErrorString(CUDA_CONCAT(_err_, __LINE__))); } \
+    CUDA_CONCAT(_err_, __LINE__) = cudaDeviceSynchronize(); \
+    if (CUDA_CONCAT(_err_, __LINE__) != cudaSuccess) { fprintf(stderr, "%s sync error: %s\n", label, cudaGetErrorString(CUDA_CONCAT(_err_, __LINE__))); } \
+} while(0)
+#else
+#define CUDA_CONCAT_INNER(a, b) a##b
+#define CUDA_CONCAT(a, b) CUDA_CONCAT_INNER(a, b)
+#define CHECK_KERNEL_ERR(label) do { (void)label; cudaGetLastError(); cudaDeviceSynchronize(); } while(0)
+#endif
+
 
 #define checkCudaErrors(err)  __checkCudaErrors(err,#err,__FILE__,__LINE__)
 #define getLastCudaError(msg)  __getLastCudaError(msg,__FILE__,__LINE__)

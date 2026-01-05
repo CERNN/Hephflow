@@ -36,3 +36,7 @@ src/CUDA/x64
 *.test
 ./bin
 *.ptx
+.dev-tools/
+compile_log.txt
+src/cases/**/_test/test_results.txt
+src/cases/**/test_results.txt

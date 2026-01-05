@@ -28,7 +28,7 @@
 #define VOXEL_BC_DEFINE STR(../../CASE_DIRECTORY/voxel/bc_definition.inc)
 
 // Collision-reconstruction files
-#define COLREC_DIRECTORY colrec
+#define COLREC_DIRECTORY collision_reconstruction
 #define COLREC_COLLISION STR(COLREC_DIRECTORY/COLLISION_TYPE/collision.inc)
 #define COLREC_RECONSTRUCTION STR(COLREC_DIRECTORY/COLLISION_TYPE/reconstruction.inc)
 
@@ -41,6 +41,11 @@
 #define CASE_PHI_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/phi_bc_definition.inc)
 #define COLREC_PHI_RECONSTRUCTION STR(COLREC_DIRECTORY/PHI_SCALAR/reconstruction.inc)
 #define COLREC_PHI_COLLISION STR(COLREC_DIRECTORY/PHI_SCALAR/collision.inc)
+
+// Lambda scalar field definitions
+#define CASE_LAMBDA_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/lambda_bc_definition.inc)
+#define COLREC_LAMBDA_RECONSTRUCTION STR(COLREC_DIRECTORY/LAMBDA_SCALAR/reconstruction.inc)
+#define COLREC_LAMBDA_COLLISION STR(COLREC_DIRECTORY/LAMBDA_SCALAR/collision.inc)
 
 // Aij tensor field definitions (stress tensor components)
 #define CASE_AXX_BC_DEF STR(CASE_DIRECTORY/BC_PROBLEM/axx_bc_definition.inc)
@@ -69,5 +74,8 @@
 
 // Particle creation
 #define CASE_PARTICLE_CREATE STR(../../CASE_DIRECTORY/BC_PROBLEM/particleCreation.inc)
+
+// Physics regression test metric
+#define CASE_TEST_METRIC STR(CASE_DIRECTORY/BC_PROBLEM/_test/test_metric.inc)
 
 #endif //__CASE_DEFINITIONS_H
