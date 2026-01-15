@@ -1,7 +1,5 @@
 #include "saveData.cuh"
-#ifdef OMEGA_FIELD
-#include "nnf.h"
-#endif //OMEGA_FIELD
+
 
 std::filesystem::path getExecutablePath() {
     #if defined(_WIN32)
@@ -56,42 +54,56 @@ void writeBigEndian(std::ofstream& ofs, const T* data, size_t count) {
 }
 
 __host__
-void saveMacr(
-    dfloat* h_fMom,
-    dfloat* rho,
-    dfloat* ux,
-    dfloat* uy,
-    dfloat* uz,
-    unsigned int* hNodeType,
-    OMEGA_FIELD_PARAMS_DECLARATION
-    #ifdef SECOND_DIST 
-    dfloat* C,
-    #endif //SECOND_DIST
-    #ifdef A_XX_DIST 
-    dfloat* Axx,
-    #endif //A_XX_DIST
-    #ifdef A_XY_DIST 
-    dfloat* Axy,
-    #endif //A_XY_DIST
-    #ifdef A_XZ_DIST 
-    dfloat* Axz,
-    #endif //A_XZ_DIST
-    #ifdef A_YY_DIST 
-    dfloat* Ayy,
-    #endif //A_YY_DIST
-    #ifdef A_YZ_DIST 
-    dfloat* Ayz,
-    #endif //A_YZ_DIST
-    #ifdef A_ZZ_DIST 
-    dfloat* Azz,
-    #endif //A_ZZ_DIST
-    NODE_TYPE_SAVE_PARAMS_DECLARATION
-    BC_FORCES_PARAMS_DECLARATION(h_) 
-    unsigned int nSteps,
-    std::atomic<bool>& savingMacrVtk,
-    std::vector<std::atomic<bool>>& savingMacrBin
-){
-
+void saveMacr(const SaveDataParams* params)
+{
+    // Unpack parameters from struct
+    dfloat* h_fMom = params->h_fMom;
+    dfloat* rho = params->h_rho;
+    dfloat* ux = params->h_ux;
+    dfloat* uy = params->h_uy;
+    dfloat* uz = params->h_uz;
+    unsigned int* hNodeType = params->h_nodeType;
+    #ifdef OMEGA_FIELD
+    dfloat* omega = params->h_omega;
+    #endif
+    #ifdef SECOND_DIST
+    dfloat* C = params->h_C;
+    #endif
+    #ifdef PHI_DIST
+    dfloat* phi = params->h_phi;
+    #endif
+    #ifdef LAMBDA_DIST
+    dfloat* lambda = params->h_lambda;
+    #endif
+    #ifdef A_XX_DIST
+    dfloat* Axx = params->h_Axx;
+    #endif
+    #ifdef A_XY_DIST
+    dfloat* Axy = params->h_Axy;
+    #endif
+    #ifdef A_XZ_DIST
+    dfloat* Axz = params->h_Axz;
+    #endif
+    #ifdef A_YY_DIST
+    dfloat* Ayy = params->h_Ayy;
+    #endif
+    #ifdef A_YZ_DIST
+    dfloat* Ayz = params->h_Ayz;
+    #endif
+    #ifdef A_ZZ_DIST
+    dfloat* Azz = params->h_Azz;
+    #endif
+    #if NODE_TYPE_SAVE
+    unsigned int* nodeTypeData = params->h_nodeTypeSave;
+    #endif
+    #ifdef BC_FORCES
+    dfloat* h_BC_Fx = params->h_BC_Fx;
+    dfloat* h_BC_Fy = params->h_BC_Fy;
+    dfloat* h_BC_Fz = params->h_BC_Fz;
+    #endif
+    unsigned int nSteps = params->nSteps;
+    std::atomic<bool>& savingMacrVtk = *params->savingMacrVtk;
+    std::vector<std::atomic<bool>>& savingMacrBin = *params->savingMacrBin;
 
     //linearize
     size_t indexMacr;
@@ -112,6 +124,12 @@ void saveMacr(
                 #ifdef SECOND_DIST 
                 C[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
                 #endif //SECOND_DIST
+                #ifdef PHI_DIST 
+                phi[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M3_PHI_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - PHI_ZERO;
+                #endif //PHI_DIST
+                #ifdef LAMBDA_DIST 
+                lambda[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M4_LAMBDA_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - LAMBDA_ZERO;
+                #endif //LAMBDA_DIST
                 #ifdef A_XX_DIST 
                 Axx[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, A_XX_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - CONF_ZERO;
                 #endif //A_XX_DIST
@@ -175,6 +193,8 @@ void saveMacr(
     std::string strFileRho, strFileUx, strFileUy, strFileUz; 
     std::string strFileOmega;
     std::string strFileC;
+    std::string strFilePhi;
+    std::string strFileLambda;
     std::string strFileBc; 
     std::string strFileFx, strFileFy, strFileFz;
     std::string strFileAxx, strFileAxy, strFileAxz, strFileAyy, strFileAyz, strFileAzz;
@@ -184,34 +204,55 @@ void saveMacr(
         std::string strFileVtk, strFileVtr;
         strFileVtk = getVarFilename("vtk", nSteps, ".vtk");
         while (savingMacrVtk) std::this_thread::yield();
-        saveVarVTK(
-                strFileVtk, 
-                rho,ux,uy,uz, OMEGA_FIELD_PARAMS
-                    #ifdef SECOND_DIST 
-                    C,
-                    #endif //SECOND_DIST
-                    #ifdef A_XX_DIST 
-                    Axx,
-                    #endif //A_XX_DIST
-                    #ifdef A_XY_DIST 
-                    Axy,
-                    #endif //A_XY_DIST
-                    #ifdef A_XZ_DIST 
-                    Axz,
-                    #endif //A_XZ_DIST
-                    #ifdef A_YY_DIST 
-                    Ayy,
-                    #endif //A_YY_DIST
-                    #ifdef A_YZ_DIST 
-                    Ayz,
-                    #endif //A_YZ_DIST
-                    #ifdef A_ZZ_DIST 
-                    Azz,
-                    #endif //A_ZZ_DIST
-                    NODE_TYPE_SAVE_PARAMS BC_FORCES_PARAMS(h_) 
-                    nSteps,
-                    savingMacrVtk   
-                );
+        
+        SaveDataParams saveVarVtkParams;
+        saveVarVtkParams.vtkFilename = strFileVtk.c_str();
+        saveVarVtkParams.h_rho = rho;
+        saveVarVtkParams.h_ux = ux;
+        saveVarVtkParams.h_uy = uy;
+        saveVarVtkParams.h_uz = uz;
+        #ifdef OMEGA_FIELD
+        saveVarVtkParams.h_omega = omega;
+        #endif
+        #ifdef SECOND_DIST
+        saveVarVtkParams.h_C = C;
+        #endif
+        #ifdef PHI_DIST
+        saveVarVtkParams.h_phi = phi;
+        #endif
+        #ifdef LAMBDA_DIST
+        saveVarVtkParams.h_lambda = lambda;
+        #endif
+        #ifdef A_XX_DIST
+        saveVarVtkParams.h_Axx = Axx;
+        #endif
+        #ifdef A_XY_DIST
+        saveVarVtkParams.h_Axy = Axy;
+        #endif
+        #ifdef A_XZ_DIST
+        saveVarVtkParams.h_Axz = Axz;
+        #endif
+        #ifdef A_YY_DIST
+        saveVarVtkParams.h_Ayy = Ayy;
+        #endif
+        #ifdef A_YZ_DIST
+        saveVarVtkParams.h_Ayz = Ayz;
+        #endif
+        #ifdef A_ZZ_DIST
+        saveVarVtkParams.h_Azz = Azz;
+        #endif
+        #if NODE_TYPE_SAVE
+        saveVarVtkParams.h_nodeTypeSave = nodeTypeData;
+        #endif
+        #ifdef BC_FORCES
+        saveVarVtkParams.h_BC_Fx = h_BC_Fx;
+        saveVarVtkParams.h_BC_Fy = h_BC_Fy;
+        saveVarVtkParams.h_BC_Fz = h_BC_Fz;
+        #endif
+        saveVarVtkParams.nSteps = nSteps;
+        saveVarVtkParams.savingMacrVtk = &savingMacrVtk;
+        
+        saveVarVTK(&saveVarVtkParams);
     }
     if (BIN_SAVE){
         strFileRho = getVarFilename("rho", nSteps, ".bin");
@@ -225,6 +266,12 @@ void saveMacr(
         #ifdef SECOND_DIST 
         strFileC = getVarFilename("C", nSteps, ".bin");
         #endif //SECOND_DIST
+        #ifdef PHI_DIST 
+        strFilePhi = getVarFilename("phi", nSteps, ".bin");
+        #endif //PHI_DIST
+        #ifdef LAMBDA_DIST
+        strFileLambda = getVarFilename("lambda", nSteps, ".bin");
+        #endif //LAMBDA_DIST
         #ifdef A_XX_DIST 
         strFileAxx = getVarFilename("Axx", nSteps, ".bin");
         #endif //A_XX_DIST
@@ -264,7 +311,13 @@ void saveMacr(
         #endif
         #ifdef SECOND_DIST
         varArray.push_back(C); fileArray.push_back(strFileC);
-        #endif
+        #endif //SECOND_DIST
+        #ifdef PHI_DIST
+        varArray.push_back(phi); fileArray.push_back(strFilePhi);
+        #endif //PHI_DIST
+        #ifdef LAMBDA_DIST
+        varArray.push_back(lambda); fileArray.push_back(strFileLambda);
+        #endif //LAMBDA_DIST
         #ifdef A_XX_DIST
         varArray.push_back(Axx); fileArray.push_back(strFileAxx);
         #endif
@@ -296,44 +349,6 @@ void saveMacr(
             while (savingMacrBin[i]) std::this_thread::yield();
             saveVarBin(fileArray[i], varArray[i], MEM_SIZE_SCALAR, false, savingMacrBin[i]);
         }
-
-        // saveVarBin(strFileRho, rho, MEM_SIZE_SCALAR, false);
-        // saveVarBin(strFileUx, ux, MEM_SIZE_SCALAR, false);
-        // saveVarBin(strFileUy, uy, MEM_SIZE_SCALAR, false);
-        // saveVarBin(strFileUz, uz, MEM_SIZE_SCALAR, false);
-        // #ifdef OMEGA_FIELD
-        // saveVarBin(strFileOmega, omega, MEM_SIZE_SCALAR, false);
-        // #endif //OMEGA_FIELD
-        // #ifdef SECOND_DIST
-        // saveVarBin(strFileC, C, MEM_SIZE_SCALAR, false);
-        // #endif //SECOND_DIST
-        // #ifdef A_XX_DIST 
-        // saveVarBin(strFileAxx, Axx, MEM_SIZE_SCALAR, false);
-        // #endif //A_XX_DIST
-        // #ifdef A_XY_DIST 
-        // saveVarBin(strFileAxy, Axy, MEM_SIZE_SCALAR, false);
-        // #endif //A_XY_DIST
-        // #ifdef A_XZ_DIST 
-        // saveVarBin(strFileAxz, Axz, MEM_SIZE_SCALAR, false);
-        // #endif //A_XZ_DIST
-        // #ifdef A_YY_DIST 
-        // saveVarBin(strFileAyy, Ayy, MEM_SIZE_SCALAR, false);
-        // #endif //A_YY_DIST
-        // #ifdef A_YZ_DIST 
-        // saveVarBin(strFileAyz, Ayz, MEM_SIZE_SCALAR, false);
-        // #endif //A_YZ_DIST
-        // #ifdef A_ZZ_DIST 
-        // saveVarBin(strFileAzz, Azz, MEM_SIZE_SCALAR, false);
-        // #endif //A_ZZ_DIST
-        
-        // #if NODE_TYPE_SAVE
-        // saveVarBin(strFileBc, (dfloat*)nodeTypeSave, MEM_SIZE_SCALAR, false);
-        // #endif //NODE_TYPE_SAVE
-        // #if defined BC_FORCES && defined SAVE_BC_FORCES
-        // saveVarBin(strFileFx, h_BC_Fx, MEM_SIZE_SCALAR, false);
-        // saveVarBin(strFileFy, h_BC_Fy, MEM_SIZE_SCALAR, false);
-        // saveVarBin(strFileFz, h_BC_Fz, MEM_SIZE_SCALAR, false);
-        // #endif //BC_FORCES && SAVE_BC_FORCES
     }
 }
 
@@ -435,7 +450,7 @@ std::vector<dfloat6> convertPointToCellTensor6(
 }
 
 std::vector<int> convertPointToCellIntMode(
-    const int* pointField, size_t NX, size_t NY, size_t NZ)
+    const unsigned int* pointField, size_t NX, size_t NY, size_t NZ)
 {
     size_t Ncells = (NX-1)*(NY-1)*(NZ-1);
     std::vector<int> cellField(Ncells, 0);
@@ -460,40 +475,56 @@ std::vector<int> convertPointToCellIntMode(
     return cellField;
 }
 
-void saveVarVTK(
-    std::string filename, 
-    dfloat* rho,
-    dfloat* ux,
-    dfloat* uy,
-    dfloat* uz,
-    OMEGA_FIELD_PARAMS_DECLARATION
-    #ifdef SECOND_DIST 
-    dfloat* C,
-    #endif //SECOND_DIST
-    #ifdef A_XX_DIST 
-    dfloat* Axx,
-    #endif //A_XX_DIST
-    #ifdef A_XY_DIST 
-    dfloat* Axy,
-    #endif //A_XY_DIST
-    #ifdef A_XZ_DIST 
-    dfloat* Axz,
-    #endif //A_XY_DIST
-    #ifdef A_YY_DIST 
-    dfloat* Ayy,
-    #endif //A_YY_DIST
-    #ifdef A_YZ_DIST 
-    dfloat* Ayz,
-    #endif //A_YZ_DIST
-    #ifdef A_ZZ_DIST 
-    dfloat* Azz,
-    #endif //A_ZZ_DIST
-    NODE_TYPE_SAVE_PARAMS_DECLARATION
-    BC_FORCES_PARAMS_DECLARATION(h_) 
-    unsigned int nSteps,
-    std::atomic<bool>& savingMacrVtk
-    )
+void saveVarVTK(const SaveDataParams* params)
 {
+    // Unpack parameters from struct
+    std::string filename = params->vtkFilename;
+    dfloat* rho = params->h_rho;
+    dfloat* ux = params->h_ux;
+    dfloat* uy = params->h_uy;
+    dfloat* uz = params->h_uz;
+    #ifdef OMEGA_FIELD
+    dfloat* omega = params->h_omega;
+    #endif
+    #ifdef SECOND_DIST
+    dfloat* C = params->h_C;
+    #endif
+    #ifdef PHI_DIST
+    dfloat* phi = params->h_phi;
+    #endif
+    #ifdef LAMBDA_DIST
+    dfloat* lambda = params->h_lambda;
+    #endif
+    #ifdef A_XX_DIST
+    dfloat* Axx = params->h_Axx;
+    #endif
+    #ifdef A_XY_DIST
+    dfloat* Axy = params->h_Axy;
+    #endif
+    #ifdef A_XZ_DIST
+    dfloat* Axz = params->h_Axz;
+    #endif
+    #ifdef A_YY_DIST
+    dfloat* Ayy = params->h_Ayy;
+    #endif
+    #ifdef A_YZ_DIST
+    dfloat* Ayz = params->h_Ayz;
+    #endif
+    #ifdef A_ZZ_DIST
+    dfloat* Azz = params->h_Azz;
+    #endif
+    #if NODE_TYPE_SAVE
+    unsigned int* nodeTypeData = params->h_nodeTypeSave;
+    #endif
+    #ifdef BC_FORCES
+    dfloat* h_BC_Fx = params->h_BC_Fx;
+    dfloat* h_BC_Fy = params->h_BC_Fy;
+    dfloat* h_BC_Fz = params->h_BC_Fz;
+    #endif
+    unsigned int nSteps = params->nSteps;
+    std::atomic<bool>& savingMacrVtk = *params->savingMacrVtk;
+
+    // Function body starts here
     const char* VTK_TYPE = nullptr;
 
     if (std::is_same<dfloat, float>::value) {
@@ -540,6 +571,18 @@ void saveVarVTK(
                     << "LOOKUP_TABLE default\n";
                 writeBigEndian(ofs, C, N);
             #endif //SECOND_DIST
+            
+            #ifdef PHI_DIST
+                ofs << "SCALARS PHI " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, phi, N);
+            #endif //PHI_DIST
+
+            #ifdef LAMBDA_DIST
+                ofs << "SCALARS lambda " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, lambda, N);
+            #endif //LAMBDA_DIST
 
             #ifdef CONFORMATION_TENSOR
                 ofs << "TENSORS6 Aij " << VTK_TYPE << "\n";
@@ -578,7 +621,7 @@ void saveVarVTK(
             //Header 
             ofs << "# vtk DataFile Version 3.0\n"
                 << "LBM output (binary)\n"
-                << "BINARY\n"                               // ← here!
+                << "BINARY\n"
                 << "DATASET STRUCTURED_POINTS\n"
                 << "DIMENSIONS " << NX << " " << NY << " " << NZ << "\n"
                 << "ORIGIN 0 0 0\n"
@@ -612,6 +655,20 @@ void saveVarVTK(
                 writeBigEndian(ofs, C_cell.data(), Ncells);
             #endif //SECOND_DIST
 
+            #ifdef PHI_DIST
+                auto PHI_cell = convertPointToCellScalar(phi,NX,NY,NZ);
+                ofs << "SCALARS PHI  " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, PHI_cell.data(), Ncells);
+            #endif //PHI_DIST
+
+            #ifdef LAMBDA_DIST
+                auto lambda_cell = convertPointToCellScalar(lambda,NX,NY,NZ);
+                ofs << "SCALARS lambda  " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, lambda_cell.data(), Ncells);
+            #endif //LAMBDA_DIST
+
             #ifdef CONFORMATION_TENSOR
                 auto A_cell = convertPointToCellTensor6(Axx,Ayy,Azz,Axy,Ayz,Axz,NX,NY,NZ);
                 ofs << "TENSORS6 Aij  " << VTK_TYPE << "\n";
@@ -634,7 +691,7 @@ void saveVarVTK(
             #endif //SAVE_BC_FORCES
 
             #if NODE_TYPE_SAVE
-                auto bc_cell = convertPointToCellIntMode(NODE_TYPE_SAVE,NX,NY,NZ);
+                auto bc_cell = convertPointToCellIntMode(nodeTypeSave,NX,NY,NZ);
                 ofs << "SCALARS bc int 1\n"
                     << "LOOKUP_TABLE default\n";
                 writeBigEndian(ofs, bc_cell.data(), Ncells);
@@ -674,7 +731,7 @@ std::string getVarFilename(
     return strFile;
 }
 
-std::string getSimInfoString(int step,dfloat MLUPS)
+std::string getSimInfoString(int step, dfloat MLUPS, const fluidProps& nnfProps = {})
 {
     std::ostringstream strSimInfo("");
     
@@ -705,6 +762,7 @@ std::string getSimInfoString(int step,dfloat MLUPS)
     strSimInfo << "                 FY: " << FY << "\n";
     strSimInfo << "                 FZ: " << FZ << "\n";
     strSimInfo << "         Save steps: " << MACR_SAVE << "\n";
+    strSimInfo << "       Report steps: " << REPORT_SAVE << "\n";
     strSimInfo << "             Nsteps: " << step << "\n";
     strSimInfo << "              MLUPS: " << MLUPS << "\n";
         strSimInfo << std::scientific << std::setprecision(0);
@@ -718,29 +776,158 @@ std::string getSimInfoString(int step,dfloat MLUPS)
     strSimInfo << "            BC mode: Moment Based \n";
     #endif //BC_MOMENT_BASED
     strSimInfo << "            BC type: " << STR(BC_PROBLEM) << "\n";
+    #ifdef BC_X_WALL
+    strSimInfo << "          BC. X-Dir: Wall \n";
+    #endif
+    #ifdef BC_X_PERIODIC
+    strSimInfo << "          BC. X-Dir: Periodic \n";
+    #endif
+    #ifdef BC_X_WALL
+    strSimInfo << "          BC. Y-Dir: Wall \n";
+    #endif
+    #ifdef BC_Y_PERIODIC
+    strSimInfo << "          BC. Y-Dir: Periodic \n";
+    #endif
+    #ifdef BC_Z_WALL
+    strSimInfo << "          BC. Z-Dir: Wall \n";
+    #endif
+    #ifdef BC_Z_PERIODIC
+    strSimInfo << "          BC. Z-Dir: Periodic \n";
+    #endif
     strSimInfo << "--------------------------------------------------------------------------------\n";
-
-
     #ifdef OMEGA_FIELD
     strSimInfo << "\n------------------------------ NON NEWTONIAN FLUID -----------------------------\n";
     strSimInfo << std::scientific << std::setprecision(6);
     
-    #ifdef POWERLAW
-    strSimInfo << "              Model: Power-Law\n";
-    strSimInfo << "        Power index: " << N_INDEX << "\n";
-    strSimInfo << " Consistency factor: " << K_CONSISTENCY << "\n";
-    strSimInfo << "            Gamma 0: " << GAMMA_0 << "\n";
-    #endif // POWERLAW
-
-    #ifdef BINGHAM
-    strSimInfo << "              Model: Bingham\n";
-    strSimInfo << "  Plastic viscosity: " << VISC << "\n";
-    strSimInfo << "       Yield stress: " << S_Y << "\n";
-    strSimInfo << "      Plastic omega: " << OMEGA_P << "\n";
-    #endif // BINGHAM
+    #ifdef NON_NEWTONIAN_FLUID
+    // Display info based on actual fluidProps struct
+    switch (nnfProps.type) {
+        case FLUID_POWERLAW:
+            strSimInfo << "              Model: Power-Law\n";
+            strSimInfo << "        Power index: " << nnfProps.u.powerlaw.n_index << "\n";
+            strSimInfo << " Consistency factor: " << nnfProps.u.powerlaw.k_consistency << "\n";
+            strSimInfo << "            Gamma 0: " << nnfProps.u.powerlaw.gamma_0 << "\n";
+            break;
+        
+        case FLUID_BINGHAM:
+            strSimInfo << "              Model: Bingham (Viscoplastic)\n";
+            strSimInfo << "       Yield stress: " << nnfProps.u.bingham.s_y << "\n";
+            strSimInfo << "      Plastic omega: " << nnfProps.u.bingham.omega_p << "\n";
+            strSimInfo << "  Plastic viscosity: " << VISC << "\n";
+            strSimInfo << "     Bingham number: " << nnfProps.u.bingham.s_y / (VISC * U_MAX * U_MAX) << "\n";
+            break;
+        
+        case FLUID_HERSCHEL_BULKLEY:
+            strSimInfo << "              Model: Herschel-Bulkley\n";
+            strSimInfo << "       Yield stress: " << nnfProps.u.hb.s_y << "\n";
+            strSimInfo << "        Power index: " << nnfProps.u.hb.n_index << "\n";
+            strSimInfo << " Consistency factor: " << nnfProps.u.hb.k_consistency << "\n";
+            strSimInfo << "            Gamma 0: " << nnfProps.u.hb.gamma_0 << "\n";
+            break;
+        
+        case FLUID_BI_VISCOSITY:
+            strSimInfo << "              Model: Bi-viscosity\n";
+            strSimInfo << "       Yield stress: " << nnfProps.u.bi.s_y << "\n";
+            strSimInfo << "     Viscosity ratio: " << nnfProps.u.bi.visc_ratio << "\n";
+            strSimInfo << "        Yield omega: " << nnfProps.u.bi.omega_y << "\n";
+            strSimInfo << "      Plastic omega: " << nnfProps.u.bi.omega_p << "\n";
+            strSimInfo << "    Critical gamma: " << nnfProps.u.bi.gamma_c << "\n";
+            break;
+        
+        case FLUID_KEE_TURCOTEE:
+            strSimInfo << "              Model: Kee-Turcotte\n";
+            strSimInfo << "       Yield stress: " << nnfProps.u.kee.s_y << "\n";
+            strSimInfo << "          Time param: " << nnfProps.u.kee.t1 << "\n";
+            strSimInfo << "   Zero-shear visc.: " << nnfProps.u.kee.eta_0 << "\n";
+            break;
+        
+        case FLUID_THIXO:
+            strSimInfo << "              Model: Thixotropic\n";
+            strSimInfo << "         Has lambda: " << (nnfProps.hasLambda ? "Yes" : "No") << "\n";
+            switch (nnfProps.u.thixo.model) {
+                case THIXO_MOORE1959:
+                    strSimInfo << "      Thixo submodel: Moore (1959)\n";
+                    strSimInfo << "         Build rate: " << nnfProps.u.thixo.u.moore1959.k1 << "\n";
+                    strSimInfo << "         Break rate: " << nnfProps.u.thixo.u.moore1959.k2 << "\n";
+                    strSimInfo << "   Initial lambda: " << nnfProps.u.thixo.u.moore1959.lambda_0 << "\n";
+                    strSimInfo << "   Zero-shear visc: " << nnfProps.u.thixo.u.moore1959.eta_0 << "\n";
+                    break;
+                case THIXO_WORRALL1964:
+                    strSimInfo << "      Thixo submodel: Worrall (1964)\n";
+                    strSimInfo << "         Break rate: " << nnfProps.u.thixo.u.worrall1964.k1 << "\n";
+                    strSimInfo << "  Initial yield str: " << nnfProps.u.thixo.u.worrall1964.s_y_0 << "\n";
+                    strSimInfo << "   Zero-shear visc: " << nnfProps.u.thixo.u.worrall1964.eta_0 << "\n";
+                    break;
+                case THIXO_HOUSKA1980:
+                    strSimInfo << "      Thixo submodel: Houska (1980)\n";
+                    strSimInfo << "         Build rate: " << nnfProps.u.thixo.u.houska1980.k1 << "\n";
+                    strSimInfo << "         Break rate: " << nnfProps.u.thixo.u.houska1980.k2 << "\n";
+                    strSimInfo << "      Power exponent: " << nnfProps.u.thixo.u.houska1980.m_exponent << "\n";
+                    strSimInfo << "   Initial yield str: " << nnfProps.u.thixo.u.houska1980.s_y_0 << "\n";
+                    strSimInfo << "      Eq. yield str: " << nnfProps.u.thixo.u.houska1980.s_y_inf << "\n";
+                    strSimInfo << "  Consistency factor: " << nnfProps.u.thixo.u.houska1980.k_consistency << "\n";
+                    strSimInfo << "         Power index: " << nnfProps.u.thixo.u.houska1980.n_index << "\n";
+                    break;
+                case THIXO_TOORMAN1997:
+                    strSimInfo << "      Thixo submodel: Toorman (1997)\n";
+                    strSimInfo << "         Build rate: " << nnfProps.u.thixo.u.toorman1997.k1 << "\n";
+                    strSimInfo << "         Break rate: " << nnfProps.u.thixo.u.toorman1997.k2 << "\n";
+                    strSimInfo << "              a exp: " << nnfProps.u.thixo.u.toorman1997.a_exponent << "\n";
+                    strSimInfo << "              b exp: " << nnfProps.u.thixo.u.toorman1997.b_exponent << "\n";
+                    strSimInfo << "   Initial yield str: " << nnfProps.u.thixo.u.toorman1997.s_y_0 << "\n";
+                    strSimInfo << "   Zero-shear visc: " << nnfProps.u.thixo.u.toorman1997.eta_0 << "\n";
+                    break;
+            }
+            break;
+        
+        default:
+            strSimInfo << "              Model: Unknown\n";
+            break;
+    }
+    #endif // NON_NEWTONIAN_FLUID
+    
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif // OMEGA_FIELD
+    #ifdef PARTICLE_MODEL
+    strSimInfo << "\n---------------------------------- PARTICLES -----------------------------------\n";
+    strSimInfo << std::scientific << std::setprecision(6);
+    strSimInfo << "   Number of particles: " << NUM_PARTICLES << "\n";
+    strSimInfo << "         Fluid density: " << FLUID_DENSITY << "\n";
+    strSimInfo << "                    GX: " << GX << "\n";
+    strSimInfo << "                    GY: " << GY << "\n";
+    strSimInfo << "                    GZ: " << GZ << "\n";
+    strSimInfo << "        Particles save: " << PARTICLES_SAVE << "\n";
+    #ifdef IBM_METHOD
+        strSimInfo << "\n------------------------------------- IBM --------------------------------------\n";
+        strSimInfo << "  Particles nodes save: " << IBM_PARTICLES_NODES_SAVE << "\n";
+        strSimInfo << "            Mesh scale: " << MESH_SCALE << "\n";
+        strSimInfo << "          Mesh coulomb: " << MESH_COULOMB << "\n";
+        strSimInfo << "         IBM thickness: " << IBM_THICKNESS << "\n";
+
+        strSimInfo << "          Stencil size: ";
+        #if defined STENCIL_2
+        strSimInfo << "2" << "\n";
+        #elif defined STENCIL_4
+        strSimInfo << "4" << "\n";
+        #else
+        strSimInfo << "Invalid" << "\n";
+        #endif
+    #endif //IBM_METHOD
+    #ifdef DEM_METHOD
+        strSimInfo << "\n------------------------------------- DEM --------------------------------------\n";
+        strSimInfo << " Part-Part Frict Coef.: " << PP_FRICTION_COEF << "\n";
+        strSimInfo << " Part-Wall Frict Coef.: " << PW_FRICTION_COEF << "\n";
+        strSimInfo << " Part-Part Rest. Coef.: " << PP_REST_COEF << "\n";
+        strSimInfo << " Part-Wall Rest. Coef.: " << PW_REST_COEF << "\n";
+        strSimInfo << " Particle Young's Mod.: " << PARTICLE_YOUNG_MODULUS << "\n";
+        strSimInfo << " Particle Poisson Rat.: " << PARTICLE_POISSON_RATIO << "\n";
+        strSimInfo << "     Wall Young's Mod.: " << WALL_YOUNG_MODULUS << "\n";
+        strSimInfo << "     Wall Poisson Rat.: " << WALL_POISSON_RATIO << "\n";
+        #endif //DEM_METHOD
+    strSimInfo << "--------------------------------------------------------------------------------\n";
+    #endif //PARTICLE_MODEL
     #ifdef LES_MODEL
+    strSimInfo << "\n------------------------------------- LES --------------------------------------\n";
     strSimInfo << "\t Smagorisky Constant:" << CONST_SMAGORINSKY <<"\n";
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif //LES
@@ -769,6 +956,20 @@ std::string getSimInfoString(int step,dfloat MLUPS)
 
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif// THERMAL_MODEL
+    #ifdef PHASE_MODEL 
+    strSimInfo << "\n------------------------------ PHASE -----------------------------\n";
+    strSimInfo << std::scientific << std::setprecision(4);
+    strSimInfo << "          Delta Phi: " << PHI_DELTA_PHI << "\n";
+    strSimInfo << "      Reference Phi: " << PHI_REFERENCE << "\n";
+    strSimInfo << "            Phi One: " << PHI_ONE << "\n";
+    strSimInfo << "            Phi Two: " << PHI_TWO << "\n";
+    strSimInfo << "  Diffusivity ratio: " << PHI_DIFFUSIVITY_RATIO << "\n";
+    strSimInfo << "  Diffusivity Coef.: " << PHI_DIFFUSIVITY << "\n";
+    strSimInfo << "         Phi Offset: " << PHI_ZERO << "\n";
+    strSimInfo << "            PHI_TAU: " << PHI_TAU << "\n";
+    strSimInfo << "          PHI_OMEGA: " << PHI_OMEGA << "\n";
+    strSimInfo << "--------------------------------------------------------------------------------\n";
+    #endif// PHASE_MODEL
     #if defined(FENE_P) || defined(OLDROYD_B)
     strSimInfo << "\n------------------------------ VISCOELASTIC -----------------------------\n";
         strSimInfo << std::scientific << std::setprecision(4);
@@ -794,7 +995,7 @@ std::string getSimInfoString(int step,dfloat MLUPS)
     return strSimInfo.str();
 }
 
-void saveSimInfo(int step,dfloat MLUPS)
+void saveSimInfo(int step, dfloat MLUPS, const fluidProps& nnfProps)
 {
     std::filesystem::path baseDir = folderSetup();
 
@@ -806,7 +1007,7 @@ void saveSimInfo(int step,dfloat MLUPS)
     outFile = fopen(strInf.string().c_str(), "w");
     if(outFile != nullptr)
     {
-        std::string strSimInfo = getSimInfoString(step,MLUPS);
+        std::string strSimInfo = getSimInfoString(step, MLUPS, nnfProps);
         fprintf(outFile, strSimInfo.c_str());
         fclose(outFile);
     }

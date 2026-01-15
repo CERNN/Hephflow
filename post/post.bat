@@ -1,1 +1,1 @@
-python exampleVTK.py "TEST/000"
+python bin2VTK.py "TEST/000"

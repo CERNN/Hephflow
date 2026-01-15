@@ -16,7 +16,7 @@
 #include <builtin_types.h> // for device variables
 #include "var.h"
 #include "globalStructs.h"
-#include "./includeFiles/interface.h"
+#include "./include/interface.h"
 #ifdef PARTICLE_MODEL
 #include "particles/models/ibm/ibmVar.h"
 #endif //PARTICLE_MODEL
@@ -34,7 +34,7 @@ __host__ __device__
 {
     // f_eq = rho_w * (1 - uu * 1.5 + uc * 3 + uc * uc * 4.5) ->
     // f_eq = rho_w * (1 - uu * 1.5 + uc * 3 * ( 1 + uc * 1.5)) ->
-    return (rhow * (p1_muu + uc3 * (1.0 + uc3 * 0.5)));
+    return (rhow * (p1_muu + uc3 * (1.0_df + uc3 * 0.5_df)));
 }   
 
 
@@ -212,7 +212,7 @@ idxPopZ(
 
     return tx + BLOCK_NX * (ty + BLOCK_NY * (pop + QF * (bx + NUM_BLOCK_X * (by + NUM_BLOCK_Y * bz))));
 }
-#if defined(SECOND_DIST) || defined(A_XX_DIST) || defined(A_XY_DIST) || defined(A_XZ_DIST) || defined(A_YY_DIST) || defined(A_YZ_DIST) || defined(A_ZZ_DIST)
+#if defined(SECOND_DIST) || defined(PHI_DIST) || defined(LAMBDA_DIST) || defined(A_XX_DIST) || defined(A_XY_DIST) || defined(A_XZ_DIST) || defined(A_YY_DIST) || defined(A_YZ_DIST) || defined(A_ZZ_DIST)
 
 __device__ int __forceinline__
 g_idxPopX(
@@ -250,7 +250,7 @@ g_idxPopZ(
 {
     return tx + BLOCK_NX * (ty + BLOCK_NY * (pop + GF * (bx + NUM_BLOCK_X * (by + NUM_BLOCK_Y * bz))));
 }
-#endif //#if defined(SECOND_DIST) || defined(A_XX_DIST) || defined(A_XY_DIST) || defined(A_XZ_DIST) || defined(A_YY_DIST) || defined(A_YZ_DIST) || defined(A_ZZ_DIST)
+#endif //#if defined(SECOND_DIST) || defined(PHI_DIST) || defined(A_XX_DIST) || defined(A_XY_DIST) || defined(A_XZ_DIST) || defined(A_YY_DIST) || defined(A_YZ_DIST) || defined(A_ZZ_DIST)
 
 #ifdef COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 __device__ int __forceinline__
@@ -453,6 +453,19 @@ dfloat3 vector_lerp(dfloat3 v1, dfloat3 v2, dfloat t);
  */
 __device__
 dfloat3 planeProjection(dfloat3 P, dfloat3 n, dfloat d);
+
+/**
+ * @brief Projects point P onto a line segment defined by endpoints P1 and P2, considering a cylinder radius and direction. 
+ * @param P The point to project.
+ * @param P1 The start point of the segment.
+ * @param P2 The end point of the segment.
+ * @param cRadius The radius of the cylinder around the segment.
+ * @param cyDir The direction of the surfance normal for the cylinder (-1 for external and 1 for internal).
+ * @return The projected point on the segment within the cylinder.
+ */
+__device__
+dfloat3 segmentProjection(dfloat3 P, dfloat3 P1, dfloat3 P2, dfloat cRadius, int cyDir);
+
 /**
  *  @brief Compute the dot product of two vectors.
  *  @param v1: First vector.
@@ -510,8 +523,29 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2);
  * @param L: The length of the periodic domain.
  * @return The wrapped coordinate.
  */
+
 __host__ __device__
-inline dfloat wrapPeriodic(dfloat coord, dfloat pos, dfloat L);
+inline dfloat wrapPeriodic(dfloat coord, dfloat pos, dfloat L) {
+    dfloat diff = coord - pos;
+    if (fabs(diff) > 0.5f * L) {
+        if (coord < pos) coord += L;
+        else             coord -= L;
+    }
+    return coord;
+}
+
+
+/**
+ * @brief Compute the shortest distance from a point to a segment.
+ * @param point: The point in 3D space.
+ * @param segA: The start point of the segment.
+ * @param segB: The end point of the segment.
+ * @param closestPoint: Output for the closest point on the segment.
+ * @return The shortest distance between the point and the segment.
+ */
+__device__
+dfloat point_to_segment_distance(dfloat3 p, dfloat3 segA, dfloat3 segB, dfloat3 closestOnAB[1]);
+
 
 /**
  *  @brief Compute the shortest distance from a point to a segment considering periodic conditions.
@@ -640,6 +674,15 @@ dfloat4 quart_conjugate(dfloat4 q);
  */
 __host__ __device__
 dfloat4 quart_multiplication(dfloat4 q1, dfloat4 q2);
+
+/**
+ *  @brief Normalize a quaternion to unit magnitude.
+ *  @param q: Quaternion to be normalized.
+ *  @return The normalized quaternion with magnitude 1.0.
+ *  @note Critical for preventing drift after repeated multiplications.
+ */
+__host__ __device__
+dfloat4 quart_normalize(dfloat4 q);
 
 // ****************************************************************************
 // **********************   CONVERSION OPERATIONS   ***************************
@@ -770,12 +813,17 @@ dfloat6 rotate_inertia_by_quart(dfloat4 q, dfloat6 I6);
 
 
 __host__ __device__
-
+dfloat mom_bilinear_interp_xy(dfloat x, dfloat y, int z, const int mom, dfloat *fMom);
+__host__ __device__
+dfloat mom_bilinear_interp_xz(dfloat x, int y, dfloat z, const int mom, dfloat *fMom);
+__host__ __device__
+dfloat mom_bilinear_interp_yz(int x, dfloat y, dfloat z, const int mom, dfloat *fMom);
+__host__ __device__
 dfloat mom_trilinear_interp(dfloat x, dfloat y, dfloat z, const int mom , dfloat *fMom);
 __host__ __device__
 dfloat cubic_interp(dfloat p0, dfloat p1, dfloat p2, dfloat p3, dfloat t);
 __host__ __device__
-dfloat mom_tricubic_interp(dfloat x, dfloat y, dfloat z, const int mom, dfloat *fMom) ;
+dfloat mom_tricubic_interp(dfloat x, dfloat y, dfloat z, const int mom, dfloat *fMom);
 
 __host__ __forceinline__  uint32_t set_top12_bits_host(uint32_t base, dfloat x) {return (base & 0x000FFFFF) | (static_cast<uint32_t>(x * 4095.0f + 0.5f) << 20);}
 __host__ __forceinline__  dfloat get_from_top12_bits_host(uint32_t value) {return static_cast<dfloat>(value >> 20) * 0.0002442002f;}

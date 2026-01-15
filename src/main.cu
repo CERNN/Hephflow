@@ -2,6 +2,9 @@
 #include "hostField.cuh"
 #include "deviceField.cuh"
 #include "saveField.cuh"
+#ifdef PARTICLE_MODEL
+#include "particleField.cuh"
+#endif //PARTICLE_MODEL
 
 using namespace std;
 
@@ -30,23 +33,35 @@ int main() {
     
     /* -------------- ALLOCATION FOR GPU ------------- */
     deviceField.allocateDeviceMemoryDeviceField();
-    //TODO : move these malocs to inside teh corresponding mallocs
+    
+    #ifdef NON_NEWTONIAN_FLUID
+    deviceField.nnfProps = CASE_NNF_PROPS;
+    #endif //NON_NEWTONIAN_FLUID
+    
+    #ifdef PARTICLE_MODEL
+    // Particle field initialization and allocation
+    ParticleField particleField;
+    particleField.allocateMemory();
+    #endif //PARTICLE_MODEL
+    
     #ifdef DENSITY_CORRECTION
-        checkCudaErrors(cudaMallocHost((void**)&(hostField.h_mean_rho), sizeof(dfloat)));
-        cudaMalloc((void**)&deviceField.d_mean_rho, sizeof(dfloat));  
+        // Allocate density correction memory in both host and device fields
+        hostField.allocateDensityCorrectionMemory();
+        deviceField.allocateDensityCorrectionMemory();
     #endif //DENSITY_CORRECTION
 
-    // Setup Streams
+    /* -------------- Setup Streams ------------- */
     cudaStream_t streamsLBM[1];
     checkCudaErrors(cudaSetDevice(GPU_INDEX));
     checkCudaErrors(cudaStreamCreate(&streamsLBM[0]));
     checkCudaErrors(cudaDeviceSynchronize());
     #ifdef PARTICLE_MODEL
-    cudaStream_t streamsPart[1];
-    checkCudaErrors(cudaStreamCreate(&streamsPart[0]));
+    particleField.setupStreams();
     #endif //PARTICLE_MODEL
 
     step = INI_STEP;
+
+
     //Declaration of atomic flags to safely control the state of data saving in multiple threads.
     std::atomic<bool> savingMacrVtk(false);
     std::atomic<bool> savingMacrParticle(false);
@@ -56,7 +71,7 @@ int main() {
         savingMacrBin[i].store(false);
     }
 
-    //Initialize domain in the device by copying data from the host
+    /* -------------- Initialize domain in the device ------------- */
     deviceField.initializeDomainDeviceField(hostField, randomNumbers,  step, gridBlock, threadBlock);
 
     int ini_step = step;
@@ -64,16 +79,9 @@ int main() {
     printf("Domain Initialized. Starting simulation\n"); if(console_flush) fflush(stdout);
     
     #ifdef PARTICLE_MODEL
-        //memory allocation for particles in host and device
-        ParticlesSoA particlesSoA;
-        Particle *particles;
-        particles = (Particle*) malloc(sizeof(Particle)*NUM_PARTICLES);
-        
-        // particle initialization with position, velocity, and solver method
-        initializeParticle(particlesSoA, particles, &step, gridBlock, threadBlock);
-        while (savingMacrParticle) std::this_thread::yield();
-        saveParticlesInfo(&particlesSoA, step, savingMacrParticle);
-
+        // Initialize particle field with position, velocity, and solver method
+        particleField.initialize(&step, gridBlock, threadBlock);
+        particleField.saveInfo(step, savingMacrParticle);
     #endif //PARTICLE_MODEL
 
     /* ------------------------------ TIMER EVENTS  ------------------------------ */
@@ -84,14 +92,7 @@ int main() {
     /* ------------------------------ LBM LOOP ------------------------------ */
 
     #ifdef DYNAMIC_SHARED_MEMORY
-        int maxShared;
-        cudaDeviceGetAttribute(&maxShared, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0);
-        if (MAX_SHARED_MEMORY_SIZE > maxShared) {
-            printf("Requested %d bytes exceeds device max %d bytes\n", MAX_SHARED_MEMORY_SIZE, maxShared);
-        }else{
-            printf("Using %d bytes of dynamic shared memory of a max of %d bytes\n", MAX_SHARED_MEMORY_SIZE, maxShared);
-            cudaFuncSetAttribute(&gpuMomCollisionStream, cudaFuncAttributeMaxDynamicSharedMemorySize DYNAMIC_SHARED_MEMORY_PARAMS); // DOESNT WORK: DYNAMICALLY SHARED MEMORY HAS WORSE PERFORMANCE
-        }
+        if (configureDynamicSharedMemory(GPU_INDEX)) return 1;
     #endif //DYNAMIC_SHARED_MEMORY
    
     /* --------------------------------------------------------------------- */
@@ -102,76 +103,62 @@ int main() {
 
         SaveField saveField;
 
-        #ifdef DENSITY_CORRECTION
-        deviceField.mean_rhoDeviceField(step)
-        #endif //DENSITY_CORRECTION
-
+        // update saving flags
         saveField.flagsUpdate(step);
-
-        // ghost interface should be inside the deviceField struct
+        //------------------------- Main LBM Kernels -------------------------
         deviceField.gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save);
-        cudaError_t err = cudaGetLastError();
-        if (err != cudaSuccess) {
-            printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
-        }
-
-        //swap interface pointers
+        // swap interface pointers
         deviceField.swapGhostInterfacesDeviceField();
-        
-        #ifdef LOCAL_FORCES
-            deviceField.gpuResetMacroForcesDeviceField(gridBlock, threadBlock);
-        #endif //LOCAL_FORCES
+        CHECK_KERNEL_ERR("Stream Collision kernel");
 
+        //------------------------- Auxiliary Kernels -------------------------
+        deviceField.halfStepKernels(gridBlock, threadBlock, step);
         #ifdef PARTICLE_MODEL
-            deviceField.particleSimulationDeviceField(particlesSoA,streamsPart,step);
+            particleField.simulationStep(deviceField.d_fMom, step);
         #endif //PARTICLE_MODEL
 
+        //------------------------- Saving Data -------------------------
+        // Saving checkpoint     
         if(saveField.checkpoint){
-            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
-            // throwing a warning for being used without being initialized. But does not matter since we are overwriting it;
+            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
             deviceField.cudaMemcpyDeviceField(hostField);
             deviceField.interfaceCudaMemcpyDeviceField(true);       
             deviceField.saveSimCheckpointHostDeviceField(hostField, step);
-            
             #ifdef PARTICLE_MODEL
-                printf("Starting saveSimCheckpointParticle...\t"); fflush(stdout);
-                saveSimCheckpointParticle(particlesSoA, &step);
-            #endif //PARTICLE_MODEL
-            
+                particleField.saveCheckpoint(step);
+            #endif //PARTICLE_MODEL    
+            if(console_flush){fflush(stdout);} 
         }
        
-        // Saving data checks
+        // Saving treat data  checks
         if(saveField.reportSave){
-            printf("\n--------------------------- Saving report %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
+            printf("\n--------------------------- Saving report %06d ---------------------------\n", step);
             deviceField.treatDataDeviceField(hostField, step);
+            #ifdef PARTICLE_MODEL
+            particleField.exportWallForces(step);
+            #endif
+            if(console_flush){fflush(stdout);}
         }
+
+        #ifdef TESTS
+            #include CASE_TEST_METRIC
+        #endif //TESTS
         
         if(saveField.macrSave){
-            #if defined BC_FORCES && defined SAVE_BC_FORCES
-                deviceField.saveBcForces(hostField);
-            #endif //BC_FORCES && SAVE_BC_FORCES
-
+            //copy data from device to host
             checkCudaErrors(cudaDeviceSynchronize()); 
             deviceField.cudaMemcpyDeviceField(hostField);
-
-            printf("\n--------------------------- Saving macro %06d ---------------------------\n", step); if(console_flush){fflush(stdout);}
-
-            if(!ONLY_FINAL_MACRO){
-                hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
-            }
-
-            #ifdef BC_FORCES
-                deviceField.totalBcDragDeviceField(step);
-            #endif //BC_FORCES
+            printf("\n--------------------------- Saving macro %06d ---------------------------\n", step);
+            if(!ONLY_FINAL_MACRO){ hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);}
+            if(console_flush){fflush(stdout);}
         }
 
         #ifdef PARTICLE_MODEL
             if (saveField.particleSave){
                 printf("\n------------------------- Saving particles %06d -------------------------\n", step);
-                if(console_flush){fflush(stdout);}
-                while (savingMacrParticle) std::this_thread::yield();
-                saveParticlesInfo(&particlesSoA, step, savingMacrParticle);
+                particleField.saveInfo(step, savingMacrParticle);
             }
+            if(console_flush){fflush(stdout);}
         #endif //PARTICLE_MODEL
 
     } 
@@ -184,24 +171,20 @@ int main() {
 
     //Calculate MLUPS
 
-    dfloat MLUPS = recordElapsedTime(start_step, stop_step, step, ini_step);
-    printf("MLUPS: %f\n",MLUPS);
+    dfloat MLUPS = recordElapsedTime(start_step, stop_step, step, ini_step, NUMBER_LBM_NODES);
+    printf("MLUPS: %f\n",MLUPS); if(console_flush){fflush(stdout);}     
     
     /* ------------------------------ POST ------------------------------ */
     deviceField.cudaMemcpyDeviceField(hostField);
 
-    #if defined BC_FORCES && defined SAVE_BC_FORCES
-    deviceField.saveBcForces(hostField);
-    #endif //BC_FORCES && SAVE_BC_FORCES
-
-    if(console_flush){fflush(stdout);}
     hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
 
     if(CHECKPOINT_SAVE){
-        printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);if(console_flush){fflush(stdout);}
+        printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
         deviceField.cudaMemcpyDeviceField(hostField);
         deviceField.interfaceCudaMemcpyDeviceField(false); 
         deviceField.saveSimCheckpointDeviceField(step);
+        if(console_flush){fflush(stdout);}
     }
 
     checkCudaErrors(cudaDeviceSynchronize());
@@ -210,11 +193,16 @@ int main() {
     #endif //MEAN_FLOW
     
     //Save info file
-    saveSimInfo(step,MLUPS);
+    //TODO: fix this later so it doesnt have defines
+    #ifdef NON_NEWTONIAN_FLUID
+    saveSimInfo(step, MLUPS, deviceField.nnfProps);
+    #else
+    saveSimInfo(step, MLUPS, {});
+    #endif //NON_NEWTONIAN_FLUID
 
     while (savingMacrVtk) std::this_thread::yield();
     #ifdef PARTICLE_MODEL
-    while (savingMacrParticle) std::this_thread::yield();
+    particleField.waitForSaving(savingMacrParticle);
     #endif
     for (size_t i = 0; i < savingMacrBin.size(); ++i) {
         while (savingMacrBin[i]) std::this_thread::yield();
@@ -225,10 +213,10 @@ int main() {
     hostField.freeHostField();
     deviceField.freeDeviceField();
 
-    // Free particle
+    // Free particle field
     #ifdef PARTICLE_MODEL
-        free(particles);
-        particlesSoA.freeNodesAndCenters();
+        particleField.freeMemory();
+        particleField.destroyStreams();
     #endif //PARTICLE_MODEL
 
     return 0;

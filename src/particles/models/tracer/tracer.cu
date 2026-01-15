@@ -214,28 +214,28 @@ void tracer_positionUpdate(
       //AVOID THAT THE PARTICLES GO OUTSIDE OF THE DOMAIN
     #ifdef BC_X_WALL
     if (pc_i->getPosX() < 0) {
-        pc_i->setPosX(0.01);
+        pc_i->setPosX(0.01_df);
     }
     if (pc_i->getPosX() > NX - 1) {
-        pc_i->setPosX(NX - 1.01);
+        pc_i->setPosX(NX - 1.01_df);
     }
     #endif //BC_X_WALL
 
     #ifdef BC_Y_WALL
     if (pc_i->getPosY() < 0) {
-        pc_i->setPosY(0.01);
+        pc_i->setPosY(0.01_df);
     }
     if (pc_i->getPosY() > NY - 1) {
-        pc_i->setPosY(NY - 1.01);
+        pc_i->setPosY(NY - 1.01_df);
     }
     #endif //BC_Y_WALL
 
     #ifdef BC_Z_WALL
     if (pc_i->getPosZ() < 0) {
-        pc_i->setPosZ(0.01);
+        pc_i->setPosZ(0.01_df);
     }
     if (pc_i->getPosZ() > NZ - 1) {
-        pc_i->setPosZ(NZ - 1.01);
+        pc_i->setPosZ(NZ - 1.01_df);
     }
     #endif //BC_Z_WALL
 

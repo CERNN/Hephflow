@@ -3,8 +3,8 @@
 
 __host__ __device__
 dfloat clamp01(dfloat value) {
-    if (value < 0.0) return 0.0;
-    if (value > 1.0) return 1.0;
+    if (value < 0.0_df) return 0.0_df;
+    if (value > 1.0_df) return 1.0_df;
     return value;
 }
 
@@ -23,28 +23,40 @@ dfloat3 planeProjection(dfloat3 P, dfloat3 n, dfloat d) {
     // Copy original coordinates
     dfloat3 proj = P;
     
-    const dfloat EPSILON = 1e-6;
+    const dfloat EPSILON = 1e-6_df;
     // Update projection based on the direction of the normal vector
-    if (fabs(n.x - 1.0) < EPSILON) {
-        proj.x = 0.0;
-    } else if (fabs(n.x + 1.0) < EPSILON) {
+    if (fabs(n.x - 1.0_df) < EPSILON) {
+        proj.x = 0.0_df;
+    } else if (fabs(n.x + 1.0_df) < EPSILON) {
         proj.x = d;
     }
 
-    if (fabs(n.y - 1.0) < EPSILON) {
-        proj.y = 0.0;
-    } else if (fabs(n.y + 1.0) < EPSILON) {
+    if (fabs(n.y - 1.0_df) < EPSILON) {
+        proj.y = 0.0_df;
+    } else if (fabs(n.y + 1.0_df) < EPSILON) {
         proj.y = d;
     }
 
-    if (fabs(n.z - 1.0) < EPSILON) {
-        proj.z = 0.0;
-    } else if (fabs(n.z + 1.0) < EPSILON) {
+    if (fabs(n.z - 1.0_df) < EPSILON) {
+        proj.z = 0.0_df;
+    } else if (fabs(n.z + 1.0_df) < EPSILON) {
         proj.z = d;
     }
 
     return proj;
 }
+
+__device__
+dfloat3 segmentProjection(dfloat3 P, dfloat3 P1, dfloat3 P2, dfloat cRadius, int cyDir ){
+    dfloat3 closestOnAB[1];
+
+    dfloat dist = point_to_segment_distance(P, P1, P2, closestOnAB);
+    dfloat3 n =  vector_normalize(closestOnAB[0] - P); //TODO: FIX IT, missing cyDir, i.e internal (1) vs external (-1)
+    dfloat3 contactPoint =  closestOnAB[0] - n *  cRadius;
+
+    return contactPoint;
+}
+
 
 __host__ __device__
 dfloat dot_product(dfloat3 v1, dfloat3 v2) {
@@ -70,9 +82,9 @@ dfloat3 vector_normalize(dfloat3 v) {
     dfloat inv_length =  rsqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
     dfloat3 norm_v;
     if (isnan(inv_length)||isinf(inv_length)){
-        norm_v.x = 0.0;
-        norm_v.y = 0.0;
-        norm_v.z = 0.0;
+        norm_v.x = 0.0_df;
+        norm_v.y = 0.0_df;
+        norm_v.z = 0.0_df;
     }else{
         norm_v.x = v.x * inv_length;
         norm_v.y = v.y * inv_length;
@@ -86,16 +98,16 @@ dfloat point_to_point_distance_periodic(dfloat3 p1, dfloat3 p2) {
     dfloat3 delta = p1 - p2;
 
     #ifdef BC_X_PERIODIC
-    if (delta.x > NX / 2.0) delta.x -= NX;
-    if (delta.x < -NX / 2.0) delta.x += NX;
+    if (delta.x > NX / 2.0_df) delta.x -= NX;
+    if (delta.x < -NX / 2.0_df) delta.x += NX;
     #endif //BC_X_PERIODIC
     #ifdef BC_Y_PERIODIC
-    if (delta.y > NY / 2.0) delta.y -= NY;
-    if (delta.y < -NY / 2.0) delta.y += NY;
+    if (delta.y > NY / 2.0_df) delta.y -= NY;
+    if (delta.y < -NY / 2.0_df) delta.y += NY;
     #endif //BC_Y_PERIODIC
     #ifdef BC_Z_PERIODIC
-    if (delta.z > NZ / 2.0) delta.z -= NZ;
-    if (delta.z < -NZ / 2.0) delta.z += NZ;
+    if (delta.z > NZ / 2.0_df) delta.z -= NZ;
+    if (delta.z < -NZ / 2.0_df) delta.z += NZ;
     #endif //BC_Z_PERIODIC
 
     return sqrtf(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
@@ -106,7 +118,7 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2) {
     dfloat dx, dy, dz;
     // X direction
     #ifdef BC_X_PERIODIC
-    dx = abs(p1.x - p2.x) > ((NX-1) / 2.0) ?
+    dx = abs(p1.x - p2.x) > ((NX-1) / 2.0_df) ?
         (p1.x < p2.x ? (p1.x + (NX-1) - p2.x) : (p1.x - (NX-1) - p2.x))
         : p1.x - p2.x;
     #else
@@ -114,7 +126,7 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2) {
     #endif
     // Y direction
     #ifdef BC_Y_PERIODIC
-    dy = abs(p1.y - p2.y) > ((NY-1) / 2.0) ?
+    dy = abs(p1.y - p2.y) > ((NY-1) / 2.0_df) ?
         (p1.y < p2.y ? (p1.y + (NY-1) - p2.y) : (p1.y - (NY-1) - p2.y))
         : p1.y - p2.y;
     #else
@@ -122,7 +134,7 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2) {
     #endif
     // Z direction
     #ifdef BC_Z_PERIODIC
-    dz = abs(p1.z - p2.z) > ((NZ-1) / 2.0) ?
+    dz = abs(p1.z - p2.z) > ((NZ-1) / 2.0_df) ?
         (p1.z < p2.z ? (p1.z + (NZ-1) - p2.z) : (p1.z - (NZ-1) - p2.z))
         : p1.z - p2.z;
     #else
@@ -131,14 +143,14 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2) {
     return dfloat3(dx, dy, dz);
 }
 
-__host__ __device__
-inline dfloat wrapPeriodic(dfloat coord, dfloat pos, dfloat L) {
-    dfloat diff = coord - pos;
-    if (fabs(diff) > 0.5f * L) {
-        if (coord < pos) coord += L;
-        else             coord -= L;
-    }
-    return coord;
+__device__
+dfloat point_to_segment_distance(dfloat3 p, dfloat3 segA, dfloat3 segB, dfloat3 closestOnAB[1]) {
+    dfloat3 ab = segB - segA;
+    dfloat3 ap = p - segA;
+    dfloat t = dot_product(ap, ab) / dot_product(ab, ab);
+    t = myMax(0, myMin(1, t));  // Clamp t to [0, 1]
+    closestOnAB[0] = segA + ab*t;
+    return vector_length(p - closestOnAB[0]);
 }
 
 __device__
@@ -186,7 +198,7 @@ __device__
 dfloat3 constrain_to_segment(dfloat3 point, dfloat3 segStart, dfloat3 segEnd) {
     dfloat3 segDir = segEnd - segStart;
     dfloat segLengthSqr = dot_product(segDir,segDir);
-    if (segLengthSqr == 0.0) 
+    if (segLengthSqr == 0.0_df) 
         return segStart;  // The segment is a point
 
     dfloat t = dot_product((point - segStart), segDir) / segLengthSqr;
@@ -209,8 +221,8 @@ dfloat segment_segment_closest_points(dfloat3 p1, dfloat3 q1, dfloat3 p2, dfloat
     dfloat t = dot_product(p2-inPlaneA,inPlaneBA) / dot_product(inPlaneBA, inPlaneBA);
 
 
-    if (dot_product(inPlaneBA, inPlaneBA) == 0.0) {
-        t = 0.0;  // Handle case where inPlaneA and inPlaneB are the same (segments are parallel)
+    if (dot_product(inPlaneBA, inPlaneBA) == 0.0_df) {
+        t = 0.0_df;  // Handle case where inPlaneA and inPlaneB are the same (segments are parallel)
     }
 
     // Find the closest point on segment [p1, q1] to the line [p2, q2]
@@ -329,7 +341,7 @@ void inverse_3x3(dfloat A[3][3], dfloat result[3][3]) {
     dfloat adj[3][3];
     adjugate_3x3(A, adj);
     
-    dfloat inv_det = 1.0 / det;
+    dfloat inv_det = 1.0_df / det;
     
     // Compute the inverse matrix without loops
     result[0][0] = adj[0][0] * inv_det;
@@ -373,6 +385,25 @@ dfloat4 quart_multiplication(dfloat4 q1, dfloat4 q2){
     return q;
 }
 
+/**
+ *  @brief Normalize a quaternion to unit magnitude.
+ *  Prevents drift in quaternion magnitude after repeated multiplications.
+ *  Formula: q_normalized = q / ||q||
+ */
+__host__ __device__
+dfloat4 quart_normalize(dfloat4 q){
+    dfloat magnitude = sqrtf(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
+    
+    // Avoid division by zero
+    if (magnitude > 1.0e-10f) {
+        q.w /= magnitude;
+        q.x /= magnitude;
+        q.y /= magnitude;
+        q.z /= magnitude;
+    }
+    
+    return q;
+}
 
 // ****************************************************************************
 // **********************   CONVERSION OPERATIONS   ***************************
@@ -417,12 +448,12 @@ void quart_to_rotation_matrix(dfloat4 q, dfloat R[3][3]){
 
 __host__ __device__
 dfloat4 euler_to_quart(dfloat roll, dfloat pitch, dfloat yaw){
-    dfloat cr = cos(roll * 0.5);
-    dfloat sr = sin(roll * 0.5);
-    dfloat cp = cos(pitch * 0.5);
-    dfloat sp = sin(pitch * 0.5);
-    dfloat cy = cos(yaw * 0.5);
-    dfloat sy = sin(yaw * 0.5);
+    dfloat cr = cos(roll * 0.5_df);
+    dfloat sr = sin(roll * 0.5_df);
+    dfloat cp = cos(pitch * 0.5_df);
+    dfloat sp = sin(pitch * 0.5_df);
+    dfloat cy = cos(yaw * 0.5_df);
+    dfloat sy = sin(yaw * 0.5_df);
 
     dfloat4 q;
     q.w = cr * cp * cy + sr * sp * sy;
@@ -502,7 +533,7 @@ dfloat4 compute_rotation_quart(dfloat3 v1, dfloat3 v2) {
     dfloat dot = dot_product(v1, v2);
 
     // Calculate the angle of rotation
-    dfloat angle_d2 = acosf(dot)*0.5;
+    dfloat angle_d2 = acosf(dot)*0.5_df;
 
     // Calculate the axis of rotation
     dfloat3 axis = cross_product(v1, v2);
@@ -520,7 +551,7 @@ dfloat4 compute_rotation_quart(dfloat3 v1, dfloat3 v2) {
 __host__ __device__
 dfloat4 axis_angle_to_quart(dfloat3 axis, dfloat angle) {
     dfloat4 q;
-    angle = angle*0.5;
+    angle = angle*0.5_df;
     // Normalize the axis of rotation
     axis = vector_normalize(axis);
     
@@ -561,97 +592,239 @@ dfloat6 rotate_inertia_by_quart(dfloat4 q, dfloat6 I6) {
 }
 
 __host__ __device__
-dfloat mom_trilinear_interp(dfloat x, dfloat y, dfloat z, const int mom , dfloat *fMom) {
+dfloat mom_bilinear_interp_xy(
+    dfloat x, dfloat y, int z,
+    int mom,
+    dfloat *fMom)
+{
+    int i = (int)floor(x);
+    int j = (int)floor(y);
+    int k = z;
+
+    dfloat fx = x - i;
+    dfloat fy = y - j;
+
+    int i1 = i + 1;
+    int j1 = j + 1;
+
+    #ifdef BC_X_PERIODIC
+        i  = (i  % NX + NX) % NX;
+        i1 = (i1 % NX + NX) % NX;
+    #elif defined(BC_X_WALL)
+        if (i  < 0)    i  = 0;
+        if (i1 < 0)    i1 = 0;
+        if (i  >= NX)  i  = NX-1;
+        if (i1 >= NX)  i1 = NX-1;
+    #endif
+
+    #ifdef BC_Y_PERIODIC
+        j  = (j  % NY + NY) % NY;
+        j1 = (j1 % NY + NY) % NY;
+    #elif defined(BC_Y_WALL)
+        if (j  < 0)    j  = 0;
+        if (j1 < 0)    j1 = 0;
+        if (j  >= NY)  j  = NY-1;
+        if (j1 >= NY)  j1 = NY-1;
+    #endif
+
+    #ifdef BC_Z_PERIODIC
+        k = (k % NZ + NZ) % NZ;
+    #elif defined(BC_Z_WALL)
+        if (k < 0)   k = 0;
+        if (k >= NZ) k = NZ-1;
+    #endif
+
+    dfloat c00 = getMom(i,  j,  k, mom, fMom);
+    dfloat c10 = getMom(i1, j,  k, mom, fMom);
+    dfloat c01 = getMom(i,  j1, k, mom, fMom);
+    dfloat c11 = getMom(i1, j1, k, mom, fMom);
+
+    // bilinear interpolation in xy plane
+    dfloat c0 = c00 * (1 - fx) + c10 * fx;
+    dfloat c1 = c01 * (1 - fx) + c11 * fx;
+
+    return c0 * (1 - fy) + c1 * fy;
+}
+
+__host__ __device__
+dfloat mom_bilinear_interp_xz(
+    dfloat x, int y, dfloat z,
+    int mom,
+    dfloat *fMom)
+{
+    int i = (int)floor(x);
+    int j = y;
+    int k = (int)floor(z);
+
+    dfloat fx = x - i;
+    dfloat fz = z - k;
+
+    int i1 = i + 1;
+    int k1 = k + 1;
+
+    #ifdef BC_X_PERIODIC
+        i  = (i  % NX + NX) % NX;
+        i1 = (i1 % NX + NX) % NX;
+    #elif defined(BC_X_WALL)
+        if (i  < 0)    i  = 0;
+        if (i1 < 0)    i1 = 0;
+        if (i  >= NX)  i  = NX-1;
+        if (i1 >= NX)  i1 = NX-1;
+    #endif
+
+    #ifdef BC_Y_PERIODIC
+        j = (j % NY + NY) % NY;
+    #elif defined(BC_Y_WALL)
+        if (j < 0)   j = 0;
+        if (j >= NY) j = NY-1;
+    #endif
+
+    #ifdef BC_Z_PERIODIC
+        k  = (k  % NZ + NZ) % NZ;
+        k1 = (k1 % NZ + NZ) % NZ;
+    #elif defined(BC_Z_WALL)
+        if (k  < 0)    k  = 0;
+        if (k1 < 0)    k1 = 0;
+        if (k  >= NZ)  k  = NZ-1;
+        if (k1 >= NZ)  k1 = NZ-1;
+    #endif
+
+    dfloat c00 = getMom(i,  j, k,  mom, fMom);
+    dfloat c10 = getMom(i1, j, k,  mom, fMom);
+    dfloat c01 = getMom(i,  j, k1, mom, fMom);
+    dfloat c11 = getMom(i1, j, k1, mom, fMom);
+
+    // bilinear interpolation in xz plane
+    dfloat c0 = c00 * (1 - fx) + c10 * fx;
+    dfloat c1 = c01 * (1 - fx) + c11 * fx;
+
+    return c0 * (1 - fz) + c1 * fz;
+}
+
+__host__ __device__
+dfloat mom_bilinear_interp_yz(
+    int x, dfloat y, dfloat z,
+    int mom,
+    dfloat *fMom)
+{
+    int i = x;
+    int j = (int)floor(y);
+    int k = (int)floor(z);
+
+    dfloat fy = y - j;
+    dfloat fz = z - k;
+
+    int j1 = j + 1;
+    int k1 = k + 1;
+
+    #ifdef BC_X_PERIODIC
+        i = (i % NX + NX) % NX;
+    #elif defined(BC_X_WALL)
+        if (i < 0)   i = 0;
+        if (i >= NX) i = NX-1;
+    #endif
+
+    #ifdef BC_Y_PERIODIC
+        j  = (j  % NY + NY) % NY;
+        j1 = (j1 % NY + NY) % NY;
+    #elif defined(BC_Y_WALL)
+        if (j  < 0)    j  = 0;
+        if (j1 < 0)    j1 = 0;
+        if (j  >= NY)  j  = NY-1;
+        if (j1 >= NY)  j1 = NY-1;
+    #endif
+
+    #ifdef BC_Z_PERIODIC
+        k  = (k  % NZ + NZ) % NZ;
+        k1 = (k1 % NZ + NZ) % NZ;
+    #elif defined(BC_Z_WALL)
+        if (k  < 0)    k  = 0;
+        if (k1 < 0)    k1 = 0;
+        if (k  >= NZ)  k  = NZ-1;
+        if (k1 >= NZ)  k1 = NZ-1;
+    #endif
+
+    dfloat c00 = getMom(i, j,  k,  mom, fMom);
+    dfloat c10 = getMom(i, j1, k,  mom, fMom);
+    dfloat c01 = getMom(i, j,  k1, mom, fMom);
+    dfloat c11 = getMom(i, j1, k1, mom, fMom);
+
+    // bilinear interpolation in yz plane
+    dfloat c0 = c00 * (1 - fy) + c10 * fy;
+    dfloat c1 = c01 * (1 - fy) + c11 * fy;
+
+    return c0 * (1 - fz) + c1 * fz;
+}
+
+__host__ __device__
+dfloat mom_trilinear_interp(
+    dfloat x, dfloat y, dfloat z,
+    int mom,
+    dfloat *fMom)
+{
     int i = (int)floor(x);
     int j = (int)floor(y);
     int k = (int)floor(z);
 
+    dfloat fx = x - i;
+    dfloat fy = y - j;
+    dfloat fz = z - k;
 
-    dfloat xi = x - i;
-    dfloat eta = y - j;
-    dfloat zeta = z - k;
+    int i1 = i + 1;
+    int j1 = j + 1;
+    int k1 = k + 1;
 
-    // Direct value (no interpolation needed)
-    if (xi == 0.0 && eta == 0.0 && zeta == 0.0) {
-        return getMom(i, j, k, mom, fMom);
-    }
+    #ifdef BC_X_PERIODIC
+        i  = (i  % NX + NX) % NX;
+        i1 = (i1 % NX + NX) % NX;
+    #elif defined(BC_X_WALL)
+        if (i  < 0)    i  = 0;
+        if (i1 < 0)    i1 = 0;
+        if (i  >= NX)  i  = NX-1;
+        if (i1 >= NX)  i1 = NX-1;
+    #endif
 
-    // Linear in x direction
-    if (eta == 0.0 && zeta == 0.0) {
-        dfloat c0 = getMom(i,     j, k, mom, fMom);
-        dfloat c1 = getMom(i + 1, j, k, mom, fMom);
-        return (1 - xi) * c0 + xi * c1;
-    }
+    #ifdef BC_Y_PERIODIC
+        j  = (j  % NY + NY) % NY;
+        j1 = (j1 % NY + NY) % NY;
+    #elif defined(BC_Y_WALL)
+        if (j  < 0)    j  = 0;
+        if (j1 < 0)    j1 = 0;
+        if (j  >= NY)  j  = NY-1;
+        if (j1 >= NY)  j1 = NY-1;
+    #endif
 
-    // Linear in y direction
-    if (xi == 0.0 && zeta == 0.0) {
-        dfloat c0 = getMom(i, j,     k, mom, fMom);
-        dfloat c1 = getMom(i, j + 1, k, mom, fMom);
-        return (1 - eta) * c0 + eta * c1;
-    }
+    #ifdef BC_Z_PERIODIC
+        k  = (k  % NZ + NZ) % NZ;
+        k1 = (k1 % NZ + NZ) % NZ;
+    #elif defined(BC_Z_WALL)
+        if (k  < 0)    k  = 0;
+        if (k1 < 0)    k1 = 0;
+        if (k  >= NZ)  k  = NZ-1;
+        if (k1 >= NZ)  k1 = NZ-1;
+    #endif
 
-    // Linear in z direction
-    if (xi == 0.0 && eta == 0.0) {
-        dfloat c0 = getMom(i, j, k,     mom, fMom);
-        dfloat c1 = getMom(i, j, k + 1, mom, fMom);
-        return (1 - zeta) * c0 + zeta * c1;
-    }
+    dfloat c000 = getMom(i, j, k, mom, fMom);
+    dfloat c100 = getMom(i1, j, k, mom, fMom);
+    dfloat c010 = getMom(i, j1, k, mom, fMom);
+    dfloat c110 = getMom(i1, j1, k, mom, fMom);
 
-    // Bilinear in xy plane (z fixed)
-    if (zeta == 0.0) {
-        dfloat c00 = getMom(i,     j,     k, mom, fMom);
-        dfloat c10 = getMom(i + 1, j,     k, mom, fMom);
-        dfloat c01 = getMom(i,     j + 1, k, mom, fMom);
-        dfloat c11 = getMom(i + 1, j + 1, k, mom, fMom);
-        return (1 - xi) * (1 - eta) * c00 +
-                xi      * (1 - eta) * c10 +
-               (1 - xi) * eta       * c01 +
-                xi      * eta       * c11;
-    }
+    dfloat c001 = getMom(i, j, k1, mom, fMom);
+    dfloat c101 = getMom(i1, j, k1, mom, fMom);
+    dfloat c011 = getMom(i, j1, k1, mom, fMom);
+    dfloat c111 = getMom(i1, j1, k1, mom, fMom);
 
-    // Bilinear in xz plane (y fixed)
-    if (eta == 0.0) {
-        dfloat c00 = getMom(i,     j, k,     mom, fMom);
-        dfloat c10 = getMom(i + 1, j, k,     mom, fMom);
-        dfloat c01 = getMom(i,     j, k + 1, mom, fMom);
-        dfloat c11 = getMom(i + 1, j, k + 1, mom, fMom);
-        return (1 - xi) * (1 - zeta) * c00 +
-                xi      * (1 - zeta) * c10 +
-               (1 - xi) * zeta       * c01 +
-                xi      * zeta       * c11;
-    }
+    // trilinear interpolation
+    dfloat c00 = c000*(1-fx) + c100*fx;
+    dfloat c10 = c010*(1-fx) + c110*fx;
 
-    // Bilinear in yz plane (x fixed)
-    if (xi == 0.0) {
-        dfloat c00 = getMom(i, j,     k,     mom, fMom);
-        dfloat c10 = getMom(i, j + 1, k,     mom, fMom);
-        dfloat c01 = getMom(i, j,     k + 1, mom, fMom);
-        dfloat c11 = getMom(i, j + 1, k + 1, mom, fMom);
-        return (1 - eta) * (1 - zeta) * c00 +
-                eta      * (1 - zeta) * c10 +
-               (1 - eta) * zeta       * c01 +
-                eta      * zeta       * c11;
-    }
+    dfloat c01 = c001*(1-fx) + c101*fx;
+    dfloat c11 = c011*(1-fx) + c111*fx;
 
-    // Full trilinear
-    dfloat c000 = getMom(i,     j,     k,     mom, fMom);
-    dfloat c100 = getMom(i + 1, j,     k,     mom, fMom);
-    dfloat c010 = getMom(i,     j + 1, k,     mom, fMom);
-    dfloat c110 = getMom(i + 1, j + 1, k,     mom, fMom);
-    dfloat c001 = getMom(i,     j,     k + 1, mom, fMom);
-    dfloat c101 = getMom(i + 1, j,     k + 1, mom, fMom);
-    dfloat c011 = getMom(i,     j + 1, k + 1, mom, fMom);
-    dfloat c111 = getMom(i + 1, j + 1, k + 1, mom, fMom);
+    dfloat c0 = c00*(1-fy) + c10*fy;
+    dfloat c1 = c01*(1-fy) + c11*fy;
 
-    return
-        (1 - xi) * (1 - eta) * (1 - zeta) * c000 +
-         xi      * (1 - eta) * (1 - zeta) * c100 +
-        (1 - xi) * eta       * (1 - zeta) * c010 +
-         xi      * eta       * (1 - zeta) * c110 +
-        (1 - xi) * (1 - eta) * zeta       * c001 +
-         xi      * (1 - eta) * zeta       * c101 +
-        (1 - xi) * eta       * zeta       * c011 +
-         xi      * eta       * zeta       * c111;
+    return c0*(1-fz) + c1*fz;
 }
 
 __host__ __device__ static inline void normalize_lagrangian_range(float pos, int lagr_range, int domain_size, unsigned int* start, unsigned int* end) {
@@ -700,9 +873,9 @@ dfloat mom_lagrange_interp(dfloat x, dfloat y, dfloat z, const int Nx, const int
 
 __host__ __device__
 dfloat cubic_interp(dfloat p0, dfloat p1, dfloat p2, dfloat p3, dfloat t) {
-    dfloat a = -0.5*p0 + 1.5*p1 - 1.5*p2 + 0.5*p3;
-    dfloat b = p0 - 2.5*p1 + 2.0*p2 - 0.5*p3;
-    dfloat c = -0.5*p0 + 0.5*p2;
+    dfloat a = -0.5_df*p0 + 1.5_df*p1 - 1.5_df*p2 + 0.5_df*p3;
+    dfloat b = p0 - 2.5_df*p1 + 2.0_df*p2 - 0.5_df*p3;
+    dfloat c = -0.5_df*p0 + 0.5_df*p2;
     dfloat d = p1;
     return ((a*t + b)*t + c)*t + d;
 }

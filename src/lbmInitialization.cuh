@@ -19,7 +19,7 @@
 #include <cuda_runtime.h>
 #include <builtin_types.h>
 #include "globalFunctions.h"
-#include "errorDef.h"
+#include "include/errorDef.h"
 #include "var.h"
 #include "nodeTypeMap.h"
 
@@ -75,7 +75,11 @@ __host__ void hostInitialization_nodeType_bulk(
  *  @param nodeType: node type ID
  */
 __host__ void hostInitialization_nodeType(
-    unsigned int *hNodeType);
+    unsigned int *hNodeType
+    #ifdef CURVED_BOUNDARY_CONDITION
+    , unsigned int* numberCurvedBoundaryNodes
+    #endif
+ );
 
 
 /**
@@ -114,5 +118,37 @@ __global__ void define_voxel_bc(unsigned int *dNodeType);
 __host__ __device__
 unsigned int bc_id(unsigned int *dNodeType, int x,int y,int z);
 
+#ifdef CURVED_BOUNDARY_CONDITION
+    /**
+     * @brief Get the Number of Curved Boundary Nodes object
+     * @param hNodeType: host node type array
+     * @return unsigned int: number of curved boundary nodes
+     */
+    unsigned int getNumberCurvedBoundaryNodes(unsigned int *&hNodeType);
+    /**
+     * @brief Allocate device memory for curved boundary condition structures
+     * @param d_curvedBC: device pointer to array of pointers to CurvedBoundary structures
+     * @param d_curvedBC_array: device pointer to contiguous array of CurvedBoundary structures
+     * @param numberCurvedBoundaryNodes: number of curved boundary nodes
+     */
+    void allocateDeviceMemoryCurvedBoundary(CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array, unsigned int numberCurvedBoundaryNodes);
+    /**
+     * @brief Initialize curved boundary condition structures on device
+     * @param hNodeType: host node type array  
+     * @param dNodeType: device node type array
+     * @param d_curvedBC: device pointer to array of pointers to CurvedBoundary structures
+     * @param d_curvedBC_array: device pointer to contiguous array of CurvedBoundary structures
+     * @param numberCurvedBoundaryNodes: number of curved boundary nodes
+     */
+    void initializeCurvedBoundaryArray(unsigned int *&hNodeType, unsigned int *&dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array, unsigned int numberCurvedBoundaryNodes);
+    /**
+     * @brief Initialize curved boundary condition device field
+     * @param hNodeType: host node type array
+     * @param dNodeType: device node type array
+     * @param d_curvedBC: device pointer to array of pointers to CurvedBoundary structures
+     * @param d_curvedBC_array: device pointer to contiguous array of CurvedBoundary structures
+     */
+    void initializeCurvedBoundaryDeviceField(unsigned int *&hNodeType, unsigned int *&dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array);
+#endif //CURVED_BOUNDARY_CONDITION
 
 #endif // !__LBM_INITIALIZATION_CUH

@@ -32,6 +32,7 @@ void particleSimulation(
     ParticlesSoA *particles,
     dfloat *fMom,
     cudaStream_t *streamParticles,
+    ParticleWallForces *d_pwForces,
     unsigned int step
 );
 

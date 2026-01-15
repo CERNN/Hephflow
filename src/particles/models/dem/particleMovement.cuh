@@ -17,8 +17,8 @@
 #include "../../../globalStructs.h"
 #include "../../../globalFunctions.h"
 #include "../particleSharedFunctions.cuh"
-#include "../../../includeFiles/interface.h"
-#include "../../../errorDef.h"
+#include "../../../include/interface.h"
+#include "../../../include/errorDef.h"
 #include "../../../saveData.cuh"
 #include "../../class/Particle.cuh"
 
@@ -27,62 +27,50 @@
 /**
  *  @brief Update the old values of particle properties (position, velocity, angular velocity, force and torque).
  *  @param pArray: Pointer to the array of ParticleCenter objects.
- *  @param firstIndex: The first index of the particle array to be processed.
- *  @param lastIndex: The last index of the particle array to be processed.
  *  @param step: The current simulation time step for collision checking.
  */
 __global__
 void updateParticleOldValues(
     ParticleCenter *pArray,
-    int firstIndex,
-    int lastIndex,    
     unsigned int step
 );
 
 /**
  *  @brief Compute the new particle properties (velocity, angular velocity, force and torque).
  *  @param pArray: Pointer to the array of ParticleCenter objects.
- *  @param firstIndex: The first index of the particle array to be processed.
- *  @param lastIndex: The last index of the particle array to be processed.
  *  @param step: The current simulation time step for collision checking.
  */
 __global__ 
 void updateParticleCenterVelocityAndRotation(
     ParticleCenter *pArray,
-    int firstIndex,
-    int lastIndex,    
     unsigned int step
 );
 
 /**
  *  @brief Compute the new particle position.
  *  @param pArray: Pointer to the array of ParticleCenter objects.
- *  @param firstIndex: The first index of the particle array to be processed.
- *  @param lastIndex: The last index of the particle array to be processed.
  *  @param step: The current simulation time step for collision checking.
  */
 __global__
 void updateParticlePosition(
     ParticleCenter *pArray,
-    int firstIndex,
-    int lastIndex,    
     unsigned int step
 );
 
 /**
- * @brief Update the semi-axis positions considering periodic boundaries.
- * @param semi: The semi-axis positions to be updated.
- * @param pos_old: The old position of the particle.
- * @param pos_new: The current position of the particle.
- * @param q: The quaternion representing the particle's orientation.
- * @return The updated semi-axis positions.
+ * @brief Update the semi-axis positions using cumulative rotation and original offsets.
+ * Reconstructs semi-axis position from first principles each frame to avoid error accumulation.
+ * Periodic wrapping is implicit through particle_center position (which is already wrapped).
+ * @param semi_offset_original: The immutable original offset (semi_axis - center) at initialization.
+ * @param particle_center: The current particle center position (already wrapped if periodic BC).
+ * @param q_cumulative: The cumulative rotation quaternion (complete rotation history).
+ * @return The updated semi-axis position.
  */
 __host__ __device__
 dfloat3 updateSemiAxis(
-    dfloat3 semi,
-    const dfloat3 pos_old,
-    const dfloat3 pos_new,
-    const dfloat4 q
+    const dfloat3 semi_offset_original,
+    const dfloat3 particle_center,
+    const dfloat4 q_cumulative
 );
 
 #endif //PARTICLE_MODEL

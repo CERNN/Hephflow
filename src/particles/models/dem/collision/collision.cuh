@@ -161,7 +161,7 @@ dfloat3 getOrUpdateTangentialDisplacement(
  *  @param step: The current time step for collision processing.
  */
 __device__
-void sphereWallCollision(const CollisionContext& ctx);
+void sphereWallCollision(const CollisionContext& ctx, ParticleWallForces *d_pwForces);
 
 /**
  *  @brief Handle collision mechanics between a capsule's end cap and a wall.
@@ -228,8 +228,6 @@ void capsuleCapsuleCollision(const CollisionContext& ctx, dfloat3 closestOnA[1],
 
 /**
  *  @brief Process the collision between two ellipsoids by determining their closest points and applying collision response.
- *  @param column: The column index representing the position of the first ellipsoid in the grid or matrix.
- *  @param row: The row index representing the position of the second ellipsoid in the grid or matrix.
  *  @param pc_i: Pointer to the `ParticleCenter` structure containing information about the first ellipsoid.
  *  @param pc_j: Pointer to the `ParticleCenter` structure containing information about the second ellipsoid.
  *  @param closestOnA: Array to store the closest point on the surface of the first ellipsoid (A).
@@ -241,6 +239,19 @@ void capsuleCapsuleCollision(const CollisionContext& ctx, dfloat3 closestOnA[1],
  */
 __device__
 void ellipsoidEllipsoidCollision(const CollisionContext& ctx,dfloat3 closestOnA[1], dfloat3 closestOnB[1],dfloat cr1[1], dfloat cr2[1], dfloat3 translation);
+
+/**
+ * @brief Handle collision mechanics between an ellipsoid and a cylinder.
+ * @param pc_i: Pointer to the ParticleCenter structure representing the ellipsoid particle.
+ * @param closestOnB: Closest point on the cylinder surface.
+ * @param cr1: gaussian radius on the contact point for ellipsoid 1
+ * @param P1: One endpoint of the cylinder axis.
+ * @param P2: The other endpoint of the cylinder axis.
+ * @param cRadius: The radius of the cylinder.
+ * @param cyDir: The direction of the cylinder surface normal
+ */
+__device__
+void ellipsoidCylinderCollision(const CollisionContext& ctx, dfloat3 closestOnB[1],dfloat cr1[1], dfloat3 P1, dfloat3 P2, dfloat cRadius, int cyDir); 
 
 // ****************************************************************************
 // ******************   AUXILIARY COLLISION FUNCTIONS  ************************

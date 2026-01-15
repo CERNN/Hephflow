@@ -14,6 +14,18 @@
 #define SOFT_SPHERE 
 #define MAX_ACTIVE_COLLISIONS 18
 
+// For IBM particles collision, the total of threads must be 
+// totalThreads = NUM_PARTICLES*(NUM_PARTICLES+1)/2
+constexpr unsigned int TOTAL_PCOLLISION_THREADS = (NUM_PARTICLES*(NUM_PARTICLES+1))/2;
+// Threads for IBM particles collision 
+constexpr unsigned int TOTAL_PCOLLISION = (TOTAL_PCOLLISION_THREADS > 64) ? 
+    64 : TOTAL_PCOLLISION_THREADS;
+// Grid for IBM particles collision
+constexpr unsigned int GRID_PCOLLISION = 
+    (TOTAL_PCOLLISION_THREADS % TOTAL_PCOLLISION ? 
+        (TOTAL_PCOLLISION_THREADS / TOTAL_PCOLLISION + 1)
+        : (TOTAL_PCOLLISION_THREADS / TOTAL_PCOLLISION));
+
 
 
 /* -------------------------- COLLISION PARAMETERS -------------------------- */

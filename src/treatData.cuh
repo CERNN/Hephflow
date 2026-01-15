@@ -19,7 +19,7 @@
 #include <cuda_runtime.h>
 #include <builtin_types.h>
 #include "globalFunctions.h"
-#include "errorDef.h"
+#include "include/errorDef.h"
 #include "var.h"
 #include "nodeTypeMap.h"
 #include "reduction.cuh"
@@ -38,14 +38,7 @@
  *  @param nSteps: number of steps of the simulation
  */
 __host__
-void treatData(
-    dfloat* h_fMom,
-    dfloat* fMom,
-    #if MEAN_FLOW
-    dfloat* fMom_mean,
-    #endif//MEAN_FLOW
-    unsigned int step
-);
+void treatData(const TreatDataParams* params);
 
 
 
@@ -103,28 +96,52 @@ __host__
 void totalBcDrag(dfloat *d_BC_Fx, dfloat* d_BC_Fy, dfloat* d_BC_Fz, size_t step);
  
 /**
+ *  @brief Save the rho profile in the middle of the domian
+ *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param moment_index: Which direction will be saved
+ *  @param x0, y0, z0: Coordinates where the profile will be extracted
+ *  @param step: Current time step
+ */
+__host__
+void rhoProfile(
+    dfloat* fMom,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
+);
+
+
+
+/**
  *  @brief Save the velocity profile in the middle of the domian
  *  @param fMom: Pointer to the device array containing the current macroscopic moments.
  *  @param moment_index: Which velocity and direction will be saved
+ *  @param x0, y0, z0: Coordinates where the profile will be extracted
  *  @param step: Current time step
  */
 __host__
 void velocityProfile(
     dfloat* fMom,
-    int moment_index,
+    int dir_index,
+    int x0, int y0, int z0,
     unsigned int step
 );
 
 /**
- *  @brief Change field vector order to be used saved in binary
- *  @param h_fMom: Pointer to the host array containing the current macroscopic moments.
- *  @param omega: host omega field if non-Newtonian
+ *  @brief Save the omega profile in the middle of the domian
+ *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param moment_index: Which direction will be saved
+ *  @param x0, y0, z0: Coordinates where the profile will be extracted
  *  @param step: Current time step
  */
 __host__
-void probeExport(
-    dfloat* fMom, OMEGA_FIELD_PARAMS_DECLARATION unsigned int step
+void omegaProfile(
+    dfloat* fMom,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
 );
+
 
 /**
  *  @brief Calculate the Nusselt number based on the temperature field

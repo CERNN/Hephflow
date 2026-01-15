@@ -1,12 +1,33 @@
 #include "mlbm.cuh"
 
-__global__ void gpuMomCollisionStream(
-    dfloat *fMom, unsigned int *dNodeType,ghostInterfaceData ghostInterface,
-    DENSITY_CORRECTION_PARAMS_DECLARATION(d_)
-    BC_FORCES_PARAMS_DECLARATION(d_)
-    unsigned int step,
-    bool save)
+__global__ void gpuMomCollisionStream(DeviceKernelParams params)
 {
+    // Unpack parameters from struct (passed by value - CUDA optimized!)
+    dfloat *fMom = params.fMom;
+    unsigned int *dNodeType = params.dNodeType;
+    ghostInterfaceData ghostInterface = params.ghostInterface;
+    unsigned int step = params.step;
+    bool save = params.save;
+    
+    #ifdef DENSITY_CORRECTION
+    dfloat* d_mean_rho = params.d_mean_rho;
+    #endif //DENSITY_CORRECTION
+    
+    #ifdef BC_FORCES
+    dfloat* d_BC_Fx = params.d_BC_Fx;
+    dfloat* d_BC_Fy = params.d_BC_Fy;
+    dfloat* d_BC_Fz = params.d_BC_Fz;
+    #endif //BC_FORCES
+    
+    #ifdef CURVED_BOUNDARY_CONDITION
+    CurvedBoundary** d_curvedBC = params.d_curvedBC;
+    CurvedBoundary* d_curvedBC_array = params.d_curvedBC_array;
+    #endif //CURVED_BOUNDARY_CONDITION
+
+    #ifdef NON_NEWTONIAN_FLUID
+    const fluidProps nnfProps = params.nnfProps;
+    #endif //NON_NEWTONIAN_FLUID
+
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;
@@ -45,34 +66,36 @@ __global__ void gpuMomCollisionStream(
     dfloat m_yz_t90   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MYZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
     dfloat m_zz_t45   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MZZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
+  
+
     #ifdef OMEGA_FIELD
         //dfloat omegaVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_OMEGA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
         dfloat omegaVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_OMEGA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-        dfloat t_omegaVar = 1 - omegaVar;
-        dfloat tt_omegaVar = 1 - omegaVar*0.5;
-        dfloat omegaVar_d2 = omegaVar*0.5;
-        dfloat tt_omega_t3 = tt_omegaVar * 3.0;
+        dfloat t_omegaVar = 1.0_df - omegaVar;
+        dfloat tt_omegaVar = 1.0_df - omegaVar*0.5_df;
+        dfloat omegaVar_d2 = omegaVar*0.5_df;
+        dfloat tt_omega_t3 = tt_omegaVar * 3.0_df;
     #else
         const dfloat omegaVar = OMEGA;
-        const dfloat t_omegaVar = 1 - omegaVar;
-        const dfloat tt_omegaVar = 1 - omegaVar*0.5;
-        const dfloat omegaVar_d2 = omegaVar*0.5;
-        const dfloat tt_omega_t3 = tt_omegaVar * 3.0;
+        const dfloat t_omegaVar = 1.0_df - omegaVar;
+        const dfloat tt_omegaVar = 1.0_df - omegaVar*0.5_df;
+        const dfloat omegaVar_d2 = omegaVar*0.5_df;
+        const dfloat tt_omega_t3 = tt_omegaVar * 3.0_df;
     #endif //OMEGA_FIELD
     
     /*
     if(z > (NZ_TOTAL-50)){
         dfloat dist = (z - (NZ_TOTAL-50))/((NZ_TOTAL)- (NZ_TOTAL-50));
-        dfloat ttau = 0.5+ 3*VISC*(1000.0*dist*dist*dist+1.0);
+        dfloat ttau = 0.5_df+ 3*VISC*(1000.0_df*dist*dist*dist+1.0_df);
         omegaVar = 1/ttau;
     }*/
 
     //Local forces
-    //dfloat K_const = 2.0*M_PI/(dfloat)N;
-   // dfloat xx = 2.0 * M_PI * x / L;
-   // dfloat yy = 2.0 * M_PI * y / L;
-   // dfloat zz = 2.0 * M_PI * z / L;
+    //dfloat K_const = 2.0_df*M_PI/(dfloat)N;
+   // dfloat xx = 2.0_df * M_PI * x / L;
+   // dfloat yy = 2.0_df * M_PI * y / L;
+   // dfloat zz = 2.0_df * M_PI * z / L;
 
 
     #ifdef LOCAL_FORCES
@@ -87,9 +110,9 @@ __global__ void gpuMomCollisionStream(
 
 
     #ifdef BC_FORCES
-    dfloat L_BC_Fx = 0.0;
-    dfloat L_BC_Fy = 0.0;
-    dfloat L_BC_Fz = 0.0;
+    dfloat L_BC_Fx = 0.0_df;
+    dfloat L_BC_Fy = 0.0_df;
+    dfloat L_BC_Fz = 0.0_df;
     #endif //BC_FORCES
 
 
@@ -132,7 +155,7 @@ __global__ void gpuMomCollisionStream(
 
     //need to compute the gradient before the moments are recalculated
     #ifdef COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
-        #include "includeFiles/velocity_gradient.inc"
+        #include "fragments/velocity_gradient.inc"
     #endif //COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
     
@@ -157,10 +180,10 @@ __global__ void gpuMomCollisionStream(
         #endif //A_ZZ_DIST
 
         #ifdef COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
-            #include "includeFiles/conformationTransport/conformation_gradient.inc"   
+            #include "fragments/conformationTransport/conformation_gradient.inc"   
         #endif //COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
 
-        #include "includeFiles/conformationTransport/conformation_evolution.inc"
+        #include "fragments/conformationTransport/conformation_evolution.inc"
     #endif //CONFORMATION_TENSOR
 
     #ifdef CONVECTION_DIFFUSION_TRANSPORT
@@ -181,9 +204,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */        
-            #include "includeFiles/g_popLoad.inc"
+            #include "fragments/gTransport/g_popLoad.inc"
 
 
             if(nodeType != BULK){
@@ -198,8 +221,114 @@ __global__ void gpuMomCollisionStream(
                 qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
             }
         #endif //SECOND_DIST
-        #ifdef A_XX_DIST
-            //dfloat GxxVar = fMom[baseIdx + BLOCK_LBM_SIZE * G_XX_C_INDEX];
+        #ifdef PHI_DIST 
+
+            dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            phiVar -= PHI_ZERO;
+
+            
+            #include "fragments/phiTransport/phase_gradient.inc"
+            #include "fragments/phiTransport/normal_gradient.inc"
+            #include "fragments/phiTransport/phase_coupling_forces.inc"
+                L_Fx += F_phase_x;
+                L_Fy += F_phase_y;
+                L_Fz += F_phase_z;
+            dfloat phi_for_sharp = phiVar;
+            phi_for_sharp = fmaxf(0.0_df, fminf(1.0_df, phi_for_sharp));
+            dfloat phiSource = 0.0_df;
+            #ifdef INTERFACE_SHARPENING
+                #include "fragments/phiTransport/phi_sharpening.inc"
+                phiSource += phiSharpSource;
+            #else
+                dfloat phiSharpSource = 0.0_df;
+            #endif //INTERFACE_SHARPENING
+
+
+
+            phiVar += PHI_ZERO; //TODO:maybe remove the - and + and make the special add then only to correct the gradient
+            dfloat invPhi = 1/phiVar;
+            dfloat phi_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat phi_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat phi_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            dfloat phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
+            dfloat phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
+            dfloat phi_udz_t30 = PHI_DIFF_FLUC_COEF * (phi_qz_t30*invPhi - uz_t30);
+
+            #include  COLREC_PHI_RECONSTRUCTION
+
+            __syncthreads();
+
+            #include "fragments/convection_diffusion_streaming.inc"
+            /* load pop from global in cover nodes */        
+            #include "fragments/phiTransport/phi_popLoad.inc"
+
+            if(nodeType != BULK){
+                #include CASE_PHI_BC_DEF
+            }else{
+                phiVar = gNode[0] + gNode[1] + gNode[2] + gNode[3] + gNode[4] + gNode[5] + gNode[6] + gNode[7] + gNode[8] + gNode[9] + gNode[10] + gNode[11] + gNode[12] + gNode[13] + gNode[14] + gNode[15] + gNode[16] + gNode[17] + gNode[18];
+                phiVar = phiVar + phiSource; //TODO SOURCE TEM
+                //clamp 
+                if(phiVar > PHI_TWO + PHI_ZERO)
+                    phiVar = PHI_TWO + PHI_ZERO;
+                if(phiVar < PHI_ONE + PHI_ZERO)
+                    phiVar = PHI_ONE + PHI_ZERO;
+
+                invPhi= 1.0/phiVar;
+
+                phi_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
+                phi_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
+                phi_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
+            }
+        #endif //PHI_DIST
+        #ifdef LAMBDA_DIST 
+
+            dfloat lambdaVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LAMBDA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            // Compute source term using function-based dispatch
+            dfloat lambdaSource = computeLambdaSourceFromStress(
+                nnfProps,
+                rhoVar, ux_t30, uy_t30, uz_t30,
+                m_xx_t45, m_yy_t45, m_zz_t45,
+                m_xy_t90, m_xz_t90, m_yz_t90,
+                omegaVar, lambdaVar
+            );
+
+            dfloat invLambda = 1.0_df/(lambdaVar);
+            dfloat lambda_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat lambda_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            dfloat lambda_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            dfloat lambda_udx_t30 = LAMBDA_DIFF_FLUC_COEF * (lambda_qx_t30*invLambda - ux_t30);
+            dfloat lambda_udy_t30 = LAMBDA_DIFF_FLUC_COEF * (lambda_qy_t30*invLambda - uy_t30);
+            dfloat lambda_udz_t30 = LAMBDA_DIFF_FLUC_COEF * (lambda_qz_t30*invLambda - uz_t30);
+
+            #include  COLREC_LAMBDA_RECONSTRUCTION
+
+            __syncthreads();
+
+            #include "fragments/convection_diffusion_streaming.inc"
+            /* load pop from global in cover nodes */        
+            #include "fragments/lambdaTransport/lambda_popLoad.inc"
+
+            if(nodeType != BULK){
+                #include CASE_LAMBDA_BC_DEF
+            }else{
+                dfloat lambdaFromPop = gNode[0] + gNode[1] + gNode[2] + gNode[3] + gNode[4] + gNode[5] + gNode[6] + gNode[7] + gNode[8] + gNode[9] + gNode[10] + gNode[11] + gNode[12] + gNode[13] + gNode[14] + gNode[15] + gNode[16] + gNode[17] + gNode[18];
+                
+                // Apply source term (build/break kinetics)
+                lambdaVar = lambdaFromPop + lambdaSource;
+                
+                // Clamp to [LAMBDA_ZERO, LAMBDA_ZERO + 1]
+                lambdaVar = fmaxf(LAMBDA_ZERO, fminf(LAMBDA_ZERO + 1.0_df, lambdaVar));
+                invLambda = 1.0_df/lambdaVar;
+
+                lambda_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
+                lambda_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
+                lambda_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
+            }
+        #endif //LAMBDA_DIST
+          #ifdef A_XX_DIST
             dfloat invAxx = 1/AxxVar;
             dfloat Axx_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Axx_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -213,9 +342,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "includeFiles/conformationTransport/popLoad_Axx.inc"
+            #include "fragments/conformationTransport/popLoad_Axx.inc"
 
             if(nodeType != BULK){
                  #include CASE_AXX_BC_DEF
@@ -230,7 +359,6 @@ __global__ void gpuMomCollisionStream(
             }
         #endif //A_XX_DIST
         #ifdef A_XY_DIST
-            //dfloat GxyVar = fMom[baseIdx + BLOCK_LBM_SIZE * G_XY_C_INDEX];
             dfloat invAxy = 1/AxyVar;
             dfloat Axy_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Axy_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -245,9 +373,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "includeFiles/conformationTransport/popLoad_Axy.inc"
+            #include "fragments/conformationTransport/popLoad_Axy.inc"
 
             if(nodeType != BULK){
                     #include CASE_AXY_BC_DEF
@@ -262,7 +390,6 @@ __global__ void gpuMomCollisionStream(
             }
         #endif //A_XY_DIST
         #ifdef A_XZ_DIST
-            //dfloat GxzVar = fMom[baseIdx + BLOCK_LBM_SIZE * G_XZ_C_INDEX];
             dfloat invAxz = 1/AxzVar;
             dfloat Axz_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Axz_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -277,9 +404,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "includeFiles/conformationTransport/popLoad_Axz.inc"
+            #include "fragments/conformationTransport/popLoad_Axz.inc"
 
             if(nodeType != BULK){
                     #include CASE_AXZ_BC_DEF
@@ -294,7 +421,6 @@ __global__ void gpuMomCollisionStream(
             }
         #endif //A_XZ_DIST
         #ifdef A_YY_DIST
-            //dfloat GyyVar = fMom[baseIdx + BLOCK_LBM_SIZE * G_YY_C_INDEX];
             dfloat invAyy = 1/AyyVar;
             dfloat Ayy_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Ayy_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -309,9 +435,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "includeFiles/conformationTransport/popLoad_Ayy.inc"
+            #include "fragments/conformationTransport/popLoad_Ayy.inc"
 
             if(nodeType != BULK){
                     #include CASE_AYY_BC_DEF
@@ -326,7 +452,6 @@ __global__ void gpuMomCollisionStream(
             }
         #endif //A_YY_DIST
         #ifdef A_YZ_DIST
-            //dfloat GyzVar = fMom[baseIdx + BLOCK_LBM_SIZE * G_YZ_C_INDEX];
             dfloat invAyz = 1/AyzVar;
             dfloat Ayz_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Ayz_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -341,9 +466,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "includeFiles/conformationTransport/popLoad_Ayz.inc"
+            #include "fragments/conformationTransport/popLoad_Ayz.inc"
 
             if(nodeType != BULK){
                     #include CASE_AYZ_BC_DEF
@@ -358,7 +483,6 @@ __global__ void gpuMomCollisionStream(
             }
         #endif //A_YZ_DIST
         #ifdef A_ZZ_DIST
-            //dfloat GzzVar = fMom[baseIdx + BLOCK_LBM_SIZE * G_ZZ_C_INDEX];
             dfloat invAzz = 1/AzzVar;
             dfloat Azz_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Azz_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -373,9 +497,9 @@ __global__ void gpuMomCollisionStream(
 
             __syncthreads();
 
-            #include "includeFiles/convection_diffusion_streaming.inc"
+            #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "includeFiles/conformationTransport/popLoad_Azz.inc"
+            #include "fragments/conformationTransport/popLoad_Azz.inc"
 
             if(nodeType != BULK){
                     #include CASE_AZZ_BC_DEF
@@ -460,13 +584,28 @@ __global__ void gpuMomCollisionStream(
 
     /* load pop from global in cover nodes */
 
-    #include "includeFiles/popLoad.inc"
+    #include "fragments/popLoad.inc"
 
     dfloat invRho;
+
     if(nodeType != BULK){
+        #ifdef CURVED_BOUNDARY_CONDITION
+            dfloat ux0 = 0.0_df;
+            dfloat uy0 = 0.0_df;
+            dfloat uz0 = 0.0_df;
+            
+            // Retrieve wall velocity from curved boundary condition data
+            CurvedBoundary* curvedBC = d_curvedBC[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)];
+            if(curvedBC != nullptr){
+                ux0 = curvedBC->vel.x;
+                uy0 = curvedBC->vel.y;
+                uz0 = curvedBC->vel.z;
+            }
+        #endif //CURVED_BOUNDARY_CONDITION
+            
         #include CASE_BC_DEF
 
-        invRho = 1.0 / rhoVar;               
+        invRho = 1.0_df / rhoVar;               
     }else{
 
         //calculate streaming moments
@@ -505,7 +644,7 @@ __global__ void gpuMomCollisionStream(
         #endif //D3Q27
     }
 
-    // multiply moments by as2 -- as4*0.5 -- as4 - add correction to m_alpha_beta
+    // multiply moments by as2 -- as4*0.5_df -- as4 - add correction to m_alpha_beta
     ux_t30 = F_M_I_SCALE * ux_t30;
     uy_t30 = F_M_I_SCALE * uy_t30;
     uz_t30 = F_M_I_SCALE * uz_t30;
@@ -532,7 +671,6 @@ __global__ void gpuMomCollisionStream(
     #endif //THERMAL_MODEL
     
     #ifdef COMPUTE_SHEAR
-            //TODO change to fix perfomance
         const dfloat S_XX = rhoVar * (m_xx_t45/F_M_II_SCALE - ux_t30*ux_t30/(F_M_I_SCALE*F_M_I_SCALE));
         const dfloat S_YY = rhoVar * (m_yy_t45/F_M_II_SCALE - uy_t30*uy_t30/(F_M_I_SCALE*F_M_I_SCALE));
         const dfloat S_ZZ = rhoVar * (m_zz_t45/F_M_II_SCALE - uz_t30*uz_t30/(F_M_I_SCALE*F_M_I_SCALE));
@@ -543,31 +681,35 @@ __global__ void gpuMomCollisionStream(
         const dfloat uFxxd2 = ux_t30*L_Fx/F_M_I_SCALE; // d2 = uFxx Divided by two
         const dfloat uFyyd2 = uy_t30*L_Fy/F_M_I_SCALE;
         const dfloat uFzzd2 = uz_t30*L_Fz/F_M_I_SCALE;
-        const dfloat uFxyd2 = (ux_t30*L_Fy + uy_t30*L_Fx) / (2.0*F_M_I_SCALE);
-        const dfloat uFxzd2 = (ux_t30*L_Fz + uz_t30*L_Fx) / (2.0*F_M_I_SCALE);
-        const dfloat uFyzd2 = (uy_t30*L_Fz + uz_t30*L_Fy) / (2.0*F_M_I_SCALE);
+        const dfloat uFxyd2 = (ux_t30*L_Fy + uy_t30*L_Fx) / (2.0_df*F_M_I_SCALE);
+        const dfloat uFxzd2 = (ux_t30*L_Fz + uz_t30*L_Fx) / (2.0_df*F_M_I_SCALE);
+        const dfloat uFyzd2 = (uy_t30*L_Fz + uz_t30*L_Fy) / (2.0_df*F_M_I_SCALE);
 
-        const dfloat auxStressMag = sqrt(0.5 * (
+        const dfloat auxStressMag = sqrt(0.5_df * (
             (S_XX + uFxxd2) * (S_XX + uFxxd2) +(S_YY + uFyyd2) * (S_YY + uFyyd2) + (S_ZZ + uFzzd2) * (S_ZZ + uFzzd2) +
             2 * ((S_XY + uFxyd2) * (S_XY + uFxyd2) + (S_XZ + uFxzd2) * (S_XZ + uFxzd2) + (S_YZ + uFyzd2) * (S_YZ + uFyzd2))));
 
     #endif //COMPUTE_SHEAR
     // MOMENTS DETERMINED, COMPUTE OMEGA IF NON-NEWTONIAN FLUID
     #if defined(OMEGA_FIELD)
+            #ifndef LAMBDA_DIST
+              dfloat lambdaVar = 1.0_df;
+            #endif
             #ifdef NON_NEWTONIAN_FLUID 
-                omegaVar = calcOmega_nnf(omegaVar, auxStressMag,step);
+                dfloat gammaDot = omegaVar * auxStressMag * as2;
+                omegaVar = calcOmega(nnfProps, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
             #endif //NON_NEWTONIAN_FLUID
 
             #ifdef LES_MODEL
                 dfloat tau_t = calcTau_les(omegaVar, auxStressMag,step);
-                omegaVar = 1.0/(TAU + tau_t);
+                omegaVar = 1.0_df/(TAU + tau_t);
             #endif //LES_MODEL
 
             //Compute new auxiliary variables
-            t_omegaVar = 1 - omegaVar;
-            tt_omegaVar = 1 - omegaVar*0.5;
-            omegaVar_d2 = omegaVar*0.5;
-            tt_omega_t3 = tt_omegaVar * 3.0;
+            t_omegaVar = 1.0_df - omegaVar;
+            tt_omegaVar = 1.0_df - omegaVar*0.5_df;
+            omegaVar_d2 = omegaVar*0.5_df;
+            tt_omega_t3 = tt_omegaVar * 3.0_df;
     #endif //OMEGA_FIELD
     
     // zero forces in directions that are not fluid
@@ -625,10 +767,10 @@ __global__ void gpuMomCollisionStream(
             udx_t30 = G_DIFF_FLUC_COEF * (qx_t30*invC - ux_t30);
             udy_t30 = G_DIFF_FLUC_COEF * (qy_t30*invC - uy_t30);
             udz_t30 = G_DIFF_FLUC_COEF * (qz_t30*invC - uz_t30);
-
+            
             #include COLREC_G_RECONSTRUCTION
 
-            #include "includeFiles/g_popSave.inc"
+            #include "fragments/gTransport/g_popSave.inc"
             
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = cVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qx_t30;
@@ -636,6 +778,36 @@ __global__ void gpuMomCollisionStream(
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qz_t30;
 
         #endif //SECOND_DIST
+        #ifdef PHI_DIST 
+            phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
+            phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
+            phi_udz_t30 = PHI_DIFF_FLUC_COEF * (phi_qz_t30*invPhi - uz_t30);
+
+            #include COLREC_PHI_RECONSTRUCTION
+
+            #include "fragments/phiTransport/phi_popSave.inc"
+            
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiVar;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qx_t30;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qy_t30;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qz_t30;
+
+        #endif //PHI_DIST
+        #ifdef LAMBDA_DIST 
+            lambda_udx_t30 = LAMBDA_DIFF_FLUC_COEF * (lambda_qx_t30*invLambda - ux_t30);
+            lambda_udy_t30 = LAMBDA_DIFF_FLUC_COEF * (lambda_qy_t30*invLambda - uy_t30);
+            lambda_udz_t30 = LAMBDA_DIFF_FLUC_COEF * (lambda_qz_t30*invLambda - uz_t30);
+
+            #include COLREC_LAMBDA_RECONSTRUCTION
+
+            #include "fragments/lambdaTransport/lambda_popSave.inc"
+            
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LAMBDA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambdaVar;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qx_t30;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qy_t30;
+            fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qz_t30;
+
+        #endif //LAMBDA_DIST
         #ifdef A_XX_DIST
             Axx_udx_t30 = CONF_DIFF_FLUC_COEF * (Axx_qx_t30*invAxx - ux_t30);
             Axx_udy_t30 = CONF_DIFF_FLUC_COEF * (Axx_qy_t30*invAxx - uy_t30);
@@ -643,7 +815,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_AXX_RECONSTRUCTION
 
-            #include "includeFiles/conformationTransport/popSave_Axx.inc"
+            #include "fragments/conformationTransport/popSave_Axx.inc"
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AxxVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qx_t30;
@@ -657,7 +829,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_AXY_RECONSTRUCTION
 
-            #include "includeFiles/conformationTransport/popSave_Axy.inc"
+            #include "fragments/conformationTransport/popSave_Axy.inc"
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AxyVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qx_t30;
@@ -671,7 +843,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_AXZ_RECONSTRUCTION
 
-            #include "includeFiles/conformationTransport/popSave_Axz.inc"
+            #include "fragments/conformationTransport/popSave_Axz.inc"
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AxzVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qx_t30;
@@ -685,7 +857,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_AYY_RECONSTRUCTION
 
-            #include "includeFiles/conformationTransport/popSave_Ayy.inc"
+            #include "fragments/conformationTransport/popSave_Ayy.inc"
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AyyVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qx_t30;
@@ -699,7 +871,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_AYZ_RECONSTRUCTION
 
-            #include "includeFiles/conformationTransport/popSave_Ayz.inc"
+            #include "fragments/conformationTransport/popSave_Ayz.inc"
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AyzVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qx_t30;
@@ -713,7 +885,7 @@ __global__ void gpuMomCollisionStream(
 
             #include COLREC_AZZ_RECONSTRUCTION
 
-            #include "includeFiles/conformationTransport/popSave_Azz.inc"
+            #include "fragments/conformationTransport/popSave_Azz.inc"
 
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AzzVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qx_t30;
@@ -722,13 +894,13 @@ __global__ void gpuMomCollisionStream(
         #endif //A_ZZ_DIST
     #endif //CONVECTION_DIFFUSION_TRANSPORT
 
-    #include "includeFiles/popSave.inc"
+    #include "fragments/popSave.inc"
 
     //save velocities in the end in order to load next step to compute the gradient
     #ifdef COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
-    //#include "includeFiles/velSave.inc"
+    //#include "fragments/velSave.inc"
     //save conformation tensor components in the halo
-    //#include "includeFIles/conformationTransport/confSave.inc"
+    //#include "fragments/conformationTransport/confSave.inc"
     #endif //COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
 }
@@ -747,3 +919,118 @@ void gpuResetMacroForces(dfloat *fMom){
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = FZ;
 }
 #endif //LOCAL_FORCES
+
+
+#ifdef PHI_DIST
+
+__global__ void gpuComputePhaseNormals(
+    dfloat *fMom, 
+    unsigned int *dNodeType
+)
+{
+    const int x = threadIdx.x + blockDim.x * blockIdx.x;
+    const int y = threadIdx.y + blockDim.y * blockIdx.y;
+    const int z = threadIdx.z + blockDim.z * blockIdx.z;
+    
+    if (x >= NX || y >= NY || z >= NZ)
+        return;
+    
+    unsigned int nodeType = dNodeType[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z, blockIdx.x, blockIdx.y, blockIdx.z)];
+    if (nodeType == 0b11111111) return;
+    
+    const int tx = threadIdx.x;
+    const int ty = threadIdx.y;
+    const int tz = threadIdx.z;
+    
+    const int bx = blockIdx.x;
+    const int by = blockIdx.y;
+    const int bz = blockIdx.z;
+
+    // Helper lambda to get phi at neighbor position with periodic BC
+    auto getPhi = [&](int dx, int dy, int dz) -> dfloat {
+        int nx = (x + dx + NX) % NX;
+        int ny = (y + dy + NY) % NY;
+        int nz = (z + dz + NZ) % NZ;
+        int ntx = nx % BLOCK_NX;
+        int nty = ny % BLOCK_NY;
+        int ntz = nz % BLOCK_NZ;
+        int nbx = nx / BLOCK_NX;
+        int nby = ny / BLOCK_NY;
+        int nbz = nz / BLOCK_NZ;
+        return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)] - PHI_ZERO;
+    };
+
+    // Load phi at current node
+    dfloat phiVar = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)] - PHI_ZERO;
+
+    // Load phi at all D3Q19 neighbors
+    // Axis-aligned neighbors (weight 1/18)
+    dfloat phi_xm1 = getPhi(-1, 0, 0);
+    dfloat phi_xp1 = getPhi(+1, 0, 0);
+    dfloat phi_ym1 = getPhi(0, -1, 0);
+    dfloat phi_yp1 = getPhi(0, +1, 0);
+    dfloat phi_zm1 = getPhi(0, 0, -1);
+    dfloat phi_zp1 = getPhi(0, 0, +1);
+    
+    // Edge neighbors (weight 1/36)
+    dfloat phi_xm1_ym1 = getPhi(-1, -1, 0);
+    dfloat phi_xp1_ym1 = getPhi(+1, -1, 0);
+    dfloat phi_xm1_yp1 = getPhi(-1, +1, 0);
+    dfloat phi_xp1_yp1 = getPhi(+1, +1, 0);
+    dfloat phi_xm1_zm1 = getPhi(-1, 0, -1);
+    dfloat phi_xp1_zm1 = getPhi(+1, 0, -1);
+    dfloat phi_xm1_zp1 = getPhi(-1, 0, +1);
+    dfloat phi_xp1_zp1 = getPhi(+1, 0, +1);
+    dfloat phi_ym1_zm1 = getPhi(0, -1, -1);
+    dfloat phi_yp1_zm1 = getPhi(0, +1, -1);
+    dfloat phi_ym1_zp1 = getPhi(0, -1, +1);
+    dfloat phi_yp1_zp1 = getPhi(0, +1, +1);
+
+    // Isotropic gradient using D3Q19 lattice weights
+    // grad_phi = (1/cs^2) * sum_i w_i * c_i * phi(x + c_i)
+    // For D3Q19: cs^2 = 1/3, so factor is 3
+    // Axis weights: 1/18, Edge weights: 1/36
+    // After multiplying by 3: axis -> 1/6, edge -> 1/12
+    
+    constexpr dfloat w_axis = 1.0_df / 6.0_df;   // 3 * (1/18)
+    constexpr dfloat w_edge = 1.0_df / 12.0_df;  // 3 * (1/36)
+    
+    dfloat dphidx = w_axis * (phi_xp1 - phi_xm1)
+                  + w_edge * (phi_xp1_ym1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xm1_yp1
+                            + phi_xp1_zm1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xm1_zp1);
+    
+    dfloat dphidy = w_axis * (phi_yp1 - phi_ym1)
+                  + w_edge * (phi_xm1_yp1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xp1_ym1
+                            + phi_yp1_zm1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_ym1_zp1);
+    
+    dfloat dphidz = w_axis * (phi_zp1 - phi_zm1)
+                  + w_edge * (phi_xm1_zp1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xp1_zm1
+                            + phi_ym1_zp1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_yp1_zm1);
+
+    // Wall corrections: fall back to one-sided differences at boundaries
+    if ((nodeType & 0b01010101) == 0b01010101) { // wall west
+        dphidx = (phi_xp1 - phiVar);
+    }
+    if ((nodeType & 0b10101010) == 0b10101010) { // wall east
+        dphidx = (phiVar - phi_xm1);
+    }
+    if ((nodeType & 0b00110011) == 0b00110011) { // wall south
+        dphidy = (phi_yp1 - phiVar);
+    }
+    if ((nodeType & 0b11001100) == 0b11001100) { // wall north
+        dphidy = (phiVar - phi_ym1);
+    }
+    if ((nodeType & 0b00001111) == 0b00001111) { // wall back
+        dphidz = (phi_zp1 - phiVar);
+    }
+    if ((nodeType & 0b11110000) == 0b11110000) { // wall front
+        dphidz = (phiVar - phi_zm1);
+    }
+
+    // Store gradients to global memory
+    fMom[idxMom(tx, ty, tz, M3_NX_INDEX, bx, by, bz)] = dphidx;
+    fMom[idxMom(tx, ty, tz, M3_NY_INDEX, bx, by, bz)] = dphidy;
+    fMom[idxMom(tx, ty, tz, M3_NZ_INDEX, bx, by, bz)] = dphidz;
+}
+
+#endif // PHI_DIST
