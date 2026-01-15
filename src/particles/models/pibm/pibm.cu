@@ -120,15 +120,8 @@ __host__ void pibmSimulation(
     ParticleCenter *pArray = particles->getPCenterArray();
     ParticleShape *shape = particles->getPShape();
 
-    updateParticleOldValues<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, range.first, range.last, step);
-    particlesCollisionHandler<<<GRID_PCOLLISION_PIBM, THREADS_PCOLLISION_PIBM, 0, streamParticles>>>(shape, pArray, step);
-
-    spreadParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, fMom, N_PARTICLES);
-
-    updateParticleCenterVelocityAndRotation<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, range.first, range.last, step);
-    updateParticlePosition<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, range.first, range.last, step);
-
     resetParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, N_PARTICLES);
+    spreadParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, fMom, N_PARTICLES);
 
     checkCudaErrors(cudaStreamSynchronize(streamParticles));
 }

@@ -30,17 +30,16 @@
 #define GPU_INDEX 0
 
 constexpr bool console_flush = false;
-constexpr unsigned int N_GPUS = 1;                      // Number of GPUS to use
-constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
+constexpr unsigned int N_GPUS = 1;                // Number of GPUS to use
+constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0}; // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 002_viscoplasticParellelPlates
+#define BC_PROBLEM 006_singleParticleSettlingPIBM
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 
 #include "include/case_definitions.h"
-
 
 /* ============================= CASE INCLUDES ============================= */
 

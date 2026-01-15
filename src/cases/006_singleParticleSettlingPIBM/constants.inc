@@ -36,6 +36,10 @@ constexpr dfloat TAU = 0.65;     // relaxation time
 constexpr dfloat VISC = (TAU-0.5)/3.0;
 constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
 
+/* --------------------- LAMBDA INITIALIZATION --------------------- */
+// SHOULD NOT NEED TO DEFINE IT
+// constexpr dfloat LAMBDA_ZERO = 10.0;             // Initial lambda value (fully structured)
+
 /* --------------------- INITIALIZATION LOADING DEFINES -------------------- */
 constexpr int INI_STEP = 0; // initial simulation step (0 default)
 #define LOAD_CHECKPOINT false   // loads simulation checkpoint from folder 
