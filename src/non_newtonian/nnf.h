@@ -124,6 +124,8 @@ dfloat __forceinline__ calcOmegaKeeTurcotee(dfloat s_y, dfloat t1, dfloat eta_0,
     return omega;  
 }
 
+#ifdef LAMBDA_ZERO
+
 __host__ __device__ 
 dfloat __forceinline__ calcYieldStress_thixo(const fluidProps& fp, dfloat lambda)
 {
@@ -186,7 +188,7 @@ dfloat __forceinline__ calcOmega_thixo(const fluidProps& fp, dfloat lambda, dflo
 
 
 
-
+#endif
 
 
 
