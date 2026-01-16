@@ -22,23 +22,22 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
     dfloat uz_interpolated = mom_trilinear_interp(px, py, pz, M_UZ_INDEX, fMom);
     dfloat3 fluid_velocity = {ux_interpolated, uy_interpolated, uz_interpolated};
 
-    // Drag force following stokes law
-    dfloat3 drag_force = (3.0 * M_PI * VISC * pc_i->getDiameter()) * (fluid_velocity - pc_i->getVel());
+    dfloat particle_area = M_PI * pc_i->getDiameter() * pc_i->getDiameter() / 4;
+    dfloat3 drag_force = particle_area * mom_trilinear_interp(px, py, pz, M_RHO_INDEX, fMom) * (fluid_velocity - pc_i->getVel());
 
-    // Particle collision happened before so add to the current particle force
     pc_i->setF(pc_i->getF() + drag_force);
 
     dim3 stencil_bound_start, stencil_bound_end;
-    
-    #ifdef defined(FORCE_SPREAD_X_NODES) && defined(FORCE_SPREAD_Y_NODES) && defined(FORCE_SPREAD_Z_NODES)
-        stencil_bound_start.x = (int)ceil(px) - FORCE_SPREAD_X_NODES;
-        stencil_bound_start.y = (int)ceil(py) - FORCE_SPREAD_Y_NODES;
-        stencil_bound_start.z = (int)ceil(pz) - FORCE_SPREAD_Z_NODES;
 
-        stencil_bound_start.x = (int)floor(px) + FORCE_SPREAD_X_NODES;
-        stencil_bound_start.y = (int)floor(py) + FORCE_SPREAD_Y_NODES;
-        stencil_bound_start.z = (int)floor(pz) + FORCE_SPREAD_Z_NODES;
-    #endif
+#ifdef defined(FORCE_SPREAD_X_NODES) && defined(FORCE_SPREAD_Y_NODES) && defined(FORCE_SPREAD_Z_NODES)
+    stencil_bound_start.x = (int)ceil(px) - FORCE_SPREAD_X_NODES;
+    stencil_bound_start.y = (int)ceil(py) - FORCE_SPREAD_Y_NODES;
+    stencil_bound_start.z = (int)ceil(pz) - FORCE_SPREAD_Z_NODES;
+
+    stencil_bound_start.x = (int)floor(px) + FORCE_SPREAD_X_NODES;
+    stencil_bound_start.y = (int)floor(py) + FORCE_SPREAD_Y_NODES;
+    stencil_bound_start.z = (int)floor(pz) + FORCE_SPREAD_Z_NODES;
+#endif
 
     // For periodic boundary
     // TODO: Update this to react to BC definitions
@@ -76,12 +75,12 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
         }
     }
 
-    printf("Drag Force         x: %e y: %e z: %e\n", drag_force.x, drag_force.y, drag_force.z);
-    printf("Particle Position  x: %e y: %e z: %e\n", pc_i->getPosX(), pc_i->getPosY(), pc_i->getPosZ());
-    printf("Particle Velocity  x: %e y: %e z: %e\n", pc_i->getVelX(), pc_i->getVelY(), pc_i->getVelZ());
-    printf("Particle Ang Vel   x: %e y: %e z: %e\n", pc_i->getWX(), pc_i->getWY(), pc_i->getWZ());
-    printf("Particle Force     x: %e y: %e z: %e\n", pc_i->getFX(), pc_i->getFY(), pc_i->getFZ());
-    printf("Particle Moment    x: %e y: %e z: %e\n", pc_i->getMX(), pc_i->getMY(), pc_i->getMZ());
+    // printf("Drag Force         x: %e y: %e z: %e\n", drag_force.x, drag_force.y, drag_force.z);
+    // printf("Particle Position  x: %e y: %e z: %e\n", pc_i->getPosX(), pc_i->getPosY(), pc_i->getPosZ());
+    // printf("Particle Velocity  x: %e y: %e z: %e\n", pc_i->getVelX(), pc_i->getVelY(), pc_i->getVelZ());
+    // printf("Particle Ang Vel   x: %e y: %e z: %e\n", pc_i->getWX(), pc_i->getWY(), pc_i->getWZ());
+    // printf("Particle Force     x: %e y: %e z: %e\n", pc_i->getFX(), pc_i->getFY(), pc_i->getFZ());
+    // printf("Particle Moment    x: %e y: %e z: %e\n", pc_i->getMX(), pc_i->getMY(), pc_i->getMZ());
 }
 
 __global__ void resetParticleForce(ParticleCenter *pArray, unsigned int nParticles)
@@ -123,8 +122,8 @@ __host__ void pibmSimulation(
     ParticleCenter *pArray = particles->getPCenterArray();
     ParticleShape *shape = particles->getPShape();
 
-    // resetParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, N_PARTICLES);
-    // spreadParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, fMom, N_PARTICLES);
+    resetParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, N_PARTICLES);
+    spreadParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, fMom, N_PARTICLES);
 
     checkCudaErrors(cudaStreamSynchronize(streamParticles));
 }

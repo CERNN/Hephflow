@@ -162,6 +162,7 @@ __host__ void ParticlesSoA::createParticles(Particle *particles){
         switch (particles[i].getMethod())
         {
         case PIBM:
+            particles[i].makeSpherePolar(particles[i].getPCenter());
             break;
         case IBM:
             switch (*particles[i].getShape())
