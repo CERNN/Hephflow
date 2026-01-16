@@ -29,13 +29,16 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
     pc_i->setF(pc_i->getF() + drag_force);
 
     dim3 stencil_bound_start, stencil_bound_end;
-    stencil_bound_start.x = (int)ceil(px) - FORCE_SPREAD_X_NODES;
-    stencil_bound_start.y = (int)ceil(py) - FORCE_SPREAD_Y_NODES;
-    stencil_bound_start.z = (int)ceil(pz) - FORCE_SPREAD_Z_NODES;
+    
+    #ifdef defined(FORCE_SPREAD_X_NODES) && defined(FORCE_SPREAD_Y_NODES) && defined(FORCE_SPREAD_Z_NODES)
+        stencil_bound_start.x = (int)ceil(px) - FORCE_SPREAD_X_NODES;
+        stencil_bound_start.y = (int)ceil(py) - FORCE_SPREAD_Y_NODES;
+        stencil_bound_start.z = (int)ceil(pz) - FORCE_SPREAD_Z_NODES;
 
-    stencil_bound_start.x = (int)floor(px) + FORCE_SPREAD_X_NODES;
-    stencil_bound_start.y = (int)floor(py) + FORCE_SPREAD_Y_NODES;
-    stencil_bound_start.z = (int)floor(pz) + FORCE_SPREAD_Z_NODES;
+        stencil_bound_start.x = (int)floor(px) + FORCE_SPREAD_X_NODES;
+        stencil_bound_start.y = (int)floor(py) + FORCE_SPREAD_Y_NODES;
+        stencil_bound_start.z = (int)floor(pz) + FORCE_SPREAD_Z_NODES;
+    #endif
 
     // For periodic boundary
     // TODO: Update this to react to BC definitions
@@ -120,8 +123,8 @@ __host__ void pibmSimulation(
     ParticleCenter *pArray = particles->getPCenterArray();
     ParticleShape *shape = particles->getPShape();
 
-    resetParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, N_PARTICLES);
-    spreadParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, fMom, N_PARTICLES);
+    // resetParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, N_PARTICLES);
+    // spreadParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, fMom, N_PARTICLES);
 
     checkCudaErrors(cudaStreamSynchronize(streamParticles));
 }
