@@ -34,9 +34,9 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
     stencil_bound_start.y = (int)ceil(py) - FORCE_SPREAD_Y_NODES;
     stencil_bound_start.z = (int)ceil(pz) - FORCE_SPREAD_Z_NODES;
 
-    stencil_bound_start.x = (int)floor(px) + FORCE_SPREAD_X_NODES;
-    stencil_bound_start.y = (int)floor(py) + FORCE_SPREAD_Y_NODES;
-    stencil_bound_start.z = (int)floor(pz) + FORCE_SPREAD_Z_NODES;
+    stencil_bound_end.x = (int)floor(px) + FORCE_SPREAD_X_NODES;
+    stencil_bound_end.y = (int)floor(py) + FORCE_SPREAD_Y_NODES;
+    stencil_bound_end.z = (int)floor(pz) + FORCE_SPREAD_Z_NODES;
 #endif
 
     // For periodic boundary
