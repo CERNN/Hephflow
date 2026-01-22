@@ -28,7 +28,8 @@ __device__ const dfloat UZ_BC[4] =  {0, 0, 0, 0};
 __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
 #define BC_X_WALL
-#define BC_Y_WALL
+// #define BC_Y_WALL
+#define BC_Y_PERIODIC
 #define BC_Z_WALL
 
 
@@ -56,7 +57,6 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
 #define LOAD_FIELD_STEP 0
 
 #ifdef PARTICLE_MODEL
-    // IBM_METHOD must be defined, otherwise createParticles function are not compiled
     #define IBM_METHOD
     #define PIBM_METHOD
     #define DEM_METHOD

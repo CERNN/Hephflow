@@ -14,7 +14,7 @@ for (int i = 0; i < NUM_PARTICLES; i++)
     center.setVel(vel);
     center.setVel_old(vel);
     center.setDensity(1.5);
-    center.setDiameter(0.25);
+    center.setDiameter(0.5);
     center.setSemiAxis1(sa);
     center.setMovable(true);
     center.setQ_pos(dfloat4(1, 0, 0, 0));
