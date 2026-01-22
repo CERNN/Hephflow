@@ -162,7 +162,7 @@ __host__ void ParticlesSoA::createParticles(Particle *particles){
         switch (particles[i].getMethod())
         {
         case PIBM:
-            particles[i].makeSpherePolar(particles[i].getPCenter());
+            particles[i].makePointMaterial(particles[i].getPCenter());
             break;
         case IBM:
             switch (*particles[i].getShape())
@@ -297,6 +297,88 @@ void ParticlesSoA::freeNodesAndCenters(){
     cudaFree(this->pCollideParticle);
     this->pCollideParticle = nullptr;
 }
+
+#ifdef PIBM_METHOD
+
+__host__
+void Particle::makePointMaterial(ParticleCenter *particleCenter)
+{
+    // Define the properties of the particle
+    dfloat r = particleCenter->getDiameter() / 2.0_df;
+    dfloat volume = r*r*r*4*M_PI/3;
+
+    pCenter->setRadius(r);
+    pCenter->setVolume(r*r*r*4*M_PI/3);
+
+    // Particle area
+    pCenter->setS( 4.0_df * M_PI * r * r);
+
+    // Particle density
+    pCenter->setDensity(particleCenter->getDensity());
+
+    // Particle center position
+    pCenter->setPos(particleCenter->getPos());
+    pCenter->setPos_old(particleCenter->getPos_old());
+
+    // Particle velocity
+    pCenter->setVel(particleCenter->getVel());
+    pCenter->setVel_old(particleCenter->getVel_old());
+
+    // Particle rotation
+    pCenter->setW(particleCenter->getW());
+    pCenter->setW_avg(particleCenter->getW_avg());
+    pCenter->setW_old(particleCenter->getW_old());
+
+    pCenter->setQPosW(0);
+    pCenter->setQPosX(1);
+    pCenter->setQPosY(0);
+    pCenter->setQPosZ(0);
+
+    pCenter->setQPosOldW(0.0_df);
+    pCenter->setQPosOldX(1.0_df);
+    pCenter->setQPosOldY(0.0_df);
+    pCenter->setQPosOldZ(0.0_df);
+    
+    // Innertia momentum
+    pCenter->setIXX(2.0_df * volume * pCenter->getDensity() * r * r / 5.0_df);
+    pCenter->setIYY(2.0_df * volume * pCenter->getDensity() * r * r / 5.0_df);
+    pCenter->setIZZ(2.0_df * volume * pCenter->getDensity() * r * r / 5.0_df);
+
+    pCenter->setIXY(0.0_df);
+    pCenter->setIXZ(0.0_df);
+    pCenter->setIYZ(0.0_df);
+
+    pCenter->setFX(0.0_df);
+    pCenter->setFY(0.0_df);
+    pCenter->setFZ(0.0_df);
+
+    pCenter->setFOldX(0.0_df);
+    pCenter->setFOldY(0.0_df);
+    pCenter->setFOldZ(0.0_df);
+
+    pCenter->setMX(0.0_df);
+    pCenter->setMY(0.0_df);
+    pCenter->setMZ(0.0_df);
+
+    pCenter->setMOldX(0.0_df);
+    pCenter->setMOldY(0.0_df);
+    pCenter->setMOldZ(0.0_df);
+
+    pCenter->setMovable(particleCenter->getMovable());
+
+    // Set semi-axes as absolute positions (particle center + offset)
+    dfloat3 center_pos = particleCenter->getPos();
+    pCenter->setSemiAxis1(center_pos + dfloat3(r, 0, 0));
+    pCenter->setSemiAxis2(center_pos + dfloat3(0, r, 0));
+    pCenter->setSemiAxis3(center_pos + dfloat3(0, 0, r));
+    
+    pCenter->getCollision().reset(); 
+
+    pCenter->setPos_old(pCenter->getPos());
+    
+}
+#endif // !PIBM
+
 
 #ifdef IBM_METHOD
 

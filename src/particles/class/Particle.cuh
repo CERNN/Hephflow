@@ -83,6 +83,8 @@ class Particle {
          */
         // dfloat diameter, dfloat3 center, unsigned int coulomb, bool move,dfloat density = PARTICLE_DENSITY, dfloat3 vel = dfloat3(0, 0, 0), dfloat3 w = dfloat3(0, 0, 0)
         __host__
+        void makePointMaterial(ParticleCenter *praticleCenter);
+        __host__
         void makeSpherePolar(ParticleCenter *praticleCenter);
         __host__
         void makeUniformBox(ParticleCenter *praticleCenter);
