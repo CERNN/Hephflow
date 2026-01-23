@@ -162,11 +162,14 @@ __host__ void ParticlesSoA::createParticles(Particle *particles){
         switch (particles[i].getMethod())
         {
         case PIBM:
+            #ifdef PIBM_METHOD
             particles[i].makePointMaterial(particles[i].getPCenter());
+            #endif // !PIBM
             break;
         case IBM:
             switch (*particles[i].getShape())
             {
+            #ifdef IBM_METHOD
             case SPHERE:
                 particles[i].makeSpherePolar(particles[i].getPCenter());
                 break;
@@ -182,6 +185,7 @@ __host__ void ParticlesSoA::createParticles(Particle *particles){
             case RANDOM:
                 particles[i].makeRandomBox(particles[i].getPCenter());
                 break;
+            #endif // !IBM
             default:
                 break;
             }
