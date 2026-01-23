@@ -31,7 +31,7 @@
 #define LOAD_FIELD_STEP 0               // Step to load field from
 
 /* --------------------- PARTICLE OUTPUT --------------------- */
-#define PARTICLES_SAVE (1000)               // Save particles info every given steps
+#define PARTICLES_SAVE (1)               // Save particles info every given steps
 #define PARTICLES_DATA_REPORT (false)      // Report IBM treated data every given steps
 #define IBM_PARTICLES_NODES_SAVE true      // Saves particles nodes data
 

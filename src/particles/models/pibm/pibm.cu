@@ -23,7 +23,7 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
     dfloat3 fluid_velocity = {ux_interpolated, uy_interpolated, uz_interpolated};
 
     dfloat particle_area = M_PI * pc_i->getDiameter() * pc_i->getDiameter() / 4;
-    dfloat3 drag_force = 2 * particle_area * (1 + mom_trilinear_interp(px, py, pz, M_RHO_INDEX, fMom)) * (fluid_velocity - pc_i->getVel());
+    dfloat3 drag_force = 2 * particle_area * (RHO_0 + mom_trilinear_interp(px, py, pz, M_RHO_INDEX, fMom)) * (fluid_velocity - pc_i->getVel());
 
     pc_i->setF(pc_i->getF() + drag_force);
 

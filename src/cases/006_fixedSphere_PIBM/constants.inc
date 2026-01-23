@@ -8,7 +8,7 @@
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- DIMENSIONLESS NUMBERS --------------------- */
-constexpr dfloat RE = 10;                  // Reynolds number
+constexpr dfloat RE = 0.00544;                  // Reynolds number
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int N_STEPS = 10000;              // Total simulation steps
@@ -16,13 +16,13 @@ constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
 constexpr int N = 256 * SCALE;              // Reference grid size
-constexpr int NX = 64;                       // Grid size in X
-constexpr int NY = 64;                       // Grid size in Y
-constexpr int NZ = 256;                       // Grid size in Z
+constexpr int NX = 32;                       // Grid size in X
+constexpr int NY = 32;                       // Grid size in Y
+constexpr int NZ = 128;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */
-constexpr dfloat U_MAX = 0.0577;              // Maximum/reference velocity
+constexpr dfloat U_MAX = 0.000653;              // Maximum/reference velocity
 constexpr dfloat L = N;                     // Reference length
 
 /* --------------------- BODY FORCES --------------------- */
