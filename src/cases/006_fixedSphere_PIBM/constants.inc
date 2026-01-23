@@ -8,7 +8,7 @@
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- DIMENSIONLESS NUMBERS --------------------- */
-constexpr dfloat RE = 500;                  // Reynolds number
+constexpr dfloat RE = 10;                  // Reynolds number
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int N_STEPS = 10000;              // Total simulation steps
@@ -16,13 +16,13 @@ constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
 constexpr int N = 256 * SCALE;              // Reference grid size
-constexpr int NX = N;                       // Grid size in X
-constexpr int NY = N;                       // Grid size in Y
-constexpr int NZ = N;                       // Grid size in Z
+constexpr int NX = 64;                       // Grid size in X
+constexpr int NY = 64;                       // Grid size in Y
+constexpr int NZ = 256;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */
-constexpr dfloat U_MAX = 0.05;              // Maximum/reference velocity
+constexpr dfloat U_MAX = 0.0577;              // Maximum/reference velocity
 constexpr dfloat L = N;                     // Reference length
 
 /* --------------------- BODY FORCES --------------------- */
@@ -48,7 +48,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 #define BC_Z_WALL                          // Inlet/outlet
 
 /* --------------------- FLUID PROPERTIES --------------------- */
-constexpr dfloat VISC = U_MAX * NX / RE;    // Kinematic viscosity
+constexpr dfloat VISC = U_MAX * 1 / RE;    // Kinematic viscosity
 constexpr dfloat TAU = 0.5 + 3.0*VISC;      // Relaxation time
 constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 
@@ -58,3 +58,66 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 #define CHECKPOINT_SAVE false               // Save simulation checkpoints
 #define LOAD_FIELD false                    // Load field data
 #define LOAD_FIELD_STEP 0                   // Step to load field from
+
+/* ============================================================================
+ * PARTICLE/IBM MODEL PARAMETERS
+ * Requires #define PARTICLE_MODEL in model.inc
+ * Uses Immersed Boundary Method for fluid-solid interaction
+ * ========================================================================== */
+
+#define PARTICLE_MODEL                      // Enable particle simulation
+#define PIBM_METHOD                          // Immersed Boundary Method
+#define DEM_METHOD                          // Discrete Element Method for collisions
+#define LOCAL_FORCES                        // Compute local forces on particles
+
+/* --------------------- PARTICLE CONFIGURATION --------------------- */
+#define NUM_PARTICLES 1                     // Number of particles
+
+/* --------------------- GRAVITY PARAMETERS --------------------- */
+constexpr dfloat GX = 0.0;                  // Gravity in X direction
+constexpr dfloat GY = 0.0;              // Gravity in Y direction (settling force)
+constexpr dfloat GZ = 0.0;                  // Gravity in Z direction
+
+/* --------------------- FLUID PROPERTIES FOR PARTICLES --------------------- */
+constexpr dfloat FLUID_DENSITY = 1.0;       // Fluid density (for buoyancy)
+
+/* --------------------- DEM COLLISION PARAMETERS --------------------- */
+// Friction coefficients
+constexpr dfloat PP_FRICTION_COEF = 0.1;    // Particle-particle friction
+constexpr dfloat PW_FRICTION_COEF = 0.1;    // Particle-wall friction
+
+// Restitution coefficients
+constexpr dfloat PP_REST_COEF = 0.9;        // Particle-particle restitution
+constexpr dfloat PW_REST_COEF = 0.5;        // Particle-wall restitution (lower for settling)
+//#define REST_COEF_CORRECTION             // Enable restitution correction
+
+/* --------------------- MATERIAL PROPERTIES --------------------- */
+// Particle material properties
+constexpr dfloat PARTICLE_YOUNG_MODULUS = 1.0;  // Young's modulus (Pa)
+constexpr dfloat PARTICLE_POISSON_RATIO = 0.3; // Poisson's ratio
+
+// Wall material properties
+constexpr dfloat WALL_YOUNG_MODULUS = 100.0;    // Young's modulus (Pa)
+constexpr dfloat WALL_POISSON_RATIO = 0.3;     // Poisson's ratio
+
+/* --------------------- COLLISION DAMPING CONSTANTS --------------------- */
+// Sphere-wall collision constants (compile-time)
+constexpr dfloat SPHERE_WALL_DAMPING_CONST = (-2.0 * constexprLn(PW_REST_COEF) / 
+    (sqrtt(M_PI * M_PI + constexprLn(PW_REST_COEF) * constexprLn(PW_REST_COEF))));
+constexpr dfloat SPHERE_SPHERE_DAMPING_CONST = (-2.0 * constexprLn(PP_REST_COEF) / 
+    (sqrtt(M_PI * M_PI + constexprLn(PP_REST_COEF) * constexprLn(PP_REST_COEF))));
+
+/* --------------------- LONG-RANGE INTERACTION PARAMETERS --------------------- */
+// Lubrication force parameters
+#define LUB_CUTOFF_FACTOR   0.02           // Cutoff factor (stop above this value)
+#define LUB_MIN_FACTOR      1e-3            // Minimum factor (stop below for 1/h divergence)
+
+// Repulsive force parameters
+#define REP_RANGE_FACTOR    0.1             // Range factor (stop working above this)
+#define REP_FORCE_AMPLITUDE 1.0             // Repulsion force amplitude
+
+// Attractive force parameters
+#define ATT_RANGE_FACTOR    0.1             // Range factor
+#define HAMAKER_CONST 1e-5                  // Hamaker constant (lattice units)
+
+/* ----- END CONSTANTS CONFIGURATION ----- */

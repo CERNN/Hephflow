@@ -5,13 +5,13 @@
 
 /* --------------------- OUTPUT FILES --------------------- */
 #define ID_SIM "000"                    // Prefix for simulation's files
-#define PATH_FILES "MountedCube"       // Path to save simulation's files
+#define PATH_FILES "fixedSpherePIBM"       // Path to save simulation's files
 #define ONLY_FINAL_MACRO (false)        // Save only last time step macroscopic
 
 /* --------------------- OUTPUT FORMATS --------------------- */
 #define VTK_SAVE (true)                 // Save VTK format (ParaView)
 #define BIN_SAVE (false)                // Save binary format
-#define MACR_SAVE (false)               // Save macroscopic fields
+#define MACR_SAVE (1)               // Save macroscopic fields
 #define REPORT_SAVE (false)             // Save report files
 #define NODE_TYPE_SAVE (false)          // Save BC conditions for visualization
 
@@ -30,5 +30,8 @@
 #define LOAD_FIELD false                // Load field data
 #define LOAD_FIELD_STEP 0               // Step to load field from
 
-//#define BC_FORCES //create scalar field to export the reaction forces from BC;
-//#define SAVE_BC_FORCES // define if it will export BC force field to bin
+/* --------------------- PARTICLE OUTPUT --------------------- */
+#define PARTICLES_SAVE (1000)               // Save particles info every given steps
+#define PARTICLES_DATA_REPORT (false)      // Report IBM treated data every given steps
+#define IBM_PARTICLES_NODES_SAVE true      // Saves particles nodes data
+

@@ -57,7 +57,6 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
 #define LOAD_FIELD_STEP 0
 
 #ifdef PARTICLE_MODEL
-    #define IBM_METHOD
     #define PIBM_METHOD
     #define DEM_METHOD
     #define LOCAL_FORCES

@@ -35,7 +35,7 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0}; // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 006_singleParticleSettling_PIBM
+#define BC_PROBLEM 006_fixedSphere_PIBM
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 

@@ -25,9 +25,37 @@
 
 /* --------------------- OTHER DEFINITIONS --------------------- */
 //#define DENSITY_CORRECTION
-
-//#define RANDOM_NUMBERS true    // to generate random numbers 
+#define RANDOM_NUMBERS true    // to generate random numbers 
                                // (useful for turbulence)
 
+/* --------------------- IBM PARAMETERS --------------------- */
+// Change to location of nodes http://dx.doi.org/10.1016/j.jcp.2012.02.026
+#define BREUGEM_PARAMETER (0.0)
+// Mesh scale for IBM, minimum distance between nodes (lower, more nodes in particle)
+#define MESH_SCALE 1.0
+// Number of iterations of Coulomb algorithm to optimize the nodes positions
+#define MESH_COULOMB 0
+// #define ROTATION_LOCK true
+// Assumed boundary thickness for IBM
+#define IBM_THICKNESS 1.0
+#define STENCIL_4 // Peskin Stencil
+
+/* --------------------- LONG-RANGE INTERACTIONS --------------------- */
+//#define ENABLE_LUBRICATION
+//#define ENABLE_REPULSIVE_FORCE
+//#define ENABLE_ATTRACTIVE_FORCE
+
+/* ----- END MODEL CONFIGURATION ----- */
+
+// Change to location of nodes http://dx.doi.org/10.1016/j.jcp.2012.02.026
+#define BREUGEM_PARAMETER (0.0)
+// Mesh scale for IBM, minimum distance between nodes (lower, more nodes in particle)
+#define MESH_SCALE 1.0
+// Number of iterations of Coulomb algorithm to optimize the nodes positions
+#define MESH_COULOMB 0
+// #define ROTATION_LOCK true
+// Assumed boundary thickness for IBM
+#define IBM_THICKNESS 1.0
+#define STENCIL_4 // Peskin Stencil
 
 
