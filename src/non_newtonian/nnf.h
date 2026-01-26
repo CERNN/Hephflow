@@ -142,7 +142,7 @@ dfloat __forceinline__ calcYieldStress_thixo(const fluidProps& fp, dfloat lambda
     }
 }
 
-
+#ifdef LAMBDA_DIST
 __host__ __device__ 
 dfloat __forceinline__ calcVisco_thixo(const fluidProps& fp, dfloat lambda, dfloat gammaDot)
 {
@@ -164,6 +164,7 @@ dfloat __forceinline__ calcVisco_thixo(const fluidProps& fp, dfloat lambda, dflo
     }
 }
 
+
 __host__ __device__ 
 dfloat __forceinline__ calcOmega_thixo(const fluidProps& fp, dfloat lambda, dfloat gammaDot, dfloat auxStressMag, dfloat rhoVar){
     // Extract actual lambda value (remove LAMBDA_ZERO offset)
@@ -183,7 +184,7 @@ dfloat __forceinline__ calcOmega_thixo(const fluidProps& fp, dfloat lambda, dflo
     return omega;
 }
 
-
+#endif
 
 
 
