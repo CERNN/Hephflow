@@ -23,37 +23,41 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
     dfloat3 fluid_velocity = {ux_interpolated, uy_interpolated, uz_interpolated};
 
     dfloat particle_area = M_PI * pc_i->getDiameter() * pc_i->getDiameter() / 4;
-    dfloat3 drag_force = 2 * particle_area * (RHO_0 + mom_trilinear_interp(px, py, pz, M_RHO_INDEX, fMom)) * (fluid_velocity - pc_i->getVel());
+    // dfloat3 drag_force = 2 * particle_area * (RHO_0 + mom_trilinear_interp(px, py, pz, M_RHO_INDEX, fMom)) * (fluid_velocity - pc_i->getVel());
+    dfloat3 drag_force = particle_area * (RHO_0 + mom_trilinear_interp(px, py, pz, M_RHO_INDEX, fMom)) * (fluid_velocity - pc_i->getVel());
 
     pc_i->setF(pc_i->getF() + drag_force);
 
     dim3 stencil_bound_start, stencil_bound_end;
 
-#ifdef defined(FORCE_SPREAD_X_NODES) && defined(FORCE_SPREAD_Y_NODES) && defined(FORCE_SPREAD_Z_NODES)
+    // #ifdef defined(FORCE_SPREAD_X_NODES) && defined(FORCE_SPREAD_Y_NODES) && defined(FORCE_SPREAD_Z_NODES)
     stencil_bound_start.x = (int)ceil(px) - FORCE_SPREAD_X_NODES;
     stencil_bound_start.y = (int)ceil(py) - FORCE_SPREAD_Y_NODES;
     stencil_bound_start.z = (int)ceil(pz) - FORCE_SPREAD_Z_NODES;
 
-    stencil_bound_end.x = (int)floor(px) + FORCE_SPREAD_X_NODES;
-    stencil_bound_end.y = (int)floor(py) + FORCE_SPREAD_Y_NODES;
-    stencil_bound_end.z = (int)floor(pz) + FORCE_SPREAD_Z_NODES;
-#endif
+    stencil_bound_end.x = stencil_bound_start.x + 2 * FORCE_SPREAD_X_NODES;
+    stencil_bound_end.y = stencil_bound_start.y + 2 * FORCE_SPREAD_Y_NODES;
+    stencil_bound_end.z = stencil_bound_start.z + 2 * FORCE_SPREAD_Z_NODES;
+
+    // printf("Stencil start     x: %d,  y: %d,  z: %d\n", stencil_bound_start.x, stencil_bound_start.y, stencil_bound_start.z);
+    // printf("Stencil end       x: %d,  y: %d,  z: %d\n", stencil_bound_end.x, stencil_bound_end.y, stencil_bound_end.z);
+    // #endif
 
     // For periodic boundary
     // TODO: Update this to react to BC definitions
-    if (stencil_bound_start.x < 0)
-        stencil_bound_start.x += NX;
-    if (stencil_bound_start.y < 0)
-        stencil_bound_start.y += NY;
-    if (stencil_bound_start.z < 0)
-        stencil_bound_start.z += NZ;
+    // if (stencil_bound_start.x < 0)
+    //     stencil_bound_start.x += NX;
+    // if (stencil_bound_start.y < 0)
+    //     stencil_bound_start.y += NY;
+    // if (stencil_bound_start.z < 0)
+    //     stencil_bound_start.z += NZ;
 
-    if (stencil_bound_start.x >= NX)
-        stencil_bound_start.x = stencil_bound_start.x % NX;
-    if (stencil_bound_start.y >= NY)
-        stencil_bound_start.y = stencil_bound_start.y % NY;
-    if (stencil_bound_start.z >= NZ)
-        stencil_bound_start.z = stencil_bound_start.z % NZ;
+    // if (stencil_bound_start.x >= NX)
+    //     stencil_bound_start.x = stencil_bound_start.x % NX;
+    // if (stencil_bound_start.y >= NY)
+    //     stencil_bound_start.y = stencil_bound_start.y % NY;
+    // if (stencil_bound_start.z >= NZ)
+    //     stencil_bound_start.z = stencil_bound_start.z % NZ;
 
     // Use correct stencil
     for (int zk = stencil_bound_start.z; zk <= stencil_bound_end.z; zk++) // z
@@ -62,11 +66,21 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
         {
             for (int xi = stencil_bound_start.x; xi <= stencil_bound_end.x; xi++) // x
             {
-                dfloat spread_filter = (1 + cos(M_PI * (xi - px) / 2)) * (1 + cos(M_PI * (yj - py) / 2)) * (1 + cos(M_PI * (zk - pz) / 2)) / 64;
+                dfloat spread_filter_x = (1.0_df + cos(M_PI * (dfloat(xi) - px) / 2.0_df)) / 4.0_df;
+                dfloat spread_filter_y = (1.0_df + cos(M_PI * (dfloat(yj) - py) / 2.0_df)) / 4.0_df;
+                dfloat spread_filter_z = (1.0_df + cos(M_PI * (dfloat(zk) - pz) / 2.0_df)) / 4.0_df;
+                dfloat spread_filter = spread_filter_x * spread_filter_y * spread_filter_z;
+                // printf("Particle position   x: %e,  y: %e,  z: %e\n", px, py, pz);
+                // printf("Node position       x: %d,  y: %d,  z: %d\n", xi, yj, zk);
+                // printf("Spread filter       x: %e,  y: %e,  z: %e\n", spread_filter_x, spread_filter_y, spread_filter_z);
+                // printf("Spread filter:         %e\n", spread_filter);
 
-                unsigned int xx = (stencil_bound_start.x + xi + NX) % (NX);
-                unsigned int yy = (stencil_bound_start.y + yj + NY) % (NY);
-                unsigned int zz = (stencil_bound_start.z + zk + NZ) % (NZ);
+                // unsigned int xx = (stencil_bound_start.x + xi + NX) % (NX);
+                // unsigned int yy = (stencil_bound_start.y + yj + NY) % (NY);
+                // unsigned int zz = (stencil_bound_start.z + zk + NZ) % (NZ);
+                unsigned int xx = (stencil_bound_start.x + xi);
+                unsigned int yy = (stencil_bound_start.y + yj);
+                unsigned int zz = (stencil_bound_start.z + zk);
 
                 atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FX_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.x * spread_filter);
                 atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FY_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.y * spread_filter);
@@ -112,12 +126,6 @@ __host__ void pibmSimulation(
 
     const unsigned int THREADS_PARTICLES_PIBM = N_PARTICLES > 64 ? 64 : N_PARTICLES;
     const unsigned int GRID_PARTICLES_PIBM = (N_PARTICLES % THREADS_PARTICLES_PIBM ? (N_PARTICLES / THREADS_PARTICLES_PIBM + 1) : (N_PARTICLES / THREADS_PARTICLES_PIBM));
-
-    const unsigned int TOTAL_PCOLLISION_PIBM_THREADS = (N_PARTICLES * (N_PARTICLES + 1)) / 2;
-    const unsigned int THREADS_PCOLLISION_PIBM = (TOTAL_PCOLLISION_PIBM_THREADS > 64) ? 64 : TOTAL_PCOLLISION_PIBM_THREADS;
-    const unsigned int GRID_PCOLLISION_PIBM =
-        (TOTAL_PCOLLISION_PIBM_THREADS % THREADS_PCOLLISION_PIBM ? (TOTAL_PCOLLISION_PIBM_THREADS / THREADS_PCOLLISION_PIBM + 1)
-                                                                 : (TOTAL_PCOLLISION_PIBM_THREADS / THREADS_PCOLLISION_PIBM));
 
     ParticleCenter *pArray = particles->getPCenterArray();
     ParticleShape *shape = particles->getPShape();

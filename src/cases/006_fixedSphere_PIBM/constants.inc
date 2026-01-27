@@ -8,7 +8,7 @@
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- DIMENSIONLESS NUMBERS --------------------- */
-constexpr dfloat RE = 0.00544;                  // Reynolds number
+constexpr dfloat RE = 0.005677714;                  // Reynolds number
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int N_STEPS = 10000;              // Total simulation steps
@@ -22,19 +22,19 @@ constexpr int NZ = 128;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */
-constexpr dfloat U_MAX = 0.000653;              // Maximum/reference velocity
+constexpr dfloat U_MAX = 0.0;              // Maximum/reference velocity
 constexpr dfloat L = N;                     // Reference length
 
 /* --------------------- BODY FORCES --------------------- */
 constexpr dfloat FX = 0.0;                  // Force in X direction
 constexpr dfloat FY = 0.0;                  // Force in Y direction
-constexpr dfloat FZ = 0.0;                  // Force in Z direction
+constexpr dfloat FZ = 1e-5;                  // Force in Z direction
 
 /* --------------------- INITIAL CONDITIONS --------------------- */
 constexpr dfloat RHO_0 = 1.0;               // Initial density
 constexpr dfloat U_0_X = 0.0;               // Initial velocity X
 constexpr dfloat U_0_Y = 0.0;               // Initial velocity Y
-constexpr dfloat U_0_Z = U_MAX;             // Initial velocity Z
+constexpr dfloat U_0_Z = 0.0;             // Initial velocity Z
 
 /* --------------------- BOUNDARY CONDITION VALUES --------------------- */
 __device__ const dfloat UX_BC[4] = {0, 0, 0, 0};
@@ -43,9 +43,9 @@ __device__ const dfloat UZ_BC[4] = {0, 0, 0, 0};
 __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
 /* --------------------- BOUNDARY CONDITION TYPES --------------------- */
-#define BC_X_PERIODIC                      // Free slip
+#define BC_X_PERIODIC                          // Free slip
 #define BC_Y_PERIODIC                          // Wall
-#define BC_Z_WALL                          // Inlet/outlet
+#define BC_Z_PERIODIC                          // Inlet/outlet
 
 /* --------------------- FLUID PROPERTIES --------------------- */
 constexpr dfloat VISC = U_MAX * 1 / RE;    // Kinematic viscosity
@@ -72,6 +72,16 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 
 /* --------------------- PARTICLE CONFIGURATION --------------------- */
 #define NUM_PARTICLES 1                     // Number of particles
+
+/* --------------------- PARTICLE PIBM CONFIGURATION --------------------- */
+// Define Lagrangian lattice intervals, min of 2 nodes
+const int LAGRANGIAN_I_MAX = 2; // min 2
+const int LAGRANGIAN_J_MAX = 2; // min 2
+const int LAGRANGIAN_K_MAX = 2; // min 2
+
+const int FORCE_SPREAD_X_NODES = 2; // min 1
+const int FORCE_SPREAD_Y_NODES = 2; // min 1
+const int FORCE_SPREAD_Z_NODES = 2; // min 1
 
 /* --------------------- GRAVITY PARAMETERS --------------------- */
 constexpr dfloat GX = 0.0;                  // Gravity in X direction

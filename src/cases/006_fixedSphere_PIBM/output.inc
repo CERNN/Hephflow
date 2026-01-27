@@ -11,7 +11,7 @@
 /* --------------------- OUTPUT FORMATS --------------------- */
 #define VTK_SAVE (true)                 // Save VTK format (ParaView)
 #define BIN_SAVE (false)                // Save binary format
-#define MACR_SAVE (1)               // Save macroscopic fields
+#define MACR_SAVE (100)               // Save macroscopic fields
 #define REPORT_SAVE (false)             // Save report files
 #define NODE_TYPE_SAVE (false)          // Save BC conditions for visualization
 
@@ -31,7 +31,7 @@
 #define LOAD_FIELD_STEP 0               // Step to load field from
 
 /* --------------------- PARTICLE OUTPUT --------------------- */
-#define PARTICLES_SAVE (1)               // Save particles info every given steps
+#define PARTICLES_SAVE (100)               // Save particles info every given steps
 #define PARTICLES_DATA_REPORT (false)      // Report IBM treated data every given steps
 #define IBM_PARTICLES_NODES_SAVE true      // Saves particles nodes data
 
