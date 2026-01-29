@@ -22,19 +22,19 @@ constexpr int NZ = 128;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */
-constexpr dfloat U_MAX = 0.0;              // Maximum/reference velocity
+constexpr dfloat U_MAX = 0.000653;              // Maximum/reference velocity
 constexpr dfloat L = N;                     // Reference length
 
 /* --------------------- BODY FORCES --------------------- */
 constexpr dfloat FX = 0.0;                  // Force in X direction
 constexpr dfloat FY = 0.0;                  // Force in Y direction
-constexpr dfloat FZ = 1e-5;                  // Force in Z direction
+constexpr dfloat FZ = 0.0;                  // Force in Z direction
 
 /* --------------------- INITIAL CONDITIONS --------------------- */
 constexpr dfloat RHO_0 = 1.0;               // Initial density
 constexpr dfloat U_0_X = 0.0;               // Initial velocity X
 constexpr dfloat U_0_Y = 0.0;               // Initial velocity Y
-constexpr dfloat U_0_Z = 0.0;             // Initial velocity Z
+constexpr dfloat U_0_Z = U_MAX;             // Initial velocity Z
 
 /* --------------------- BOUNDARY CONDITION VALUES --------------------- */
 __device__ const dfloat UX_BC[4] = {0, 0, 0, 0};
@@ -45,7 +45,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 /* --------------------- BOUNDARY CONDITION TYPES --------------------- */
 #define BC_X_PERIODIC                          // Free slip
 #define BC_Y_PERIODIC                          // Wall
-#define BC_Z_PERIODIC                          // Inlet/outlet
+#define BC_Z_WALL                              // Inlet/outlet
 
 /* --------------------- FLUID PROPERTIES --------------------- */
 constexpr dfloat VISC = U_MAX * 1 / RE;    // Kinematic viscosity

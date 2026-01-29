@@ -26,7 +26,8 @@
 
 /* ======================== SIMULATION CONFIGURATION ======================= */
 
-#define CELLDATA_SAVE true
+// #define CELLDATA_SAVE true
+#define CELLDATA_SAVE false
 #define GPU_INDEX 0
 
 constexpr bool console_flush = false;
@@ -35,7 +36,7 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0}; // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 006_fixedSphere_PIBM
+#define BC_PROBLEM 006_fixedSphere_PIBM_64
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 

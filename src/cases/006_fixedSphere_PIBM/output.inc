@@ -33,5 +33,5 @@
 /* --------------------- PARTICLE OUTPUT --------------------- */
 #define PARTICLES_SAVE (100)               // Save particles info every given steps
 #define PARTICLES_DATA_REPORT (false)      // Report IBM treated data every given steps
-#define IBM_PARTICLES_NODES_SAVE true      // Saves particles nodes data
+#define IBM_PARTICLES_NODES_SAVE false      // Saves particles nodes data
 

@@ -26,7 +26,7 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
     // dfloat3 drag_force = 2 * particle_area * (RHO_0 + mom_trilinear_interp(px, py, pz, M_RHO_INDEX, fMom)) * (fluid_velocity - pc_i->getVel());
     dfloat3 drag_force = particle_area * (RHO_0 + mom_trilinear_interp(px, py, pz, M_RHO_INDEX, fMom)) * (fluid_velocity - pc_i->getVel());
 
-    pc_i->setF(pc_i->getF() + drag_force);
+    accumulateForceAndTorque(pc_i, drag_force, {0, 0, 0});
 
     dim3 stencil_bound_start, stencil_bound_end;
 
@@ -35,12 +35,10 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
     stencil_bound_start.y = (int)ceil(py) - FORCE_SPREAD_Y_NODES;
     stencil_bound_start.z = (int)ceil(pz) - FORCE_SPREAD_Z_NODES;
 
-    stencil_bound_end.x = stencil_bound_start.x + 2 * FORCE_SPREAD_X_NODES;
-    stencil_bound_end.y = stencil_bound_start.y + 2 * FORCE_SPREAD_Y_NODES;
-    stencil_bound_end.z = stencil_bound_start.z + 2 * FORCE_SPREAD_Z_NODES;
+    stencil_bound_end.x = stencil_bound_start.x + 2 * FORCE_SPREAD_X_NODES - 1;
+    stencil_bound_end.y = stencil_bound_start.y + 2 * FORCE_SPREAD_Y_NODES - 1;
+    stencil_bound_end.z = stencil_bound_start.z + 2 * FORCE_SPREAD_Z_NODES - 1;
 
-    // printf("Stencil start     x: %d,  y: %d,  z: %d\n", stencil_bound_start.x, stencil_bound_start.y, stencil_bound_start.z);
-    // printf("Stencil end       x: %d,  y: %d,  z: %d\n", stencil_bound_end.x, stencil_bound_end.y, stencil_bound_end.z);
     // #endif
 
     // For periodic boundary
@@ -78,13 +76,21 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
                 // unsigned int xx = (stencil_bound_start.x + xi + NX) % (NX);
                 // unsigned int yy = (stencil_bound_start.y + yj + NY) % (NY);
                 // unsigned int zz = (stencil_bound_start.z + zk + NZ) % (NZ);
-                unsigned int xx = (stencil_bound_start.x + xi);
-                unsigned int yy = (stencil_bound_start.y + yj);
-                unsigned int zz = (stencil_bound_start.z + zk);
+                unsigned int xx = xi;
+                unsigned int yy = yj;
+                unsigned int zz = zk;
 
                 atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FX_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.x * spread_filter);
                 atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FY_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.y * spread_filter);
                 atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FZ_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.z * spread_filter);
+
+                // int fmomIdx_fx = idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FX_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ);
+                // int fmomIdx_fy = idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FY_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ);
+                // int fmomIdx_fz = idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FZ_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ);
+
+                // atomicAdd(&(fMom[fmomIdx_fx]), -drag_force.x * spread_filter);
+                // atomicAdd(&(fMom[fmomIdx_fy]), -drag_force.y * spread_filter);
+                // atomicAdd(&(fMom[fmomIdx_fz]), -drag_force.z * spread_filter);
             }
         }
     }
@@ -97,30 +103,12 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
     // printf("Particle Moment    x: %e y: %e z: %e\n", pc_i->getMX(), pc_i->getMY(), pc_i->getMZ());
 }
 
-__global__ void resetParticleForce(ParticleCenter *pArray, unsigned int nParticles)
-{
-    int p_idx = threadIdx.x + blockDim.x * blockIdx.x;
-    if (p_idx >= nParticles)
-        return;
-
-    ParticleCenter *pc_i = &pArray[p_idx];
-
-    pc_i->setF(dfloat3(0.0, 0.0, 0.0));
-}
-
 __host__ void pibmSimulation(
     ParticlesSoA *particles,
     dfloat *fMom,
     cudaStream_t streamParticles,
     unsigned int step)
 {
-    // IbmNodesSoA h_nodes = *(particles->getNodesSoA());
-    // IbmNodesSoA *d_nodes = &h_nodes;
-    // cudaMalloc(&d_nodes, sizeof(IbmNodesSoA));
-    // cudaMemcpy(d_nodes, &h_nodes, sizeof(IbmNodesSoA), cudaMemcpyHostToDevice);
-
-    // checkCudaErrors(cudaSetDevice(GPU_INDEX));
-
     MethodRange range = particles->getMethodRange(PIBM);
     const unsigned int N_PARTICLES = range.last - range.first + 1;
 
@@ -130,7 +118,6 @@ __host__ void pibmSimulation(
     ParticleCenter *pArray = particles->getPCenterArray();
     ParticleShape *shape = particles->getPShape();
 
-    resetParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, N_PARTICLES);
     spreadParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(pArray, fMom, N_PARTICLES);
 
     checkCudaErrors(cudaStreamSynchronize(streamParticles));
