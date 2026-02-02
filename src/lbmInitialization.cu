@@ -1392,9 +1392,10 @@ unsigned int bc_id(unsigned int *dNodeType, int x, int y, int z){
         free(h_curvedBC_array);
     }
 
-    void initializeCurvedBoundaryDeviceField(unsigned int *&hNodeType, unsigned int *&dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array){
+    unsigned int initializeCurvedBoundaryDeviceField(unsigned int *&hNodeType, unsigned int *&dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array){
         unsigned int numberCurvedBoundaryNodes = getNumberCurvedBoundaryNodes(hNodeType);
         allocateDeviceMemoryCurvedBoundary(d_curvedBC, d_curvedBC_array, numberCurvedBoundaryNodes);
         initializeCurvedBoundaryArray(hNodeType, dNodeType, d_curvedBC, d_curvedBC_array,numberCurvedBoundaryNodes);
+        return numberCurvedBoundaryNodes;
     }
 #endif //CURVED_BOUNDARY_CONDITION

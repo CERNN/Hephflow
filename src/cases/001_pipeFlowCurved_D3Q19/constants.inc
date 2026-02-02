@@ -14,11 +14,11 @@ constexpr int SCALE = 1;                    // Grid scaling factor
 constexpr dfloat RE = 10;                   // Reynolds number
 
 /* --------------------- TIME STEPPING --------------------- */
-constexpr int N_STEPS = 10000;              // Total simulation steps
+constexpr int N_STEPS = 20000;              // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
-constexpr int N = 64 * SCALE;               // Reference grid size
+constexpr int N = 128 * SCALE;               // Reference grid size
 constexpr int NX = N;                       // Grid size in X
 constexpr int NY = N;                       // Grid size in Y
 constexpr int NZ = 8;                       // Grid size in Z

@@ -35,7 +35,7 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 002_viscoplasticParellelPlates
+#define BC_PROBLEM 001_pipeFlowCurved_D3Q19
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 

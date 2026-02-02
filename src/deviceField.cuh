@@ -168,7 +168,7 @@ typedef struct deviceField{
         #endif //BC_FORCES
 
         #ifdef CURVED_BOUNDARY_CONDITION
-            initializeCurvedBoundaryDeviceField(
+            numberCurvedBoundaryNodes = initializeCurvedBoundaryDeviceField(
                 hostField.hNodeType,
                 dNodeType,
                 d_curvedBC,
@@ -223,14 +223,15 @@ typedef struct deviceField{
             printf("Random numbers free \n"); if(console_flush) fflush(stdout);
         #endif //RANDOM_NUMBERS
         
-        #ifdef CURVED_BOUNDARY_CONDITION
-            // Initialize curved boundary node count
-            numberCurvedBoundaryNodes = numberCurvedBoundaryNodes_local;
-        #endif //CURVED_BOUNDARY_CONDITION
     }
 
     #ifdef CURVED_BOUNDARY_CONDITION
     void updateCurvedBoundaryVelocitiesDeviceField(){
+        // Skip launch when no curved-boundary nodes were found; zero grid size is invalid
+        if (numberCurvedBoundaryNodes == 0) {
+            return;
+        }
+
         const int curvedBCBlockSize = 256;
         const int curvedBCGridSize = (numberCurvedBoundaryNodes + curvedBCBlockSize - 1) / curvedBCBlockSize;
         updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize>>>(d_curvedBC_array, d_fMom, numberCurvedBoundaryNodes);
