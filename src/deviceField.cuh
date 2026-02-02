@@ -125,14 +125,14 @@ typedef struct deviceField{
 
         // Mean flow initialization
         #if MEAN_FLOW
-            checkCudaErrors(cudaMemcpy(hostField.m_fMom, d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToDevice));
+            // Copy mean baseline from device to host so mean flow accumulation starts from the initial state
+            checkCudaErrors(cudaMemcpy(hostField.m_fMom, d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
         #endif //MEAN_FLOW
 
         // Node type initialization
         checkCudaErrors(cudaMallocHost((void**)&hostField.hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
-        #if NODE_TYPE_SAVE
-            checkCudaErrors(cudaMallocHost((void**)&dNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
-        #endif //NODE_TYPE_SAVE
+        // When NODE_TYPE_SAVE is enabled we only need a host copy for dumping;
+        // keep dNodeType as the device-resident buffer allocated above.
 
         unsigned int numberCurvedBoundaryNodes_local = 0;
 

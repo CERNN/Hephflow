@@ -136,56 +136,34 @@ void writeFileIntoArray(void* arr, const std::string filename, const size_t arr_
 
 __host__ 
 void writeFilesIntoDfloat3SoA(dfloat3SoA arr, const std::string foldername, const size_t arr_size_bytes, void* tmp){
-    // Write x, y and z to files
-    createFolder(foldername);
-    #ifdef _WIN32
-    writeFileIntoArray(arr.x, foldername + "\\\\x", arr_size_bytes, tmp);
-    writeFileIntoArray(arr.y, foldername + "\\\\y", arr_size_bytes, tmp);
-    writeFileIntoArray(arr.z, foldername + "\\\\z", arr_size_bytes, tmp);
-    #else
-    writeFileIntoArray(arr.x, foldername + "/x", arr_size_bytes, tmp);
-    writeFileIntoArray(arr.y, foldername + "/y", arr_size_bytes, tmp);
-    writeFileIntoArray(arr.z, foldername + "/z", arr_size_bytes, tmp);
-    #endif //_WIN32
-}
+    // Write x, y and z to files (portable)
+    std::filesystem::path folder(foldername);
+    createFolder(folder.string());
+    writeFileIntoArray(arr.x, (folder / "x").string(), arr_size_bytes, tmp);
+    writeFileIntoArray(arr.y, (folder / "y").string(), arr_size_bytes, tmp);
+    writeFileIntoArray(arr.z, (folder / "z").string(), arr_size_bytes, tmp);
+} 
 
 __host__
 std::string getCheckpointFilenameRead(std::string name){
-    std::string filename = SIMULATION_FOLDER_LOAD_CHECKPOINT;
-    #ifdef _WIN32
-    return filename + "\\\\" + ID_SIM + "\\\\checkpoint\\\\" +
-        "_" + name;
-    #else
-    return filename + "/" + ID_SIM + "/checkpoint/" + 
-        "_" + name;
-    #endif //_WIN32
-}
+    std::filesystem::path p = std::filesystem::path(SIMULATION_FOLDER_LOAD_CHECKPOINT) / ID_SIM / "checkpoint" / ("_" + name);
+    return p.string();
+} 
 
 __host__
 void readFilesIntoDfloat3SoA(dfloat3SoA arr, const std::string foldername, const size_t arr_size_bytes, void* tmp){
-    // Read to x, y and z in dfloat3SoA
-    #ifdef _WIN32
-    readFileIntoArray(arr.x, foldername + "\\\\x", arr_size_bytes, tmp);
-    readFileIntoArray(arr.y, foldername + "\\\\y", arr_size_bytes, tmp);
-    readFileIntoArray(arr.z, foldername + "\\\\z", arr_size_bytes, tmp);
-    #else
-    readFileIntoArray(arr.x, foldername + "/x", arr_size_bytes, tmp);
-    readFileIntoArray(arr.y, foldername + "/y", arr_size_bytes, tmp);
-    readFileIntoArray(arr.z, foldername + "/z", arr_size_bytes, tmp);
-    #endif //_WIN32
-}
+    // Read to x, y and z in dfloat3SoA (portable)
+    std::filesystem::path folder(foldername);
+    readFileIntoArray(arr.x, (folder / "x").string(), arr_size_bytes, tmp);
+    readFileIntoArray(arr.y, (folder / "y").string(), arr_size_bytes, tmp);
+    readFileIntoArray(arr.z, (folder / "z").string(), arr_size_bytes, tmp);
+} 
 
 __host__
 std::string getCheckpointFilenameWrite(std::string name){
-    std::string filename = PATH_FILES;
-    #ifdef _WIN32
-    return filename + "\\\\" + ID_SIM + "\\\\checkpoint\\\\" + 
-        "_" + name;
-    #else
-    return filename + "/" + ID_SIM + "/checkpoint/" + 
-        "_" + name;
-    #endif //_WIN32
-}
+    std::filesystem::path p = std::filesystem::path(PATH_FILES) / ID_SIM / "checkpoint" / ("_" + name);
+    return p.string();
+} 
 
 __host__
 void operateSimCheckpoint( 
@@ -375,12 +353,15 @@ void operateSimCheckpoint(
 __host__
 int getStep(){
     std::string filename = SIMULATION_FOLDER_LOAD_CHECKPOINT;
-    std::string DIR_PATH = "..\\\\bin\\\\" + filename + "\\\\" + ID_SIM + "\\\\checkpoint\\\\" + "_";
 
-    std::ifstream fileread(DIR_PATH + "curr_step.bin", std::ios::binary);
+    // Build a portable path to the checkpoint file using std::filesystem
+    std::filesystem::path dir = std::filesystem::path("..") / "bin" / filename / ID_SIM / "checkpoint";
+    std::filesystem::path filePath = dir / "_curr_step.bin";
+
+    std::ifstream fileread(filePath.string(), std::ios::binary);
 
     if (!fileread) {
-        std::cerr << "Error opening file: " << (DIR_PATH + "curr_step.bin") << std::endl;
+        std::cerr << "Error opening file: " << filePath << std::endl;
         return -1;
     }
 

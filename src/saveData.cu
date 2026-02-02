@@ -1,4 +1,9 @@
 #include "saveData.cuh"
+#include <queue>
+#include <mutex>
+#include <condition_variable>
+#include <functional>
+#include <chrono>
 
 
 std::filesystem::path getExecutablePath() {
@@ -50,6 +55,59 @@ void writeBigEndian(std::ofstream& ofs, const T* data, size_t count) {
             tmp = swap64(tmp);
             ofs.write(reinterpret_cast<char*>(&tmp), 8);
         }
+    }
+}
+
+// Simple single-worker queue to serialize file saves and avoid spawning unbounded threads
+namespace {
+    struct SaveTask {
+        std::function<void()> run;
+        std::atomic<bool>* flag; // flag to clear on completion
+    };
+
+    std::mutex saveQueueMutex;
+    std::condition_variable saveQueueCv;
+    std::queue<SaveTask> saveQueue;
+    std::thread saveWorker;
+    std::atomic<bool> workerStarted{false};
+
+    void ensureSaveWorker()
+    {
+        if (workerStarted.load(std::memory_order_acquire)) return;
+        bool expected = false;
+        if (!workerStarted.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) return;
+
+        saveWorker = std::thread([] {
+            for (;;) {
+                SaveTask task;
+                {
+                    std::unique_lock<std::mutex> lk(saveQueueMutex);
+                    saveQueueCv.wait(lk, [] { return !saveQueue.empty(); });
+                    task = std::move(saveQueue.front());
+                    saveQueue.pop();
+                }
+                task.run();
+                if (task.flag) task.flag->store(false, std::memory_order_release);
+                saveQueueCv.notify_all();
+            }
+        });
+        saveWorker.detach();
+    }
+
+    void enqueueSaveTask(SaveTask task)
+    {
+        ensureSaveWorker();
+        {
+            std::lock_guard<std::mutex> lk(saveQueueMutex);
+            saveQueue.push(std::move(task));
+        }
+        saveQueueCv.notify_one();
+    }
+
+    void waitAllSaveTasks()
+    {
+        std::unique_lock<std::mutex> lk(saveQueueMutex);
+        saveQueueCv.wait(lk, [] { return saveQueue.empty(); });
     }
 }
 
@@ -203,7 +261,7 @@ void saveMacr(const SaveDataParams* params)
     if (VTK_SAVE){
         std::string strFileVtk, strFileVtr;
         strFileVtk = getVarFilename("vtk", nSteps, ".vtk");
-        while (savingMacrVtk) std::this_thread::yield();
+        while (savingMacrVtk) std::this_thread::sleep_for(std::chrono::milliseconds(1));
         
         SaveDataParams saveVarVtkParams;
         saveVarVtkParams.vtkFilename = strFileVtk.c_str();
@@ -360,7 +418,7 @@ void saveVarBin(
     std::atomic<bool>& savingMacrBin)
 {
     savingMacrBin = true;
-    std::thread([=, &savingMacrBin]() {
+    enqueueSaveTask({[=]() {
         FILE* outFile = nullptr;
         if(append)
             outFile = fopen(strFile.c_str(), "ab");
@@ -375,8 +433,7 @@ void saveVarBin(
         {
             printf("Error saving \"%s\" \nProbably wrong path!\n", strFile.c_str());
         }
-        savingMacrBin = false;
-    }).detach();
+    }, &savingMacrBin});
 }
 
 
@@ -536,7 +593,7 @@ void saveVarVTK(const SaveDataParams* params)
     if(!CELLDATA_SAVE){
         //printf("Saving VTK in POINT_DATA format");
         savingMacrVtk = true;
-            std::thread([=, &savingMacrVtk]() {
+        enqueueSaveTask({[=]() {
             const size_t N = NX*NY*NZ;
             std::ofstream ofs(filename, std::ios::binary);
             if (!ofs) throw std::runtime_error("Cannot open " + filename);
@@ -608,12 +665,11 @@ void saveVarVTK(const SaveDataParams* params)
                     << "LOOKUP_TABLE default\n";
                 writeBigEndian(ofs, NODE_TYPE_SAVE_PARAMS N);
             #endif //NODE_TYPE_SAVE
-            savingMacrVtk = false;
-        }).detach();
+        }, &savingMacrVtk});
     }else{ 
         //printf("Saving VTK in CELL_DATA format");
         savingMacrVtk = true;
-            std::thread([=, &savingMacrVtk]() {
+        enqueueSaveTask({[=]() {
             const size_t Ncells = (NX-1)*(NY-1)*(NZ-1);
             std::ofstream ofs(filename, std::ios::binary);
             if (!ofs) throw std::runtime_error("Cannot open " + filename);
@@ -696,8 +752,7 @@ void saveVarVTK(const SaveDataParams* params)
                     << "LOOKUP_TABLE default\n";
                 writeBigEndian(ofs, bc_cell.data(), Ncells);
             #endif //NODE_TYPE_SAVE
-            savingMacrVtk = false;
-        }).detach();
+        }, &savingMacrVtk});
     }  
 }
 
