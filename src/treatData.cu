@@ -387,7 +387,7 @@ void rhoProfile(
         y_loc = y0;
         z_loc = z0;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              0, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
             strDataInfo << "\t" << hostVal;
@@ -400,7 +400,7 @@ void rhoProfile(
         x_loc = x0;
         z_loc = z0;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              0, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             // optional: validate idx if you have TOTAL_SIZE available
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
@@ -414,7 +414,7 @@ void rhoProfile(
         y_loc = y0;
         x_loc = x0;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              0, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
             strDataInfo << "\t" << hostVal;
@@ -451,7 +451,7 @@ void velocityProfile(
         x_loc = x0;
         z_loc = z0;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             // optional: validate idx if you have TOTAL_SIZE available
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
@@ -465,7 +465,7 @@ void velocityProfile(
         x_loc = x0;
         z_loc = z0;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
             strDataInfo << "\t" << hostVal;
@@ -478,7 +478,7 @@ void velocityProfile(
         x_loc = x0;
         z_loc = z0;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
             strDataInfo << "\t" << hostVal;
@@ -491,7 +491,7 @@ void velocityProfile(
         y_loc = y0;
         z_loc = z0;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
             strDataInfo << "\t" << hostVal;
@@ -504,7 +504,7 @@ void velocityProfile(
         y_loc = y0;
         z_loc = z0;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
             strDataInfo << "\t" << hostVal;
@@ -517,7 +517,7 @@ void velocityProfile(
         y_loc = y0;
         z_loc = z0;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
             strDataInfo << "\t" << hostVal; // fixed: use hostVal
@@ -530,7 +530,7 @@ void velocityProfile(
         y_loc = y0;
         x_loc = x0;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
             strDataInfo << "\t" << hostVal;
@@ -543,7 +543,7 @@ void velocityProfile(
         y_loc = y0;
         x_loc = x0;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
             strDataInfo << "\t" << hostVal;
@@ -556,7 +556,7 @@ void velocityProfile(
         y_loc = y0;
         x_loc = x0;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
             strDataInfo << "\t" << hostVal; // fixed: use hostVal
@@ -594,7 +594,7 @@ void omegaProfile(
         y_loc = y0;
         z_loc = z0;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              M_OMEGA_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
             strDataInfo << "\t" << hostVal;
@@ -607,7 +607,7 @@ void omegaProfile(
         x_loc = x0;
         z_loc = z0;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              M_OMEGA_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             // optional: validate idx if you have TOTAL_SIZE available
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
@@ -621,7 +621,7 @@ void omegaProfile(
         y_loc = y0;
         x_loc = x0;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            int idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              M_OMEGA_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
             strDataInfo << "\t" << hostVal;
