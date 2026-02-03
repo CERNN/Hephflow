@@ -386,67 +386,68 @@ typedef struct hostField{
     }
 
     void freeHostField() {
-        cudaFree(h_fMom);
-        cudaFree(rho);
-        cudaFree(ux);
-        cudaFree(uy);
-        cudaFree(uz);
+        // All allocations here use cudaMallocHost; free with cudaFreeHost to avoid UB.
+        if (h_fMom)   cudaFreeHost(h_fMom);
+        if (rho)      cudaFreeHost(rho);
+        if (ux)       cudaFreeHost(ux);
+        if (uy)       cudaFreeHost(uy);
+        if (uz)       cudaFreeHost(uz);
         
-        cudaFree(hNodeType);
+        if (hNodeType) cudaFreeHost(hNodeType);
 
         #if NODE_TYPE_SAVE
-        cudaFree(nodeTypeSave);
+        if (nodeTypeSave) cudaFreeHost(nodeTypeSave);
         #endif //NODE_TYPE_SAVE
         
         #ifdef SECOND_DIST 
-        cudaFree(C);
+        if (C) cudaFreeHost(C);
         #endif //SECOND_DIST
         #ifdef PHI_DIST 
-        cudaFree(phi);
+        if (phi) cudaFreeHost(phi);
         #endif //PHI_DIST
         #ifdef A_XX_DIST 
-        cudaFree(Axx);
+        if (Axx) cudaFreeHost(Axx);
         #endif //A_XX_DIST
         #ifdef A_XY_DIST 
-        cudaFree(Axy);
+        if (Axy) cudaFreeHost(Axy);
         #endif //A_XY_DIST
         #ifdef A_XZ_DIST 
-        cudaFree(Axz);
+        if (Axz) cudaFreeHost(Axz);
         #endif //A_XZ_DIST
         #ifdef A_YY_DIST 
-        cudaFree(Ayy);
+        if (Ayy) cudaFreeHost(Ayy);
         #endif //A_YY_DIST
         #ifdef A_YZ_DIST 
-        cudaFree(Ayz);
+        if (Ayz) cudaFreeHost(Ayz);
         #endif //A_YZ_DIST
         #ifdef A_ZZ_DIST 
-        cudaFree(Azz);
+        if (Azz) cudaFreeHost(Azz);
         #endif //A_ZZ_DIST
     
         #if MEAN_FLOW
-            cudaFree(m_fMom);
-            cudaFree(m_rho);
-            cudaFree(m_ux);
-            cudaFree(m_uy);
-            cudaFree(m_uz);
+            if (m_fMom) cudaFreeHost(m_fMom);
+            if (m_rho)  cudaFreeHost(m_rho);
+            if (m_ux)   cudaFreeHost(m_ux);
+            if (m_uy)   cudaFreeHost(m_uy);
+            if (m_uz)   cudaFreeHost(m_uz);
             #ifdef SECOND_DIST
-            cudaFree(m_c);
+            if (m_c) cudaFreeHost(m_c);
             #endif //SECOND_DIST
             #ifdef PHI_DIST
-            cudaFree(m_phi);
+            if (m_phi) cudaFreeHost(m_phi);
             #endif //PHI_DIST
         #endif //MEAN_FLOW
     
         #ifdef BC_FORCES
             #ifdef SAVE_BC_FORCES
-            cudaFree(h_BC_Fx);
-            cudaFree(h_BC_Fy);
-            cudaFree(h_BC_Fz);
+            if (h_BC_Fx) cudaFreeHost(h_BC_Fx);
+            if (h_BC_Fy) cudaFreeHost(h_BC_Fy);
+            if (h_BC_Fz) cudaFreeHost(h_BC_Fz);
             #endif //SAVE_BC_FORCES
         #endif //_BC_FORCES
     
         #ifdef DENSITY_CORRECTION
-            free(h_mean_rho);
+            if (h_mean_rho) cudaFreeHost(h_mean_rho);
         #endif //DENSITY_CORRECTION
     }
 

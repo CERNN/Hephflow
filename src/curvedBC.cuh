@@ -14,10 +14,6 @@
 #include "globalFunctions.h"
 
 #ifdef CURVED_BOUNDARY_CONDITION
-
-const int curvedBCBlockSize = 256;
-const int curvedBCGridSize = (numberCurvedBoundaryNodes + curvedBCBlockSize - 1) / curvedBCBlockSize;
-
 #ifndef __CURVED_BC_CUH
 #define __CURVED_BC_CUH
 

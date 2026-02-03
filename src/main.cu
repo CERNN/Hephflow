@@ -6,6 +6,8 @@
 #include "particleField.cuh"
 #endif //PARTICLE_MODEL
 
+#include <chrono>
+
 using namespace std;
 
 int main() {
@@ -200,12 +202,12 @@ int main() {
     saveSimInfo(step, MLUPS, {});
     #endif //NON_NEWTONIAN_FLUID
 
-    while (savingMacrVtk) std::this_thread::yield();
+    while (savingMacrVtk) std::this_thread::sleep_for(std::chrono::milliseconds(1));
     #ifdef PARTICLE_MODEL
     particleField.waitForSaving(savingMacrParticle);
     #endif
     for (size_t i = 0; i < savingMacrBin.size(); ++i) {
-        while (savingMacrBin[i]) std::this_thread::yield();
+        while (savingMacrBin[i]) std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     /* ------------------------------ FREE ------------------------------ */

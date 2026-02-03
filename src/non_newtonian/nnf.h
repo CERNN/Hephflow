@@ -21,7 +21,9 @@ __host__ __device__ dfloat __forceinline__ calcOmegaBingham(dfloat omega_p, dflo
 __host__ __device__ dfloat __forceinline__ calcOmegaHerschelBulkley(dfloat k_consistency, dfloat n_index, dfloat s_y, dfloat omegaOld, dfloat const auxStressMag);
 __host__ __device__ dfloat __forceinline__ calcOmegaBiViscosity(dfloat omega_y, dfloat omega_p, dfloat s_y, dfloat visc_ratio, dfloat auxStressMag);
 __host__ __device__ dfloat __forceinline__ calcOmegaKeeTurcotee(dfloat s_y, dfloat t1, dfloat eta_0, dfloat omegaOld, dfloat auxStressMag, int step);
+#ifdef LAMBDA_DIST
 __host__ __device__ dfloat __forceinline__ calcOmega_thixo(const fluidProps& fp, dfloat lambda, dfloat gammaDot, dfloat auxStressMag, dfloat rhoVar);
+#endif
 __host__ __device__ dfloat __forceinline__ calcOmega(const fluidProps& fp, dfloat omegaOld, dfloat auxStressMag, dfloat lambdaVar, dfloat gammaDot, dfloat rhoVar, int step){
 
     dfloat newOmegaVar;
@@ -42,9 +44,11 @@ __host__ __device__ dfloat __forceinline__ calcOmega(const fluidProps& fp, dfloa
     case FLUID_KEE_TURCOTEE: 
         newOmegaVar = calcOmegaKeeTurcotee(fp.u.kee.s_y, fp.u.kee.t1, fp.u.kee.eta_0, omegaOld, auxStressMag, step);
         break;
+    #ifdef LAMBDA_DIST
     case FLUID_THIXO: 
         newOmegaVar = calcOmega_thixo(fp, lambdaVar, gammaDot, auxStressMag, rhoVar);
         break;
+    #endif
     default: return omegaOld;
     }
     return newOmegaVar;
@@ -142,7 +146,7 @@ dfloat __forceinline__ calcYieldStress_thixo(const fluidProps& fp, dfloat lambda
     }
 }
 
-
+#ifdef LAMBDA_DIST
 __host__ __device__ 
 dfloat __forceinline__ calcVisco_thixo(const fluidProps& fp, dfloat lambda, dfloat gammaDot)
 {
@@ -164,6 +168,7 @@ dfloat __forceinline__ calcVisco_thixo(const fluidProps& fp, dfloat lambda, dflo
     }
 }
 
+
 __host__ __device__ 
 dfloat __forceinline__ calcOmega_thixo(const fluidProps& fp, dfloat lambda, dfloat gammaDot, dfloat auxStressMag, dfloat rhoVar){
     // Extract actual lambda value (remove LAMBDA_ZERO offset)
@@ -183,7 +188,7 @@ dfloat __forceinline__ calcOmega_thixo(const fluidProps& fp, dfloat lambda, dflo
     return omega;
 }
 
-
+#endif
 
 
 

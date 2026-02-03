@@ -125,14 +125,14 @@ typedef struct deviceField{
 
         // Mean flow initialization
         #if MEAN_FLOW
-            checkCudaErrors(cudaMemcpy(hostField.m_fMom, d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToDevice));
+            // Copy mean baseline from device to host so mean flow accumulation starts from the initial state
+            checkCudaErrors(cudaMemcpy(hostField.m_fMom, d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
         #endif //MEAN_FLOW
 
         // Node type initialization
         checkCudaErrors(cudaMallocHost((void**)&hostField.hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
-        #if NODE_TYPE_SAVE
-            checkCudaErrors(cudaMallocHost((void**)&dNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
-        #endif //NODE_TYPE_SAVE
+        // When NODE_TYPE_SAVE is enabled we only need a host copy for dumping;
+        // keep dNodeType as the device-resident buffer allocated above.
 
         unsigned int numberCurvedBoundaryNodes_local = 0;
 
@@ -168,7 +168,7 @@ typedef struct deviceField{
         #endif //BC_FORCES
 
         #ifdef CURVED_BOUNDARY_CONDITION
-            initializeCurvedBoundaryDeviceField(
+            numberCurvedBoundaryNodes = initializeCurvedBoundaryDeviceField(
                 hostField.hNodeType,
                 dNodeType,
                 d_curvedBC,
@@ -223,14 +223,15 @@ typedef struct deviceField{
             printf("Random numbers free \n"); if(console_flush) fflush(stdout);
         #endif //RANDOM_NUMBERS
         
-        #ifdef CURVED_BOUNDARY_CONDITION
-            // Initialize curved boundary node count
-            numberCurvedBoundaryNodes = numberCurvedBoundaryNodes_local;
-        #endif //CURVED_BOUNDARY_CONDITION
     }
 
     #ifdef CURVED_BOUNDARY_CONDITION
     void updateCurvedBoundaryVelocitiesDeviceField(){
+        // Skip launch when no curved-boundary nodes were found; zero grid size is invalid
+        if (numberCurvedBoundaryNodes == 0) {
+            return;
+        }
+
         const int curvedBCBlockSize = 256;
         const int curvedBCGridSize = (numberCurvedBoundaryNodes + curvedBCBlockSize - 1) / curvedBCBlockSize;
         updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize>>>(d_curvedBC_array, d_fMom, numberCurvedBoundaryNodes);
