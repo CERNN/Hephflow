@@ -49,9 +49,9 @@ __global__ void gpuInitialization_mom(
     #endif //OMEGA_FIELD
     #ifdef SECOND_DIST 
     dfloat cVar = 1.0_df;
-    dfloat qx_t30 = 3.0_df*cVar*(ux - 0.0_df);
-    dfloat qy_t30 = 3.0_df*cVar*(uy - 0.0_df);
-    dfloat qz_t30 = 3.0_df*cVar*(uz - 0.0_df);
+    dfloat qx_t30 = 3.0_df*(ux - 0.0_df);
+    dfloat qy_t30 = 3.0_df*(uy - 0.0_df);
+    dfloat qz_t30 = 3.0_df*(uz - 0.0_df);
     #endif //SECOND_DIST
     #ifdef PHI_DIST 
     dfloat phiVar = 1.0_df + PHI_ZERO;
@@ -358,10 +358,6 @@ __global__ void gpuInitialization_pop(
         dfloat qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-
-        dfloat udx_t30 = G_DIFF_FLUC_COEF * (qx_t30*invC - ux_t30);
-        dfloat udy_t30 = G_DIFF_FLUC_COEF * (qy_t30*invC - uy_t30);
-        dfloat udz_t30 = G_DIFF_FLUC_COEF * (qz_t30*invC - uz_t30);
 
         #include COLREC_G_RECONSTRUCTION
 

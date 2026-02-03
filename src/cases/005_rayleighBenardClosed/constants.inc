@@ -9,7 +9,6 @@ constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int N_STEPS = 80000000;           // Total simulation steps
-constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
 constexpr int N = 256 * SCALE;              // Reference grid size
@@ -68,6 +67,7 @@ constexpr dfloat S_Y = Bn*L/(U_MAX*VISC); // Yield stress
 #define CASE_NNF_PROPS { FLUID_BINGHAM, false, { S_Y, 1.0 / TAU } }
 
 /* --------------------- THERMAL PARAMETERS --------------------- */
+#ifdef THERMAL_MODEL
 constexpr bool T_BOUYANCY = true;           // Enable buoyancy
 constexpr dfloat T_PR_NUMBER = 10;          // Prandtl number
 constexpr dfloat T_RA_NUMBER = 1e6;         // Rayleigh number
