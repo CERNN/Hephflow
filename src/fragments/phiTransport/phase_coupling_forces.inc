@@ -23,7 +23,7 @@ dfloat Fs_z = 0.0_df;
 
 // Fp = -cs2 nabla rho 
 #if PHI_FORCE_FP_ENABLED
-dfloat Fp_coeff = -cs2;
+dfloat Fp_coeff = -cs2 * phiVar;
 dfloat Fp_x = Fp_coeff * drhox;
 dfloat Fp_y = Fp_coeff * drhoy;
 dfloat Fp_z = Fp_coeff * drhoz;

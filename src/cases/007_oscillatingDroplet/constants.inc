@@ -8,7 +8,7 @@
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- TIME STEPPING --------------------- */
-constexpr int N_STEPS = 5000;               // Total simulation steps
+constexpr int N_STEPS = 100;               // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
@@ -76,15 +76,15 @@ constexpr dfloat PHI_REFERENCE = (dfloat)(0.5);   // Reference phase value
 constexpr dfloat PHI_DELTA_PHI = 1;                // Phase field range
 constexpr dfloat PHI_ONE = PHI_REFERENCE - PHI_DELTA_PHI/2.0;   // Phase 1 value
 constexpr dfloat PHI_TWO = PHI_REFERENCE + PHI_DELTA_PHI/2.0;   // Phase 2 value
-constexpr dfloat PHI_ALPHA = 0.05;                 // Regularization parameter
 constexpr dfloat PHI_ZERO = (dfloat)(10.0);        // Initial phase value
 
 /* --------------------- SURFACE TENSION AND INTERFACE PARAMETERS --------------------- */
 // Model constants
-constexpr dfloat phi_sigma = 1e-2;         // Surface tension coefficient
+constexpr dfloat phi_sigma = 0.03;         // Surface tension coefficient
 constexpr dfloat phi_del = 3;              // Interface width
 constexpr dfloat phi_beta = 12.0*phi_sigma / phi_del;  // Beta parameter
 constexpr dfloat phi_kappa = 3.0*phi_sigma*phi_del/2;  // Kappa parameter
+constexpr dfloat phi_gamma = 4.0 * (1.0/6.0) / (phi_del * 0.33333333_df);
 
 // Density coupling constants
 constexpr dfloat phi_rho_l = 1.0;          // Liquid density
@@ -92,10 +92,10 @@ constexpr dfloat phi_rho_g = 0.9;          // Gas density (10% difference)
 constexpr dfloat phi_drho = phi_rho_l - phi_rho_g; // Density difference
 
 // Interface sharpening coefficient (larger = sharper interface)
-constexpr dfloat phi_sharp_c = 0.45;       // Sharpening coefficient
+constexpr dfloat phi_sharp_c = phi_gamma;       // Sharpening coefficient
 
 /* --------------------- FORCE COUPLING CONTROL FLAGS --------------------- */
-#define PHI_FORCE_FS_ENABLED 1             // Surface tension force (DISABLED for test)
+#define PHI_FORCE_FS_ENABLED 0             // Surface tension force (DISABLED for test)
 #define PHI_FORCE_FP_ENABLED 0             // Pressure gradient force (DISABLED)
 #define PHI_FORCE_FN_ENABLED 0             // Viscous stress force (DISABLED)
 
@@ -103,10 +103,10 @@ constexpr dfloat phi_sharp_c = 0.45;       // Sharpening coefficient
 constexpr dfloat PHI_DIFFUSIVITY_RATIO = 1; // Diffusivity ratio (like Prandtl number)
 constexpr dfloat PHI_DIFFUSIVITY = VISC/PHI_DIFFUSIVITY_RATIO; // Thermal diffusivity
 
-constexpr dfloat PHI_DIFF_REF = (1.0/6);    // Reference diffusion
+constexpr dfloat PHI_DIFF_REF = (1.0/6.0);    // Reference diffusion
 constexpr dfloat PHI_TAU = PHI_DIFF_REF*3+0.5;    // Phase field relaxation time
 constexpr dfloat PHI_OMEGA  = 1.0/PHI_TAU;        // Phase field collision frequency
-constexpr dfloat PHI_TT_OMEGA = 1.0-0.5*PHI_OMEGA; // TRT parameter
+constexpr dfloat PHI_TT_OMEGA = 1.0-0.5*PHI_OMEGA; 
 
 // Diffusivity fluctuation correction
 constexpr dfloat PHI_DIFF_FLUC = PHI_DIFFUSIVITY - PHI_DIFF_REF;

@@ -5,10 +5,11 @@ dfloat dphidz = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NZ_INDEX, 
 
 dfloat mod_grad = sqrtf(dphidx*dphidx + dphidy*dphidy + dphidz*dphidz);
 
-constexpr dfloat GRAD_NORMAL_THRESHOLD = 1e-4_df;
+constexpr dfloat GRAD_NORMAL_THRESHOLD = 1e-6_df;
 dfloat pnx = 0.0_df;
 dfloat pny = 0.0_df;
 dfloat pnz = 0.0_df;
+
 if (mod_grad > GRAD_NORMAL_THRESHOLD) {
     dfloat inv_mod_grad = 1.0_df / mod_grad;
     //normal

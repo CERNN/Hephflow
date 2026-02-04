@@ -233,9 +233,11 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             #include "fragments/phiTransport/phase_gradient.inc"
             #include "fragments/phiTransport/normal_gradient.inc"
             #include "fragments/phiTransport/phase_coupling_forces.inc"
-                L_Fx += F_phase_x;
-                L_Fy += F_phase_y;
-                L_Fz += F_phase_z;
+
+            L_Fx += F_phase_x;
+            L_Fy += F_phase_y;
+            L_Fz += F_phase_z;
+
             dfloat phi_for_sharp = phiVar;
             phi_for_sharp = fmaxf(0.0_df, fminf(1.0_df, phi_for_sharp));
             dfloat phiSource = 0.0_df;
@@ -248,15 +250,11 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
 
 
-            phiVar += PHI_ZERO; //TODO:maybe remove the - and + and make the special add then only to correct the gradient
+            phiVar += PHI_ZERO;
             dfloat invPhi = 1/phiVar;
             dfloat phi_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat phi_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat phi_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-
-            dfloat phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
-            dfloat phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
-            dfloat phi_udz_t30 = PHI_DIFF_FLUC_COEF * (phi_qz_t30*invPhi - uz_t30);
 
             #include  COLREC_PHI_RECONSTRUCTION
 
@@ -279,10 +277,17 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
                 invPhi= 1.0/phiVar;
 
-                phi_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
-                phi_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
-                phi_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
+                phi_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]))*invPhi;
+                phi_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]))*invPhi;
+                phi_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]))*invPhi;
             }
+
+            
+            phi_qx_t30 = F_M_I_SCALE * phi_qx_t30;
+            phi_qy_t30 = F_M_I_SCALE * phi_qy_t30;
+            phi_qz_t30 = F_M_I_SCALE * phi_qz_t30;
+
+            #include COLREC_PHI_COLLISION
         #endif //PHI_DIST
         #ifdef LAMBDA_DIST 
 
@@ -779,10 +784,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
         #endif //SECOND_DIST
         #ifdef PHI_DIST 
-            phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
-            phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
-            phi_udz_t30 = PHI_DIFF_FLUC_COEF * (phi_qz_t30*invPhi - uz_t30);
-
+        
             #include COLREC_PHI_RECONSTRUCTION
 
             #include "fragments/phiTransport/phi_popSave.inc"

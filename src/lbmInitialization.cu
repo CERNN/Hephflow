@@ -55,9 +55,9 @@ __global__ void gpuInitialization_mom(
     #endif //SECOND_DIST
     #ifdef PHI_DIST 
     dfloat phiVar = 1.0_df + PHI_ZERO;
-    dfloat phi_qx_t30 = 3.0_df*phiVar*(ux - 0.0_df);
-    dfloat phi_qy_t30 = 3.0_df*phiVar*(uy - 0.0_df);
-    dfloat phi_qz_t30 = 3.0_df*phiVar*(uz - 0.0_df);
+    dfloat phi_qx_t30 = 3.0_df*(ux - 0.0_df);
+    dfloat phi_qy_t30 = 3.0_df*(uy - 0.0_df);
+    dfloat phi_qz_t30 = 3.0_df*(uz - 0.0_df);
     #endif //PHI_DIST
     #ifdef LAMBDA_DIST 
     dfloat lambdaVar = 0.0_df + LAMBDA_ZERO;
@@ -423,9 +423,9 @@ __global__ void gpuInitialization_pop(
         dfloat phi_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat phi_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
-        dfloat phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
-        dfloat phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
-        dfloat phi_udz_t30 = PHI_DIFF_FLUC_COEF * (phi_qz_t30*invPhi - uz_t30);
+        dfloat dphidx = 0.0;
+        dfloat dphidy = 0.0;
+        dfloat dphidz = 0.0;
 
         #include COLREC_PHI_RECONSTRUCTION
 

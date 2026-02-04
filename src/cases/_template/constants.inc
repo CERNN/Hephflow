@@ -208,8 +208,7 @@ constexpr dfloat CONF_DIFFUSIVITY = VISC / CONF_DIFFUSIVITY_RATIO;
 constexpr dfloat CONF_DIFF_REF = 1.0 / 6.0;              // Reference diffusion
 constexpr dfloat CONF_TAU = CONF_DIFF_REF * 3.0 + 0.5;   // Conformation relaxation time
 constexpr dfloat CONF_OMEGA = 1.0 / CONF_TAU;            // Conformation collision frequency
-constexpr dfloat CONF_TT_OMEGA = 1.0 - 0.5 * CONF_OMEGA; // TRT parameter
-#endif
+constexpr dfloat CONF_TT_OMEGA = 1.0 - 0.5 * CONF_OMEGA; 
 
 
 /* ============================================================================
@@ -252,7 +251,7 @@ __device__ const dfloat gravity_vector[3] = {0.0, 1.0, 0.0};  // Gravity directi
 constexpr dfloat T_DIFF_REF = 1.0/6.0;                   // Reference diffusion
 constexpr dfloat G_TAU = T_DIFF_REF*3.0 + 0.5;           // Temperature relaxation time
 constexpr dfloat G_OMEGA = 1.0/G_TAU;                    // Temperature collision frequency
-constexpr dfloat G_TT_OMEGA = 1.0 - 0.5*G_OMEGA;         // TRT parameter
+constexpr dfloat G_TT_OMEGA = 1.0 - 0.5*G_OMEGA;         
 constexpr dfloat T_DIFF_FLUC = T_DIFFUSIVITY - T_DIFF_REF;
 constexpr dfloat G_AAA = 3.0*T_DIFF_FLUC*G_OMEGA;
 constexpr dfloat G_DIFF_FLUC_COEF = G_AAA/(1.0 + G_AAA); // Diffusivity correction

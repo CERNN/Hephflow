@@ -66,7 +66,7 @@ if (phiVar > PHI_MIN && phiVar < PHI_MAX) {
     dfloat ny = dphidy * inv_mod_grad;
     dfloat nz = dphidz * inv_mod_grad;
 
-    // n · H · n
+    // n . H . n
     dfloat normal_hessian = nx*nx*d2phidx2 + ny*ny*d2phidy2 + nz*nz*d2phidz2 + 2.0_df * (nx*ny*d2phidxdy + nx*nz*d2phidxdz + ny*nz*d2phidydz);
     curvature = (laplacian_phi - normal_hessian) * inv_mod_grad;
 }
