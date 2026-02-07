@@ -4,49 +4,15 @@ uy = U_0_Y;
 uz = U_0_Z;
 
 #ifdef PHI_DIST
-/*
-dfloat R = 30.0; // mean radius
-dfloat CHI = 2.0; // interface parameter
-dfloat eps_amp = 0.05;   // perturbation amplitude
-
-const dfloat inv_sqrt2_CHI = 1.0 / (sqrt(2.0) * CHI);
-const dfloat phi_mid = 0.5 * (PHI_ONE + PHI_TWO);
-const dfloat phi_diff = 0.5 * (PHI_TWO - PHI_ONE);
-
-dfloat dx = x - (dfloat)(NX-1)/2;
-dfloat dy = y - (dfloat)(NY-1)/2;
-dfloat dz = z - (dfloat)(NZ-1)/2;
-
-dfloat r = sqrtf(dx*dx + dy*dy + dz*dz);
-dfloat cos_theta = (r < 1e-14) ? 1.0 : dz / r;
-
-
-dfloat P2 = 0.5 * (3.0 * cos_theta * cos_theta - 1.0); 
-dfloat Rp = R * (1.0 + eps_amp * P2); 
-dfloat s = r - Rp; 
-
-dfloat phi_raw = phi_mid + phi_diff * tanh(-s * inv_sqrt2_CHI); //Smooth phase field
-
-if (PHI_TWO > PHI_ONE){
-    if (phi_raw < PHI_ONE) phi_raw = PHI_ONE;
-    if (phi_raw > PHI_TWO) phi_raw = PHI_TWO;
-} else {
-    if (phi_raw < PHI_TWO) phi_raw = PHI_TWO;
-    if (phi_raw > PHI_ONE) phi_raw = PHI_ONE;
-}
-
-phiVar = phi_raw;
-*/
 
 const dfloat phi_mid  = 0.5 * (PHI_ONE + PHI_TWO);
 const dfloat phi_half = 0.5 * (PHI_TWO - PHI_ONE);
 
-const dfloat a = 30.0;
+const dfloat a = 20.0;
 const dfloat b = 20.0;
 const dfloat c = 20.0;
-const dfloat xi = 0.3;
 
-const dfloat denom = sqrt(2.0) * xi;
+const dfloat denom = sqrt(2.0) * phi_xi;
 
 dfloat X = (dfloat)x - (NX-1)/2.0;
 dfloat Y = (dfloat)y - (NY-1)/2.0;

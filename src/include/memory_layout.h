@@ -29,6 +29,10 @@
 #ifdef D3G19
     #include "fragments/velocitySets/D3G19.inc"
 #endif //D3G19
+#ifdef D3G27
+    #include "fragments/velocitySets/D3G27.inc"
+#endif //D3G27
+
 
 
 /* ========================== MEMORY SIZE CONSTANTS ======================== */
@@ -70,6 +74,7 @@ constexpr BlockDim optimalBlockDimArray = findOptimalBlockDimensions(MAX_ELEMENT
 #define BLOCK_LBM_SIZE (BLOCK_NX * BLOCK_NY * BLOCK_NZ)
 
 const size_t BLOCK_LBM_SIZE_POP = BLOCK_LBM_SIZE * (Q - 1);
+const size_t BLOCK_LBM_G_SIZE_POP = BLOCK_LBM_SIZE * (GQ - 1);
 
 const size_t BLOCK_FACE_XY = BLOCK_NX * BLOCK_NY;
 const size_t BLOCK_FACE_XZ = BLOCK_NX * BLOCK_NZ;
@@ -128,6 +133,10 @@ const size_t MEM_SIZE_MAP_BC = sizeof(uint32_t) * NUMBER_LBM_NODES;
     const size_t CONFORMATION_GRAD_BLOCK_SIZE = 0;
 #endif //COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
 
-constexpr int MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_SIZE_POP, myMax(VEL_GRAD_BLOCK_SIZE, CONFORMATION_GRAD_BLOCK_SIZE))*sizeof(dfloat);
+
+constexpr int LBM_MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_SIZE_POP, myMax(VEL_GRAD_BLOCK_SIZE, CONFORMATION_GRAD_BLOCK_SIZE))*sizeof(dfloat);
+constexpr int LBM_G_MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_G_SIZE_POP,1)*sizeof(dfloat);
+
+constexpr int MAX_SHARED_MEMORY_SIZE = myMax(LBM_MAX_SHARED_MEMORY_SIZE, LBM_G_MAX_SHARED_MEMORY_SIZE);
 
 #endif //__MEMORY_LAYOUT_H

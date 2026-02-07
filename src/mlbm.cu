@@ -267,8 +267,16 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             if(nodeType != BULK){
                 #include CASE_PHI_BC_DEF
             }else{
-                phiVar = gNode[0] + gNode[1] + gNode[2] + gNode[3] + gNode[4] + gNode[5] + gNode[6] + gNode[7] + gNode[8] + gNode[9] + gNode[10] + gNode[11] + gNode[12] + gNode[13] + gNode[14] + gNode[15] + gNode[16] + gNode[17] + gNode[18];
-                phiVar = phiVar + phiSource; //TODO SOURCE TEM
+                phiVar = gNode[0] + gNode[1] + gNode[2] + gNode[3] + gNode[4] + gNode[5] + gNode[6] 
+                #ifdef D3G19
+                + gNode[7] + gNode[8] + gNode[9] + gNode[10] + gNode[11] + gNode[12] + gNode[13] + gNode[14] + gNode[15] + gNode[16] + gNode[17] + gNode[18]
+                #endif 
+                #ifdef D3G27
+                + gNode[7] + gNode[8] + gNode[9] + gNode[10] + gNode[11] + gNode[12] + gNode[13] + gNode[14] + gNode[15] + gNode[16] + gNode[17] + gNode[18]
+                + gNode[19] + gNode[20] + gNode[21] + gNode[22] + gNode[23] + gNode[24] + gNode[25] + gNode[26]
+                #endif
+                ;
+                phiVar = phiVar + phiSource; 
                 //clamp 
                 if(phiVar > PHI_TWO + PHI_ZERO)
                     phiVar = PHI_TWO + PHI_ZERO;
@@ -277,9 +285,33 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
                 invPhi= 1.0/phiVar;
 
-                phi_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]))*invPhi;
-                phi_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]))*invPhi;
-                phi_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]))*invPhi;
+                phi_qx_t30 = ((gNode[1] - gNode[2] 
+                    #ifdef D3G19
+                    + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]
+                    #endif
+                    #ifdef D3G27
+                    + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]
+                    + gNode[19] - gNode[20] + gNode[21] - gNode[22] + gNode[23] - gNode[24] - gNode[25] + gNode[26]
+                    #endif
+                ))*invPhi;
+                phi_qy_t30 = ((gNode[3] - gNode[4]
+                    #ifdef D3G19 
+                    + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]
+                    #endif
+                    #ifdef D3G27 
+                    + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]
+                    + gNode[19] - gNode[20] + gNode[21] - gNode[22] - gNode[23] + gNode[24] + gNode[25] - gNode[26]
+                    #endif
+                ))*invPhi;
+                phi_qz_t30 = ((gNode[5] - gNode[6]
+                    #ifdef D3G19 
+                    + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]
+                    #endif
+                    #ifdef D3G27 
+                    + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]
+                    + gNode[19] - gNode[20] - gNode[21] + gNode[22] + gNode[23] - gNode[24] + gNode[25] - gNode[26]
+                    #endif
+                ))*invPhi;
             }
 
             

@@ -9,6 +9,7 @@ gNode[ 3] = multiplyTerm * (pics2 + phi_qy_t30);
 gNode[ 4] = multiplyTerm * (pics2 - phi_qy_t30);
 gNode[ 5] = multiplyTerm * (pics2 + phi_qz_t30);
 gNode[ 6] = multiplyTerm * (pics2 - phi_qz_t30);
+#ifdef D3G19
 multiplyTerm = phiVar * gW2;
 gNode[ 7] = multiplyTerm * (pics2 + phi_qx_t30 + phi_qy_t30);
 gNode[ 8] = multiplyTerm * (pics2 - phi_qx_t30 - phi_qy_t30);
@@ -22,3 +23,28 @@ gNode[15] = multiplyTerm * (pics2 + phi_qx_t30 - phi_qz_t30);
 gNode[16] = multiplyTerm * (pics2 - phi_qx_t30 + phi_qz_t30);
 gNode[17] = multiplyTerm * (pics2 + phi_qy_t30 - phi_qz_t30);
 gNode[18] = multiplyTerm * (pics2 - phi_qy_t30 + phi_qz_t30);
+#endif
+#ifdef D3G27
+multiplyTerm = phiVar * gW3;
+gNode[ 7] = multiplyTerm * (pics2 + phi_qx_t30 + phi_qy_t30);
+gNode[ 8] = multiplyTerm * (pics2 - phi_qx_t30 - phi_qy_t30);
+gNode[ 9] = multiplyTerm * (pics2 + phi_qx_t30 + phi_qz_t30);
+gNode[10] = multiplyTerm * (pics2 - phi_qx_t30 - phi_qz_t30);
+gNode[11] = multiplyTerm * (pics2 + phi_qy_t30 + phi_qz_t30);
+gNode[12] = multiplyTerm * (pics2 - phi_qy_t30 - phi_qz_t30);
+gNode[13] = multiplyTerm * (pics2 + phi_qx_t30 - phi_qy_t30);
+gNode[14] = multiplyTerm * (pics2 - phi_qx_t30 + phi_qy_t30);
+gNode[15] = multiplyTerm * (pics2 + phi_qx_t30 - phi_qz_t30);
+gNode[16] = multiplyTerm * (pics2 - phi_qx_t30 + phi_qz_t30);
+gNode[17] = multiplyTerm * (pics2 + phi_qy_t30 - phi_qz_t30);
+gNode[18] = multiplyTerm * (pics2 - phi_qy_t30 + phi_qz_t30);
+multiplyTerm = phiVar * gW3;
+gNode[19] = multiplyTerm * (pics2 + phi_qx_t30 + phi_qy_t30 + phi_qz_t30);
+gNode[20] = multiplyTerm * (pics2 - phi_qx_t30 - phi_qy_t30 - phi_qz_t30);
+gNode[21] = multiplyTerm * (pics2 + phi_qx_t30 + phi_qy_t30 - phi_qz_t30);
+gNode[22] = multiplyTerm * (pics2 - phi_qx_t30 - phi_qy_t30 + phi_qz_t30);
+gNode[23] = multiplyTerm * (pics2 + phi_qx_t30 - phi_qy_t30 + phi_qz_t30);
+gNode[24] = multiplyTerm * (pics2 - phi_qx_t30 + phi_qy_t30 - phi_qz_t30);
+gNode[25] = multiplyTerm * (pics2 - phi_qx_t30 + phi_qy_t30 + phi_qz_t30);
+gNode[26] = multiplyTerm * (pics2 + phi_qx_t30 - phi_qy_t30 - phi_qz_t30);
+#endif
