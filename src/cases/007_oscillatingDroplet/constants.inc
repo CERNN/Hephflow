@@ -8,7 +8,7 @@
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- TIME STEPPING --------------------- */
-constexpr int N_STEPS = 100;               // Total simulation steps
+constexpr int N_STEPS = 100000;               // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
@@ -63,54 +63,63 @@ constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
  * ========================================================================== */
 
 #define PHASE_MODEL                         // Enable phase field model
-#define INTERFACE_SHARPENING               // Enable interface sharpening
+//#define INTERFACE_SHARPENING               // Enable interface sharpening
 #define CONVECTION_DIFFUSION_TRANSPORT     // Transport equation method
-#define D3G19                              // 19-velocity phase field (D3Q19 weights, as2=3)
+#define D3G19                             // 19-velocity phase field (D3Q19 weights, as2=3)
 //#define D3G7                              // 7-velocity phase field (D3Q7 weights, as2=4)
 
 /* --------------------- PHASE FIELD DISTRIBUTION --------------------- */
 #define PHI_DIST                           // Enable phase field distribution
-
+#define METHOD_CAHN_HILLIARD
 /* --------------------- PHASE FIELD REFERENCE VALUES --------------------- */
-constexpr dfloat PHI_REFERENCE = (dfloat)(0.5);   // Reference phase value
-constexpr dfloat PHI_DELTA_PHI = 1;                // Phase field range
+constexpr dfloat PHI_REFERENCE = (dfloat)(0.0);   // Reference phase value
+constexpr dfloat PHI_DELTA_PHI = 2.0_df;                // Phase field range
 constexpr dfloat PHI_ONE = PHI_REFERENCE - PHI_DELTA_PHI/2.0;   // Phase 1 value
 constexpr dfloat PHI_TWO = PHI_REFERENCE + PHI_DELTA_PHI/2.0;   // Phase 2 value
-constexpr dfloat PHI_ZERO = (dfloat)(10.0);        // Initial phase value
+constexpr dfloat PHI_ZERO = (dfloat)(1.1);        // Initial phase value
+// Physical CH order parameter mapping
+constexpr dfloat PHI_SCALE = 2.0/PHI_DELTA_PHI;
 
 /* --------------------- SURFACE TENSION AND INTERFACE PARAMETERS --------------------- */
-// Model constants
-constexpr dfloat phi_sigma = 0.03;         // Surface tension coefficient
-constexpr dfloat phi_del = 3;              // Interface width
-constexpr dfloat phi_beta = 12.0*phi_sigma / phi_del;  // Beta parameter
-constexpr dfloat phi_kappa = 3.0*phi_sigma*phi_del/2;  // Kappa parameter
-constexpr dfloat phi_gamma = 4.0 * (1.0/6.0) / (phi_del * 0.33333333_df);
 
-// Density coupling constants
-constexpr dfloat phi_rho_l = 1.0;          // Liquid density
-constexpr dfloat phi_rho_g = 0.9;          // Gas density (10% difference)
-constexpr dfloat phi_drho = phi_rho_l - phi_rho_g; // Density difference
+// Physical surface tension
+constexpr dfloat phi_sigma = 0.0003;
+constexpr dfloat phi_del = 4.0;
+constexpr dfloat phi_xi = phi_del / 2.94;
+constexpr dfloat phi_beta  = 12.0 * phi_sigma / phi_del;
+constexpr dfloat phi_kappa = 1.5 * phi_sigma * phi_del;
+constexpr dfloat phi_gamma = 1.0 / (2.0 * 1.41421356237309 * phi_xi);
 
-// Interface sharpening coefficient (larger = sharper interface)
-constexpr dfloat phi_sharp_c = phi_gamma;       // Sharpening coefficient
+/* --------------------- DENSITY COUPLING --------------------- */
 
+constexpr dfloat phi_rho_l = 1.0;
+constexpr dfloat phi_rho_g = 0.9;
+constexpr dfloat phi_drho = phi_rho_l - phi_rho_g;
 /* --------------------- FORCE COUPLING CONTROL FLAGS --------------------- */
-#define PHI_FORCE_FS_ENABLED 0             // Surface tension force (DISABLED for test)
-#define PHI_FORCE_FP_ENABLED 0             // Pressure gradient force (DISABLED)
-#define PHI_FORCE_FN_ENABLED 0             // Viscous stress force (DISABLED)
+#define PHI_FORCE_FS_ENABLED 1
+#define PHI_FORCE_FP_ENABLED 0
+#define PHI_FORCE_FN_ENABLED 0
 
-/* --------------------- PHASE FIELD ADVECTION-DIFFUSION PARAMETERS --------------------- */
-constexpr dfloat PHI_DIFFUSIVITY_RATIO = 1; // Diffusivity ratio (like Prandtl number)
+/* --------------------- PHASE-FIELD TRANSPORT (LBM) --------------------- */
+
+// Reference diffusion (controls interface mobility)
+constexpr dfloat PHI_DIFFUSIVITY_RATIO = 1; // Diffusivity ratio (like Prandtl number) 
 constexpr dfloat PHI_DIFFUSIVITY = VISC/PHI_DIFFUSIVITY_RATIO; // Thermal diffusivity
+constexpr dfloat PHI_DIFF_REF = 0.0000033333;
 
-constexpr dfloat PHI_DIFF_REF = (1.0/6.0);    // Reference diffusion
-constexpr dfloat PHI_TAU = PHI_DIFF_REF*3+0.5;    // Phase field relaxation time
-constexpr dfloat PHI_OMEGA  = 1.0/PHI_TAU;        // Phase field collision frequency
-constexpr dfloat PHI_TT_OMEGA = 1.0-0.5*PHI_OMEGA; 
+// LBM relaxation
+constexpr dfloat PHI_TAU   = 0.5 + 3.0 * PHI_DIFF_REF;
+constexpr dfloat PHI_OMEGA = 1.0 / PHI_TAU;
 
-// Diffusivity fluctuation correction
-constexpr dfloat PHI_DIFF_FLUC = PHI_DIFFUSIVITY - PHI_DIFF_REF;
-constexpr dfloat PHI_AAA = (3*PHI_DIFF_FLUC*PHI_OMEGA);
-constexpr dfloat PHI_DIFF_FLUC_COEF = PHI_AAA/(1.0+PHI_AAA); // Diffusivity correction
+/* --------------------- INTERFACE SHARPENING --------------------- */
 
+// Dimensionless sharpening strength (0.3–0.6 recommended)
+constexpr dfloat SHARP_FACTOR = 30.0_df;
+
+// Sharpening coefficient (now scale-consistent)
+constexpr dfloat phi_sharp_c = SHARP_FACTOR * phi_gamma * PHI_DIFF_REF;
+
+constexpr dfloat M_CH = 0.005_df;
+constexpr dfloat kappa_CH = 0.75_df * phi_sigma * phi_del; 
+constexpr dfloat A_CH     = (6.0_df * phi_sigma) / phi_del;
 /* ----- END CONSTANTS CONFIGURATION ----- */

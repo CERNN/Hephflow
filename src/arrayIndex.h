@@ -68,10 +68,13 @@ constexpr int M_MZZ_INDEX = 9;
     constexpr int M3_NX_INDEX  = (5+M_OFFSET);
     constexpr int M3_NY_INDEX  = (6+M_OFFSET);
     constexpr int M3_NZ_INDEX  = (7+M_OFFSET);
+    constexpr int M3_LP_INDEX  = (8+M_OFFSET);
+    constexpr int M3_MU_INDEX  = (9+M_OFFSET);
+    constexpr int M3_LM_INDEX  = (10+M_OFFSET);
     #ifdef M_OFFSET
         #undef M_OFFSET
     #endif
-    #define M_OFFSET M3_NZ_INDEX
+    #define M_OFFSET M3_LM_INDEX
 #endif
 
 #ifdef LAMBDA_DIST

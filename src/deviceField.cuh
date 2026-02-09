@@ -279,6 +279,8 @@ typedef struct deviceField{
     #ifdef PHI_DIST
     void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock){
         gpuComputePhaseNormals<<<gridBlock, threadBlock>>>(d_fMom, dNodeType);
+        gpuComputeChemicalPotential<<<gridBlock, threadBlock>>>(d_fMom, dNodeType);
+        gpuComputeLaplacianMu<<<gridBlock, threadBlock>>>(d_fMom, dNodeType);
         cudaDeviceSynchronize();
     }
     #endif //PHI_DIST

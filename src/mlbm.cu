@@ -228,10 +228,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             phiVar -= PHI_ZERO;
-
+            phiVar *= PHI_SCALE;
             
             #include "fragments/phiTransport/phase_gradient.inc"
-            #include "fragments/phiTransport/normal_gradient.inc"
+            //#include "fragments/phiTransport/normal_gradient.inc"
             #include "fragments/phiTransport/phase_coupling_forces.inc"
 
             L_Fx += F_phase_x;
@@ -249,7 +249,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             #endif //INTERFACE_SHARPENING
 
 
-
+            phiVar /= PHI_SCALE;
             phiVar += PHI_ZERO;
             dfloat invPhi = 1/phiVar;
             dfloat phi_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -966,69 +966,56 @@ __global__ void gpuComputePhaseNormals(
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;
     
-    if (x >= NX || y >= NY || z >= NZ)
-        return;
-    
-    unsigned int nodeType = dNodeType[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z, blockIdx.x, blockIdx.y, blockIdx.z)];
-    if (nodeType == 0b11111111) return;
-    
+    if (x >= NX || y >= NY || z >= NZ) return;
+
+    // Retrieve indices
     const int tx = threadIdx.x;
     const int ty = threadIdx.y;
     const int tz = threadIdx.z;
-    
     const int bx = blockIdx.x;
     const int by = blockIdx.y;
     const int bz = blockIdx.z;
 
-    // Helper lambda to get phi at neighbor position with periodic BC
+    unsigned int nodeType = dNodeType[idxScalarBlock(tx, ty, tz, bx, by, bz)];
+    if (nodeType == 0b11111111) return; // Skip solids if necessary
+
+    // Helper: Load phi (scalar)
     auto getPhi = [&](int dx, int dy, int dz) -> dfloat {
         int nx = (x + dx + NX) % NX;
         int ny = (y + dy + NY) % NY;
         int nz = (z + dz + NZ) % NZ;
+        
         int ntx = nx % BLOCK_NX;
         int nty = ny % BLOCK_NY;
         int ntz = nz % BLOCK_NZ;
         int nbx = nx / BLOCK_NX;
         int nby = ny / BLOCK_NY;
         int nbz = nz / BLOCK_NZ;
-        return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)] - PHI_ZERO;
+        
+        return (fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)] - PHI_ZERO)* PHI_SCALE;
     };
 
-    // Load phi at current node
-    dfloat phiVar = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)] - PHI_ZERO;
+    dfloat phi_c = (fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)] - PHI_ZERO)* PHI_SCALE;
 
-    // Load phi at all D3Q19 neighbors
-    // Axis-aligned neighbors (weight 1/18)
-    dfloat phi_xm1 = getPhi(-1, 0, 0);
-    dfloat phi_xp1 = getPhi(+1, 0, 0);
-    dfloat phi_ym1 = getPhi(0, -1, 0);
-    dfloat phi_yp1 = getPhi(0, +1, 0);
-    dfloat phi_zm1 = getPhi(0, 0, -1);
-    dfloat phi_zp1 = getPhi(0, 0, +1);
+    // Load Neighbors
+    dfloat phi_xm1 = getPhi(-1, 0, 0); dfloat phi_xp1 = getPhi(+1, 0, 0);
+    dfloat phi_ym1 = getPhi(0, -1, 0); dfloat phi_yp1 = getPhi(0, +1, 0);
+    dfloat phi_zm1 = getPhi(0, 0, -1); dfloat phi_zp1 = getPhi(0, 0, +1);
     
-    // Edge neighbors (weight 1/36)
-    dfloat phi_xm1_ym1 = getPhi(-1, -1, 0);
-    dfloat phi_xp1_ym1 = getPhi(+1, -1, 0);
-    dfloat phi_xm1_yp1 = getPhi(-1, +1, 0);
-    dfloat phi_xp1_yp1 = getPhi(+1, +1, 0);
-    dfloat phi_xm1_zm1 = getPhi(-1, 0, -1);
-    dfloat phi_xp1_zm1 = getPhi(+1, 0, -1);
-    dfloat phi_xm1_zp1 = getPhi(-1, 0, +1);
-    dfloat phi_xp1_zp1 = getPhi(+1, 0, +1);
-    dfloat phi_ym1_zm1 = getPhi(0, -1, -1);
-    dfloat phi_yp1_zm1 = getPhi(0, +1, -1);
-    dfloat phi_ym1_zp1 = getPhi(0, -1, +1);
-    dfloat phi_yp1_zp1 = getPhi(0, +1, +1);
+    // Edges
+    dfloat phi_xm1_ym1 = getPhi(-1, -1, 0); dfloat phi_xp1_ym1 = getPhi(+1, -1, 0);
+    dfloat phi_xm1_yp1 = getPhi(-1, +1, 0); dfloat phi_xp1_yp1 = getPhi(+1, +1, 0);
+    dfloat phi_xm1_zm1 = getPhi(-1, 0, -1); dfloat phi_xp1_zm1 = getPhi(+1, 0, -1);
+    dfloat phi_xm1_zp1 = getPhi(-1, 0, +1); dfloat phi_xp1_zp1 = getPhi(+1, 0, +1);
+    dfloat phi_ym1_zm1 = getPhi(0, -1, -1); dfloat phi_yp1_zm1 = getPhi(0, +1, -1);
+    dfloat phi_ym1_zp1 = getPhi(0, -1, +1); dfloat phi_yp1_zp1 = getPhi(0, +1, +1);
 
-    // Isotropic gradient using D3Q19 lattice weights
-    // grad_phi = (1/cs^2) * sum_i w_i * c_i * phi(x + c_i)
-    // For D3Q19: cs^2 = 1/3, so factor is 3
-    // Axis weights: 1/18, Edge weights: 1/36
-    // After multiplying by 3: axis -> 1/6, edge -> 1/12
-    
-    constexpr dfloat w_axis = 1.0_df / 6.0_df;   // 3 * (1/18)
-    constexpr dfloat w_edge = 1.0_df / 12.0_df;  // 3 * (1/36)
-    
+    // ---------------------------------------------------------
+    // 1. ISOTROPIC GRADIENT
+    // ---------------------------------------------------------
+    constexpr dfloat w_axis = 1.0_df / 6.0_df;  // 3 * (1/18)
+    constexpr dfloat w_edge = 1.0_df / 12.0_df; // 3 * (1/36)
+
     dfloat dphidx = w_axis * (phi_xp1 - phi_xm1)
                   + w_edge * (phi_xp1_ym1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xm1_yp1
                             + phi_xp1_zm1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xm1_zp1);
@@ -1041,30 +1028,156 @@ __global__ void gpuComputePhaseNormals(
                   + w_edge * (phi_xm1_zp1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xp1_zm1
                             + phi_ym1_zp1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_yp1_zm1);
 
-    // Wall corrections: fall back to one-sided differences at boundaries
-    if ((nodeType & 0b01010101) == 0b01010101) { // wall west
-        dphidx = (phi_xp1 - phiVar);
-    }
-    if ((nodeType & 0b10101010) == 0b10101010) { // wall east
-        dphidx = (phiVar - phi_xm1);
-    }
-    if ((nodeType & 0b00110011) == 0b00110011) { // wall south
-        dphidy = (phi_yp1 - phiVar);
-    }
-    if ((nodeType & 0b11001100) == 0b11001100) { // wall north
-        dphidy = (phiVar - phi_ym1);
-    }
-    if ((nodeType & 0b00001111) == 0b00001111) { // wall back
-        dphidz = (phi_zp1 - phiVar);
-    }
-    if ((nodeType & 0b11110000) == 0b11110000) { // wall front
-        dphidz = (phiVar - phi_zm1);
-    }
 
-    // Store gradients to global memory
+    // ---------------------------------------------------------
+    // 2. ISOTROPIC LAPLACIAN (Corrected)
+    // ---------------------------------------------------------
+    
+    constexpr dfloat w_lap_axis = 1.0_df / 3.0_df;
+    constexpr dfloat w_lap_edge = 1.0_df / 6.0_df;
+    constexpr dfloat w_lap_zero = -4.0_df; 
+
+    dfloat laplacian_phi =
+        w_lap_zero * phi_c
+        + w_lap_axis * (phi_xp1 + phi_xm1 + phi_yp1 + phi_ym1 + phi_zp1 + phi_zm1)
+        + w_lap_edge * (phi_xp1_yp1 + phi_xp1_ym1 + phi_xm1_yp1 + phi_xm1_ym1
+                      + phi_xp1_zp1 + phi_xp1_zm1 + phi_xm1_zp1 + phi_xm1_zm1
+                      + phi_yp1_zp1 + phi_yp1_zm1 + phi_ym1_zp1 + phi_ym1_zm1);
+
+    // Store Gradients
     fMom[idxMom(tx, ty, tz, M3_NX_INDEX, bx, by, bz)] = dphidx;
     fMom[idxMom(tx, ty, tz, M3_NY_INDEX, bx, by, bz)] = dphidy;
     fMom[idxMom(tx, ty, tz, M3_NZ_INDEX, bx, by, bz)] = dphidz;
+
+    // Store Laplacian
+    fMom[idxMom(tx, ty, tz, M3_LP_INDEX, bx, by, bz)] = laplacian_phi;
 }
+
+__global__ void gpuComputeChemicalPotential(
+    dfloat *fMom,
+    unsigned int *dNodeType
+)
+{
+    const int x = threadIdx.x + blockDim.x * blockIdx.x;
+    const int y = threadIdx.y + blockDim.y * blockIdx.y;
+    const int z = threadIdx.z + blockDim.z * blockIdx.z;
+
+    if (x >= NX || y >= NY || z >= NZ)
+        return;
+
+    unsigned int nodeType =
+        dNodeType[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,
+                                 blockIdx.x, blockIdx.y, blockIdx.z)];
+    if (nodeType == 0b11111111) return;
+
+    const int tx = threadIdx.x;
+    const int ty = threadIdx.y;
+    const int tz = threadIdx.z;
+    const int bx = blockIdx.x;
+    const int by = blockIdx.y;
+    const int bz = blockIdx.z;
+
+    dfloat phi = (fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)] - PHI_ZERO)* PHI_SCALE;
+    dfloat lap_phi = fMom[idxMom(tx, ty, tz, M3_LP_INDEX, bx, by, bz)];
+
+    // Standard Double-Well: f(phi) = A * phi^2 * (1 - phi)^2
+    // Derivative: df/dphi = 2 * A * phi * (1 - phi) * (1 - 2*phi)
+
+    // Use the A_CH and kappa_CH values calculated from sigma and width
+    //dfloat dfdphi = 2.0_df * A_CH * phi * (1.0_df - phi) * (1.0_df - 2.0_df * phi); this is for 0 to 1
+    dfloat dfdphi = A_CH * (phi*phi*phi - phi); // -1 to 1
+
+
+    // Chemical Potential: mu = df/dphi - kappa * Laplacian(phi)
+    dfloat mu = dfdphi - kappa_CH * lap_phi;
+
+    fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)] = mu;
+}
+
+__global__ void gpuComputeLaplacianMu(
+    dfloat *fMom,
+    unsigned int *dNodeType
+)
+{
+    const int x = threadIdx.x + blockDim.x * blockIdx.x;
+    const int y = threadIdx.y + blockDim.y * blockIdx.y;
+    const int z = threadIdx.z + blockDim.z * blockIdx.z;
+
+    if (x >= NX || y >= NY || z >= NZ)
+        return;
+
+    unsigned int nodeType =
+        dNodeType[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,
+                                 blockIdx.x, blockIdx.y, blockIdx.z)];
+    if (nodeType == 0b11111111) return;
+
+    const int tx = threadIdx.x;
+    const int ty = threadIdx.y;
+    const int tz = threadIdx.z;
+    const int bx = blockIdx.x;
+    const int by = blockIdx.y;
+    const int bz = blockIdx.z;
+
+    dfloat mu0 = fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)];
+
+    auto getMu = [&](int dx, int dy, int dz) -> dfloat {
+        int nx = (x + dx + NX) % NX;
+        int ny = (y + dy + NY) % NY;
+        int nz = (z + dz + NZ) % NZ;
+
+        int ntx = nx % BLOCK_NX;
+        int nty = ny % BLOCK_NY;
+        int ntz = nz % BLOCK_NZ;
+
+        int nbx = nx / BLOCK_NX;
+        int nby = ny / BLOCK_NY;
+        int nbz = nz / BLOCK_NZ;
+
+        return fMom[idxMom(ntx, nty, ntz, M3_MU_INDEX, nbx, nby, nbz)];
+    };
+
+
+    // Axis neighbors
+    dfloat mu_xp1 = getMu(+1, 0, 0);
+    dfloat mu_xm1 = getMu(-1, 0, 0);
+    dfloat mu_yp1 = getMu(0, +1, 0);
+    dfloat mu_ym1 = getMu(0, -1, 0);
+    dfloat mu_zp1 = getMu(0, 0, +1);
+    dfloat mu_zm1 = getMu(0, 0, -1);
+
+    // Edge neighbors
+    dfloat mu_xp1_yp1 = getMu(+1, +1, 0);
+    dfloat mu_xp1_ym1 = getMu(+1, -1, 0);
+    dfloat mu_xm1_yp1 = getMu(-1, +1, 0);
+    dfloat mu_xm1_ym1 = getMu(-1, -1, 0);
+
+    dfloat mu_xp1_zp1 = getMu(+1, 0, +1);
+    dfloat mu_xp1_zm1 = getMu(+1, 0, -1);
+    dfloat mu_xm1_zp1 = getMu(-1, 0, +1);
+    dfloat mu_xm1_zm1 = getMu(-1, 0, -1);
+
+    dfloat mu_yp1_zp1 = getMu(0, +1, +1);
+    dfloat mu_yp1_zm1 = getMu(0, +1, -1);
+    dfloat mu_ym1_zp1 = getMu(0, -1, +1);
+    dfloat mu_ym1_zm1 = getMu(0, -1, -1);
+
+    // D3Q19 isotropic Laplacian
+    constexpr dfloat w0 = -4.0_df;
+    constexpr dfloat w1 = 1.0_df / 3.0_df;
+    constexpr dfloat w2 = 1.0_df / 6.0_df;
+
+    dfloat laplacian_mu =
+        w0 * mu0
+      + w1 * (mu_xp1 + mu_xm1 + mu_yp1 + mu_ym1 + mu_zp1 + mu_zm1)
+      + w2 * (
+            mu_xp1_yp1 + mu_xp1_ym1 + mu_xm1_yp1 + mu_xm1_ym1 +
+            mu_xp1_zp1 + mu_xp1_zm1 + mu_xm1_zp1 + mu_xm1_zm1 +
+            mu_yp1_zp1 + mu_yp1_zm1 + mu_ym1_zp1 + mu_ym1_zm1
+        );
+
+    fMom[idxMom(tx, ty, tz, M3_LM_INDEX, bx, by, bz)] = laplacian_mu;
+}
+
+
 
 #endif // PHI_DIST

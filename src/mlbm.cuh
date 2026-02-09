@@ -58,5 +58,16 @@ __global__ void gpuComputePhaseNormals(
     unsigned int *dNodeType
 );
 
+__global__ void gpuComputeChemicalPotential(
+    dfloat *fMom, 
+    unsigned int *dNodeType
+);
+
+
+__global__ void gpuComputeLaplacianMu(
+    dfloat *fMom, 
+    unsigned int *dNodeType
+);
+
 
 #endif //__MLBM_H
