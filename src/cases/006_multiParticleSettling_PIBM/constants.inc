@@ -61,7 +61,7 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
     #define DEM_METHOD
     #define LOCAL_FORCES
     //number of particles
-    #define NUM_PARTICLES 1
+    #define NUM_PARTICLES 1024
 
     constexpr dfloat GX = 0.0;
     constexpr dfloat GY = 8.4E-04;
