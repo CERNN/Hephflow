@@ -35,8 +35,8 @@ void ParticleField::allocateMemory() {
         return;
     }
 
-    // Allocate host memory for particles
-    particles = (Particle*)malloc(sizeof(Particle) * NUM_PARTICLES);
+    // Allocate host memory for particles (using new[] to call constructors)
+    particles = new Particle[NUM_PARTICLES];
     if (particles == nullptr) {
         printf("Error: Failed to allocate memory for particles\n");
         exit(EXIT_FAILURE);
@@ -47,7 +47,7 @@ void ParticleField::allocateMemory() {
     if (err != cudaSuccess) {
         printf("Error: Failed to allocate device memory for wall forces: %s\n", 
                cudaGetErrorString(err));
-        free(particles);
+        delete[] particles;
         exit(EXIT_FAILURE);
     }
 
@@ -153,7 +153,7 @@ void ParticleField::freeMemory() {
 
     // Free particle structures
     if (particles != nullptr) {
-        free(particles);
+        delete[] particles;
         particles = nullptr;
     }
 

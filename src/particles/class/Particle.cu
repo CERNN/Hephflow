@@ -8,19 +8,21 @@ __host__ __device__ Particle::Particle(){
     method = none; // Initialize method
     numNodes = 0; // Initialize numNodes
     nodes = nullptr; // Initialize nodes
+    pCenter = nullptr; // Initialize pCenter
+    shape = nullptr; // Initialize shape
+    collideParticle = false; // Initialize collideParticle
+    collideWall = false; // Initialize collideWall
 }
 
 __host__ Particle::~Particle(){
-    if (pCenter) {
-        delete pCenter;
-        pCenter = nullptr;
-    }
-    if (shape) {
-        delete shape;
-        shape = nullptr;
-    }
+    // pCenter and shape are borrowed pointers (owned by ParticlesSoA),
+    // so we must NOT delete them here.
+    pCenter = nullptr;
+    shape = nullptr;
+
+    // nodes is allocated with malloc in IBM methods
     if (nodes) {
-        delete nodes;
+        free(nodes);
         nodes = nullptr;
     }
 }
