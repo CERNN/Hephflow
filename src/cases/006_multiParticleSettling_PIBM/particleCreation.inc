@@ -1,4 +1,4 @@
-//srand(12345);  // fixed seed for reproducibility
+srand(12345);  // fixed seed for reproducibility
 
 
 dfloat diameter = 0.8;

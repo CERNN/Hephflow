@@ -28,69 +28,57 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
 
     accumulateForceAndTorque(pc_i, drag_force, {0, 0, 0});
 
-    dim3 stencil_bound_start, stencil_bound_end;
+    // Stencil bounds (integer lattice range around particle position)
+    int stencil_start_x = (int)ceil(px) - FORCE_SPREAD_X_NODES;
+    int stencil_start_y = (int)ceil(py) - FORCE_SPREAD_Y_NODES;
+    int stencil_start_z = (int)ceil(pz) - FORCE_SPREAD_Z_NODES;
 
-    // #ifdef defined(FORCE_SPREAD_X_NODES) && defined(FORCE_SPREAD_Y_NODES) && defined(FORCE_SPREAD_Z_NODES)
-    stencil_bound_start.x = (int)ceil(px) - FORCE_SPREAD_X_NODES;
-    stencil_bound_start.y = (int)ceil(py) - FORCE_SPREAD_Y_NODES;
-    stencil_bound_start.z = (int)ceil(pz) - FORCE_SPREAD_Z_NODES;
+    int stencil_end_x = stencil_start_x + 2 * FORCE_SPREAD_X_NODES - 1;
+    int stencil_end_y = stencil_start_y + 2 * FORCE_SPREAD_Y_NODES - 1;
+    int stencil_end_z = stencil_start_z + 2 * FORCE_SPREAD_Z_NODES - 1;
 
-    stencil_bound_end.x = stencil_bound_start.x + 2 * FORCE_SPREAD_X_NODES - 1;
-    stencil_bound_end.y = stencil_bound_start.y + 2 * FORCE_SPREAD_Y_NODES - 1;
-    stencil_bound_end.z = stencil_bound_start.z + 2 * FORCE_SPREAD_Z_NODES - 1;
-
-    // #endif
-
-    // For periodic boundary
-    // TODO: Update this to react to BC definitions
-    // if (stencil_bound_start.x < 0)
-    //     stencil_bound_start.x += NX;
-    // if (stencil_bound_start.y < 0)
-    //     stencil_bound_start.y += NY;
-    // if (stencil_bound_start.z < 0)
-    //     stencil_bound_start.z += NZ;
-
-    // if (stencil_bound_start.x >= NX)
-    //     stencil_bound_start.x = stencil_bound_start.x % NX;
-    // if (stencil_bound_start.y >= NY)
-    //     stencil_bound_start.y = stencil_bound_start.y % NY;
-    // if (stencil_bound_start.z >= NZ)
-    //     stencil_bound_start.z = stencil_bound_start.z % NZ;
-
-    // Use correct stencil
-    for (int zk = stencil_bound_start.z; zk <= stencil_bound_end.z; zk++) // z
+    // Use correct stencil with boundary handling
+    for (int zk = stencil_start_z; zk <= stencil_end_z; zk++) // z
     {
-        for (int yj = stencil_bound_start.y; yj <= stencil_bound_end.y; yj++) // y
+        int zz;
+        #ifdef BC_Z_WALL
+            if (zk < 0 || zk >= NZ) continue;
+            zz = zk;
+        #endif
+        #ifdef BC_Z_PERIODIC
+            zz = ((zk % NZ) + NZ) % NZ;
+        #endif
+
+        for (int yj = stencil_start_y; yj <= stencil_end_y; yj++) // y
         {
-            for (int xi = stencil_bound_start.x; xi <= stencil_bound_end.x; xi++) // x
+            int yy;
+            #ifdef BC_Y_WALL
+                if (yj < 0 || yj >= NY) continue;
+                yy = yj;
+            #endif
+            #ifdef BC_Y_PERIODIC
+                yy = ((yj % NY) + NY) % NY;
+            #endif
+
+            for (int xi = stencil_start_x; xi <= stencil_end_x; xi++) // x
             {
+                int xx;
+                #ifdef BC_X_WALL
+                    if (xi < 0 || xi >= NX) continue;
+                    xx = xi;
+                #endif
+                #ifdef BC_X_PERIODIC
+                    xx = ((xi % NX) + NX) % NX;
+                #endif
+
                 dfloat spread_filter_x = (1.0_df + cos(M_PI * (dfloat(xi) - px) / 2.0_df)) / 4.0_df;
                 dfloat spread_filter_y = (1.0_df + cos(M_PI * (dfloat(yj) - py) / 2.0_df)) / 4.0_df;
                 dfloat spread_filter_z = (1.0_df + cos(M_PI * (dfloat(zk) - pz) / 2.0_df)) / 4.0_df;
                 dfloat spread_filter = spread_filter_x * spread_filter_y * spread_filter_z;
-                // printf("Particle position   x: %e,  y: %e,  z: %e\n", px, py, pz);
-                // printf("Node position       x: %d,  y: %d,  z: %d\n", xi, yj, zk);
-                // printf("Spread filter       x: %e,  y: %e,  z: %e\n", spread_filter_x, spread_filter_y, spread_filter_z);
-                // printf("Spread filter:         %e\n", spread_filter);
-
-                // unsigned int xx = (stencil_bound_start.x + xi + NX) % (NX);
-                // unsigned int yy = (stencil_bound_start.y + yj + NY) % (NY);
-                // unsigned int zz = (stencil_bound_start.z + zk + NZ) % (NZ);
-                unsigned int xx = xi;
-                unsigned int yy = yj;
-                unsigned int zz = zk;
 
                 atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FX_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.x * spread_filter);
                 atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FY_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.y * spread_filter);
                 atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FZ_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.z * spread_filter);
-
-                // int fmomIdx_fx = idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FX_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ);
-                // int fmomIdx_fy = idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FY_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ);
-                // int fmomIdx_fz = idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FZ_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ);
-
-                // atomicAdd(&(fMom[fmomIdx_fx]), -drag_force.x * spread_filter);
-                // atomicAdd(&(fMom[fmomIdx_fy]), -drag_force.y * spread_filter);
-                // atomicAdd(&(fMom[fmomIdx_fz]), -drag_force.z * spread_filter);
             }
         }
     }
