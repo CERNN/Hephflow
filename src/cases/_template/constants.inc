@@ -206,7 +206,7 @@ constexpr dfloat CONF_ZERO = 10.0;                       // Initial conformation
 constexpr dfloat CONF_DIFFUSIVITY_RATIO = 100;           // Schmidt-like number
 constexpr dfloat CONF_DIFFUSIVITY = VISC / CONF_DIFFUSIVITY_RATIO;
 constexpr dfloat CONF_DIFF_REF = 1.0 / 6.0;              // Reference diffusion
-constexpr dfloat CONF_TAU = CONF_DIFF_REF * 3.0 + 0.5;   // Conformation relaxation time
+constexpr dfloat CONF_TAU = CONF_DIFFUSIVITY * 3.0 + 0.5;   // Conformation relaxation time
 constexpr dfloat CONF_OMEGA = 1.0 / CONF_TAU;            // Conformation collision frequency
 constexpr dfloat CONF_TT_OMEGA = 1.0 - 0.5 * CONF_OMEGA; 
 
