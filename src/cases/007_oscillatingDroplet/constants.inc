@@ -13,7 +13,7 @@ constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
 constexpr int N = 128 * SCALE;              // Reference grid size
-constexpr int NX = N;                       // Grid size in X
+constexpr int NX = 3*N;                       // Grid size in X
 constexpr int NY = N;                       // Grid size in Y
 constexpr int NZ = N;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
@@ -95,10 +95,19 @@ constexpr dfloat phi_gamma = 1.0 / (2.0 * 1.41421356237309 * phi_xi);
 constexpr dfloat phi_rho_l = 1.0;
 constexpr dfloat phi_rho_g = 0.9;
 constexpr dfloat phi_drho = phi_rho_l - phi_rho_g;
+
+constexpr dfloat g_value = 1.0e-5_df; 
+__device__ const dfloat gravity_vector[3] = {1.0, 0.0, 0.0}; // Gravity direction
+
+
+constexpr dfloat tau_H = TAU;
+constexpr dfloat tau_L = TAU;
+
 /* --------------------- FORCE COUPLING CONTROL FLAGS --------------------- */
 #define PHI_FORCE_FS_ENABLED 1
-#define PHI_FORCE_FP_ENABLED 0
-#define PHI_FORCE_FN_ENABLED 0
+#define PHI_FORCE_FP_ENABLED 1
+#define PHI_FORCE_FN_ENABLED 1
+#define PHI_FORCE_FB_ENABLED 1
 
 /* --------------------- PHASE-FIELD TRANSPORT (LBM) --------------------- */
 

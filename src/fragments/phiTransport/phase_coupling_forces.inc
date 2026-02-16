@@ -88,3 +88,9 @@ dfloat Fn_z = 0.0_df;
 dfloat F_phase_x = Fs_x + Fp_x + Fn_x;
 dfloat F_phase_y = Fs_y + Fp_y + Fn_y;
 dfloat F_phase_z = Fs_z + Fp_z + Fn_z;
+
+#if PHI_FORCE_FB_ENABLED
+L_Fx += gravity_vector[0]*g_value * (rho_local - phi_rho_g);;
+L_Fy += gravity_vector[1]*g_value * (rho_local - phi_rho_g);;
+L_Fz += gravity_vector[2]*g_value * (rho_local - phi_rho_g);;
+#endif
