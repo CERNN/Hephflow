@@ -47,7 +47,8 @@ dfloat Fp_y = 0.0_df;
 dfloat Fp_z = 0.0_df;
 
 #if PHI_FORCE_FP_ENABLED
-    dfloat Fp_coeff = -cs2 * phiVar;
+    dfloat p_star = (rhoVar - RHO_0) / (RHO_0); // Non-dimensional pressure
+    dfloat Fp_coeff = -cs2 * p_star;
     Fp_x = Fp_coeff * drhox;
     Fp_y = Fp_coeff * drhoy;
     Fp_z = Fp_coeff * drhoz;
@@ -60,6 +61,11 @@ dfloat Fn_y = 0.0_df;
 dfloat Fn_z = 0.0_df;
 
 #if PHI_FORCE_FN_ENABLED
+
+    dfloat tau_local = tau_L + (tau_H - tau_L) * phi_normalized;
+    dfloat omega_local = 1.0_df / tau_local;
+    dfloat tt_omegaVar_local = 1.0_df - 0.5_df * omega_local;
+
     dfloat inv_F_M_II = 1.0_df / F_M_II_SCALE;
     dfloat inv_F_M_IJ = 1.0_df / F_M_IJ_SCALE;
 
@@ -72,7 +78,7 @@ dfloat Fn_z = 0.0_df;
     dfloat Pi_xz_neq = (m_xz_t90 * inv_F_M_IJ - ux_t30 * uz_t30 * inv_v_scale2);
     dfloat Pi_yz_neq = (m_yz_t90 * inv_F_M_IJ - uy_t30 * uz_t30 * inv_v_scale2);
 
-    dfloat Fn_coeff = -tt_omegaVar;
+    dfloat Fn_coeff = -tt_omegaVar_local;
     Fn_x = Fn_coeff * (Pi_xx_neq * drhox + Pi_xy_neq * drhoy + Pi_xz_neq * drhoz);
     Fn_y = Fn_coeff * (Pi_xy_neq * drhox + Pi_yy_neq * drhoy + Pi_yz_neq * drhoz);
     Fn_z = Fn_coeff * (Pi_xz_neq * drhox + Pi_yz_neq * drhoy + Pi_zz_neq * drhoz);
