@@ -13,7 +13,7 @@ dfloat phiSharpSource = 0.0_df;
     // Requires: M3_LM_INDEX (Precomputed in gpuComputeLaplacianMu)
     
     dfloat laplacian_mu = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_LM_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat laplacian_phi  = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_LP_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+    // laplacian_phi already declared in phase_gradient.inc
     
    /* CH diffusion */
     dfloat S_CH = M_CH * laplacian_mu;

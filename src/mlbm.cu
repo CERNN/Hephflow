@@ -25,7 +25,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     #endif //CURVED_BOUNDARY_CONDITION
 
     #ifdef NON_NEWTONIAN_FLUID
-    const fluidProps nnfProps = params.nnfProps;
+    const fluidProps nnfPropsA = params.nnfPropsA;
+    #ifdef PHI_DIST
+    const fluidProps nnfPropsB = params.nnfPropsB;
+    #endif
     #endif //NON_NEWTONIAN_FLUID
 
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
@@ -720,7 +723,32 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             #endif
             #ifdef NON_NEWTONIAN_FLUID 
                 dfloat gammaDot = omegaVar * auxStressMag * as2;
-                omegaVar = calcOmega(nnfProps, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
+                #if defined(PHI_DIST)
+                    // Normalize phi to [0,1] for blending between phase A (phi=PHI_ONE) and phase B (phi=PHI_TWO)
+                    // Stored phi includes PHI_ZERO offset; rescale to physical order parameter before mapping
+                    dfloat phiLocal = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                    dfloat phiPhysical = (phiLocal - PHI_ZERO) * PHI_SCALE; // back to [-1,1] range
+                    dfloat phiNorm = (phiPhysical - PHI_ONE) / (PHI_TWO - PHI_ONE);
+                    phiNorm = fmax(0.0_df, fmin(1.0_df, phiNorm));
+
+                    // Compute phase-specific omegas, convert to apparent viscosities, then blend and back to omega
+                    const dfloat omega_eps = 1.0e-12_df;
+
+                    dfloat omegaA = calcOmega(nnfPropsA, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
+                    dfloat omegaB = calcOmega(nnfPropsB, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
+
+                    dfloat tauA = (omegaA > omega_eps) ? (1.0_df / omegaA) : (1.0_df / omega_eps);
+                    dfloat tauB = (omegaB > omega_eps) ? (1.0_df / omegaB) : (1.0_df / omega_eps);
+
+                    dfloat muA = (tauA - 0.5_df) * RHO_0 * cs2;
+                    dfloat muB = (tauB - 0.5_df) * RHO_0 * cs2;
+
+                    dfloat muMix = interpolateProperty(muA, muB, phiNorm);
+                    dfloat tauMix = muMix / (rhoVar * cs2) + 0.5_df;
+                    omegaVar = 1.0_df / fmax(tauMix, omega_eps);
+                #else
+                    omegaVar = calcOmega(nnfPropsA, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
+                #endif
             #endif //NON_NEWTONIAN_FLUID
 
             #ifdef LES_MODEL
@@ -945,10 +973,24 @@ __global__ void gpuComputePhaseNormals(
     if (nodeType == 0b11111111) return; // Skip solids if necessary
 
     // Helper: Load phi (scalar)
+    // Use Neumann (zero-gradient) clamping for wall directions,
+    // periodic wrapping for periodic directions.
     auto getPhi = [&](int dx, int dy, int dz) -> dfloat {
+        #ifdef BC_X_WALL
+        int nx = min(NX - 1, max(0, x + dx));
+        #else
         int nx = (x + dx + NX) % NX;
+        #endif
+        #ifdef BC_Y_WALL
+        int ny = min(NY - 1, max(0, y + dy));
+        #else
         int ny = (y + dy + NY) % NY;
+        #endif
+        #ifdef BC_Z_WALL
+        int nz = min(NZ - 1, max(0, z + dz));
+        #else
         int nz = (z + dz + NZ) % NZ;
+        #endif
         
         int ntx = nx % BLOCK_NX;
         int nty = ny % BLOCK_NY;
@@ -1085,10 +1127,24 @@ __global__ void gpuComputeLaplacianMu(
 
     dfloat mu0 = fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)];
 
+    // Use Neumann (zero-gradient) clamping for wall directions,
+    // periodic wrapping for periodic directions.
     auto getMu = [&](int dx, int dy, int dz) -> dfloat {
+        #ifdef BC_X_WALL
+        int nx = min(NX - 1, max(0, x + dx));
+        #else
         int nx = (x + dx + NX) % NX;
+        #endif
+        #ifdef BC_Y_WALL
+        int ny = min(NY - 1, max(0, y + dy));
+        #else
         int ny = (y + dy + NY) % NY;
+        #endif
+        #ifdef BC_Z_WALL
+        int nz = min(NZ - 1, max(0, z + dz));
+        #else
         int nz = (z + dz + NZ) % NZ;
+        #endif
 
         int ntx = nx % BLOCK_NX;
         int nty = ny % BLOCK_NY;

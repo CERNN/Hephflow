@@ -17,6 +17,11 @@
 //#define LES_MODEL
 //#define MODEL_CONST_SMAGORINSKY //https://doi.org/10.1016/j.jcp.2005.03.022
 
+// Enable phase-dependent viscosity blending via omega field
+#define NON_NEWTONIAN_FLUID
+// Use Bingham flag to activate OMEGA_FIELD path (yield set to zero in constants)
+#define BINGHAM
+
 /* --------------------- OTHER DEFINITIONS --------------------- */
 //#define DENSITY_CORRECTION
 

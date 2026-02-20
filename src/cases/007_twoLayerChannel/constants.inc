@@ -49,6 +49,30 @@ constexpr dfloat TAU = 0.8;                // Relaxation time
 constexpr dfloat VISC = (TAU - 0.5) / 3;    // Kinematic viscosity
 constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 
+// Two-phase Newtonian viscosities: phase B is 2x phase A
+static inline fluidProps makeCaseNnfPropsPhase1(){
+	fluidProps fp{};
+	fp.type = FLUID_BINGHAM;        // Use Bingham with zero yield to represent Newtonian
+	fp.hasLambda = false;
+	fp.u.bingham.s_y = 0.0_df;
+	fp.u.bingham.omega_p = 1.0_df / TAU; // tau = TAU
+	return fp;
+}
+
+static inline fluidProps makeCaseNnfPropsPhase2(){
+	fluidProps fp{};
+	fp.type = FLUID_BINGHAM;        // Zero-yield Bingham → Newtonian
+	fp.hasLambda = false;
+	fp.u.bingham.s_y = 0.0_df;
+	// nu2 = 2 * nu1 => tau2 = 0.5 + 2*(TAU - 0.5)
+	constexpr dfloat TAU2 = 10.0_df * TAU - 0.5_df;
+	fp.u.bingham.omega_p = 1.0_df / TAU2;
+	return fp;
+}
+
+#define CASE_NNF_PROPS_PHASE1 makeCaseNnfPropsPhase1()
+#define CASE_NNF_PROPS_PHASE2 makeCaseNnfPropsPhase2()
+
 /* --------------------- CHECKPOINT AND INITIALIZATION --------------------- */
 #define LOAD_CHECKPOINT false               // Load simulation checkpoint
 #define CHECKPOINT_SAVE false               // Save checkpoint frequency
@@ -63,7 +87,7 @@ constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
  * ========================================================================== */
 
 #define PHASE_MODEL                         // Enable phase field model
-//#define INTERFACE_SHARPENING               // Enable interface sharpening
+#define INTERFACE_SHARPENING               // Enable interface sharpening
 #define CONVECTION_DIFFUSION_TRANSPORT     // Transport equation method
 #define D3G19                             // 19-velocity phase field (D3Q19 weights, as2=3)
 //#define D3G7                              // 7-velocity phase field (D3Q7 weights, as2=4)
@@ -93,11 +117,11 @@ constexpr dfloat phi_gamma = 1.0 / (2.0 * 1.41421356237309 * phi_xi);
 /* --------------------- DENSITY COUPLING --------------------- */
 
 constexpr dfloat phi_rho_l = 1.0;
-constexpr dfloat phi_rho_g = 0.9;
+constexpr dfloat phi_rho_g = 1.0;
 constexpr dfloat phi_drho = phi_rho_l - phi_rho_g;
 
 constexpr dfloat g_value = -1.5e-5_df; 
-__device__ const dfloat gravity_vector[3] = {0.0, 1.0, 0.0}; // Gravity direction
+__device__ const dfloat gravity_vector[3] = {0.0, 0.0, 0.0}; // Gravity direction
 
 
 constexpr dfloat tau_H = TAU;

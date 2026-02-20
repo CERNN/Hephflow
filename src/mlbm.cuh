@@ -22,6 +22,7 @@
 #include "nodeTypeMap.h"
 #include "non_newtonian/nnf.h"
 #include "fragments/lambdaTransport/lambda_evolution.cuh"
+#include "non_newtonian/propertyInterpolation.cuh"
 
 
 /**

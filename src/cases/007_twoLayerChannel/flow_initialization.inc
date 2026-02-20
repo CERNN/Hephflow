@@ -20,7 +20,7 @@ dfloat y0 = 0.5 * NY;   // interface height
 dfloat delta = Y - y0;
 
 // liquid below, gas above
-phiVar = phi_mid + phi_half * tanh(-delta / denom);
+phiVar = phi_mid + phi_half * tanh(delta / denom);
 
 phiVar += PHI_ZERO;
 

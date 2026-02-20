@@ -26,7 +26,7 @@
 
 /* ======================== SIMULATION CONFIGURATION ======================= */
 
-#define CELLDATA_SAVE true
+#define CELLDATA_SAVE false
 #define GPU_INDEX 0
 
 constexpr bool console_flush = false;
