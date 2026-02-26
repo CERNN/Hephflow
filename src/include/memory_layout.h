@@ -74,7 +74,12 @@ constexpr BlockDim optimalBlockDimArray = findOptimalBlockDimensions(MAX_ELEMENT
 #define BLOCK_LBM_SIZE (BLOCK_NX * BLOCK_NY * BLOCK_NZ)
 
 const size_t BLOCK_LBM_SIZE_POP = BLOCK_LBM_SIZE * (Q - 1);
-const size_t BLOCK_LBM_G_SIZE_POP = BLOCK_LBM_SIZE * (GQ - 1);
+#ifdef SECOND_DIST
+    const size_t BLOCK_LBM_G_SIZE_POP = BLOCK_LBM_SIZE * (GQ - 1);    
+#else
+    const size_t BLOCK_LBM_G_SIZE_POP = 0;
+#endif //SECOND_DIST
+
 
 const size_t BLOCK_FACE_XY = BLOCK_NX * BLOCK_NY;
 const size_t BLOCK_FACE_XZ = BLOCK_NX * BLOCK_NZ;
