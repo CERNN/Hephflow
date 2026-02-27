@@ -48,10 +48,10 @@ void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, Par
     */
     const unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if(idx > TOTAL_PCOLLISION_THREADS)
+    if(idx >= TOTAL_PCOLLISION_THREADS)
         return;
     
-    const unsigned int row = ceil((-1.0+sqrt((dfloat)1+8*(idx+1)))/2);
+    const unsigned int row = (unsigned int)ceil((-1.0 + sqrt(1.0 + 8.0*(double)(idx+1))) / 2.0);
     const unsigned int column = idx - ((row-1)*row)/2;
 
     ParticleCenter* pc_i = &pArray[column];
@@ -326,7 +326,7 @@ void checkCollisionBetweenParticles( unsigned int column,unsigned int row,Partic
 // -------------------- INTER PARTICLE COLLISION CHECK---------------------
 // ------------------------------------------------------------------------ 
 
-
+__device__
 void sphereSphereCollisionCheck(unsigned int column,unsigned int row,ParticleCenter* pc_i, ParticleCenter* pc_j, int step){
     dfloat gap = sphereSphereGap(pc_i, pc_j);
     dfloat3 diff_pos = getDiffPeriodic(pc_i->getPos(), pc_j->getPos());
