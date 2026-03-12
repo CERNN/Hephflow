@@ -16,18 +16,18 @@
 /* ============================= VELOCITY SETS ============================= */
 
 #ifdef D3Q19
-    #include "fragments/velocitySets/D3Q19.inc"
+    #include "../fragments/velocitySets/D3Q19.inc"
 #endif //D3Q19
 #ifdef D3Q27
-    #include "fragments/velocitySets/D3Q27.inc"
+    #include "../fragments/velocitySets/D3Q27.inc"
 #endif //D3Q27
 
 // #define SECOND_DIST
 #ifdef D3G7
-    #include "fragments/velocitySets/D3G7.inc"
+    #include "../fragments/velocitySets/D3G7.inc"
 #endif //D3G7
 #ifdef D3G19
-    #include "fragments/velocitySets/D3G19.inc"
+    #include "../fragments/velocitySets/D3G19.inc"
 #endif //D3G19
 
 
