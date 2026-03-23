@@ -1,5 +1,9 @@
 #include "mlbm.cuh"
 
+#ifdef USE_SHARED_GHOST_STAGING
+#include "fragments/ghostStagingLayout.inc"
+#endif
+
 __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 {
     // Unpack parameters from struct (passed by value - CUDA optimized!)
@@ -152,6 +156,8 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
     const int bzm1 = (bz-1+NUM_BLOCK_Z)%NUM_BLOCK_Z;
     const int bzp1 = (bz+1+NUM_BLOCK_Z)%NUM_BLOCK_Z;
+
+    const bool stepParity = (step & 1u);
 
     //need to compute the gradient before the moments are recalculated
     #ifdef COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
@@ -584,6 +590,15 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
     /* load pop from global in cover nodes */
 
+    #ifdef USE_SHARED_GHOST_STAGING
+    // Ensure streaming pull reads from s_pop are complete before reusing s_pop for ghost staging
+    __syncthreads();
+    // All 512 threads cooperatively load ghost face data from global memory into s_pop
+    #include "fragments/ghostCooperativeLoad.inc"
+    // Ensure cooperative load is complete before surface threads read from s_pop
+    __syncthreads();
+    #endif // USE_SHARED_GHOST_STAGING
+
     #include "fragments/popLoad.inc"
 
     dfloat invRho;
@@ -895,6 +910,13 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     #endif //CONVECTION_DIFFUSION_TRANSPORT
 
     #include "fragments/popSave.inc"
+
+    #ifdef USE_SHARED_GHOST_STAGING
+    // Ensure surface threads have finished staging to s_pop before cooperative write
+    __syncthreads();
+    // All 512 threads cooperatively write ghost face data from s_pop to global memory
+    #include "fragments/ghostCooperativeSave.inc"
+    #endif // USE_SHARED_GHOST_STAGING
 
     //save velocities in the end in order to load next step to compute the gradient
     #ifdef COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE

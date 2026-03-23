@@ -109,7 +109,6 @@ typedef struct dfloat3 {
         return dfloat3(scalar / vec.x, scalar / vec.y, scalar / vec.z);
     }
 
-
 } dfloat3;
 
 /*
@@ -150,7 +149,6 @@ typedef struct dfloat6{
         this->yz = yz;
     }
 } dfloat6;
-
 
 typedef struct dfloat3SoA {
     int varLocation; // IN_VIRTUAL or IN_HOST
@@ -225,8 +223,6 @@ typedef struct dfloat3SoA {
             break;
         }
     }
-
-   
 
     /**
      *  @brief Copy values from another dfloat3SoA array  
@@ -412,8 +408,6 @@ typedef struct dfloat4SoA {
 
 } dfloat4SoA;
 
-
-
 typedef struct ghostData {
     dfloat* X_0;
     dfloat* X_1;
@@ -423,56 +417,45 @@ typedef struct ghostData {
     dfloat* Z_1;
 } GhostData;
 
-
 typedef struct ghostInterfaceData  {
-    ghostData fGhost;
-    ghostData gGhost;
-    ghostData h_fGhost;
+    ghostData pop;
+    ghostData h_pop;
 
     #ifdef SECOND_DIST
-        ghostData g_fGhost;
-        ghostData g_gGhost;
-        ghostData g_h_fGhost;
+        ghostData g;
+        ghostData h_g;
     #endif //SECOND_DIST
     #ifdef PHI_DIST
-        ghostData phi_fGhost;
-        ghostData phi_gGhost;
-        ghostData phi_h_fGhost;
+        ghostData phi;
+        ghostData h_phi;
     #endif //PHI_DIST
     #ifdef A_XX_DIST
-        ghostData Axx_fGhost;
-        ghostData Axx_gGhost;
-        ghostData Axx_h_fGhost;
+        ghostData Axx;
+        ghostData h_Axx;
     #endif //A_XX_DIST
     #ifdef A_XY_DIST
-        ghostData Axy_fGhost;
-        ghostData Axy_gGhost;
-        ghostData Axy_h_fGhost;
+        ghostData Axy;
+        ghostData h_Axy;
     #endif //A_XY_DIST
     #ifdef A_XZ_DIST
-        ghostData Axz_fGhost;
-        ghostData Axz_gGhost;
-        ghostData Axz_h_fGhost;
+        ghostData Axz;
+        ghostData h_Axz;
     #endif //A_XZ_DIST
     #ifdef A_YY_DIST
-        ghostData Ayy_fGhost;
-        ghostData Ayy_gGhost;
-        ghostData Ayy_h_fGhost;
+        ghostData Ayy;
+        ghostData h_Ayy;
     #endif //A_YY_DIST
     #ifdef A_YZ_DIST
-        ghostData Ayz_fGhost;
-        ghostData Ayz_gGhost;
-        ghostData Ayz_h_fGhost;
+        ghostData Ayz;
+        ghostData h_Ayz;
     #endif //A_YZ_DIST
     #ifdef A_ZZ_DIST
-        ghostData Azz_fGhost;
-        ghostData Azz_gGhost;
-        ghostData Azz_h_fGhost;
+        ghostData Azz;
+        ghostData h_Azz;
     #endif //A_ZZ_DIST
     #ifdef LAMBDA_DIST
-        ghostData lambda_fGhost;
-        ghostData lambda_gGhost;
-        ghostData lambda_h_fGhost;
+        ghostData lambda;
+        ghostData h_lambda;
     #endif //LAMBDA_DIST
 
 } GhostInterfaceData;
@@ -489,7 +472,6 @@ typedef struct wall{
         : normal(n), distance(d), velocity(v) {}
 } Wall;
 
-
 typedef struct curvedBoundary{
     dfloat3 b;
     dfloat3 w;
@@ -504,7 +486,6 @@ typedef struct curvedBoundary{
     dfloat3 vel; //extrapolated velocity, which will be used on the boundary condition
 
 }CurvedBoundary;
-
 
 struct ParticleWallForce {
     dfloat Fx;   // sum of particle forces on wall (x)
@@ -660,6 +641,5 @@ struct TreatDataParams {
     // Metadata
     unsigned int step;
 };
-
 
 #endif //__GLOBAL_STRUCTS_H

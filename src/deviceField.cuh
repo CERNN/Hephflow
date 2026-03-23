@@ -80,37 +80,37 @@ typedef struct deviceField{
 
             if (checkpoint_state != 0){
                 checkCudaErrors(cudaMemcpy(d_fMom, hostField.h_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyHostToDevice));
-                interfaceCudaMemcpy(ghostInterface, ghostInterface.fGhost, ghostInterface.h_fGhost, cudaMemcpyHostToDevice, QF);
+                interfaceCudaMemcpy(ghostInterface, ghostInterface.pop, ghostInterface.h_pop, cudaMemcpyHostToDevice, QF);
 
                 #ifdef SECOND_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.g_fGhost, ghostInterface.g_h_fGhost, cudaMemcpyHostToDevice, GF);
+                    interfaceCudaMemcpy(ghostInterface, ghostInterface.g, ghostInterface.h_g, cudaMemcpyHostToDevice, GF);
                 #endif //SECOND_DIST
 
                 #ifdef PHI_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.phi_fGhost, ghostInterface.phi_h_fGhost, cudaMemcpyHostToDevice, GF);
+                    interfaceCudaMemcpy(ghostInterface, ghostInterface.phi, ghostInterface.h_phi, cudaMemcpyHostToDevice, GF);
                 #endif //PHI_DIST
 
                 #ifdef LAMBDA_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.lambda_fGhost, ghostInterface.lambda_h_fGhost, cudaMemcpyHostToDevice, GF);
+                    interfaceCudaMemcpy(ghostInterface, ghostInterface.lambda, ghostInterface.h_lambda, cudaMemcpyHostToDevice, GF);
                 #endif //LAMBDA_DIST
 
                 #ifdef A_XX_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx_fGhost, ghostInterface.Axx_h_fGhost, cudaMemcpyHostToDevice, GF);
+                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx, ghostInterface.h_Axx, cudaMemcpyHostToDevice, GF);
                 #endif //A_XX_DIST
                 #ifdef A_XY_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Axy_fGhost, ghostInterface.Axy_h_fGhost, cudaMemcpyHostToDevice, GF);
+                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Axy, ghostInterface.h_Axy, cudaMemcpyHostToDevice, GF);
                 #endif //A_XY_DIST
                 #ifdef A_XZ_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Axz_fGhost, ghostInterface.Axz_h_fGhost, cudaMemcpyHostToDevice, GF);
+                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Axz, ghostInterface.h_Axz, cudaMemcpyHostToDevice, GF);
                 #endif //A_XZ_DIST
                 #ifdef A_YY_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayy_fGhost, ghostInterface.Ayy_h_fGhost, cudaMemcpyHostToDevice, GF);
+                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayy, ghostInterface.h_Ayy, cudaMemcpyHostToDevice, GF);
                 #endif //A_YY_DIST
                 #ifdef A_YZ_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayz_fGhost, ghostInterface.Ayz_h_fGhost, cudaMemcpyHostToDevice, GF);
+                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayz, ghostInterface.h_Ayz, cudaMemcpyHostToDevice, GF);
                 #endif //A_YZ_DIST
                 #ifdef A_ZZ_DIST
-                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Azz_fGhost, ghostInterface.Azz_h_fGhost, cudaMemcpyHostToDevice, GF);
+                    interfaceCudaMemcpy(ghostInterface, ghostInterface.Azz, ghostInterface.h_Azz, cudaMemcpyHostToDevice, GF);
                 #endif //A_ZZ_DIST
             }
         } 
@@ -177,33 +177,23 @@ typedef struct deviceField{
         #endif
 
         // Interface population initialization
-        interfaceCudaMemcpy(ghostInterface, ghostInterface.gGhost, ghostInterface.fGhost, cudaMemcpyDeviceToDevice, QF);
         #ifdef SECOND_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.g_gGhost, ghostInterface.g_fGhost, cudaMemcpyDeviceToDevice, GF);
         #endif //SECOND_DIST
         #ifdef PHI_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.phi_gGhost, ghostInterface.phi_fGhost, cudaMemcpyDeviceToDevice, GF);
         #endif //PHI_DIST
         #ifdef LAMBDA_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.lambda_gGhost, ghostInterface.lambda_fGhost, cudaMemcpyDeviceToDevice, GF);
         #endif //LAMBDA_DIST
         #ifdef A_XX_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.Axx_gGhost, ghostInterface.Axx_fGhost, cudaMemcpyDeviceToDevice, GF);
         #endif //A_XX_DIST
         #ifdef A_XY_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.Axy_gGhost, ghostInterface.Axy_fGhost, cudaMemcpyDeviceToDevice, GF);
         #endif //A_XY_DIST
         #ifdef A_XZ_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.Axz_gGhost, ghostInterface.Axz_fGhost, cudaMemcpyDeviceToDevice, GF);
         #endif //A_XZ_DIST
         #ifdef A_YY_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayy_gGhost, ghostInterface.Ayy_fGhost, cudaMemcpyDeviceToDevice, GF);
         #endif //A_YY_DIST
         #ifdef A_YZ_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.Ayz_gGhost, ghostInterface.Ayz_fGhost, cudaMemcpyDeviceToDevice, GF);
         #endif //A_YZ_DIST
         #ifdef A_ZZ_DIST
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.Azz_gGhost, ghostInterface.Azz_fGhost, cudaMemcpyDeviceToDevice, GF);
         #endif //A_ZZ_DIST
         
         // Synchronize after all initializations
@@ -318,39 +308,35 @@ typedef struct deviceField{
     }
     #endif //PARTICLE_MODEL
 
-    void interfaceCudaMemcpyDeviceField(bool fGhost){
-        if (fGhost) {
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.h_fGhost, ghostInterface.fGhost, cudaMemcpyDeviceToHost, QF);
-        } else {
-            interfaceCudaMemcpy(ghostInterface, ghostInterface.h_fGhost, ghostInterface.gGhost, cudaMemcpyDeviceToHost, QF);
-            
-        }
+    void interfaceCudaMemcpyDeviceField(bool ghost){
+        // AA layout: always copy from ghost (single buffer)
+        interfaceCudaMemcpy(ghostInterface, ghostInterface.h_pop, ghostInterface.pop, cudaMemcpyDeviceToHost, QF);
         #ifdef SECOND_DIST 
-        interfaceCudaMemcpy(ghostInterface,ghostInterface.g_h_fGhost,ghostInterface.g_fGhost,cudaMemcpyDeviceToHost,GF);
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.h_g,ghostInterface.g,cudaMemcpyDeviceToHost,GF);
         #endif //SECOND_DIST
         #ifdef PHI_DIST 
-        interfaceCudaMemcpy(ghostInterface,ghostInterface.phi_h_fGhost,ghostInterface.phi_fGhost,cudaMemcpyDeviceToHost,GF);
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.h_phi,ghostInterface.phi,cudaMemcpyDeviceToHost,GF);
         #endif //PHI_DIST
         #ifdef LAMBDA_DIST 
-        interfaceCudaMemcpy(ghostInterface,ghostInterface.lambda_h_fGhost,ghostInterface.lambda_fGhost,cudaMemcpyDeviceToHost,GF);
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.h_lambda,ghostInterface.lambda,cudaMemcpyDeviceToHost,GF);
         #endif //LAMBDA_DIST
         #ifdef A_XX_DIST 
-        interfaceCudaMemcpy(ghostInterface,ghostInterface.Axx_h_fGhost,ghostInterface.Axx_fGhost,cudaMemcpyDeviceToHost,GF);
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.h_Axx,ghostInterface.Axx,cudaMemcpyDeviceToHost,GF);
         #endif //A_XX_DIST     
         #ifdef A_XY_DIST 
-        interfaceCudaMemcpy(ghostInterface,ghostInterface.Axy_h_fGhost,ghostInterface.Axy_fGhost,cudaMemcpyDeviceToHost,GF);
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.h_Axy,ghostInterface.Axy,cudaMemcpyDeviceToHost,GF);
         #endif //A_XX_DIST        
         #ifdef A_XZ_DIST 
-        interfaceCudaMemcpy(ghostInterface,ghostInterface.Axz_h_fGhost,ghostInterface.Axz_fGhost,cudaMemcpyDeviceToHost,GF);
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.h_Axz,ghostInterface.Axz,cudaMemcpyDeviceToHost,GF);
         #endif //A_XZ_DIST
         #ifdef A_YY_DIST 
-        interfaceCudaMemcpy(ghostInterface,ghostInterface.Ayy_h_fGhost,ghostInterface.Ayy_fGhost,cudaMemcpyDeviceToHost,GF);
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.h_Ayy,ghostInterface.Ayy,cudaMemcpyDeviceToHost,GF);
         #endif //A_YY_DIST        
         #ifdef A_YZ_DIST 
-        interfaceCudaMemcpy(ghostInterface,ghostInterface.Ayz_h_fGhost,ghostInterface.Ayz_fGhost,cudaMemcpyDeviceToHost,GF);
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.h_Ayz,ghostInterface.Ayz,cudaMemcpyDeviceToHost,GF);
         #endif //A_YZ_DIST      
         #ifdef A_ZZ_DIST 
-        interfaceCudaMemcpy(ghostInterface,ghostInterface.Azz_h_fGhost,ghostInterface.Azz_fGhost,cudaMemcpyDeviceToHost,GF);
+        interfaceCudaMemcpy(ghostInterface,ghostInterface.h_Azz,ghostInterface.Azz,cudaMemcpyDeviceToHost,GF);
         #endif //A_ZZ_DIST
     }
 

@@ -270,80 +270,80 @@ __global__ void gpuInitialization_pop(
     int bz = blockIdx.z;
 
     if (threadIdx.x == 0) { //w
-        ghostInterface.fGhost.X_0[idxPopX(ty, tz, 0, bx, by, bz)] = pop[ 2]; 
-        ghostInterface.fGhost.X_0[idxPopX(ty, tz, 1, bx, by, bz)] = pop[ 8];
-        ghostInterface.fGhost.X_0[idxPopX(ty, tz, 2, bx, by, bz)] = pop[10];
-        ghostInterface.fGhost.X_0[idxPopX(ty, tz, 3, bx, by, bz)] = pop[14];
-        ghostInterface.fGhost.X_0[idxPopX(ty, tz, 4, bx, by, bz)] = pop[16];
+        ghostInterface.pop.X_0[idxPopX(ty, tz, 0, bx, by, bz)] = pop[ 2]; 
+        ghostInterface.pop.X_0[idxPopX(ty, tz, 1, bx, by, bz)] = pop[ 8];
+        ghostInterface.pop.X_0[idxPopX(ty, tz, 2, bx, by, bz)] = pop[10];
+        ghostInterface.pop.X_0[idxPopX(ty, tz, 3, bx, by, bz)] = pop[14];
+        ghostInterface.pop.X_0[idxPopX(ty, tz, 4, bx, by, bz)] = pop[16];
         #ifdef D3Q27                                                                                                           
-        ghostInterface.fGhost.X_0[idxPopX(ty, tz, 5, bx, by, bz)] = pop[20];
-        ghostInterface.fGhost.X_0[idxPopX(ty, tz, 6, bx, by, bz)] = pop[22];
-        ghostInterface.fGhost.X_0[idxPopX(ty, tz, 7, bx, by, bz)] = pop[24];
-        ghostInterface.fGhost.X_0[idxPopX(ty, tz, 8, bx, by, bz)] = pop[25];
+        ghostInterface.pop.X_0[idxPopX(ty, tz, 5, bx, by, bz)] = pop[20];
+        ghostInterface.pop.X_0[idxPopX(ty, tz, 6, bx, by, bz)] = pop[22];
+        ghostInterface.pop.X_0[idxPopX(ty, tz, 7, bx, by, bz)] = pop[24];
+        ghostInterface.pop.X_0[idxPopX(ty, tz, 8, bx, by, bz)] = pop[25];
         #endif //D3Q27                                                                                                           
     }else if (threadIdx.x == (BLOCK_NX - 1)){                                                                                                                                                                               
-        ghostInterface.fGhost.X_1[idxPopX(ty, tz, 0, bx, by, bz)] = pop[ 1];
-        ghostInterface.fGhost.X_1[idxPopX(ty, tz, 1, bx, by, bz)] = pop[ 7];
-        ghostInterface.fGhost.X_1[idxPopX(ty, tz, 2, bx, by, bz)] = pop[ 9];
-        ghostInterface.fGhost.X_1[idxPopX(ty, tz, 3, bx, by, bz)] = pop[13];
-        ghostInterface.fGhost.X_1[idxPopX(ty, tz, 4, bx, by, bz)] = pop[15];
+        ghostInterface.pop.X_1[idxPopX(ty, tz, 0, bx, by, bz)] = pop[ 1];
+        ghostInterface.pop.X_1[idxPopX(ty, tz, 1, bx, by, bz)] = pop[ 7];
+        ghostInterface.pop.X_1[idxPopX(ty, tz, 2, bx, by, bz)] = pop[ 9];
+        ghostInterface.pop.X_1[idxPopX(ty, tz, 3, bx, by, bz)] = pop[13];
+        ghostInterface.pop.X_1[idxPopX(ty, tz, 4, bx, by, bz)] = pop[15];
         #ifdef D3Q27                                                                                                           
-        ghostInterface.fGhost.X_1[idxPopX(ty, tz, 5, bx, by, bz)] = pop[19];
-        ghostInterface.fGhost.X_1[idxPopX(ty, tz, 6, bx, by, bz)] = pop[21];
-        ghostInterface.fGhost.X_1[idxPopX(ty, tz, 7, bx, by, bz)] = pop[23];
-        ghostInterface.fGhost.X_1[idxPopX(ty, tz, 8, bx, by, bz)] = pop[26];
+        ghostInterface.pop.X_1[idxPopX(ty, tz, 5, bx, by, bz)] = pop[19];
+        ghostInterface.pop.X_1[idxPopX(ty, tz, 6, bx, by, bz)] = pop[21];
+        ghostInterface.pop.X_1[idxPopX(ty, tz, 7, bx, by, bz)] = pop[23];
+        ghostInterface.pop.X_1[idxPopX(ty, tz, 8, bx, by, bz)] = pop[26];
         #endif //D3Q27       
     }
 
     if (threadIdx.y == 0)  { //s                                                                                                                                                                                        
-        ghostInterface.fGhost.Y_0[idxPopY(tx, tz, 0, bx, by, bz)] = pop[ 4];
-        ghostInterface.fGhost.Y_0[idxPopY(tx, tz, 1, bx, by, bz)] = pop[ 8];
-        ghostInterface.fGhost.Y_0[idxPopY(tx, tz, 2, bx, by, bz)] = pop[12];
-        ghostInterface.fGhost.Y_0[idxPopY(tx, tz, 3, bx, by, bz)] = pop[13];
-        ghostInterface.fGhost.Y_0[idxPopY(tx, tz, 4, bx, by, bz)] = pop[18];
+        ghostInterface.pop.Y_0[idxPopY(tx, tz, 0, bx, by, bz)] = pop[ 4];
+        ghostInterface.pop.Y_0[idxPopY(tx, tz, 1, bx, by, bz)] = pop[ 8];
+        ghostInterface.pop.Y_0[idxPopY(tx, tz, 2, bx, by, bz)] = pop[12];
+        ghostInterface.pop.Y_0[idxPopY(tx, tz, 3, bx, by, bz)] = pop[13];
+        ghostInterface.pop.Y_0[idxPopY(tx, tz, 4, bx, by, bz)] = pop[18];
         #ifdef D3Q27                                                                                                           
-        ghostInterface.fGhost.Y_0[idxPopY(tx, tz, 5, bx, by, bz)] = pop[20];
-        ghostInterface.fGhost.Y_0[idxPopY(tx, tz, 6, bx, by, bz)] = pop[22];
-        ghostInterface.fGhost.Y_0[idxPopY(tx, tz, 7, bx, by, bz)] = pop[23];
-        ghostInterface.fGhost.Y_0[idxPopY(tx, tz, 8, bx, by, bz)] = pop[26];
+        ghostInterface.pop.Y_0[idxPopY(tx, tz, 5, bx, by, bz)] = pop[20];
+        ghostInterface.pop.Y_0[idxPopY(tx, tz, 6, bx, by, bz)] = pop[22];
+        ghostInterface.pop.Y_0[idxPopY(tx, tz, 7, bx, by, bz)] = pop[23];
+        ghostInterface.pop.Y_0[idxPopY(tx, tz, 8, bx, by, bz)] = pop[26];
         #endif //D3Q27                                                                                                           
     }else if (threadIdx.y == (BLOCK_NY - 1)){                                                                                                                                                                        
-        ghostInterface.fGhost.Y_1[idxPopY(tx, tz, 0, bx, by, bz)] = pop[ 3];
-        ghostInterface.fGhost.Y_1[idxPopY(tx, tz, 1, bx, by, bz)] = pop[ 7];
-        ghostInterface.fGhost.Y_1[idxPopY(tx, tz, 2, bx, by, bz)] = pop[11];
-        ghostInterface.fGhost.Y_1[idxPopY(tx, tz, 3, bx, by, bz)] = pop[14];
-        ghostInterface.fGhost.Y_1[idxPopY(tx, tz, 4, bx, by, bz)] = pop[17];
+        ghostInterface.pop.Y_1[idxPopY(tx, tz, 0, bx, by, bz)] = pop[ 3];
+        ghostInterface.pop.Y_1[idxPopY(tx, tz, 1, bx, by, bz)] = pop[ 7];
+        ghostInterface.pop.Y_1[idxPopY(tx, tz, 2, bx, by, bz)] = pop[11];
+        ghostInterface.pop.Y_1[idxPopY(tx, tz, 3, bx, by, bz)] = pop[14];
+        ghostInterface.pop.Y_1[idxPopY(tx, tz, 4, bx, by, bz)] = pop[17];
         #ifdef D3Q27                                                                                                           
-        ghostInterface.fGhost.Y_1[idxPopY(tx, tz, 5, bx, by, bz)] = pop[19];
-        ghostInterface.fGhost.Y_1[idxPopY(tx, tz, 6, bx, by, bz)] = pop[21];
-        ghostInterface.fGhost.Y_1[idxPopY(tx, tz, 7, bx, by, bz)] = pop[24];
-        ghostInterface.fGhost.Y_1[idxPopY(tx, tz, 8, bx, by, bz)] = pop[25];
+        ghostInterface.pop.Y_1[idxPopY(tx, tz, 5, bx, by, bz)] = pop[19];
+        ghostInterface.pop.Y_1[idxPopY(tx, tz, 6, bx, by, bz)] = pop[21];
+        ghostInterface.pop.Y_1[idxPopY(tx, tz, 7, bx, by, bz)] = pop[24];
+        ghostInterface.pop.Y_1[idxPopY(tx, tz, 8, bx, by, bz)] = pop[25];
         #endif //D3Q27                                                                                                           
     }
     
     if (threadIdx.z == 0){ //b                                                                                                                                                                                     
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 0, bx, by, bz)] = pop[ 6];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 1, bx, by, bz)] = pop[10];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 2, bx, by, bz)] = pop[12];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 3, bx, by, bz)] = pop[15];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 4, bx, by, bz)] = pop[17];
+        ghostInterface.pop.Z_0[idxPopZ(tx, ty, 0, bx, by, bz)] = pop[ 6];
+        ghostInterface.pop.Z_0[idxPopZ(tx, ty, 1, bx, by, bz)] = pop[10];
+        ghostInterface.pop.Z_0[idxPopZ(tx, ty, 2, bx, by, bz)] = pop[12];
+        ghostInterface.pop.Z_0[idxPopZ(tx, ty, 3, bx, by, bz)] = pop[15];
+        ghostInterface.pop.Z_0[idxPopZ(tx, ty, 4, bx, by, bz)] = pop[17];
         #ifdef D3Q27                                                                                                           
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 5, bx, by, bz)] = pop[20];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 6, bx, by, bz)] = pop[21];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 7, bx, by, bz)] = pop[24];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[26];
+        ghostInterface.pop.Z_0[idxPopZ(tx, ty, 5, bx, by, bz)] = pop[20];
+        ghostInterface.pop.Z_0[idxPopZ(tx, ty, 6, bx, by, bz)] = pop[21];
+        ghostInterface.pop.Z_0[idxPopZ(tx, ty, 7, bx, by, bz)] = pop[24];
+        ghostInterface.pop.Z_0[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[26];
         #endif //D3Q27                                                                                                           
     }else if (threadIdx.z == (BLOCK_NZ - 1)){                                                                                                               
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 0, bx, by, bz)] = pop[ 5];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 1, bx, by, bz)] = pop[ 9];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 2, bx, by, bz)] = pop[11];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 3, bx, by, bz)] = pop[16];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 4, bx, by, bz)] = pop[18];
+        ghostInterface.pop.Z_1[idxPopZ(tx, ty, 0, bx, by, bz)] = pop[ 5];
+        ghostInterface.pop.Z_1[idxPopZ(tx, ty, 1, bx, by, bz)] = pop[ 9];
+        ghostInterface.pop.Z_1[idxPopZ(tx, ty, 2, bx, by, bz)] = pop[11];
+        ghostInterface.pop.Z_1[idxPopZ(tx, ty, 3, bx, by, bz)] = pop[16];
+        ghostInterface.pop.Z_1[idxPopZ(tx, ty, 4, bx, by, bz)] = pop[18];
         #ifdef D3Q27                                                                                                           
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 5, bx, by, bz)] = pop[19];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 6, bx, by, bz)] = pop[22];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 7, bx, by, bz)] = pop[23];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[25];
+        ghostInterface.pop.Z_1[idxPopZ(tx, ty, 5, bx, by, bz)] = pop[19];
+        ghostInterface.pop.Z_1[idxPopZ(tx, ty, 6, bx, by, bz)] = pop[22];
+        ghostInterface.pop.Z_1[idxPopZ(tx, ty, 7, bx, by, bz)] = pop[23];
+        ghostInterface.pop.Z_1[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[25];
         #endif //D3Q27                                                                                                                                                                                                                    
     }
 
@@ -366,56 +366,56 @@ __global__ void gpuInitialization_pop(
         #include COLREC_G_RECONSTRUCTION
 
         if (threadIdx.x == 0) { //w
-            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
             #ifdef D3G19
-            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
-            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
             #endif            
         }else if (threadIdx.x == (BLOCK_NX - 1)){                    
-            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
             #ifdef D3G19
-            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
-            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
             #endif    
         }
 
         if (threadIdx.y == 0)  { //s                             
-            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
             #ifdef D3G19
-            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
             #endif           
         }else if (threadIdx.y == (BLOCK_NY - 1)){             
-            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
             #ifdef D3G19
-            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
             #endif        
         }
         
         if (threadIdx.z == 0){ //b                          
-            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
             #ifdef D3G19
-            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
-            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
-            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
             #endif    
         }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
-            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
             #ifdef D3G19
-            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
-            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
-            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
             #endif                    
         }
     #endif //SECOND_DIST
@@ -434,56 +434,56 @@ __global__ void gpuInitialization_pop(
         #include COLREC_PHI_RECONSTRUCTION
 
         if (threadIdx.x == 0) { //w
-            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
             #ifdef D3G19
-            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
-            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
             #endif            
         }else if (threadIdx.x == (BLOCK_NX - 1)){                    
-            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
             #ifdef D3G19
-            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
-            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
             #endif    
         }
 
         if (threadIdx.y == 0)  { //s                             
-            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
             #ifdef D3G19
-            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
             #endif           
         }else if (threadIdx.y == (BLOCK_NY - 1)){             
-            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
             #ifdef D3G19
-            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
             #endif        
         }
         
         if (threadIdx.z == 0){ //b                          
-            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
             #ifdef D3G19
-            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
-            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
-            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
             #endif    
         }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
-            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
             #ifdef D3G19
-            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
-            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
-            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
             #endif                    
         }
     #endif //PHI_DIST
@@ -502,56 +502,56 @@ __global__ void gpuInitialization_pop(
         #include COLREC_AXX_RECONSTRUCTION
 
         if (threadIdx.x == 0) { //w
-            ghostInterface.Axx_fGhost.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
+            ghostInterface.Axx.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
             #ifdef D3G19
-            ghostInterface.Axx_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.Axx_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
-            ghostInterface.Axx_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.Axx_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            ghostInterface.Axx.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.Axx.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.Axx.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.Axx.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
             #endif            
         }else if (threadIdx.x == (BLOCK_NX - 1)){                    
-            ghostInterface.Axx_fGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
+            ghostInterface.Axx.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
             #ifdef D3G19
-            ghostInterface.Axx_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.Axx_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
-            ghostInterface.Axx_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.Axx_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
+            ghostInterface.Axx.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.Axx.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.Axx.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.Axx.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
             #endif    
         }
 
         if (threadIdx.y == 0)  { //s                             
-            ghostInterface.Axx_fGhost.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
+            ghostInterface.Axx.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
             #ifdef D3G19
-            ghostInterface.Axx_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.Axx_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.Axx_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.Axx_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
+            ghostInterface.Axx.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.Axx.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.Axx.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.Axx.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
             #endif           
         }else if (threadIdx.y == (BLOCK_NY - 1)){             
-            ghostInterface.Axx_fGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
+            ghostInterface.Axx.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
             #ifdef D3G19
-            ghostInterface.Axx_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.Axx_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.Axx_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.Axx_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
+            ghostInterface.Axx.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.Axx.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.Axx.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.Axx.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
             #endif        
         }
         
         if (threadIdx.z == 0){ //b                          
-            ghostInterface.Axx_fGhost.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
+            ghostInterface.Axx.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
             #ifdef D3G19
-            ghostInterface.Axx_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
-            ghostInterface.Axx_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.Axx_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
-            ghostInterface.Axx_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
+            ghostInterface.Axx.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.Axx.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.Axx.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.Axx.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
             #endif    
         }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
-            ghostInterface.Axx_fGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
+            ghostInterface.Axx.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
             #ifdef D3G19
-            ghostInterface.Axx_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
-            ghostInterface.Axx_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.Axx_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
-            ghostInterface.Axx_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
+            ghostInterface.Axx.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.Axx.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.Axx.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.Axx.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
             #endif                    
         }
     #endif //A_XX_DIST
@@ -570,56 +570,56 @@ __global__ void gpuInitialization_pop(
         #include COLREC_AXY_RECONSTRUCTION
 
         if (threadIdx.x == 0) { //w
-            ghostInterface.Axy_fGhost.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
+            ghostInterface.Axy.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
             #ifdef D3G19
-            ghostInterface.Axy_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.Axy_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
-            ghostInterface.Axy_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.Axy_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            ghostInterface.Axy.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.Axy.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.Axy.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.Axy.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
             #endif            
         }else if (threadIdx.x == (BLOCK_NX - 1)){                    
-            ghostInterface.Axy_fGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
+            ghostInterface.Axy.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
             #ifdef D3G19
-            ghostInterface.Axy_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.Axy_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
-            ghostInterface.Axy_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.Axy_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
+            ghostInterface.Axy.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.Axy.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.Axy.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.Axy.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
             #endif    
         }
 
         if (threadIdx.y == 0)  { //s                             
-            ghostInterface.Axy_fGhost.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
+            ghostInterface.Axy.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
             #ifdef D3G19
-            ghostInterface.Axy_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.Axy_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.Axy_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.Axy_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
+            ghostInterface.Axy.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.Axy.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.Axy.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.Axy.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
             #endif           
         }else if (threadIdx.y == (BLOCK_NY - 1)){             
-            ghostInterface.Axy_fGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
+            ghostInterface.Axy.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
             #ifdef D3G19
-            ghostInterface.Axy_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.Axy_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.Axy_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.Axy_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
+            ghostInterface.Axy.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.Axy.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.Axy.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.Axy.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
             #endif        
         }
         
         if (threadIdx.z == 0){ //b                          
-            ghostInterface.Axy_fGhost.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
+            ghostInterface.Axy.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
             #ifdef D3G19
-            ghostInterface.Axy_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
-            ghostInterface.Axy_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.Axy_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
-            ghostInterface.Axy_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
+            ghostInterface.Axy.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.Axy.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.Axy.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.Axy.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
             #endif    
         }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
-            ghostInterface.Axy_fGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
+            ghostInterface.Axy.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
             #ifdef D3G19
-            ghostInterface.Axy_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
-            ghostInterface.Axy_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.Axy_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
-            ghostInterface.Axy_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
+            ghostInterface.Axy.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.Axy.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.Axy.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.Axy.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
             #endif                    
         }
     #endif //A_XY_DIST
@@ -638,56 +638,56 @@ __global__ void gpuInitialization_pop(
         #include COLREC_AXZ_RECONSTRUCTION
 
         if (threadIdx.x == 0) { //w
-            ghostInterface.Axz_fGhost.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
+            ghostInterface.Axz.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
             #ifdef D3G19
-            ghostInterface.Axz_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.Axz_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
-            ghostInterface.Axz_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.Axz_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            ghostInterface.Axz.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.Axz.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.Axz.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.Axz.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
             #endif            
         }else if (threadIdx.x == (BLOCK_NX - 1)){                    
-            ghostInterface.Axz_fGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
+            ghostInterface.Axz.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
             #ifdef D3G19
-            ghostInterface.Axz_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.Axz_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
-            ghostInterface.Axz_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.Axz_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
+            ghostInterface.Axz.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.Axz.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.Axz.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.Axz.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
             #endif    
         }
 
         if (threadIdx.y == 0)  { //s                             
-            ghostInterface.Axz_fGhost.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
+            ghostInterface.Axz.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
             #ifdef D3G19
-            ghostInterface.Axz_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.Axz_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.Axz_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.Axz_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
+            ghostInterface.Axz.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.Axz.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.Axz.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.Axz.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
             #endif           
         }else if (threadIdx.y == (BLOCK_NY - 1)){             
-            ghostInterface.Axz_fGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
+            ghostInterface.Axz.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
             #ifdef D3G19
-            ghostInterface.Axz_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.Axz_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.Axz_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.Axz_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
+            ghostInterface.Axz.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.Axz.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.Axz.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.Axz.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
             #endif        
         }
         
         if (threadIdx.z == 0){ //b                          
-            ghostInterface.Axz_fGhost.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
+            ghostInterface.Axz.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
             #ifdef D3G19
-            ghostInterface.Axz_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
-            ghostInterface.Axz_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.Axz_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
-            ghostInterface.Axz_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
+            ghostInterface.Axz.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.Axz.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.Axz.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.Axz.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
             #endif    
         }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
-            ghostInterface.Axz_fGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
+            ghostInterface.Axz.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
             #ifdef D3G19
-            ghostInterface.Axz_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
-            ghostInterface.Axz_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.Axz_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
-            ghostInterface.Axz_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
+            ghostInterface.Axz.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.Axz.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.Axz.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.Axz.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
             #endif                    
         }
     #endif //A_XZ_DIST
@@ -706,56 +706,56 @@ __global__ void gpuInitialization_pop(
         #include COLREC_AYY_RECONSTRUCTION
 
         if (threadIdx.x == 0) { //w
-            ghostInterface.Ayy_fGhost.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
+            ghostInterface.Ayy.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
             #ifdef D3G19
-            ghostInterface.Ayy_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.Ayy_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
-            ghostInterface.Ayy_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.Ayy_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            ghostInterface.Ayy.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.Ayy.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.Ayy.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.Ayy.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
             #endif            
         }else if (threadIdx.x == (BLOCK_NX - 1)){                    
-            ghostInterface.Ayy_fGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
+            ghostInterface.Ayy.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
             #ifdef D3G19
-            ghostInterface.Ayy_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.Ayy_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
-            ghostInterface.Ayy_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.Ayy_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
+            ghostInterface.Ayy.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.Ayy.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.Ayy.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.Ayy.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
             #endif    
         }
 
         if (threadIdx.y == 0)  { //s                             
-            ghostInterface.Ayy_fGhost.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
+            ghostInterface.Ayy.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
             #ifdef D3G19
-            ghostInterface.Ayy_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.Ayy_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.Ayy_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.Ayy_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
+            ghostInterface.Ayy.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.Ayy.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.Ayy.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.Ayy.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
             #endif           
         }else if (threadIdx.y == (BLOCK_NY - 1)){             
-            ghostInterface.Ayy_fGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
+            ghostInterface.Ayy.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
             #ifdef D3G19
-            ghostInterface.Ayy_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.Ayy_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.Ayy_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.Ayy_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
+            ghostInterface.Ayy.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.Ayy.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.Ayy.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.Ayy.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
             #endif        
         }
         
         if (threadIdx.z == 0){ //b                          
-            ghostInterface.Ayy_fGhost.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
+            ghostInterface.Ayy.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
             #ifdef D3G19
-            ghostInterface.Ayy_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
-            ghostInterface.Ayy_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.Ayy_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
-            ghostInterface.Ayy_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
+            ghostInterface.Ayy.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.Ayy.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.Ayy.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.Ayy.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
             #endif    
         }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
-            ghostInterface.Ayy_fGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
+            ghostInterface.Ayy.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
             #ifdef D3G19
-            ghostInterface.Ayy_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
-            ghostInterface.Ayy_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.Ayy_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
-            ghostInterface.Ayy_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
+            ghostInterface.Ayy.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.Ayy.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.Ayy.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.Ayy.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
             #endif                    
         }
     #endif //A_YY_DIST
@@ -774,56 +774,56 @@ __global__ void gpuInitialization_pop(
         #include COLREC_AYZ_RECONSTRUCTION
 
         if (threadIdx.x == 0) { //w
-            ghostInterface.Ayz_fGhost.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
+            ghostInterface.Ayz.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
             #ifdef D3G19
-            ghostInterface.Ayz_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.Ayz_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
-            ghostInterface.Ayz_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.Ayz_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            ghostInterface.Ayz.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.Ayz.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.Ayz.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.Ayz.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
             #endif            
         }else if (threadIdx.x == (BLOCK_NX - 1)){                    
-            ghostInterface.Ayz_fGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
+            ghostInterface.Ayz.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
             #ifdef D3G19
-            ghostInterface.Ayz_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.Ayz_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
-            ghostInterface.Ayz_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.Ayz_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
+            ghostInterface.Ayz.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.Ayz.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.Ayz.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.Ayz.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
             #endif    
         }
 
         if (threadIdx.y == 0)  { //s                             
-            ghostInterface.Ayz_fGhost.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
+            ghostInterface.Ayz.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
             #ifdef D3G19
-            ghostInterface.Ayz_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.Ayz_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.Ayz_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.Ayz_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
+            ghostInterface.Ayz.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.Ayz.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.Ayz.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.Ayz.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
             #endif           
         }else if (threadIdx.y == (BLOCK_NY - 1)){             
-            ghostInterface.Ayz_fGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
+            ghostInterface.Ayz.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
             #ifdef D3G19
-            ghostInterface.Ayz_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.Ayz_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.Ayz_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.Ayz_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
+            ghostInterface.Ayz.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.Ayz.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.Ayz.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.Ayz.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
             #endif        
         }
         
         if (threadIdx.z == 0){ //b                          
-            ghostInterface.Ayz_fGhost.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
+            ghostInterface.Ayz.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
             #ifdef D3G19
-            ghostInterface.Ayz_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
-            ghostInterface.Ayz_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.Ayz_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
-            ghostInterface.Ayz_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
+            ghostInterface.Ayz.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.Ayz.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.Ayz.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.Ayz.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
             #endif    
         }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
-            ghostInterface.Ayz_fGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
+            ghostInterface.Ayz.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
             #ifdef D3G19
-            ghostInterface.Ayz_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
-            ghostInterface.Ayz_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.Ayz_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
-            ghostInterface.Ayz_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
+            ghostInterface.Ayz.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.Ayz.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.Ayz.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.Ayz.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
             #endif                    
         }
     #endif //A_YZ_DIST
@@ -842,56 +842,56 @@ __global__ void gpuInitialization_pop(
         #include COLREC_AZZ_RECONSTRUCTION
 
         if (threadIdx.x == 0) { //w
-            ghostInterface.Azz_fGhost.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
+            ghostInterface.Azz.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
             #ifdef D3G19
-            ghostInterface.Azz_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.Azz_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
-            ghostInterface.Azz_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.Azz_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            ghostInterface.Azz.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.Azz.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.Azz.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.Azz.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
             #endif            
         }else if (threadIdx.x == (BLOCK_NX - 1)){                    
-            ghostInterface.Azz_fGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
+            ghostInterface.Azz.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
             #ifdef D3G19
-            ghostInterface.Azz_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.Azz_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
-            ghostInterface.Azz_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.Azz_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
+            ghostInterface.Azz.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.Azz.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.Azz.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.Azz.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
             #endif    
         }
 
         if (threadIdx.y == 0)  { //s                             
-            ghostInterface.Azz_fGhost.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
+            ghostInterface.Azz.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
             #ifdef D3G19
-            ghostInterface.Azz_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
-            ghostInterface.Azz_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.Azz_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
-            ghostInterface.Azz_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
+            ghostInterface.Azz.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.Azz.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.Azz.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.Azz.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
             #endif           
         }else if (threadIdx.y == (BLOCK_NY - 1)){             
-            ghostInterface.Azz_fGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
+            ghostInterface.Azz.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
             #ifdef D3G19
-            ghostInterface.Azz_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
-            ghostInterface.Azz_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.Azz_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
-            ghostInterface.Azz_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
+            ghostInterface.Azz.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.Azz.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.Azz.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.Azz.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
             #endif        
         }
         
         if (threadIdx.z == 0){ //b                          
-            ghostInterface.Azz_fGhost.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
+            ghostInterface.Azz.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
             #ifdef D3G19
-            ghostInterface.Azz_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
-            ghostInterface.Azz_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
-            ghostInterface.Azz_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
-            ghostInterface.Azz_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
+            ghostInterface.Azz.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.Azz.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.Azz.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.Azz.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
             #endif    
         }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
-            ghostInterface.Azz_fGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
+            ghostInterface.Azz.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
             #ifdef D3G19
-            ghostInterface.Azz_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
-            ghostInterface.Azz_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
-            ghostInterface.Azz_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
-            ghostInterface.Azz_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
+            ghostInterface.Azz.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.Azz.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.Azz.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.Azz.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
             #endif                    
         }
     #endif //A_ZZ_DIST
@@ -933,51 +933,51 @@ __global__ void gpuInitialization_pop(
     #ifdef COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
 
     if (threadIdx.x == 0) { //w
-            ghostInterface.conf_fGhost.X_0[g_idxConfX(ty, tz, 0, bx, by, bz)] = AxxVar;
-            ghostInterface.conf_fGhost.X_0[g_idxConfX(ty, tz, 1, bx, by, bz)] = AxyVar;
-            ghostInterface.conf_fGhost.X_0[g_idxConfX(ty, tz, 2, bx, by, bz)] = AxzVar;
-            ghostInterface.conf_fGhost.X_0[g_idxConfX(ty, tz, 3, bx, by, bz)] = AyyVar;
-            ghostInterface.conf_fGhost.X_0[g_idxConfX(ty, tz, 4, bx, by, bz)] = AyzVar;
-            ghostInterface.conf_fGhost.X_0[g_idxConfX(ty, tz, 5, bx, by, bz)] = AzzVar;
+            ghostInterface.conf.X_0[g_idxConfX(ty, tz, 0, bx, by, bz)] = AxxVar;
+            ghostInterface.conf.X_0[g_idxConfX(ty, tz, 1, bx, by, bz)] = AxyVar;
+            ghostInterface.conf.X_0[g_idxConfX(ty, tz, 2, bx, by, bz)] = AxzVar;
+            ghostInterface.conf.X_0[g_idxConfX(ty, tz, 3, bx, by, bz)] = AyyVar;
+            ghostInterface.conf.X_0[g_idxConfX(ty, tz, 4, bx, by, bz)] = AyzVar;
+            ghostInterface.conf.X_0[g_idxConfX(ty, tz, 5, bx, by, bz)] = AzzVar;
         }else if (threadIdx.x == (BLOCK_NX - 1)){                    
-            ghostInterface.conf_fGhost.X_1[g_idxConfX(ty, tz, 0, bx, by, bz)] = AxxVar;
-            ghostInterface.conf_fGhost.X_1[g_idxConfX(ty, tz, 1, bx, by, bz)] = AxyVar;
-            ghostInterface.conf_fGhost.X_1[g_idxConfX(ty, tz, 2, bx, by, bz)] = AxzVar;
-            ghostInterface.conf_fGhost.X_1[g_idxConfX(ty, tz, 3, bx, by, bz)] = AyyVar;
-            ghostInterface.conf_fGhost.X_1[g_idxConfX(ty, tz, 4, bx, by, bz)] = AyzVar;
-            ghostInterface.conf_fGhost.X_1[g_idxConfX(ty, tz, 5, bx, by, bz)] = AzzVar;
+            ghostInterface.conf.X_1[g_idxConfX(ty, tz, 0, bx, by, bz)] = AxxVar;
+            ghostInterface.conf.X_1[g_idxConfX(ty, tz, 1, bx, by, bz)] = AxyVar;
+            ghostInterface.conf.X_1[g_idxConfX(ty, tz, 2, bx, by, bz)] = AxzVar;
+            ghostInterface.conf.X_1[g_idxConfX(ty, tz, 3, bx, by, bz)] = AyyVar;
+            ghostInterface.conf.X_1[g_idxConfX(ty, tz, 4, bx, by, bz)] = AyzVar;
+            ghostInterface.conf.X_1[g_idxConfX(ty, tz, 5, bx, by, bz)] = AzzVar;
         }
 
         if (threadIdx.y == 0)  { //s                             
-            ghostInterface.conf_fGhost.Y_0[g_idxConfY(tx, tz, 0, bx, by, bz)] = AxxVar;
-            ghostInterface.conf_fGhost.Y_0[g_idxConfY(tx, tz, 1, bx, by, bz)] = AxyVar;
-            ghostInterface.conf_fGhost.Y_0[g_idxConfY(tx, tz, 2, bx, by, bz)] = AxzVar;
-            ghostInterface.conf_fGhost.Y_0[g_idxConfY(tx, tz, 3, bx, by, bz)] = AyyVar;
-            ghostInterface.conf_fGhost.Y_0[g_idxConfY(tx, tz, 4, bx, by, bz)] = AyzVar;
-            ghostInterface.conf_fGhost.Y_0[g_idxConfY(tx, tz, 5, bx, by, bz)] = AzzVar;
+            ghostInterface.conf.Y_0[g_idxConfY(tx, tz, 0, bx, by, bz)] = AxxVar;
+            ghostInterface.conf.Y_0[g_idxConfY(tx, tz, 1, bx, by, bz)] = AxyVar;
+            ghostInterface.conf.Y_0[g_idxConfY(tx, tz, 2, bx, by, bz)] = AxzVar;
+            ghostInterface.conf.Y_0[g_idxConfY(tx, tz, 3, bx, by, bz)] = AyyVar;
+            ghostInterface.conf.Y_0[g_idxConfY(tx, tz, 4, bx, by, bz)] = AyzVar;
+            ghostInterface.conf.Y_0[g_idxConfY(tx, tz, 5, bx, by, bz)] = AzzVar;
         }else if (threadIdx.y == (BLOCK_NY - 1)){             
-            ghostInterface.conf_fGhost.Y_1[g_idxConfY(tx, tz, 0, bx, by, bz)] = AxxVar;
-            ghostInterface.conf_fGhost.Y_1[g_idxConfY(tx, tz, 1, bx, by, bz)] = AxyVar;
-            ghostInterface.conf_fGhost.Y_1[g_idxConfY(tx, tz, 2, bx, by, bz)] = AxzVar;
-            ghostInterface.conf_fGhost.Y_1[g_idxConfY(tx, tz, 3, bx, by, bz)] = AyyVar;
-            ghostInterface.conf_fGhost.Y_1[g_idxConfY(tx, tz, 4, bx, by, bz)] = AyzVar;
-            ghostInterface.conf_fGhost.Y_1[g_idxConfY(tx, tz, 5, bx, by, bz)] = AzzVar;
+            ghostInterface.conf.Y_1[g_idxConfY(tx, tz, 0, bx, by, bz)] = AxxVar;
+            ghostInterface.conf.Y_1[g_idxConfY(tx, tz, 1, bx, by, bz)] = AxyVar;
+            ghostInterface.conf.Y_1[g_idxConfY(tx, tz, 2, bx, by, bz)] = AxzVar;
+            ghostInterface.conf.Y_1[g_idxConfY(tx, tz, 3, bx, by, bz)] = AyyVar;
+            ghostInterface.conf.Y_1[g_idxConfY(tx, tz, 4, bx, by, bz)] = AyzVar;
+            ghostInterface.conf.Y_1[g_idxConfY(tx, tz, 5, bx, by, bz)] = AzzVar;
         }
         
         if (threadIdx.z == 0){ //b                          
-            ghostInterface.conf_fGhost.Z_0[g_idxConfZ(tx, ty, 0, bx, by, bz)] = AxxVar;
-            ghostInterface.conf_fGhost.Z_0[g_idxConfZ(tx, ty, 1, bx, by, bz)] = AxyVar;
-            ghostInterface.conf_fGhost.Z_0[g_idxConfZ(tx, ty, 2, bx, by, bz)] = AxzVar;
-            ghostInterface.conf_fGhost.Z_0[g_idxConfZ(tx, ty, 3, bx, by, bz)] = AyyVar;
-            ghostInterface.conf_fGhost.Z_0[g_idxConfZ(tx, ty, 4, bx, by, bz)] = AyzVar;
-            ghostInterface.conf_fGhost.Z_0[g_idxConfZ(tx, ty, 5, bx, by, bz)] = AzzVar;
+            ghostInterface.conf.Z_0[g_idxConfZ(tx, ty, 0, bx, by, bz)] = AxxVar;
+            ghostInterface.conf.Z_0[g_idxConfZ(tx, ty, 1, bx, by, bz)] = AxyVar;
+            ghostInterface.conf.Z_0[g_idxConfZ(tx, ty, 2, bx, by, bz)] = AxzVar;
+            ghostInterface.conf.Z_0[g_idxConfZ(tx, ty, 3, bx, by, bz)] = AyyVar;
+            ghostInterface.conf.Z_0[g_idxConfZ(tx, ty, 4, bx, by, bz)] = AyzVar;
+            ghostInterface.conf.Z_0[g_idxConfZ(tx, ty, 5, bx, by, bz)] = AzzVar;
         }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
-            ghostInterface.conf_fGhost.Z_1[g_idxConfZ(tx, ty, 0, bx, by, bz)] = AxxVar;
-            ghostInterface.conf_fGhost.Z_1[g_idxConfZ(tx, ty, 1, bx, by, bz)] = AxyVar;
-            ghostInterface.conf_fGhost.Z_1[g_idxConfZ(tx, ty, 2, bx, by, bz)] = AxzVar;
-            ghostInterface.conf_fGhost.Z_1[g_idxConfZ(tx, ty, 3, bx, by, bz)] = AyyVar;
-            ghostInterface.conf_fGhost.Z_1[g_idxConfZ(tx, ty, 4, bx, by, bz)] = AyzVar;
-            ghostInterface.conf_fGhost.Z_1[g_idxConfZ(tx, ty, 5, bx, by, bz)] = AzzVar;
+            ghostInterface.conf.Z_1[g_idxConfZ(tx, ty, 0, bx, by, bz)] = AxxVar;
+            ghostInterface.conf.Z_1[g_idxConfZ(tx, ty, 1, bx, by, bz)] = AxyVar;
+            ghostInterface.conf.Z_1[g_idxConfZ(tx, ty, 2, bx, by, bz)] = AxzVar;
+            ghostInterface.conf.Z_1[g_idxConfZ(tx, ty, 3, bx, by, bz)] = AyyVar;
+            ghostInterface.conf.Z_1[g_idxConfZ(tx, ty, 4, bx, by, bz)] = AyzVar;
+            ghostInterface.conf.Z_1[g_idxConfZ(tx, ty, 5, bx, by, bz)] = AzzVar;
         }
     #endif
     */

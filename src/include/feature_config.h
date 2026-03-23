@@ -31,4 +31,12 @@
     #define HIGH_ORDER_COLLISION
 #endif // HO_RR || HOME_LBM
 
+/* ======================= GHOST INTERFACE OPTIMIZATION ====================== */
+
+// Enable shared memory staging for ghost interface I/O.
+// All 512 threads cooperatively load/store ghost face data through s_pop,
+// replacing scattered surface-thread-only global memory access with coalesced
+// block-wide transfers. Adds 3 extra __syncthreads() per timestep.
+// #define USE_SHARED_GHOST_STAGING
+
 #endif //__FEATURE_CONFIG_H

@@ -110,7 +110,7 @@ int main() {
         //------------------------- Main LBM Kernels -------------------------
         deviceField.gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save);
         // swap interface pointers
-        deviceField.swapGhostInterfacesDeviceField();
+        //deviceField.swapGhostInterfacesDeviceField();
         CHECK_KERNEL_ERR("Stream Collision kernel");
 
         //------------------------- Auxiliary Kernels -------------------------
