@@ -38,7 +38,7 @@
  */
 __global__
 void gpuMomCollisionStream(
-    dfloat *fMom, unsigned int *dNodeType, ghostInterfaceData ghostInterface,
+    dfloat *fMom, unsigned int *dNodeType, ghostInterfaceData ghostInterface, size_t localNZ, int zStart, int zEnd,
     DENSITY_CORRECTION_PARAMS_DECLARATION(d_)
     BC_FORCES_PARAMS_DECLARATION(d_)
     unsigned int step,
@@ -48,6 +48,12 @@ void gpuMomCollisionStream(
     #endif //CURVED_BOUNDARY_CONDITION
     );
 
+__global__
+void gpuPopulationsTransfer(
+        dfloat* popLocal,
+        dfloat* popNeighbor,
+        int NZ_local);
+    
 #ifdef LOCAL_FORCES
 /**
  * @brief Resets the macroscopic forces to the predefined values FX, FY, FZ

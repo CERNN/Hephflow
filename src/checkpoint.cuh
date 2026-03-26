@@ -163,7 +163,9 @@ void operateSimCheckpoint(
     int oper,
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
-    int* step
+    int* step,
+    size_t NUMBER_GHOST_FACE_XY_LOCAL,
+    size_t MEM_SIZE_MOM_LOCAL
 );
 
 #ifdef PARTICLE_MODEL
@@ -187,7 +189,9 @@ __host__
 int loadSimCheckpoint( 
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
-    int *step
+    int *step,
+    size_t NUMBER_GHOST_FACE_XY_LOCAL,
+    size_t MEM_SIZE_MOM_LOCAL
 );
 #ifdef PARTICLE_MODEL
 /**
@@ -214,7 +218,9 @@ __host__
 void saveSimCheckpoint( 
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
-    int *step
+    int *step,
+    size_t NUMBER_GHOST_FACE_XY_LOCAL,
+    size_t MEM_SIZE_MOM_LOCAL
 );
 
 #ifdef PARTICLE_MODEL

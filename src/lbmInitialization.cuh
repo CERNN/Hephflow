@@ -45,7 +45,7 @@ void initializationRandomNumbers(
  * @param randomNumbers: vector of random numbers (size is NX*NY*NZ)
  */
 __global__ void gpuInitialization_mom(
-    dfloat *fMom, dfloat* randomNumbers);
+    dfloat *fMom, dfloat* randomNumbers, size_t localNZ, int zStart, int g);
 
 /**
  *  @brief Initializes populations in the intefaces based on the moments defined in the gpuInitialization_mom       
@@ -53,7 +53,7 @@ __global__ void gpuInitialization_mom(
  *  @param ghostInterface interface block transfer information
  */
 __global__ void gpuInitialization_pop(
-    dfloat *fMom,  ghostInterfaceData ghostInterface);
+    dfloat *fMom, ghostInterfaceData ghostInterface, size_t localNZ, int zStart, int zEnd, int g);   
 
 /**
  *  @brief Initialize the boundary condition node type
@@ -75,7 +75,10 @@ __host__ void hostInitialization_nodeType_bulk(
  *  @param nodeType: node type ID
  */
 __host__ void hostInitialization_nodeType(
-    unsigned int *hNodeType
+    unsigned int *hNodeType,
+    int zStart,
+    int localNZ,
+    size_t NUMBER_LBM_NODES_LOCAL
     #ifdef CURVED_BOUNDARY_CONDITION
     , unsigned int* numberCurvedBoundaryNodes
     #endif

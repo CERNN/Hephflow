@@ -51,7 +51,20 @@
         #endif //D3Q27
     }
     
-    if (INTERFACE_BC_BACK){ //b
+    if (threadIdx.z == 0 && blockIdx.z == 0) {
+        ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 0, bx, by, 0)] = pop[ 6];
+        ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 1, bx, by, 0)] = pop[10];
+        ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 2, bx, by, 0)] = pop[12];
+        ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 3, bx, by, 0)] = pop[15];
+        ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 4, bx, by, 0)] = pop[17];
+        #ifdef D3Q27
+        ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 5, bx, by, 0)] = pop[20];
+        ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 6, bx, by, 0)] = pop[21];
+        ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 7, bx, by, 0)] = pop[24];
+        ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 8, bx, by, 0)] = pop[26];
+        #endif
+    // BC periódico intra-GPU: bz != 0
+    } else if (INTERFACE_BC_BACK){ //b
         ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 0, bx, by, bz)] = pop[ 6];
         ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 1, bx, by, bz)] = pop[10];
         ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 2, bx, by, bz)] = pop[12];
@@ -63,7 +76,22 @@
         ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 7, bx, by, bz)] = pop[24];
         ghostInterface.gGhost.Z_0[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[26];
         #endif //D3Q27
-    }if (INTERFACE_BC_FRONT){
+    }
+    const int top = NUM_BLOCK_Z_LOCAL - 1;
+    if (threadIdx.z == (BLOCK_NZ-1) && blockIdx.z == top) {
+        ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 0, bx, by, top)] = pop[ 5];
+        ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 1, bx, by, top)] = pop[ 9];
+        ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 2, bx, by, top)] = pop[11];
+        ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 3, bx, by, top)] = pop[16];
+        ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 4, bx, by, top)] = pop[18];
+        #ifdef D3Q27
+        ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 5, bx, by, top)] = pop[19];
+        ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 6, bx, by, top)] = pop[22];
+        ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 7, bx, by, top)] = pop[23];
+        ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 8, bx, by, top)] = pop[25];
+        #endif
+    // BC periódico intra-GPU: bz != top
+    } else if (INTERFACE_BC_FRONT){
         ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 0, bx, by, bz)] = pop[ 5];
         ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 1, bx, by, bz)] = pop[ 9];
         ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 2, bx, by, bz)] = pop[11];
@@ -76,3 +104,4 @@
         ghostInterface.gGhost.Z_1[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[25];
         #endif //D3Q27
     }
+   

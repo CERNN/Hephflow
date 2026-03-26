@@ -32,15 +32,19 @@ void initializationRandomNumbers(
 
 
 __global__ void gpuInitialization_mom(
-    dfloat *fMom, dfloat* randomNumbers)
+    dfloat *fMom, dfloat* randomNumbers, size_t localNZ, int zStart, int g)
 {
     int x = threadIdx.x + blockDim.x * blockIdx.x;
     int y = threadIdx.y + blockDim.y * blockIdx.y;
-    int z = threadIdx.z + blockDim.z * blockIdx.z;
-    if (x >= NX || y >= NY || z >= NZ)
-        return;
+    int z_local = threadIdx.z + blockDim.z * blockIdx.z;
+    
 
-    size_t index = idxScalarGlobal(x, y, z);
+    if (x >= NX || y >= NY || z_local >= localNZ+1)
+        return;
+    
+    int z = zStart + z_local;
+
+    size_t index = idxScalarGlobal(x, y, z_local);
 
     //first moments
     dfloat rho = RHO_0, ux = U_0_X, uy = U_0_Y, uz = U_0_Z;
@@ -199,15 +203,19 @@ __global__ void gpuInitialization_mom(
 }
 
 __global__ void gpuInitialization_pop(
-    dfloat *fMom, ghostInterfaceData ghostInterface)
+    dfloat *fMom, ghostInterfaceData ghostInterface, size_t localNZ, int zStart, int zEnd, int g)
 {
     int x = threadIdx.x + blockDim.x * blockIdx.x;
     int y = threadIdx.y + blockDim.y * blockIdx.y;
-    int z = threadIdx.z + blockDim.z * blockIdx.z;
-    if (x >= NX || y >= NY || z >= NZ)
+    int z_local = threadIdx.z + blockDim.z * blockIdx.z;
+
+    if (x >= NX || y >= NY || z_local >= localNZ+1)
         return;
 
-    size_t index = idxScalarGlobal(x, y, z);
+    int z = zStart + z_local;
+
+    size_t index = idxScalarGlobal(x, y, z_local);
+
     // zeroth moment
 
     dfloat rhoVar = RHO_0 + fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -288,32 +296,32 @@ __global__ void gpuInitialization_pop(
         ghostInterface.fGhost.Y_1[idxPopY(tx, tz, 8, bx, by, bz)] = pop[25];
         #endif //D3Q27                                                                                                           
     }
-    
-    if (threadIdx.z == 0){ //b                                                                                                                                                                                     
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 0, bx, by, bz)] = pop[ 6];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 1, bx, by, bz)] = pop[10];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 2, bx, by, bz)] = pop[12];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 3, bx, by, bz)] = pop[15];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 4, bx, by, bz)] = pop[17];
-        #ifdef D3Q27                                                                                                           
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 5, bx, by, bz)] = pop[20];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 6, bx, by, bz)] = pop[21];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 7, bx, by, bz)] = pop[24];
-        ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[26];
-        #endif //D3Q27                                                                                                           
-    }else if (threadIdx.z == (BLOCK_NZ - 1)){                                                                                                               
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 0, bx, by, bz)] = pop[ 5];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 1, bx, by, bz)] = pop[ 9];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 2, bx, by, bz)] = pop[11];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 3, bx, by, bz)] = pop[16];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 4, bx, by, bz)] = pop[18];
-        #ifdef D3Q27                                                                                                           
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 5, bx, by, bz)] = pop[19];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 6, bx, by, bz)] = pop[22];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 7, bx, by, bz)] = pop[23];
-        ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[25];
-        #endif //D3Q27                                                                                                                                                                                                                    
-    }
+
+    if (threadIdx.z == 0){ //b       
+             ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 0, bx, by, bz)] = pop[ 6];
+             ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 1, bx, by, bz)] = pop[10];
+             ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 2, bx, by, bz)] = pop[12];
+             ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 3, bx, by, bz)] = pop[15];
+             ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 4, bx, by, bz)] = pop[17];
+             #ifdef D3Q27                                                                                                           
+             ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 5, bx, by, bz)] = pop[20];
+             ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 6, bx, by, bz)] = pop[21];
+             ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 7, bx, by, bz)] = pop[24];
+             ghostInterface.fGhost.Z_0[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[26];
+             #endif //D3Q27                                                                                        
+     }else if (threadIdx.z == (BLOCK_NZ - 1)){                                                                                                   
+             ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 0, bx, by, bz)] = pop[ 5];
+             ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 1, bx, by, bz)] = pop[ 9];
+             ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 2, bx, by, bz)] = pop[11];
+             ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 3, bx, by, bz)] = pop[16];
+             ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 4, bx, by, bz)] = pop[18];
+             #ifdef D3Q27                                                                                                           
+             ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 5, bx, by, bz)] = pop[19];
+             ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 6, bx, by, bz)] = pop[22];
+             ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 7, bx, by, bz)] = pop[23];
+             ghostInterface.fGhost.Z_1[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[25];
+             #endif //D3Q27                                                                                                                                                                                               
+     }
 
     #ifdef CONVECTION_DIFFUSION_TRANSPORT
         dfloat gNode[GQ];
@@ -918,7 +926,10 @@ __host__ void hostInitialization_nodeType_bulk(
 }
 
 __host__ void hostInitialization_nodeType(
-    unsigned int *hNodeType
+    unsigned int *hNodeType,
+    int zStart,
+    int localNZ,
+    size_t NUMBER_LBM_NODES_LOCAL
     #ifdef CURVED_BOUNDARY_CONDITION
     , unsigned int* numberCurvedBoundaryNodes
     #endif
@@ -926,14 +937,54 @@ __host__ void hostInitialization_nodeType(
     int x,y,z;
     unsigned int nodeType;
 
+    // for (size_t i = 0; i < NUMBER_LBM_NODES_LOCAL; i++)
+    //     hNodeType[i] = BULK;
+
+    #ifdef CURVED_BOUNDARY_CONDITION
+        numberCurvedBoundaryNodes[0] = 0;
+    #endif
+
     for (x = 0; x<NX;x++){
         for (y = 0; y<NY;y++){
-            for (z = 0; z<NZ_TOTAL;z++){
+            for (z = zStart; z < zStart + localNZ; z++){
+
+
+                int zLocal = z - zStart;
+                
                 
                 #include CASE_BC_INIT
-
+                
+                
                 if (nodeType != BULK){
-                    hNodeType[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] = (unsigned int)nodeType;
+                size_t idx =
+                idxScalarBlock(
+                x % BLOCK_NX,
+                y % BLOCK_NY,
+                (zLocal - 1) % BLOCK_NZ,
+                x / BLOCK_NX,
+                y / BLOCK_NY,
+                (zLocal - 1) / BLOCK_NZ
+                );
+                
+                
+                hNodeType[idx] = (unsigned int)nodeType;
+            // for (z = 0; z<NZ_TOTAL;z++){
+                
+            //     #include CASE_BC_INIT
+
+            //     if (nodeType != BULK){
+            //         hNodeType[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] = (unsigned int)nodeType;
+                    // size_t idx =
+                    // idxScalarBlock(
+                    //     x % BLOCK_NX,
+                    //     y % BLOCK_NY,
+                    //     zLocal % BLOCK_NZ,
+                    //     x / BLOCK_NX,
+                    //     y / BLOCK_NY,
+                    //     zLocal / BLOCK_NZ
+                    // );
+
+                    // hNodeType[idx] = (unsigned int)nodeType;
 
                     #ifdef CURVED_BOUNDARY_CONDITION
                     if ( (nodeType & (0b111 << 8)) == (0b101 << 8) ){ //mask bits 8,9,10 then compare with BC_CURVED_BC

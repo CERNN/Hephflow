@@ -26,18 +26,35 @@ typedef struct deviceField{
         dfloat* d_BC_Fz[N_GPUS];
     #endif //_BC_FORCES
 
-    
+    void enablePeerAccessDeviceField(){
+        for (int i = 0; i < N_GPUS; i++) {
+            cudaSetDevice(GPUS_TO_USE[i]);
+            for (int j = 0; j < N_GPUS; j++) {
+                if (i != j) {
+                    int canAccessPeer = 0;
+                    checkCudaErrors(cudaDeviceCanAccessPeer(&canAccessPeer, GPUS_TO_USE[i], GPUS_TO_USE[j]));
+                    if (canAccessPeer) {
+                        checkCudaErrors(cudaDeviceEnablePeerAccess(GPUS_TO_USE[j], 0));
+                        printf("P2P access enabled: GPU %d -> GPU %d\n", GPUS_TO_USE[i], GPUS_TO_USE[j]);
+                    } else {
+                        printf("⚠ GPU %d cannot access GPU %d via P2P\n", GPUS_TO_USE[i], GPUS_TO_USE[j]);
+                    }
+                }
+            }
+        }
+    }
 
     void allocateDeviceMemoryDeviceField(int g) {
         allocateDeviceMemory(
-            &d_fMom[g], &dNodeType[g], 
+            &d_fMom[g], &dNodeType[g], g,
             BC_FORCES_PARAMS_PTR(d_)
             CURVED_BC_PARAMS_PTR(d_)
-            &ghostInterface[g]
+            &ghostInterface[g] // pass address of our ghostInterface
         );
     }
 
-    void initializeDomainDeviceField(hostField &hostField, dfloat **&randomNumbers, int &step, dim3 gridBlock, dim3 threadBlock, int g){
+    void initializeDomainDeviceField(hostField &hostField, dfloat **&randomNumbers, int &step, dim3 gridBlock, dim3 threadBlock, int g, int zStart, int zEnd, size_t localNZ){
+
         initializeDomain(ghostInterface[g],     
             d_fMom[g], hostField.h_fMom, 
             #if MEAN_FLOW
@@ -49,7 +66,41 @@ typedef struct deviceField{
             DENSITY_CORRECTION_PARAMS(d_)
             CURVED_BC_PTRS(d_)
             CURVED_BC_ARRAY(d_)
-            &step, gridBlock, threadBlock, g);
+            &step, gridBlock, threadBlock, g, localNZ, zStart, zEnd);
+    }
+
+    void sendTopToNext(int g, deviceField* allDevices, cudaStream_t streamLBM)
+    {
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        const int gNext = (g + 1) % N_GPUS;
+        const size_t planeSize = (size_t)BLOCK_NX * BLOCK_NY * NUM_BLOCK_X * NUM_BLOCK_Y * QF;
+        const size_t haloSize  = planeSize * sizeof(dfloat);
+        const size_t topOffset = (size_t)(NUM_BLOCK_Z_LOCAL - 1) * planeSize;
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].ghostInterface[gNext].fGhost.Z_1,      // dst
+            GPUS_TO_USE[gNext],
+            allDevices[g].ghostInterface[g].gGhost.Z_1 + topOffset,  // src
+            GPUS_TO_USE[g],
+            haloSize, streamLBM
+        ));
+    }
+
+    void recvTopFromNext(int g, deviceField* allDevices, cudaStream_t streamLBM)
+    {
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        const int gNext = (g + 1) % N_GPUS;
+        const size_t planeSize = (size_t)BLOCK_NX * BLOCK_NY * NUM_BLOCK_X * NUM_BLOCK_Y * QF;
+        const size_t haloSize  = planeSize * sizeof(dfloat);
+        const size_t topOffset = (size_t)(NUM_BLOCK_Z_LOCAL - 1) * planeSize;
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].ghostInterface[g].fGhost.Z_0 + topOffset,  // dst
+            GPUS_TO_USE[g],
+            allDevices[gNext].ghostInterface[gNext].gGhost.Z_0,      // src
+            GPUS_TO_USE[gNext],
+            haloSize, streamLBM
+        ));
     }
 
     #ifdef DENSITY_CORRECTION
@@ -58,13 +109,14 @@ typedef struct deviceField{
     }
     #endif //DENSITY_CORRECTION
 
-    void gpuMomCollisionStreamDeviceField(dim3 gridBlock, dim3 threadBlock, unsigned int step, bool save, int g){
-            gpuMomCollisionStream << <gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>> >(d_fMom[g], dNodeType[g],ghostInterface[g], DENSITY_CORRECTION_PARAMS(d_) BC_FORCES_PARAMS(d_) step, save
+    void gpuMomCollisionStreamDeviceField(dim3 gridBlock, dim3 threadBlock, unsigned int step, bool save, int g, size_t localNZ, int zStart, int zEnd){
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+
+        gpuMomCollisionStream << <gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>> >(d_fMom[g], dNodeType[g],ghostInterface[g], localNZ, zStart, zEnd, DENSITY_CORRECTION_PARAMS(d_) BC_FORCES_PARAMS(d_) step, save
         #ifdef CURVED_BOUNDARY_CONDITION
         , d_curvedBC[g], d_curvedBC_array[g]
         #endif //CURVED_BOUNDARY_CONDITION
         );
-        checkCudaErrors(cudaDeviceSynchronize());
         
         
     }
@@ -77,6 +129,8 @@ typedef struct deviceField{
     #endif
 
     void swapGhostInterfacesDeviceField(int g){
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        checkCudaErrors(cudaDeviceSynchronize());
         swapGhostInterfaces(ghostInterface[g]);
     }
     
@@ -91,12 +145,13 @@ typedef struct deviceField{
         particleSimulation(&particlesSoA,d_fMom,streamsPart,step);
     }
     #endif //PARTICLE_MODEL
+    
 
     void interfaceCudaMemcpyDeviceField(bool fGhost, int g){
             if (fGhost) {
-                interfaceCudaMemcpy(ghostInterface[g], ghostInterface[g].h_fGhost, ghostInterface[g].fGhost, cudaMemcpyDeviceToHost, QF);
+                interfaceCudaMemcpy(ghostInterface[g], ghostInterface[g].h_fGhost, ghostInterface[g].fGhost, cudaMemcpyDeviceToHost, QF, g);
             } else {
-                interfaceCudaMemcpy(ghostInterface[g], ghostInterface[g].h_fGhost, ghostInterface[g].gGhost, cudaMemcpyDeviceToHost, QF);
+                interfaceCudaMemcpy(ghostInterface[g], ghostInterface[g].h_fGhost, ghostInterface[g].gGhost, cudaMemcpyDeviceToHost, QF, g);
                 
             }
             #ifdef SECOND_DIST 
@@ -122,16 +177,21 @@ typedef struct deviceField{
             #endif //A_ZZ_DIST
     }
 
-    void cudaMemcpyDeviceField(hostField &hostField, int g){
-        checkCudaErrors(cudaMemcpy(hostField.h_fMom, d_fMom[g], sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
+    void cudaMemcpyDeviceField(hostField &hostField, int g, int zStart){
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        size_t zOffsetdd = zStart * NX * NY * NUMBER_MOMENTS;
+        printf("zOffset Device %d\n", zOffsetdd);
+        checkCudaErrors(cudaMemcpy(hostField.h_fMom + zOffsetdd, d_fMom[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
     }
 
     void saveSimCheckpointHostDeviceField(hostField &hostField, int &step, int g){
-        saveSimCheckpoint(hostField.h_fMom, ghostInterface[g], &step);
+        const size_t MEM_SIZE_MOM_LOCAL = sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS;
+        saveSimCheckpoint(hostField.h_fMom, ghostInterface[g], &step, NUMBER_GHOST_FACE_XY_LOCAL, MEM_SIZE_MOM_LOCAL);
     }
 
     void saveSimCheckpointDeviceField( int &step, int g){
-        saveSimCheckpoint(d_fMom[g],ghostInterface[g],&step);
+        const size_t MEM_SIZE_MOM_LOCAL = sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS;
+        saveSimCheckpoint(d_fMom[g],ghostInterface[g],&step, NUMBER_GHOST_FACE_XY_LOCAL, MEM_SIZE_MOM_LOCAL);
     }
 
     void treatDataDeviceField(hostField &hostField, int step, int g){
@@ -173,5 +233,8 @@ typedef struct deviceField{
         cudaFree(d_BC_Fz[g]);
         #endif //_BC_FORCES
     }
-} DeviceField;
+};
+// Provide typedef alias to keep previous name if needed
+typedef deviceField DeviceField;
+
 #endif //__DEVICEFIELD_STRUCTS_H

@@ -192,7 +192,9 @@ void operateSimCheckpoint(
     int oper,
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
-    int* step
+    int* step,
+    size_t NUMBER_GHOST_FACE_XY_LOCAL,
+    size_t MEM_SIZE_MOM_LOCAL
     )
 {
     // Defining what functions to use (read or write to files)
@@ -211,7 +213,7 @@ void operateSimCheckpoint(
     }
 
     // Everything will fit in this array
-    dfloat* tmp = (dfloat*)malloc(MEM_SIZE_MOM);
+    dfloat* tmp = (dfloat*)malloc(MEM_SIZE_MOM_LOCAL);
 
     // Load/save current step
     f_arr(step, f_filename("curr_step"), sizeof(int), tmp);
@@ -226,7 +228,7 @@ void operateSimCheckpoint(
 
     checkCudaErrors(cudaSetDevice(GPU_INDEX));
     // Load/save pop
-    f_arr(fMom, f_filename("fMom"), MEM_SIZE_MOM, tmp);
+    f_arr(fMom, f_filename("fMom"), MEM_SIZE_MOM_LOCAL, tmp);
     
     if(oper == __LOAD_CHECKPOINT){
         printf("Loaded checkpoint: moments \n");
@@ -239,8 +241,8 @@ void operateSimCheckpoint(
     f_arr(ghostInterface.h_fGhost.X_1, f_filename("fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * QF, tmp);
     f_arr(ghostInterface.h_fGhost.Y_0, f_filename("fGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF, tmp);
     f_arr(ghostInterface.h_fGhost.Y_1, f_filename("fGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF, tmp);
-    f_arr(ghostInterface.h_fGhost.Z_0, f_filename("fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * QF, tmp);
-    f_arr(ghostInterface.h_fGhost.Z_1, f_filename("fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * QF, tmp);
+    f_arr(ghostInterface.h_fGhost.Z_0, f_filename("fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF, tmp);
+    f_arr(ghostInterface.h_fGhost.Z_1, f_filename("fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF, tmp);
     if(oper == __LOAD_CHECKPOINT){
         printf("Loaded checkpoint: f_pops \n");
     }else if(oper == __SAVE_CHECKPOINT){
@@ -395,7 +397,9 @@ __host__
 int loadSimCheckpoint( 
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
-    int *step
+    int *step,
+    size_t NUMBER_GHOST_FACE_XY_LOCAL,
+    size_t MEM_SIZE_MOM_LOCAL
     ){
     step[0] = getStep();
 
@@ -406,7 +410,7 @@ int loadSimCheckpoint(
         std::cerr << "Starting from step " << step[0] << std::endl;
         return 0;
     }
-    operateSimCheckpoint(__LOAD_CHECKPOINT, fMom, ghostInterface,step);
+    operateSimCheckpoint(__LOAD_CHECKPOINT, fMom, ghostInterface,step, NUMBER_GHOST_FACE_XY_LOCAL, MEM_SIZE_MOM_LOCAL);
     return 1;
 }
 
@@ -415,11 +419,13 @@ __host__
 void saveSimCheckpoint( 
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
-    int *step
+    int *step,
+    size_t NUMBER_GHOST_FACE_XY_LOCAL,
+    size_t MEM_SIZE_MOM_LOCAL
     ){
     folderCheckpoint();
 
-    operateSimCheckpoint(__SAVE_CHECKPOINT, fMom,ghostInterface, step);
+    operateSimCheckpoint(__SAVE_CHECKPOINT, fMom,ghostInterface, step, NUMBER_GHOST_FACE_XY_LOCAL, MEM_SIZE_MOM_LOCAL);
 }
 
 #ifdef PARTICLE_MODEL

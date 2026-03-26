@@ -56,31 +56,61 @@ else if (ty == (BLOCK_NY - 1))
         #endif //D3Q27
     }
 
-if (tz == 0)
-    { //b
-        pop[ 5] = ghostInterface.fGhost.Z_1[idxPopZ(tx  , ty, 0, bx                                     , by                                    , bzm1)];
-        pop[ 9] = ghostInterface.fGhost.Z_1[idxPopZ(txm1, ty, 1, ((tx == 0) ? bxm1 : bx)                , by                                    , bzm1)];
-        pop[11] = ghostInterface.fGhost.Z_1[idxPopZ(tx, tym1, 2, bx                                     , ((ty == 0) ? bym1 : by)               , bzm1)];
-        pop[16] = ghostInterface.fGhost.Z_1[idxPopZ(txp1, ty, 3, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx)   , by                                    , bzm1)];
-        pop[18] = ghostInterface.fGhost.Z_1[idxPopZ(tx, typ1, 4, bx                                     , ((ty == (BLOCK_NY - 1)) ? byp1 : by)  , bzm1)];
+if (tz == 0) {
+    if (bz == 0) {
+        // P2P escreveu em fGhost.Z_1[bz=0]
+        pop[ 5] = ghostInterface.fGhost.Z_1[idxPopZ(tx  , ty  , 0, bx                                , by                             , 0)];
+        pop[ 9] = ghostInterface.fGhost.Z_1[idxPopZ(txm1, ty  , 1, ((tx==0)?bxm1:bx)                 , by                             , 0)];
+        pop[11] = ghostInterface.fGhost.Z_1[idxPopZ(tx  , tym1, 2, bx                                , ((ty==0)?bym1:by)              , 0)];
+        pop[16] = ghostInterface.fGhost.Z_1[idxPopZ(txp1, ty  , 3, ((tx==BLOCK_NX-1)?bxp1:bx)        , by                             , 0)];
+        pop[18] = ghostInterface.fGhost.Z_1[idxPopZ(tx  , typ1, 4, bx                                , ((ty==BLOCK_NY-1)?byp1:by)     , 0)];
         #ifdef D3Q27
-        pop[19] = ghostInterface.fGhost.Z_1[idxPopZ(txm1, tym1, 5, ((tx == 0) ? bxm1 : bx)              , ((ty == 0) ? bym1 : by)               , bzm1)];
-        pop[22] = ghostInterface.fGhost.Z_1[idxPopZ(txp1, typ1, 6, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx) , ((ty == (BLOCK_NY - 1)) ? byp1 : by)  , bzm1)];
-        pop[23] = ghostInterface.fGhost.Z_1[idxPopZ(txm1, typ1, 7, ((tx == 0) ? bxm1 : bx)              , ((ty == (BLOCK_NY - 1)) ? byp1 : by)  , bzm1)];
-        pop[25] = ghostInterface.fGhost.Z_1[idxPopZ(txp1, tym1, 8, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx) , ((ty == 0) ? bym1 : by)               , bzm1)];
-        #endif //D3Q27
-    }
-else if (tz == (BLOCK_NZ - 1))
-    { //f
-        pop[ 6] = ghostInterface.fGhost.Z_0[idxPopZ(tx  , ty, 0, bx                                     , by                                    , bzp1)];
-        pop[10] = ghostInterface.fGhost.Z_0[idxPopZ(txp1, ty, 1, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx)   , by                                    , bzp1)];
-        pop[12] = ghostInterface.fGhost.Z_0[idxPopZ(tx, typ1, 2, bx                                     , ((ty == (BLOCK_NY - 1)) ? byp1 : by)  , bzp1)];
-        pop[15] = ghostInterface.fGhost.Z_0[idxPopZ(txm1, ty, 3, ((tx == 0) ? bxm1 : bx)                , by                                    , bzp1)];
-        pop[17] = ghostInterface.fGhost.Z_0[idxPopZ(tx, tym1, 4, bx                                     , ((ty == 0) ? bym1 : by)               , bzp1)];
+        pop[19] = ghostInterface.fGhost.Z_1[idxPopZ(txm1, tym1, 5, ((tx==0)?bxm1:bx)                 , ((ty==0)?bym1:by)              , 0)];
+        pop[22] = ghostInterface.fGhost.Z_1[idxPopZ(txp1, typ1, 6, ((tx==BLOCK_NX-1)?bxp1:bx)        , ((ty==BLOCK_NY-1)?byp1:by)     , 0)];
+        pop[23] = ghostInterface.fGhost.Z_1[idxPopZ(txm1, typ1, 7, ((tx==0)?bxm1:bx)                 , ((ty==BLOCK_NY-1)?byp1:by)     , 0)];
+        pop[25] = ghostInterface.fGhost.Z_1[idxPopZ(txp1, tym1, 8, ((tx==BLOCK_NX-1)?bxp1:bx)        , ((ty==0)?bym1:by)              , 0)];
+        #endif
+    } else {
+        // Intra-GPU: lê de gGhost.Z_1[bzm1] diretamente (kernel escreveu lá neste passo)
+        pop[ 5] = ghostInterface.gGhost.Z_1[idxPopZ(tx  , ty  , 0, bx                                , by                             , bzm1)];
+        pop[ 9] = ghostInterface.gGhost.Z_1[idxPopZ(txm1, ty  , 1, ((tx==0)?bxm1:bx)                 , by                             , bzm1)];
+        pop[11] = ghostInterface.gGhost.Z_1[idxPopZ(tx  , tym1, 2, bx                                , ((ty==0)?bym1:by)              , bzm1)];
+        pop[16] = ghostInterface.gGhost.Z_1[idxPopZ(txp1, ty  , 3, ((tx==BLOCK_NX-1)?bxp1:bx)        , by                             , bzm1)];
+        pop[18] = ghostInterface.gGhost.Z_1[idxPopZ(tx  , typ1, 4, bx                                , ((ty==BLOCK_NY-1)?byp1:by)     , bzm1)];
         #ifdef D3Q27
-        pop[20] = ghostInterface.fGhost.Z_0[idxPopZ(txp1, typ1, 5, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx) , ((ty == (BLOCK_NY - 1)) ? byp1 : by)  , bzp1)];
-        pop[21] = ghostInterface.fGhost.Z_0[idxPopZ(txm1, tym1, 6, ((tx == 0) ? bxm1 : bx)              , ((ty == 0) ? bym1 : by)               , bzp1)];
-        pop[24] = ghostInterface.fGhost.Z_0[idxPopZ(txp1, tym1, 7, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx) , ((ty == 0) ? bym1 : by)               , bzp1)];
-        pop[26] = ghostInterface.fGhost.Z_0[idxPopZ(txm1, typ1, 8, ((tx == 0) ? bxm1 : bx)              , ((ty == (BLOCK_NY - 1)) ? byp1 : by)  , bzp1)];
-        #endif //D3Q27
+        pop[19] = ghostInterface.gGhost.Z_1[idxPopZ(txm1, tym1, 5, ((tx==0)?bxm1:bx)                 , ((ty==0)?bym1:by)              , bzm1)];
+        pop[22] = ghostInterface.gGhost.Z_1[idxPopZ(txp1, typ1, 6, ((tx==BLOCK_NX-1)?bxp1:bx)        , ((ty==BLOCK_NY-1)?byp1:by)     , bzm1)];
+        pop[23] = ghostInterface.gGhost.Z_1[idxPopZ(txm1, typ1, 7, ((tx==0)?bxm1:bx)                 , ((ty==BLOCK_NY-1)?byp1:by)     , bzm1)];
+        pop[25] = ghostInterface.gGhost.Z_1[idxPopZ(txp1, tym1, 8, ((tx==BLOCK_NX-1)?bxp1:bx)        , ((ty==0)?bym1:by)              , bzm1)];
+        #endif
     }
+} else if (tz == BLOCK_NZ-1) {
+    const int top = NUM_BLOCK_Z_LOCAL - 1;
+    if (bz == top) {
+        // P2P escreveu em fGhost.Z_0[bz=top]
+        pop[ 6] = ghostInterface.fGhost.Z_0[idxPopZ(tx  , ty  , 0, bx                                , by                             , top)];
+        pop[10] = ghostInterface.fGhost.Z_0[idxPopZ(txp1, ty  , 1, ((tx==BLOCK_NX-1)?bxp1:bx)        , by                             , top)];
+        pop[12] = ghostInterface.fGhost.Z_0[idxPopZ(tx  , typ1, 2, bx                                , ((ty==BLOCK_NY-1)?byp1:by)     , top)];
+        pop[15] = ghostInterface.fGhost.Z_0[idxPopZ(txm1, ty  , 3, ((tx==0)?bxm1:bx)                 , by                             , top)];
+        pop[17] = ghostInterface.fGhost.Z_0[idxPopZ(tx  , tym1, 4, bx                                , ((ty==0)?bym1:by)              , top)];
+        #ifdef D3Q27
+        pop[20] = ghostInterface.fGhost.Z_0[idxPopZ(txp1, typ1, 5, ((tx==BLOCK_NX-1)?bxp1:bx)        , ((ty==BLOCK_NY-1)?byp1:by)     , top)];
+        pop[21] = ghostInterface.fGhost.Z_0[idxPopZ(txm1, tym1, 6, ((tx==0)?bxm1:bx)                 , ((ty==0)?bym1:by)              , top)];
+        pop[24] = ghostInterface.fGhost.Z_0[idxPopZ(txp1, tym1, 7, ((tx==BLOCK_NX-1)?bxp1:bx)        , ((ty==0)?bym1:by)              , top)];
+        pop[26] = ghostInterface.fGhost.Z_0[idxPopZ(txm1, typ1, 8, ((tx==0)?bxm1:bx)                 , ((ty==BLOCK_NY-1)?byp1:by)     , top)];
+        #endif
+    } else {
+        // Intra-GPU: lê de gGhost.Z_0[bzp1] diretamente
+        pop[ 6] = ghostInterface.gGhost.Z_0[idxPopZ(tx  , ty  , 0, bx                                , by                             , bzp1)];
+        pop[10] = ghostInterface.gGhost.Z_0[idxPopZ(txp1, ty  , 1, ((tx==BLOCK_NX-1)?bxp1:bx)        , by                             , bzp1)];
+        pop[12] = ghostInterface.gGhost.Z_0[idxPopZ(tx  , typ1, 2, bx                                , ((ty==BLOCK_NY-1)?byp1:by)     , bzp1)];
+        pop[15] = ghostInterface.gGhost.Z_0[idxPopZ(txm1, ty  , 3, ((tx==0)?bxm1:bx)                 , by                             , bzp1)];
+        pop[17] = ghostInterface.gGhost.Z_0[idxPopZ(tx  , tym1, 4, bx                                , ((ty==0)?bym1:by)              , bzp1)];
+        #ifdef D3Q27
+        pop[20] = ghostInterface.gGhost.Z_0[idxPopZ(txp1, typ1, 5, ((tx==BLOCK_NX-1)?bxp1:bx)        , ((ty==BLOCK_NY-1)?byp1:by)     , bzp1)];
+        pop[21] = ghostInterface.gGhost.Z_0[idxPopZ(txm1, tym1, 6, ((tx==0)?bxm1:bx)                 , ((ty==0)?bym1:by)              , bzp1)];
+        pop[24] = ghostInterface.gGhost.Z_0[idxPopZ(txp1, tym1, 7, ((tx==BLOCK_NX-1)?bxp1:bx)        , ((ty==0)?bym1:by)              , bzp1)];
+        pop[26] = ghostInterface.gGhost.Z_0[idxPopZ(txm1, typ1, 8, ((tx==0)?bxm1:bx)                 , ((ty==BLOCK_NY-1)?byp1:by)     , bzp1)];
+        #endif
+    }
+}

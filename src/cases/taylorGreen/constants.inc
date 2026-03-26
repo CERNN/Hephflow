@@ -3,12 +3,11 @@
 constexpr dfloat RE = 1;
 
 constexpr int SCALE = 1;
-constexpr int N = 128 * SCALE;
+constexpr int N = 256 * SCALE;
 constexpr int NX = N;        // size x of the grid 
 constexpr int NY = N;        // size y of the grid
 constexpr int NZ = N;        // size z of the grid in one GPU
 constexpr int NZ_TOTAL = NZ;       // size z of the grid
-
 
 constexpr dfloat U_MAX = 1.0/(125.0*M_PI); 
 constexpr dfloat L = (dfloat)N / (2.0 * M_PI);
@@ -20,7 +19,7 @@ constexpr dfloat Ct = (1.0/L)/(1.0/U_MAX);
 constexpr dfloat Cx = 1.0/L;
 constexpr dfloat Cp = 1.0/(Cx * Ct * Ct);
 
-constexpr int N_STEPS = (int)(20.0/Ct)+1;
+constexpr int N_STEPS = 10000;
 
 constexpr dfloat FX = 0.0;        // force in x
 constexpr dfloat FY = 0.0;        // force in y

@@ -1,7 +1,7 @@
 #include "mlbm.cuh"
 
 __global__ void gpuMomCollisionStream(
-    dfloat *fMom, unsigned int *dNodeType,ghostInterfaceData ghostInterface,
+    dfloat *fMom, unsigned int *dNodeType,ghostInterfaceData ghostInterface, size_t localNZ, int zStart, int zEnd,
     DENSITY_CORRECTION_PARAMS_DECLARATION(d_)
     BC_FORCES_PARAMS_DECLARATION(d_)
     unsigned int step,
@@ -13,9 +13,14 @@ __global__ void gpuMomCollisionStream(
 {
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
-    const int z = threadIdx.z + blockDim.z * blockIdx.z;
-    if (x >= NX || y >= NY || z >= NZ)
+    const int z_local = threadIdx.z + blockDim.z * blockIdx.z;
+
+    if (x >= NX || y >= NY || z_local >= localNZ)
         return;
+    
+
+    const int z = zStart + z_local;
+
     dfloat pop[Q];
     #ifdef CONVECTION_DIFFUSION_TRANSPORT
     dfloat gNode[GQ];
@@ -131,8 +136,9 @@ __global__ void gpuMomCollisionStream(
     const int bym1 = (by-1+NUM_BLOCK_Y)%NUM_BLOCK_Y;
     const int byp1 = (by+1+NUM_BLOCK_Y)%NUM_BLOCK_Y;
 
-    const int bzm1 = (bz-1+NUM_BLOCK_Z)%NUM_BLOCK_Z;
-    const int bzp1 = (bz+1+NUM_BLOCK_Z)%NUM_BLOCK_Z;
+    const int bzm1 = (bz-1+NUM_BLOCK_Z_LOCAL)%NUM_BLOCK_Z_LOCAL;
+    const int bzp1 = (bz+1+NUM_BLOCK_Z_LOCAL)%NUM_BLOCK_Z_LOCAL;
+
 
     //need to compute the gradient before the moments are recalculated
     #ifdef COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
