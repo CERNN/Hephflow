@@ -7,6 +7,7 @@
 void particleSimulation(
     ParticlesSoA *particles,
     dfloat *fMom,
+    unsigned int *dNodeType,
     cudaStream_t *streamParticles,
     ParticleWallForces *d_pwForces,
     unsigned int step
@@ -26,7 +27,7 @@ void particleSimulation(
     int numTRACER = particles->getMethodCount(TRACER);
 
     if(numIBM>0){
-       ibmSimulation(particles,fMom,streamParticles[0],step);
+       ibmSimulation(particles,fMom,dNodeType,streamParticles[0],step);
        // Synchronize after IBM to catch any errors early
        checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     }

@@ -266,6 +266,11 @@ public:
     __host__ __device__ void setIXZ(dfloat val);
     __host__ __device__ void setIYZ(dfloat val);
 
+    // Original (body-frame) inertia tensor - immutable reference for precision fix
+    __host__ __device__ dfloat6 getI_original() const;
+    __host__ __device__ void setI_original(const dfloat6& I_original);
+    __host__ __device__ void initializeInertiaOriginal();
+
     // Internal momentum change
     __host__ __device__ dfloat3 getDP_internal() const;
     __host__ __device__ dfloat getDPInternalX() const;
@@ -374,6 +379,7 @@ protected:
     dfloat3 M;          // Total momentum acting on particle
     dfloat3 M_old;      // Old total momentum acting on particle
     dfloat6 I;          // I innertia moment I.x = Ixx
+    dfloat6 I_original;  // Original body-frame inertia tensor (set once at initialization, never modified)
     dfloat3 dP_internal; // Linear momentum of fluid mass inside IBM particle mesh (delta - backward Euler)
     dfloat3 dL_internal; // Angular momentum of fluid mass inside IBM particle mesh (delta - backward Euler)
     dfloat S;           // Total area of the particle

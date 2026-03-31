@@ -584,8 +584,20 @@ __host__ __device__
 dfloat6 rotate_inertia_by_quart(dfloat4 q, dfloat6 I6) {
     dfloat I[3][3];
 
+    // Normalize quaternion to prevent drift from non-unit quaternions
+    q = quart_normalize(q);
+
     dfloat6_to_matrix(I6,I);
     rotate_matrix_by_R_w_quart(q,I);
+
+    // Symmetrize result to prevent asymmetry drift from floating-point errors in R*I*R^T
+    I[0][1] = (I[0][1] + I[1][0]) * 0.5;
+    I[1][0] = I[0][1];
+    I[0][2] = (I[0][2] + I[2][0]) * 0.5;
+    I[2][0] = I[0][2];
+    I[1][2] = (I[1][2] + I[2][1]) * 0.5;
+    I[2][1] = I[1][2];
+
     I6 = matrix_to_dfloat6(I);  
     return I6;
 

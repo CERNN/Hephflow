@@ -14,6 +14,7 @@
 
 #include "../../../globalStructs.h"
 #include "../../../globalFunctions.h"
+#include "../../../nodeTypeMap.h"
 #include "../particleSharedFunctions.cuh"
 #include "../../../include/interface.h"
 #include "../../../include/errorDef.h"
@@ -36,6 +37,7 @@
 void ibmSimulation(
     ParticlesSoA* particles,
     dfloat *fMom,
+    unsigned int *dNodeType,
     cudaStream_t streamParticles,
     unsigned int step
 );
@@ -64,6 +66,7 @@ void ibmForceInterpolationSpread(
     IbmNodesSoA* particlesNodes,
     ParticleCenter *pArray,
     dfloat *fMom,
+    unsigned int *dNodeType,
     unsigned int step
 );
 

@@ -107,16 +107,29 @@ void updateParticleCenterVelocityAndRotation(
     const dfloat inv_volume = 1 / volume;
     pc_i->setVel(pc_i->getVel_old() + (((pc_i->getF_old() + pc_i->getF())/2 + pc_i->getDP_internal())*inv_volume
                 + (pc_i->getDensity() - FLUID_DENSITY)*g) / (pc_i->getDensity()));
-    //pc_i->setVel(pc_i->getVel_old() + (((pc_i->getF_old() + pc_i->getF())/2 + pc_i->getDP_internal())) / (pc_i->getVolume()) 
-    //            + (1.0 - FLUID_DENSITY/pc_i->getDensity()) * g);
 
+    // Early NaN/blowup detection
+    dfloat3 vel_check = pc_i->getVel();
+    if (!isfinite(vel_check.x) || !isfinite(vel_check.y) || !isfinite(vel_check.z)
+        || fabs(vel_check.x) > 1.0 || fabs(vel_check.y) > 1.0 || fabs(vel_check.z) > 1.0) {
+        printf("ERROR: velocity blowup at step %u particle %d: vel=(%e,%e,%e) f=(%e,%e,%e) f_old=(%e,%e,%e) pos=(%e,%e,%e)\n",
+               step, globalIdx, vel_check.x, vel_check.y, vel_check.z,
+               pc_i->getFX(), pc_i->getFY(), pc_i->getFZ(),
+               pc_i->getFOldX(), pc_i->getFOldY(), pc_i->getFOldZ(),
+               pc_i->getPosX(), pc_i->getPosY(), pc_i->getPosZ());
+    }
 
     // Update particle angular velocity  
 
-    dfloat6 I = pc_i->getI();
+    // Reconstruct current inertia from original body-frame tensor + cumulative rotation.
+    // This eliminates error accumulation from incremental rotations (same approach as ibmParticleNodeMovement).
+    dfloat6 I_body = pc_i->getI_original();
+    dfloat4 q_cum = pc_i->getQ_cumulative_rot();
+    dfloat6 I = rotate_inertia_by_quart(q_cum, I_body);
+
     dfloat I_det = I.zz*I.xy*I.xy + I.yy*I.xz*I.xz + I.xx*I.yz*I.yz - I.xx*I.yy*I.zz - 2*I.xy*I.xz*I.yz;
     if (!isfinite(I_det) || fabs(I_det) < 1e-15) {
-        printf("ERROR: Invalid inertia determinant %e at step %u\n", I_det, step);
+        printf("ERROR: Invalid inertia determinant %e at step %u particle %d\n", I_det, step, globalIdx);
         return;
     }
     dfloat inv_I_det_neg = 1.0/I_det;
@@ -143,17 +156,27 @@ void updateParticleCenterVelocityAndRotation(
 
 
         wAvg = (wAux + pc_i->getW_old())/2;
-        //calculate rotation quartention
-        q_rot = axis_angle_to_quart(wAvg,vector_length(wAvg));
-        //compute new moment of inertia       
-        Iaux6 = rotate_inertia_by_quart(q_rot,I);
 
-        error =  (Iaux6.xx-I.xx)*(Iaux6.xx-I.xx)/(Iaux6.xx*Iaux6.xx);
-        error += (Iaux6.yy-I.yy)*(Iaux6.yy-I.yy)/(Iaux6.yy*Iaux6.yy);
-        error += (Iaux6.zz-I.zz)*(Iaux6.zz-I.zz)/(Iaux6.zz*Iaux6.zz);
-        error += (Iaux6.xy-I.xy)*(Iaux6.xy-I.xy)/(Iaux6.xy*Iaux6.xy);
-        error += (Iaux6.xz-I.xz)*(Iaux6.xz-I.xz)/(Iaux6.xz*Iaux6.xz);
-        error += (Iaux6.yz-I.yz)*(Iaux6.yz-I.yz)/(Iaux6.yz*Iaux6.yz);
+        // Reconstruct inertia from original + cumulative rotation composed with incremental step rotation
+        dfloat wAvg_norm = vector_length(wAvg);
+        if (wAvg_norm > 1e-12) {
+            dfloat3 wAvg_axis = {wAvg.x / wAvg_norm, wAvg.y / wAvg_norm, wAvg.z / wAvg_norm};
+            q_rot = axis_angle_to_quart(wAvg_axis, wAvg_norm);
+            // Compose incremental rotation with cumulative to get the "would-be" new cumulative
+            dfloat4 q_new_cum = quart_normalize(quart_multiplication(q_rot, q_cum));
+            Iaux6 = rotate_inertia_by_quart(q_new_cum, I_body);
+        } else {
+            Iaux6 = I;
+        }
+
+        // Relative error using safe denominators
+        dfloat eps = 1e-30;
+        error =  (Iaux6.xx-I.xx)*(Iaux6.xx-I.xx)/(Iaux6.xx*Iaux6.xx + eps);
+        error += (Iaux6.yy-I.yy)*(Iaux6.yy-I.yy)/(Iaux6.yy*Iaux6.yy + eps);
+        error += (Iaux6.zz-I.zz)*(Iaux6.zz-I.zz)/(Iaux6.zz*Iaux6.zz + eps);
+        error += (Iaux6.xy-I.xy)*(Iaux6.xy-I.xy)/(Iaux6.xy*Iaux6.xy + eps);
+        error += (Iaux6.xz-I.xz)*(Iaux6.xz-I.xz)/(Iaux6.xz*Iaux6.xz + eps);
+        error += (Iaux6.yz-I.yz)*(Iaux6.yz-I.yz)/(Iaux6.yz*Iaux6.yz + eps);
         
         wAux.x = wNew.x;
         wAux.y = wNew.y;
@@ -172,12 +195,7 @@ void updateParticleCenterVelocityAndRotation(
     pc_i->setWY(wNew.y);
     pc_i->setWZ(wNew.z);
 
-    pc_i->setIXX(Iaux6.xx);
-    pc_i->setIYY(Iaux6.yy);
-    pc_i->setIZZ(Iaux6.zz);
-    pc_i->setIXY(Iaux6.xy);
-    pc_i->setIXZ(Iaux6.xz);
-    pc_i->setIYZ(Iaux6.yz);
+    pc_i->setI(Iaux6);
 
     #ifdef PARTICLE_DEBUG
     printf("updateParticleCenterVelocityAndRotation 2 pos  x: %e y: %e z: %e\n",pc_i->getPosX(),pc_i->getPosY(),pc_i->getPosZ());
