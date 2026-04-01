@@ -1,5 +1,46 @@
 # CC=86
 
+# Prevent runtime cudaErrorInsufficientDriver by validating CUDA compatibility
+# before compiling: toolkit version (nvcc) must be <= driver supported version.
+get_nvcc_version() {
+    nvcc --version | sed -n 's/.*release \([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' | head -n 1
+}
+
+get_driver_cuda_version() {
+    nvidia-smi | sed -n 's/.*CUDA Version: \([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' | head -n 1
+}
+
+version_gt() {
+    [ "$(printf '%s\n' "$1" "$2" | sort -V | tail -n 1)" != "$2" ]
+}
+
+NVCC_VERSION=$(get_nvcc_version)
+DRIVER_CUDA_VERSION=$(get_driver_cuda_version)
+
+if [ -z "$NVCC_VERSION" ] || [ -z "$DRIVER_CUDA_VERSION" ]; then
+    echo "Warning: Could not determine CUDA versions (nvcc='$NVCC_VERSION', driver='$DRIVER_CUDA_VERSION')."
+    echo "Skipping compatibility check."
+elif version_gt "$NVCC_VERSION" "$DRIVER_CUDA_VERSION"; then
+    echo "Warning: CUDA toolkit/driver mismatch detected."
+    echo "  nvcc toolkit version:           $NVCC_VERSION"
+    echo "  Driver supported CUDA version:  $DRIVER_CUDA_VERSION"
+    echo ""
+    echo "This build may compile but fail at runtime with cudaErrorInsufficientDriver (error 35)."
+    echo "Fix options:"
+    echo "  1) Install/use CUDA toolkit <= $DRIVER_CUDA_VERSION"
+    echo "  2) Update NVIDIA driver to support CUDA $NVCC_VERSION"
+    read -r -p "Continue compilation anyway? [y/N] " CONTINUE_ANYWAY
+    case "$CONTINUE_ANYWAY" in
+        [yY]|[yY][eE][sS])
+            echo "Proceeding with compilation despite mismatch."
+            ;;
+        *)
+            echo "Compilation canceled."
+            exit 1
+            ;;
+    esac
+fi
+
 # Set CC if it's not already defined
 if [ -z "$CC" ]; then
     CC=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n 1 | tr -d '.')
