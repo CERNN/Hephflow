@@ -5,7 +5,6 @@
 void ibmSimulation(
     ParticlesSoA* particles,
     dfloat *fMom,
-    unsigned int *dNodeType,
     cudaStream_t streamParticles,
     unsigned int step
 ){
@@ -41,7 +40,7 @@ void ibmSimulation(
     // Reset forces in all IBM nodes;
     ibmResetNodesForces<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(d_nodes,step);
     ibmParticleNodeMovement<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(d_nodes,pArray,range.first,range.last,step);
-    ibmForceInterpolationSpread<<<gridNodesIBM, threadsNodesIBM,0, streamParticles>>>(d_nodes,pArray, &fMom[0],dNodeType,step);
+    ibmForceInterpolationSpread<<<gridNodesIBM, threadsNodesIBM,0, streamParticles>>>(d_nodes,pArray, &fMom[0],step);
     
     cudaFree(d_nodes);
     // cudaFree(d_particlesSoA);
@@ -137,7 +136,6 @@ void ibmForceInterpolationSpread(
     IbmNodesSoA* particlesNodes,
     ParticleCenter *pArray,
     dfloat *fMom,
-    unsigned int *dNodeType,
     unsigned int step
 ){
 
@@ -290,10 +288,6 @@ void ibmForceInterpolationSpread(
                     xx = ((xg % NX) + NX) % NX;
                 #endif
 
-                // Skip solid nodes — they have no valid fluid data
-                unsigned int nType = dNodeType[idxScalarBlock(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)];
-                if ((nType & SOLID_NODE) == SOLID_NODE) continue;
-
                 // Dirac delta (kernel)
                 aux = aux1 * stencilVal[0][xi];
 
@@ -302,10 +296,21 @@ void ibmForceInterpolationSpread(
                 int momIdx_uy = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
                 int momIdx_uz = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
 
-                rhoVar += aux * (RHO_0 + fMom[momIdx_rho]);
-                uxVar  += aux * (fMom[momIdx_ux]/F_M_I_SCALE);
-                uyVar  += aux * (fMom[momIdx_uy]/F_M_I_SCALE);
-                uzVar  += aux * (fMom[momIdx_uz]/F_M_I_SCALE);
+                #ifdef EXTERNAL_DUCT_BC
+                    dfloat pos_r_i = (xx - DUCT_CENTER_X)*(xx - DUCT_CENTER_X) + (yy - DUCT_CENTER_Y)*(yy - DUCT_CENTER_Y);
+                    if(pos_r_i < OUTER_RADIUS*OUTER_RADIUS){
+                        rhoVar += aux * (RHO_0 + fMom[momIdx_rho]);
+                        uxVar  += aux * (fMom[momIdx_ux]/F_M_I_SCALE);
+                        uyVar  += aux * (fMom[momIdx_uy]/F_M_I_SCALE);
+                        uzVar  += aux * (fMom[momIdx_uz]/F_M_I_SCALE);
+                    }
+                #endif
+                #ifndef EXTERNAL_DUCT_BC
+                    rhoVar += aux * (RHO_0 + fMom[momIdx_rho]);
+                    uxVar  += aux * (fMom[momIdx_ux]/F_M_I_SCALE);
+                    uyVar  += aux * (fMom[momIdx_uy]/F_M_I_SCALE);
+                    uzVar  += aux * (fMom[momIdx_uz]/F_M_I_SCALE);
+                #endif //EXTERNAL_DUCT_BC
             }
         }
     }
@@ -388,6 +393,9 @@ void ibmForceInterpolationSpread(
             aux1 = stencilVal[2][zk]*stencilVal[1][yj];
             for (int xi = minIdx[0]; xi <= maxIdx[0]; xi++) // x
             {
+                // Dirac delta (kernel)
+                aux = aux1 * stencilVal[0][xi];
+
                 // Global (unmapped) indices
                 int xg = posBase[0] + xi;
                 int yg = posBase[1] + yj;
@@ -417,21 +425,25 @@ void ibmForceInterpolationSpread(
                     zz = ((zg % NZ_TOTAL) + NZ_TOTAL) % NZ_TOTAL;
                 #endif
 
-                // Skip solid nodes — no point spreading forces into walls
-                unsigned int nType = dNodeType[idxScalarBlock(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ)];
-                if (nType == BULK) continue;
-
-                // Dirac delta (kernel)
-                aux = aux1 * stencilVal[0][xi];
-
                 // CRITICAL: Validate fMom indices before atomic operations
                 int fmomIdx_fx = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
                 int fmomIdx_fy = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
                 int fmomIdx_fz = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
 
-                atomicAdd(&(fMom[fmomIdx_fx]), -deltaF.x * aux);
-                atomicAdd(&(fMom[fmomIdx_fy]), -deltaF.y * aux);
-                atomicAdd(&(fMom[fmomIdx_fz]), -deltaF.z * aux);
+                // ---- External duct condition ----
+                #ifdef EXTERNAL_DUCT_BC
+                    dfloat pos_r_i = (xx - DUCT_CENTER_X)*(xx - DUCT_CENTER_X) + (yy - DUCT_CENTER_Y)*(yy - DUCT_CENTER_Y);
+                    if(pos_r_i < OUTER_RADIUS*OUTER_RADIUS){
+                        atomicAdd(&(fMom[fmomIdx_fx]), -deltaF.x * aux);
+                        atomicAdd(&(fMom[fmomIdx_fy]), -deltaF.y * aux);
+                        atomicAdd(&(fMom[fmomIdx_fz]), -deltaF.z * aux);
+                    }
+                #endif
+                #ifndef EXTERNAL_DUCT_BC
+                    atomicAdd(&(fMom[fmomIdx_fx]), -deltaF.x * aux);
+                    atomicAdd(&(fMom[fmomIdx_fy]), -deltaF.y * aux);
+                    atomicAdd(&(fMom[fmomIdx_fz]), -deltaF.z * aux);
+                #endif //EXTERNAL_DUCT_BC
 
                 //TODO: find a way to do subinterations
                 //here would enter the correction of the velocity field for subiterations

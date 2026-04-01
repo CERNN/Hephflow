@@ -64,7 +64,7 @@ public:
      * @param d_fMom Pointer to the device macroscopic moments array
      * @param step Current simulation time step
      */
-    void simulationStep(dfloat* d_fMom, unsigned int* dNodeType, unsigned int step);
+    void simulationStep(dfloat* d_fMom, unsigned int step);
 
     /**
      * @brief Save particle information to file

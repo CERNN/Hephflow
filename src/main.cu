@@ -116,7 +116,7 @@ int main() {
         //------------------------- Auxiliary Kernels -------------------------
         deviceField.halfStepKernels(gridBlock, threadBlock, step);
         #ifdef PARTICLE_MODEL
-            particleField.simulationStep(deviceField.d_fMom, deviceField.dNodeType, step);
+            particleField.simulationStep(deviceField.d_fMom, step);
         #endif //PARTICLE_MODEL
 
         //------------------------- Saving Data -------------------------

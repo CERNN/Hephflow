@@ -111,13 +111,13 @@ void ParticleField::initialize(int* step, dim3 gridBlock, dim3 threadBlock) {
     if (console_flush) fflush(stdout);
 }
 
-void ParticleField::simulationStep(dfloat* d_fMom, unsigned int* dNodeType, unsigned int step) {
+void ParticleField::simulationStep(dfloat* d_fMom, unsigned int step) {
     if (!memoryAllocated || !streamsCreated) {
         printf("Error: ParticleField not properly initialized for simulation\n");
         return;
     }
 
-    particleSimulation(&particlesSoA, d_fMom, dNodeType, streamsPart, d_pwForces, step);
+    particleSimulation(&particlesSoA, d_fMom, streamsPart, d_pwForces, step);
 }
 
 void ParticleField::saveInfo(unsigned int step, std::atomic<bool>& savingFlag) {

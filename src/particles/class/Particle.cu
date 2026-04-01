@@ -335,8 +335,6 @@ void Particle::makeUniformBox(ParticleCenter *particleCenter)
     pCenter->setIXZ(0.0_df);
     pCenter->setIYZ(0.0_df);
 
-    pCenter->initializeInertiaOriginal();
-
     pCenter->setFX(0.0_df);
     pCenter->setFY(0.0_df);
     pCenter->setFZ(0.0_df);
@@ -427,8 +425,6 @@ void Particle::makeRandomBox(ParticleCenter *particleCenter)
     pCenter->setIXY(0.0_df);
     pCenter->setIXZ(0.0_df);
     pCenter->setIYZ(0.0_df);
-
-    pCenter->initializeInertiaOriginal();
 
     pCenter->setFX(0.0_df);
     pCenter->setFY(0.0_df);
@@ -533,8 +529,6 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
     pCenter->setIXY(0.0_df);
     pCenter->setIXZ(0.0_df);
     pCenter->setIYZ(0.0_df);
-
-    pCenter->initializeInertiaOriginal();
 
     pCenter->setFX(0.0_df);
     pCenter->setFY(0.0_df);
@@ -985,7 +979,6 @@ void Particle::makeCapsule(ParticleCenter *particleCenter){
     dfloat4 q1 = compute_rotation_quart(dfloat3(1,0,0),vec);
     //rotate inertia 
     pCenter->setI(rotate_inertia_by_quart(q1,In));
-    pCenter->initializeInertiaOriginal();
 
     pCenter->setQPosW(qf.w);
     pCenter->setQPosX(qf.x);
@@ -1269,7 +1262,6 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
 
     //rotate inertia 
     pCenter->setI(rotate_inertia_by_quart(q2,In));
-    pCenter->initializeInertiaOriginal();
 
     dfloat3 new_pos;
     for (i = 0; i < numberNodes; i++) {

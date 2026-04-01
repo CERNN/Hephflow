@@ -304,7 +304,7 @@ typedef struct deviceField{
 
     #ifdef PARTICLE_MODEL
     void particleSimulationDeviceField(ParticlesSoA &particlesSoA, cudaStream_t *streamsPart, ParticleWallForces *d_pwForces,unsigned int step){
-        particleSimulation(&particlesSoA,d_fMom,dNodeType,streamsPart,d_pwForces,step);
+        particleSimulation(&particlesSoA,d_fMom,streamsPart,d_pwForces,step);
     }
     #endif //PARTICLE_MODEL
 

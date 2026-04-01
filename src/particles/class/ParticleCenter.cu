@@ -90,13 +90,12 @@ ParticleCenter::ParticleCenter() {
     w_pos = dfloat3();
     q_pos = dfloat4();
     q_pos_old = dfloat4();
-    q_cumulative_rot = dfloat4({0.0f, 0.0f, 0.0f, 1.0f}); // Identity quaternion (w=1)
+    q_cumulative_rot = dfloat4({1.0f, 0.0f, 0.0f, 0.0f}); // Identity quaternion
     f = dfloat3();
     f_old = dfloat3();
     M = dfloat3();
     M_old = dfloat3();
     I = dfloat6();
-    I_original = dfloat6();
     dP_internal = dfloat3();
     dL_internal = dfloat3();
     S = 0;
@@ -279,10 +278,6 @@ __host__ __device__ void ParticleCenter::setIXY(dfloat val) { this->I.xy = val; 
 __host__ __device__ void ParticleCenter::setIXZ(dfloat val) { this->I.xz = val; }
 __host__ __device__ void ParticleCenter::setIYZ(dfloat val) { this->I.yz = val; }
 
-__host__ __device__ dfloat6 ParticleCenter::getI_original() const { return this->I_original; }
-__host__ __device__ void ParticleCenter::setI_original(const dfloat6& I_original) { this->I_original = I_original; }
-__host__ __device__ void ParticleCenter::initializeInertiaOriginal() { this->I_original = this->I; }
-
 __host__ __device__ dfloat3 ParticleCenter::getDP_internal() const { return this->dP_internal; }
 __host__ __device__ dfloat ParticleCenter::getDPInternalX() const { return this->dP_internal.x; }
 __host__ __device__ dfloat ParticleCenter::getDPInternalY() const { return this->dP_internal.y; }
@@ -350,9 +345,8 @@ __host__ __device__ void ParticleCenter::setSemiAxis3Y(dfloat y) { this->semiAxi
 __host__ __device__ void ParticleCenter::setSemiAxis3Z(dfloat z) { this->semiAxis3.z = z; }
 
 __host__ __device__ void ParticleCenter::initializeSemiAxesFromCurrent() {
-    // Store the current semi-axis values as the original reference.
-    // Case files set semi-axes as relative offsets from center (e.g. {radius, 0, 0}),
-    // so these are already in the right form for updateSemiAxis: center + rotate(offset, q)
+    // Store the current semi-axis positions as the original reference
+    // This should be called once after all setSemiAxis calls in particle creation
     this->semiAxis1_original = this->semiAxis1;
     this->semiAxis2_original = this->semiAxis2;
     this->semiAxis3_original = this->semiAxis3;
