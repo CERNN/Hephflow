@@ -113,7 +113,10 @@ void updateParticleCenterVelocityAndRotation(
 
     // Update particle angular velocity  
 
-    dfloat6 I = pc_i->getI();
+    // Recompute world-frame inertia from the immutable body-frame reference and the
+    // cumulative rotation quaternion. This avoids off-diagonal drift that accumulates
+    // when I is updated incrementally via R*I*R^T every timestep.
+    dfloat6 I = rotate_inertia_by_quart(pc_i->getQ_cumulative_rot(), pc_i->getI_body());
     dfloat I_det = I.zz*I.xy*I.xy + I.yy*I.xz*I.xz + I.xx*I.yz*I.yz - I.xx*I.yy*I.zz - 2*I.xy*I.xz*I.yz;
     if (!isfinite(I_det) || fabs(I_det) < 1e-15) {
         printf("ERROR: Invalid inertia determinant %e at step %u\n", I_det, step);
@@ -171,13 +174,8 @@ void updateParticleCenterVelocityAndRotation(
     pc_i->setWX(wNew.x);
     pc_i->setWY(wNew.y);
     pc_i->setWZ(wNew.z);
-
-    pc_i->setIXX(Iaux6.xx);
-    pc_i->setIYY(Iaux6.yy);
-    pc_i->setIZZ(Iaux6.zz);
-    pc_i->setIXY(Iaux6.xy);
-    pc_i->setIXZ(Iaux6.xz);
-    pc_i->setIYZ(Iaux6.yz);
+    // I_body is the drift-free reference; world-frame I is recomputed each step from
+    // q_cumulative, so we no longer store the rotated Iaux6 back.
 
     #ifdef PARTICLE_DEBUG
     printf("updateParticleCenterVelocityAndRotation 2 pos  x: %e y: %e z: %e\n",pc_i->getPosX(),pc_i->getPosY(),pc_i->getPosZ());

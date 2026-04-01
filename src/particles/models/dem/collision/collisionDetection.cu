@@ -103,7 +103,7 @@ void checkCollisionWalls(ParticleShape *shape, ParticleCenter* pc_i, ParticleWal
                 dist = vector_length(pc_i->getPos() - ductCenter);
                 if(EXTERNAL_DUCT_BC_RADIUS - dist < pc_i->getRadius()){
                     wallData = determineCircularWall(pc_i->getPos(),EXTERNAL_DUCT_BC_RADIUS,-1);
-                    sphereWallCollision({pc_i, wallData, (dfloat)EXTERNAL_DUCT_BC_RADIUS - (pc_i->getRadius() + dist), step});
+                    sphereWallCollision({pc_i, wallData, (dfloat)EXTERNAL_DUCT_BC_RADIUS - (pc_i->getRadius() + dist), step},d_pwForces);
                 }
                 break;
             case CAPSULE:
