@@ -40,3 +40,4 @@ src/CUDA/x64
 compile_log.txt
 src/cases/**/_test/test_results.txt
 src/cases/**/test_results.txt
+docs/
