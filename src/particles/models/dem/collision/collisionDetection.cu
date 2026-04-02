@@ -486,7 +486,7 @@ dfloat sphereSphereGap(ParticleCenter* pc_i, ParticleCenter* pc_j) {
     return dist - (r1 + r2);
 }
 
-#ifdef CURVED_BOUNDARY_CONDITION
+#if defined(CURVED_BOUNDARY_CONDITION) || defined(EXTERNAL_DUCT_BC)
 __device__
 Wall determineCircularWall(dfloat3 pos_i, dfloat R, dfloat dir){
     Wall tempWall;
