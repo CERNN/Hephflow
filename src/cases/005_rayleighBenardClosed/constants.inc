@@ -9,7 +9,6 @@ constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int N_STEPS = 80000000;           // Total simulation steps
-constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
 constexpr int N = 256 * SCALE;              // Reference grid size
@@ -64,10 +63,18 @@ constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 #define BINGHAM
 constexpr dfloat Bn = 0.08;                 // Bingham number
 constexpr dfloat S_Y = Bn*L/(U_MAX*VISC); // Yield stress
-// Fluid properties macro for this case - expands to initializer list
-#define CASE_NNF_PROPS { FLUID_BINGHAM, false, { S_Y, 1.0 / TAU } }
+static inline fluidProps makeCaseNnfProps(){
+	fluidProps fp{};
+	fp.type = FLUID_BINGHAM;
+	fp.hasLambda = false;
+	fp.u.bingham.s_y = S_Y;
+	fp.u.bingham.omega_p = 1.0 / TAU;
+	return fp;
+}
+#define CASE_NNF_PROPS makeCaseNnfProps()
 
 /* --------------------- THERMAL PARAMETERS --------------------- */
+#ifdef THERMAL_MODEL
 constexpr bool T_BOUYANCY = true;           // Enable buoyancy
 constexpr dfloat T_PR_NUMBER = 10;          // Prandtl number
 constexpr dfloat T_RA_NUMBER = 1e6;         // Rayleigh number

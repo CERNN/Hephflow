@@ -96,6 +96,7 @@ ParticleCenter::ParticleCenter() {
     M = dfloat3();
     M_old = dfloat3();
     I = dfloat6();
+    I_body = dfloat6();
     dP_internal = dfloat3();
     dL_internal = dfloat3();
     S = 0;
@@ -277,6 +278,9 @@ __host__ __device__ void ParticleCenter::setIZZ(dfloat val) { this->I.zz = val; 
 __host__ __device__ void ParticleCenter::setIXY(dfloat val) { this->I.xy = val; }
 __host__ __device__ void ParticleCenter::setIXZ(dfloat val) { this->I.xz = val; }
 __host__ __device__ void ParticleCenter::setIYZ(dfloat val) { this->I.yz = val; }
+
+__host__ __device__ dfloat6 ParticleCenter::getI_body() const { return this->I_body; }
+__host__ __device__ void ParticleCenter::setI_body(const dfloat6& I_body) { this->I_body = I_body; }
 
 __host__ __device__ dfloat3 ParticleCenter::getDP_internal() const { return this->dP_internal; }
 __host__ __device__ dfloat ParticleCenter::getDPInternalX() const { return this->dP_internal.x; }

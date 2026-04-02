@@ -142,7 +142,7 @@ void ellipsoidEllipsoidCollisionCheck(unsigned int column, unsigned int row, Par
 __device__
 dfloat sphereSphereGap(ParticleCenter*  pc_i, ParticleCenter*  pc_j);
 
-#ifdef CURVED_BOUNDARY_CONDITION
+#if defined(CURVED_BOUNDARY_CONDITION) || defined(EXTERNAL_DUCT_BC)
 /**
 *   @brief determine wall properties for duct, based on contact position and radius
 *   @param pos_i: coordinates of the collision point in the body center .

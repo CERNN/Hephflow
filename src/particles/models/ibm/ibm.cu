@@ -291,10 +291,10 @@ void ibmForceInterpolationSpread(
                 // Dirac delta (kernel)
                 aux = aux1 * stencilVal[0][xi];
 
-                int momIdx_rho = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_RHO_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
-                int momIdx_ux = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
-                int momIdx_uy = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
-                int momIdx_uz = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                unsigned int momIdx_rho = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_RHO_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                unsigned int momIdx_ux = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                unsigned int momIdx_uy = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                unsigned int momIdx_uz = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
 
                 #ifdef EXTERNAL_DUCT_BC
                     dfloat pos_r_i = (xx - DUCT_CENTER_X)*(xx - DUCT_CENTER_X) + (yy - DUCT_CENTER_Y)*(yy - DUCT_CENTER_Y);
@@ -426,9 +426,9 @@ void ibmForceInterpolationSpread(
                 #endif
 
                 // CRITICAL: Validate fMom indices before atomic operations
-                int fmomIdx_fx = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
-                int fmomIdx_fy = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
-                int fmomIdx_fz = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                unsigned int fmomIdx_fx = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                unsigned int fmomIdx_fy = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                unsigned int fmomIdx_fz = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
 
                 // ---- External duct condition ----
                 #ifdef EXTERNAL_DUCT_BC

@@ -22,6 +22,7 @@
 #include "nodeTypeMap.h"
 #include "non_newtonian/nnf.h"
 #include "fragments/lambdaTransport/lambda_evolution.cuh"
+#include "non_newtonian/propertyInterpolation.cuh"
 
 
 /**
@@ -54,6 +55,17 @@ void gpuResetMacroForces(dfloat *fMom);
  * @param dNodeType Pointer to the device array containing the node type information.
  */
 __global__ void gpuComputePhaseNormals(
+    dfloat *fMom, 
+    unsigned int *dNodeType
+);
+
+__global__ void gpuComputeChemicalPotential(
+    dfloat *fMom, 
+    unsigned int *dNodeType
+);
+
+
+__global__ void gpuComputeLaplacianMu(
     dfloat *fMom, 
     unsigned int *dNodeType
 );

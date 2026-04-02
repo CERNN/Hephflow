@@ -30,6 +30,83 @@
              storeGhostXEast[g_idxPopX(ty, tz, 2, storeBxEast, by, bz)] = gNode[ 9];
              storeGhostXEast[g_idxPopX(ty, tz, 3, storeBxEast, by, bz)] = gNode[13];
              storeGhostXEast[g_idxPopX(ty, tz, 4, storeBxEast, by, bz)] = gNode[15];
+// DEV_REF_START (from dev during merge)
+// DEV_REF:     /* write to global pop - face neighbors only for D3G7, all for D3G19 */
+// DEV_REF:     if (INTERFACE_BC_WEST){//w
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 2]; 
+// DEV_REF: #ifdef D3G19
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+// DEV_REF: #endif
+// DEV_REF: #ifdef D3G27
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 5, bx, by, bz)] = gNode[20];
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 6, bx, by, bz)] = gNode[22];
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 7, bx, by, bz)] = gNode[24];
+// DEV_REF:         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 8, bx, by, bz)] = gNode[25];
+// DEV_REF: #endif
+// DEV_REF:     }if (INTERFACE_BC_EAST){//e
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
+// DEV_REF: #ifdef D3G19
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];   
+// DEV_REF: #endif
+// DEV_REF: #ifdef D3G27
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15]; 
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 5, bx, by, bz)] = gNode[19];
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 6, bx, by, bz)] = gNode[21];
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 7, bx, by, bz)] = gNode[23];
+// DEV_REF:         ghostInterface.phi_gGhost.X_1[g_idxPopX(ty, tz, 8, bx, by, bz)] = gNode[26];  
+// DEV_REF: #endif
+// DEV_REF:     }
+// DEV_REF:
+// DEV_REF:     if (INTERFACE_BC_SOUTH){//s          
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 4];
+// DEV_REF: #ifdef D3G19
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];
+// DEV_REF: #endif
+// DEV_REF: #ifdef D3G27
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 5, bx, by, bz)] = gNode[20];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 6, bx, by, bz)] = gNode[22];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 7, bx, by, bz)] = gNode[23];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_0[g_idxPopY(tx, tz, 8, bx, by, bz)] = gNode[26];
+// DEV_REF: #endif
+// DEV_REF:     }if (INTERFACE_BC_NORTH){//n
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
+// DEV_REF: #ifdef D3G19
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];
+// DEV_REF: #endif
+// DEV_REF: #ifdef D3G27
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 5, bx, by, bz)] = gNode[19];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 6, bx, by, bz)] = gNode[21];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 7, bx, by, bz)] = gNode[24];
+// DEV_REF:         ghostInterface.phi_gGhost.Y_1[g_idxPopY(tx, tz, 8, bx, by, bz)] = gNode[25];
+// DEV_REF:
+// DEV_REF_END
 #endif
         }
 
@@ -129,3 +206,44 @@
 #endif
         }
     }
+// DEV_REF_START (from dev during merge)
+// DEV_REF:     
+// DEV_REF:     if (INTERFACE_BC_BACK){ //b
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 6];
+// DEV_REF: #ifdef D3G19
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17];
+// DEV_REF: #endif
+// DEV_REF: #ifdef D3G27
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 5, bx, by, bz)] = gNode[20];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 6, bx, by, bz)] = gNode[21];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 7, bx, by, bz)] = gNode[24];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_0[g_idxPopZ(tx, ty, 8, bx, by, bz)] = gNode[26];
+// DEV_REF: #endif
+// DEV_REF:     }if (INTERFACE_BC_FRONT){
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
+// DEV_REF: #ifdef D3G19
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];
+// DEV_REF: #endif
+// DEV_REF: #ifdef D3G27
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 5, bx, by, bz)] = gNode[19];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 6, bx, by, bz)] = gNode[22];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 7, bx, by, bz)] = gNode[23];
+// DEV_REF:         ghostInterface.phi_gGhost.Z_1[g_idxPopZ(tx, ty, 8, bx, by, bz)] = gNode[25];
+// DEV_REF: #endif
+// DEV_REF:     }
+// DEV_REF:
+// DEV_REF_END

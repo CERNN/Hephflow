@@ -28,7 +28,10 @@ typedef struct deviceField{
     #endif //_BC_FORCES
 
     #ifdef NON_NEWTONIAN_FLUID
-    fluidProps nnfProps;                     ///< Non-Newtonian fluid properties
+    fluidProps nnfPropsA;                    ///< Primary-phase non-Newtonian properties
+    #ifdef PHI_DIST
+    fluidProps nnfPropsB;                    ///< Secondary-phase non-Newtonian properties
+    #endif
     #endif //NON_NEWTONIAN_FLUID
 
     void allocateDeviceMemoryDeviceField() {
@@ -259,7 +262,10 @@ typedef struct deviceField{
         #endif //CURVED_BOUNDARY_CONDITION
         
         #ifdef NON_NEWTONIAN_FLUID
-        params.nnfProps = nnfProps;
+        params.nnfPropsA = nnfPropsA;
+        #ifdef PHI_DIST
+        params.nnfPropsB = nnfPropsB;
+        #endif
         #endif //NON_NEWTONIAN_FLUID
         
         // Pass struct by value - CUDA handles this efficiently
@@ -269,6 +275,8 @@ typedef struct deviceField{
     #ifdef PHI_DIST
     void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock){
         gpuComputePhaseNormals<<<gridBlock, threadBlock>>>(d_fMom, dNodeType);
+        gpuComputeChemicalPotential<<<gridBlock, threadBlock>>>(d_fMom, dNodeType);
+        gpuComputeLaplacianMu<<<gridBlock, threadBlock>>>(d_fMom, dNodeType);
         cudaDeviceSynchronize();
     }
     #endif //PHI_DIST

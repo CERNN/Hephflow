@@ -522,7 +522,10 @@ struct DeviceKernelParams {
     bool save;                              ///< Whether to save data
 
     #ifdef NON_NEWTONIAN_FLUID
-    fluidProps nnfProps;                    ///< Non-Newtonian fluid properties
+    fluidProps nnfPropsA;                   ///< Primary-phase non-Newtonian properties
+    #ifdef PHI_DIST
+    fluidProps nnfPropsB;                   ///< Secondary-phase non-Newtonian properties
+    #endif
     #endif //NON_NEWTONIAN_FLUID
 
     // Conditional parameters with #ifdef guards
