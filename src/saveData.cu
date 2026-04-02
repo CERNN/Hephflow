@@ -183,7 +183,7 @@ void saveMacr(const SaveDataParams* params)
                 C[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
                 #endif //SECOND_DIST
                 #ifdef PHI_DIST 
-                phi[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M3_PHI_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - PHI_ZERO;
+                phi[indexMacr]  = (h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M3_PHI_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - PHI_ZERO)*PHI_SCALE;
                 #endif //PHI_DIST
                 #ifdef LAMBDA_DIST 
                 lambda[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M4_LAMBDA_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - LAMBDA_ZERO;
@@ -786,7 +786,94 @@ std::string getVarFilename(
     return strFile;
 }
 
-std::string getSimInfoString(int step, dfloat MLUPS, const fluidProps& nnfProps = {})
+static void appendFluidProps(std::ostringstream& strSimInfo, const fluidProps& fp, const char* label)
+{
+    strSimInfo << label << "\n";
+    switch (fp.type) {
+        case FLUID_POWERLAW:
+            strSimInfo << "              Model: Power-Law\n";
+            strSimInfo << "        Power index: " << fp.u.powerlaw.n_index << "\n";
+            strSimInfo << " Consistency factor: " << fp.u.powerlaw.k_consistency << "\n";
+            strSimInfo << "            Gamma 0: " << fp.u.powerlaw.gamma_0 << "\n";
+            break;
+        case FLUID_BINGHAM: {
+            strSimInfo << "              Model: Bingham (Viscoplastic/Newtonian if s_y=0)\n";
+            strSimInfo << "       Yield stress: " << fp.u.bingham.s_y << "\n";
+            strSimInfo << "      Plastic omega: " << fp.u.bingham.omega_p << "\n";
+            dfloat tau_local = 1.0_df / fp.u.bingham.omega_p;
+            dfloat visc_local = (tau_local - 0.5_df) / 3.0_df;
+            strSimInfo << "  Apparent viscosity: " << visc_local << "\n";
+            if (fp.u.bingham.s_y == 0.0_df)
+                strSimInfo << "      Note: behaves Newtonian (s_y=0).\n";
+            break;
+        }
+        case FLUID_HERSCHEL_BULKLEY:
+            strSimInfo << "              Model: Herschel-Bulkley\n";
+            strSimInfo << "       Yield stress: " << fp.u.hb.s_y << "\n";
+            strSimInfo << "        Power index: " << fp.u.hb.n_index << "\n";
+            strSimInfo << " Consistency factor: " << fp.u.hb.k_consistency << "\n";
+            strSimInfo << "            Gamma 0: " << fp.u.hb.gamma_0 << "\n";
+            break;
+        case FLUID_BI_VISCOSITY:
+            strSimInfo << "              Model: Bi-viscosity\n";
+            strSimInfo << "       Yield stress: " << fp.u.bi.s_y << "\n";
+            strSimInfo << "     Viscosity ratio: " << fp.u.bi.visc_ratio << "\n";
+            strSimInfo << "        Yield omega: " << fp.u.bi.omega_y << "\n";
+            strSimInfo << "      Plastic omega: " << fp.u.bi.omega_p << "\n";
+            strSimInfo << "    Critical gamma: " << fp.u.bi.gamma_c << "\n";
+            break;
+        case FLUID_KEE_TURCOTEE:
+            strSimInfo << "              Model: Kee-Turcotte\n";
+            strSimInfo << "       Yield stress: " << fp.u.kee.s_y << "\n";
+            strSimInfo << "          Time param: " << fp.u.kee.t1 << "\n";
+            strSimInfo << "   Zero-shear visc.: " << fp.u.kee.eta_0 << "\n";
+            break;
+        case FLUID_THIXO:
+            strSimInfo << "              Model: Thixotropic\n";
+            strSimInfo << "         Has lambda: " << (fp.hasLambda ? "Yes" : "No") << "\n";
+            switch (fp.u.thixo.model) {
+                case THIXO_MOORE1959:
+                    strSimInfo << "      Thixo submodel: Moore (1959)\n";
+                    strSimInfo << "         Build rate: " << fp.u.thixo.u.moore1959.k1 << "\n";
+                    strSimInfo << "         Break rate: " << fp.u.thixo.u.moore1959.k2 << "\n";
+                    strSimInfo << "   Initial lambda: " << fp.u.thixo.u.moore1959.lambda_0 << "\n";
+                    strSimInfo << "   Zero-shear visc: " << fp.u.thixo.u.moore1959.eta_0 << "\n";
+                    break;
+                case THIXO_WORRALL1964:
+                    strSimInfo << "      Thixo submodel: Worrall (1964)\n";
+                    strSimInfo << "         Break rate: " << fp.u.thixo.u.worrall1964.k1 << "\n";
+                    strSimInfo << "  Initial yield str: " << fp.u.thixo.u.worrall1964.s_y_0 << "\n";
+                    strSimInfo << "   Zero-shear visc: " << fp.u.thixo.u.worrall1964.eta_0 << "\n";
+                    break;
+                case THIXO_HOUSKA1980:
+                    strSimInfo << "      Thixo submodel: Houska (1980)\n";
+                    strSimInfo << "         Build rate: " << fp.u.thixo.u.houska1980.k1 << "\n";
+                    strSimInfo << "         Break rate: " << fp.u.thixo.u.houska1980.k2 << "\n";
+                    strSimInfo << "      Power exponent: " << fp.u.thixo.u.houska1980.m_exponent << "\n";
+                    strSimInfo << "   Initial yield str: " << fp.u.thixo.u.houska1980.s_y_0 << "\n";
+                    strSimInfo << "      Eq. yield str: " << fp.u.thixo.u.houska1980.s_y_inf << "\n";
+                    strSimInfo << "  Consistency factor: " << fp.u.thixo.u.houska1980.k_consistency << "\n";
+                    strSimInfo << "         Power index: " << fp.u.thixo.u.houska1980.n_index << "\n";
+                    break;
+                case THIXO_TOORMAN1997:
+                    strSimInfo << "      Thixo submodel: Toorman (1997)\n";
+                    strSimInfo << "         Build rate: " << fp.u.thixo.u.toorman1997.k1 << "\n";
+                    strSimInfo << "         Break rate: " << fp.u.thixo.u.toorman1997.k2 << "\n";
+                    strSimInfo << "              a exp: " << fp.u.thixo.u.toorman1997.a_exponent << "\n";
+                    strSimInfo << "              b exp: " << fp.u.thixo.u.toorman1997.b_exponent << "\n";
+                    strSimInfo << "   Initial yield str: " << fp.u.thixo.u.toorman1997.s_y_0 << "\n";
+                    strSimInfo << "   Zero-shear visc: " << fp.u.thixo.u.toorman1997.eta_0 << "\n";
+                    break;
+            }
+            break;
+        default:
+            strSimInfo << "              Model: Unknown\n";
+            break;
+    }
+    strSimInfo << "--------------------------------------------------------------------------------\n";
+}
+
+std::string getSimInfoString(int step, dfloat MLUPS, const fluidProps& nnfPropsA, const fluidProps& nnfPropsB, bool hasSecond)
 {
     std::ostringstream strSimInfo("");
     
@@ -855,93 +942,11 @@ std::string getSimInfoString(int step, dfloat MLUPS, const fluidProps& nnfProps 
     strSimInfo << std::scientific << std::setprecision(6);
     
     #ifdef NON_NEWTONIAN_FLUID
-    // Display info based on actual fluidProps struct
-    switch (nnfProps.type) {
-        case FLUID_POWERLAW:
-            strSimInfo << "              Model: Power-Law\n";
-            strSimInfo << "        Power index: " << nnfProps.u.powerlaw.n_index << "\n";
-            strSimInfo << " Consistency factor: " << nnfProps.u.powerlaw.k_consistency << "\n";
-            strSimInfo << "            Gamma 0: " << nnfProps.u.powerlaw.gamma_0 << "\n";
-            break;
-        
-        case FLUID_BINGHAM:
-            strSimInfo << "              Model: Bingham (Viscoplastic)\n";
-            strSimInfo << "       Yield stress: " << nnfProps.u.bingham.s_y << "\n";
-            strSimInfo << "      Plastic omega: " << nnfProps.u.bingham.omega_p << "\n";
-            strSimInfo << "  Plastic viscosity: " << VISC << "\n";
-            strSimInfo << "     Bingham number: " << nnfProps.u.bingham.s_y / (VISC * U_MAX * U_MAX) << "\n";
-            break;
-        
-        case FLUID_HERSCHEL_BULKLEY:
-            strSimInfo << "              Model: Herschel-Bulkley\n";
-            strSimInfo << "       Yield stress: " << nnfProps.u.hb.s_y << "\n";
-            strSimInfo << "        Power index: " << nnfProps.u.hb.n_index << "\n";
-            strSimInfo << " Consistency factor: " << nnfProps.u.hb.k_consistency << "\n";
-            strSimInfo << "            Gamma 0: " << nnfProps.u.hb.gamma_0 << "\n";
-            break;
-        
-        case FLUID_BI_VISCOSITY:
-            strSimInfo << "              Model: Bi-viscosity\n";
-            strSimInfo << "       Yield stress: " << nnfProps.u.bi.s_y << "\n";
-            strSimInfo << "     Viscosity ratio: " << nnfProps.u.bi.visc_ratio << "\n";
-            strSimInfo << "        Yield omega: " << nnfProps.u.bi.omega_y << "\n";
-            strSimInfo << "      Plastic omega: " << nnfProps.u.bi.omega_p << "\n";
-            strSimInfo << "    Critical gamma: " << nnfProps.u.bi.gamma_c << "\n";
-            break;
-        
-        case FLUID_KEE_TURCOTEE:
-            strSimInfo << "              Model: Kee-Turcotte\n";
-            strSimInfo << "       Yield stress: " << nnfProps.u.kee.s_y << "\n";
-            strSimInfo << "          Time param: " << nnfProps.u.kee.t1 << "\n";
-            strSimInfo << "   Zero-shear visc.: " << nnfProps.u.kee.eta_0 << "\n";
-            break;
-        
-        case FLUID_THIXO:
-            strSimInfo << "              Model: Thixotropic\n";
-            strSimInfo << "         Has lambda: " << (nnfProps.hasLambda ? "Yes" : "No") << "\n";
-            switch (nnfProps.u.thixo.model) {
-                case THIXO_MOORE1959:
-                    strSimInfo << "      Thixo submodel: Moore (1959)\n";
-                    strSimInfo << "         Build rate: " << nnfProps.u.thixo.u.moore1959.k1 << "\n";
-                    strSimInfo << "         Break rate: " << nnfProps.u.thixo.u.moore1959.k2 << "\n";
-                    strSimInfo << "   Initial lambda: " << nnfProps.u.thixo.u.moore1959.lambda_0 << "\n";
-                    strSimInfo << "   Zero-shear visc: " << nnfProps.u.thixo.u.moore1959.eta_0 << "\n";
-                    break;
-                case THIXO_WORRALL1964:
-                    strSimInfo << "      Thixo submodel: Worrall (1964)\n";
-                    strSimInfo << "         Break rate: " << nnfProps.u.thixo.u.worrall1964.k1 << "\n";
-                    strSimInfo << "  Initial yield str: " << nnfProps.u.thixo.u.worrall1964.s_y_0 << "\n";
-                    strSimInfo << "   Zero-shear visc: " << nnfProps.u.thixo.u.worrall1964.eta_0 << "\n";
-                    break;
-                case THIXO_HOUSKA1980:
-                    strSimInfo << "      Thixo submodel: Houska (1980)\n";
-                    strSimInfo << "         Build rate: " << nnfProps.u.thixo.u.houska1980.k1 << "\n";
-                    strSimInfo << "         Break rate: " << nnfProps.u.thixo.u.houska1980.k2 << "\n";
-                    strSimInfo << "      Power exponent: " << nnfProps.u.thixo.u.houska1980.m_exponent << "\n";
-                    strSimInfo << "   Initial yield str: " << nnfProps.u.thixo.u.houska1980.s_y_0 << "\n";
-                    strSimInfo << "      Eq. yield str: " << nnfProps.u.thixo.u.houska1980.s_y_inf << "\n";
-                    strSimInfo << "  Consistency factor: " << nnfProps.u.thixo.u.houska1980.k_consistency << "\n";
-                    strSimInfo << "         Power index: " << nnfProps.u.thixo.u.houska1980.n_index << "\n";
-                    break;
-                case THIXO_TOORMAN1997:
-                    strSimInfo << "      Thixo submodel: Toorman (1997)\n";
-                    strSimInfo << "         Build rate: " << nnfProps.u.thixo.u.toorman1997.k1 << "\n";
-                    strSimInfo << "         Break rate: " << nnfProps.u.thixo.u.toorman1997.k2 << "\n";
-                    strSimInfo << "              a exp: " << nnfProps.u.thixo.u.toorman1997.a_exponent << "\n";
-                    strSimInfo << "              b exp: " << nnfProps.u.thixo.u.toorman1997.b_exponent << "\n";
-                    strSimInfo << "   Initial yield str: " << nnfProps.u.thixo.u.toorman1997.s_y_0 << "\n";
-                    strSimInfo << "   Zero-shear visc: " << nnfProps.u.thixo.u.toorman1997.eta_0 << "\n";
-                    break;
-            }
-            break;
-        
-        default:
-            strSimInfo << "              Model: Unknown\n";
-            break;
+    appendFluidProps(strSimInfo, nnfPropsA, "Phase A properties:");
+    if (hasSecond) {
+        appendFluidProps(strSimInfo, nnfPropsB, "Phase B properties:");
     }
     #endif // NON_NEWTONIAN_FLUID
-    
-    strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif // OMEGA_FIELD
     #ifdef PARTICLE_MODEL
     strSimInfo << "\n---------------------------------- PARTICLES -----------------------------------\n";
@@ -1050,7 +1055,7 @@ std::string getSimInfoString(int step, dfloat MLUPS, const fluidProps& nnfProps 
     return strSimInfo.str();
 }
 
-void saveSimInfo(int step, dfloat MLUPS, const fluidProps& nnfProps)
+void saveSimInfo(int step, dfloat MLUPS, const fluidProps& nnfPropsA, const fluidProps& nnfPropsB, bool hasSecond)
 {
     std::filesystem::path baseDir = folderSetup();
 
@@ -1062,7 +1067,7 @@ void saveSimInfo(int step, dfloat MLUPS, const fluidProps& nnfProps)
     outFile = fopen(strInf.string().c_str(), "w");
     if(outFile != nullptr)
     {
-        std::string strSimInfo = getSimInfoString(step, MLUPS, nnfProps);
+        std::string strSimInfo = getSimInfoString(step, MLUPS, nnfPropsA, nnfPropsB, hasSecond);
         fprintf(outFile, strSimInfo.c_str());
         fclose(outFile);
     }

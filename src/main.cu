@@ -37,7 +37,10 @@ int main() {
     deviceField.allocateDeviceMemoryDeviceField();
     
     #ifdef NON_NEWTONIAN_FLUID
-    deviceField.nnfProps = CASE_NNF_PROPS;
+    deviceField.nnfPropsA = CASE_NNF_PROPS_PHASE1;
+    #ifdef PHI_DIST
+    deviceField.nnfPropsB = CASE_NNF_PROPS_PHASE2;
+    #endif
     #endif //NON_NEWTONIAN_FLUID
     
     #ifdef PARTICLE_MODEL
@@ -197,7 +200,11 @@ int main() {
     //Save info file
     //TODO: fix this later so it doesnt have defines
     #ifdef NON_NEWTONIAN_FLUID
-    saveSimInfo(step, MLUPS, deviceField.nnfProps);
+    #ifdef PHI_DIST
+    saveSimInfo(step, MLUPS, deviceField.nnfPropsA, deviceField.nnfPropsB, true);
+    #else
+    saveSimInfo(step, MLUPS, deviceField.nnfPropsA);
+    #endif
     #else
     saveSimInfo(step, MLUPS, {});
     #endif //NON_NEWTONIAN_FLUID

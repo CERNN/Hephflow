@@ -26,7 +26,7 @@
 
 /* ======================== SIMULATION CONFIGURATION ======================= */
 
-#define CELLDATA_SAVE true
+#define CELLDATA_SAVE false
 #define GPU_INDEX 0
 
 constexpr bool console_flush = false;
@@ -35,7 +35,7 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 001_pipeFlowCurved_D3Q19
+#define BC_PROBLEM 007_oscillatingDroplet
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 

@@ -72,7 +72,7 @@ constexpr dfloat LAMBDA_DIFFUSIVITY = VISC/LAMBDA_DIFFUSIVITY_RATIO;
 constexpr dfloat LAMBDA_DIFF_REF = (1.0/6);    // Reference diffusion
 constexpr dfloat LAMBDA_TAU = LAMBDA_DIFF_REF*3+0.5;    // Lambda relaxation time
 constexpr dfloat LAMBDA_OMEGA  = 1.0/LAMBDA_TAU;        // Lambda collision frequency
-constexpr dfloat LAMBDA_TT_OMEGA = 1.0-0.5*LAMBDA_OMEGA; // TRT parameter
+constexpr dfloat LAMBDA_TT_OMEGA = 1.0-0.5*LAMBDA_OMEGA; 
 
 // Diffusivity fluctuation correction
 constexpr dfloat LAMBDA_DIFF_FLUC = LAMBDA_DIFFUSIVITY - LAMBDA_DIFF_REF;

@@ -55,8 +55,15 @@ constexpr dfloat S_Y = Bn*L/(U_MAX*VISC);      // Yield stress (Bingham)
 constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 
 /* --------------------- NON-NEWTONIAN FLUID PROPERTIES --------------------- */
-// Fluid properties macro for this case - expands to initializer list
-#define CASE_NNF_PROPS { FLUID_BINGHAM, false, { S_Y, 1.0 / TAU } }
+static inline fluidProps makeCaseNnfProps(){
+	fluidProps fp{};
+	fp.type = FLUID_BINGHAM;
+	fp.hasLambda = false;
+	fp.u.bingham.s_y = S_Y;
+	fp.u.bingham.omega_p = 1.0 / TAU;
+	return fp;
+}
+#define CASE_NNF_PROPS makeCaseNnfProps()
 
 /* --------------------- INITIALIZATION LOADING DEFINES -------------------- */
 #define LOAD_CHECKPOINT false   // loads simulation checkpoint from folder
