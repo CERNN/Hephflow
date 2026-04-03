@@ -15,6 +15,16 @@
 #include "../var.h"
 #include "nnf_types.h"
 
+// Provide PHASE1/PHASE2 aliases when a case only defines CASE_NNF_PROPS
+#ifdef CASE_NNF_PROPS
+#ifndef CASE_NNF_PROPS_PHASE1
+#define CASE_NNF_PROPS_PHASE1 CASE_NNF_PROPS
+#endif
+#ifndef CASE_NNF_PROPS_PHASE2
+#define CASE_NNF_PROPS_PHASE2 CASE_NNF_PROPS
+#endif
+#endif
+
 // Forward declarations for calcOmega* functions
 __host__ __device__ dfloat __forceinline__ calcOmegaPowerLaw(dfloat k_consistency, dfloat n_index, dfloat omegaOld, dfloat const auxStressMag);
 __host__ __device__ dfloat __forceinline__ calcOmegaBingham(dfloat omega_p, dfloat s_y, dfloat auxStressMag);

@@ -372,6 +372,16 @@ __global__ void gpuInitialization_pop(
             ghostInterface.g.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
             ghostInterface.g.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
             #endif            
+            #ifdef D3Q27
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 5, bx, by, bz)] = gNode[20];
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 6, bx, by, bz)] = gNode[22];
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 7, bx, by, bz)] = gNode[24];
+            ghostInterface.g.X_0[g_idxPopX(ty, tz, 8, bx, by, bz)] = gNode[25];
+            #endif
 /* DEV_REF_START (from dev during merge)
             ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
             ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
@@ -398,6 +408,16 @@ DEV_REF_END */
             ghostInterface.g.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
             ghostInterface.g.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
             #endif    
+            #ifdef D3Q27
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 5, bx, by, bz)] = gNode[19];
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 6, bx, by, bz)] = gNode[21];
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 7, bx, by, bz)] = gNode[23];
+            ghostInterface.g.X_1[g_idxPopX(ty, tz, 8, bx, by, bz)] = gNode[26];
+            #endif
 /* DEV_REF_START (from dev during merge)
             ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
             ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
@@ -426,6 +446,16 @@ DEV_REF_END */
             ghostInterface.g.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
             ghostInterface.g.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
             #endif           
+            #ifdef D3Q27
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 5, bx, by, bz)] = gNode[20];
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 6, bx, by, bz)] = gNode[22];
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 7, bx, by, bz)] = gNode[23];
+            ghostInterface.g.Y_0[g_idxPopY(tx, tz, 8, bx, by, bz)] = gNode[26];
+            #endif
 /* DEV_REF_START (from dev during merge)
             ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
             ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
@@ -452,6 +482,16 @@ DEV_REF_END */
             ghostInterface.g.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
             ghostInterface.g.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
             #endif        
+            #ifdef D3Q27
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 5, bx, by, bz)] = gNode[19];
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 6, bx, by, bz)] = gNode[21];
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 7, bx, by, bz)] = gNode[24];
+            ghostInterface.g.Y_1[g_idxPopY(tx, tz, 8, bx, by, bz)] = gNode[25];
+            #endif
 /* DEV_REF_START (from dev during merge)
             ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
             ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
@@ -480,6 +520,16 @@ DEV_REF_END */
             ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
             ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
             #endif    
+            #ifdef D3Q27
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17];
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 5, bx, by, bz)] = gNode[20];
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 6, bx, by, bz)] = gNode[21];
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 7, bx, by, bz)] = gNode[24];
+            ghostInterface.g.Z_0[g_idxPopZ(tx, ty, 8, bx, by, bz)] = gNode[26];
+            #endif
 /* DEV_REF_START (from dev during merge)
             ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
             ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
@@ -506,6 +556,16 @@ DEV_REF_END */
             ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
             ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
             #endif                    
+            #ifdef D3Q27
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 5, bx, by, bz)] = gNode[19];
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 6, bx, by, bz)] = gNode[22];
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 7, bx, by, bz)] = gNode[23];
+            ghostInterface.g.Z_1[g_idxPopZ(tx, ty, 8, bx, by, bz)] = gNode[25];
+            #endif
 /* DEV_REF_START (from dev during merge)
             ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
             ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
@@ -548,6 +608,16 @@ DEV_REF_END */
             ghostInterface.phi.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
             ghostInterface.phi.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
             #endif            
+            #ifdef D3Q27
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 5, bx, by, bz)] = gNode[20];
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 6, bx, by, bz)] = gNode[22];
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 7, bx, by, bz)] = gNode[24];
+            ghostInterface.phi.X_0[g_idxPopX(ty, tz, 8, bx, by, bz)] = gNode[25];
+            #endif
 /* DEV_REF_START (from dev during merge)
             ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
             ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
@@ -574,6 +644,16 @@ DEV_REF_END */
             ghostInterface.phi.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
             ghostInterface.phi.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
             #endif    
+            #ifdef D3Q27
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 5, bx, by, bz)] = gNode[19];
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 6, bx, by, bz)] = gNode[21];
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 7, bx, by, bz)] = gNode[23];
+            ghostInterface.phi.X_1[g_idxPopX(ty, tz, 8, bx, by, bz)] = gNode[26];
+            #endif
 /* DEV_REF_START (from dev during merge)
             ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
             ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
@@ -602,6 +682,16 @@ DEV_REF_END */
             ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
             ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
             #endif           
+            #ifdef D3Q27
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 5, bx, by, bz)] = gNode[20];
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 6, bx, by, bz)] = gNode[22];
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 7, bx, by, bz)] = gNode[23];
+            ghostInterface.phi.Y_0[g_idxPopY(tx, tz, 8, bx, by, bz)] = gNode[26];
+            #endif
 /* DEV_REF_START (from dev during merge)
             ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
             ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
@@ -628,6 +718,16 @@ DEV_REF_END */
             ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
             ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
             #endif        
+            #ifdef D3Q27
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 5, bx, by, bz)] = gNode[19];
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 6, bx, by, bz)] = gNode[21];
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 7, bx, by, bz)] = gNode[24];
+            ghostInterface.phi.Y_1[g_idxPopY(tx, tz, 8, bx, by, bz)] = gNode[25];
+            #endif
 /* DEV_REF_START (from dev during merge)
             ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
             ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
@@ -656,6 +756,16 @@ DEV_REF_END */
             ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
             ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
             #endif    
+            #ifdef D3Q27
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17];
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 5, bx, by, bz)] = gNode[20];
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 6, bx, by, bz)] = gNode[21];
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 7, bx, by, bz)] = gNode[24];
+            ghostInterface.phi.Z_0[g_idxPopZ(tx, ty, 8, bx, by, bz)] = gNode[26];
+            #endif
 /* DEV_REF_START (from dev during merge)
             ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
             ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
@@ -682,6 +792,16 @@ DEV_REF_END */
             ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
             ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
             #endif                    
+            #ifdef D3Q27
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 5, bx, by, bz)] = gNode[19];
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 6, bx, by, bz)] = gNode[22];
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 7, bx, by, bz)] = gNode[23];
+            ghostInterface.phi.Z_1[g_idxPopZ(tx, ty, 8, bx, by, bz)] = gNode[25];
+            #endif
 /* DEV_REF_START (from dev during merge)
             ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
             ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];

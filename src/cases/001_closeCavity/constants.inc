@@ -17,7 +17,7 @@ constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 constexpr int N = 256 * SCALE;              // Reference grid size
 constexpr int NX = N;                       // Grid size in X
 constexpr int NY = N;                       // Grid size in Y
-constexpr int NZ = 2;                       // Grid size in Z (2D simulation)
+constexpr int NZ = 8;                       // Grid size in Z (2D simulation)
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */

@@ -207,7 +207,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */        
-            #include "fragments/gTransport/g_popLoad.inc"
+            {
+                #include "fragments/gTransport/g_popLoad.inc"
+            }
 
 
             if(nodeType != BULK){
@@ -267,7 +269,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */        
-            #include "fragments/phiTransport/phi_popLoad.inc"
+            {
+                #include "fragments/phiTransport/phi_popLoad.inc"
+            }
 
             if(nodeType != BULK){
                 #include CASE_PHI_BC_DEF
@@ -332,7 +336,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             // Compute source term using function-based dispatch
             dfloat lambdaSource = computeLambdaSourceFromStress(
-                nnfProps,
+                nnfPropsA,
                 rhoVar, ux_t30, uy_t30, uz_t30,
                 m_xx_t45, m_yy_t45, m_zz_t45,
                 m_xy_t90, m_xz_t90, m_yz_t90,
@@ -354,7 +358,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */        
-            #include "fragments/lambdaTransport/lambda_popLoad.inc"
+            {
+                #include "fragments/lambdaTransport/lambda_popLoad.inc"
+            }
 
             if(nodeType != BULK){
                 #include CASE_LAMBDA_BC_DEF
@@ -385,7 +391,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "fragments/conformationTransport/popLoad_Axx.inc"
+            {
+                #include "fragments/conformationTransport/popLoad_Axx.inc"
+            }
 
             if(nodeType != BULK){
                  #include CASE_AXX_BC_DEF
@@ -413,7 +421,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "fragments/conformationTransport/popLoad_Axy.inc"
+            {
+                #include "fragments/conformationTransport/popLoad_Axy.inc"
+            }
 
             if(nodeType != BULK){
                     #include CASE_AXY_BC_DEF
@@ -441,7 +451,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "fragments/conformationTransport/popLoad_Axz.inc"
+            {
+                #include "fragments/conformationTransport/popLoad_Axz.inc"
+            }
 
             if(nodeType != BULK){
                     #include CASE_AXZ_BC_DEF
@@ -469,7 +481,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "fragments/conformationTransport/popLoad_Ayy.inc"
+            {
+                #include "fragments/conformationTransport/popLoad_Ayy.inc"
+            }
 
             if(nodeType != BULK){
                     #include CASE_AYY_BC_DEF
@@ -497,7 +511,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "fragments/conformationTransport/popLoad_Ayz.inc"
+            {
+                #include "fragments/conformationTransport/popLoad_Ayz.inc"
+            }
 
             if(nodeType != BULK){
                     #include CASE_AYZ_BC_DEF
@@ -525,7 +541,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include "fragments/convection_diffusion_streaming.inc"
             /* load pop from global in cover nodes */
-            #include "fragments/conformationTransport/popLoad_Azz.inc"
+            {
+                #include "fragments/conformationTransport/popLoad_Azz.inc"
+            }
 
             if(nodeType != BULK){
                     #include CASE_AZZ_BC_DEF
@@ -819,7 +837,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
           
             #include COLREC_G_RECONSTRUCTION
 
-            #include "fragments/gTransport/g_popSave.inc"
+            {
+                #include "fragments/gTransport/g_popSave.inc"
+            }
             
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = cVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = qx_t30;
@@ -831,7 +851,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
         
             #include COLREC_PHI_RECONSTRUCTION
 
-            #include "fragments/phiTransport/phi_popSave.inc"
+            {
+                #include "fragments/phiTransport/phi_popSave.inc"
+            }
             
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phiVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = phi_qx_t30;
@@ -846,7 +868,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include COLREC_LAMBDA_RECONSTRUCTION
 
-            #include "fragments/lambdaTransport/lambda_popSave.inc"
+            {
+                #include "fragments/lambdaTransport/lambda_popSave.inc"
+            }
             
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LAMBDA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambdaVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qx_t30;
@@ -858,7 +882,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include COLREC_AXX_RECONSTRUCTION
 
-            #include "fragments/conformationTransport/popSave_Axx.inc"
+            {
+                #include "fragments/conformationTransport/popSave_Axx.inc"
+            }
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AxxVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qx_t30;
@@ -869,7 +895,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include COLREC_AXY_RECONSTRUCTION
 
-            #include "fragments/conformationTransport/popSave_Axy.inc"
+            {
+                #include "fragments/conformationTransport/popSave_Axy.inc"
+            }
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AxyVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qx_t30;
@@ -880,7 +908,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include COLREC_AXZ_RECONSTRUCTION
 
-            #include "fragments/conformationTransport/popSave_Axz.inc"
+            {
+                #include "fragments/conformationTransport/popSave_Axz.inc"
+            }
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AxzVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qx_t30;
@@ -891,7 +921,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include COLREC_AYY_RECONSTRUCTION
 
-            #include "fragments/conformationTransport/popSave_Ayy.inc"
+            {
+                #include "fragments/conformationTransport/popSave_Ayy.inc"
+            }
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AyyVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qx_t30;
@@ -902,7 +934,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include COLREC_AYZ_RECONSTRUCTION
 
-            #include "fragments/conformationTransport/popSave_Ayz.inc"
+            {
+                #include "fragments/conformationTransport/popSave_Ayz.inc"
+            }
            
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AyzVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qx_t30;
@@ -913,7 +947,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             #include COLREC_AZZ_RECONSTRUCTION
 
-            #include "fragments/conformationTransport/popSave_Azz.inc"
+            {
+                #include "fragments/conformationTransport/popSave_Azz.inc"
+            }
 
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = AzzVar;
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qx_t30;

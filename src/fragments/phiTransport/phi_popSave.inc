@@ -22,6 +22,16 @@
              storeGhostXWest[g_idxPopX(ty, tz, 3, storeBxWest, by, bz)] = gNode[14];
              storeGhostXWest[g_idxPopX(ty, tz, 4, storeBxWest, by, bz)] = gNode[16];
 #endif
+#ifdef D3G27
+             storeGhostXWest[g_idxPopX(ty, tz, 1, storeBxWest, by, bz)] = gNode[ 8];
+             storeGhostXWest[g_idxPopX(ty, tz, 2, storeBxWest, by, bz)] = gNode[10];
+             storeGhostXWest[g_idxPopX(ty, tz, 3, storeBxWest, by, bz)] = gNode[14];
+             storeGhostXWest[g_idxPopX(ty, tz, 4, storeBxWest, by, bz)] = gNode[16];
+             storeGhostXWest[g_idxPopX(ty, tz, 5, storeBxWest, by, bz)] = gNode[20];
+             storeGhostXWest[g_idxPopX(ty, tz, 6, storeBxWest, by, bz)] = gNode[22];
+             storeGhostXWest[g_idxPopX(ty, tz, 7, storeBxWest, by, bz)] = gNode[24];
+             storeGhostXWest[g_idxPopX(ty, tz, 8, storeBxWest, by, bz)] = gNode[25];
+#endif
         }
         if (INTERFACE_BC_EAST){//e
              storeGhostXEast[g_idxPopX(ty, tz, 0, storeBxEast, by, bz)] = gNode[ 1]; 
@@ -46,6 +56,16 @@
         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 5, bx, by, bz)] = gNode[20];
+#ifdef D3G27
+             storeGhostXEast[g_idxPopX(ty, tz, 1, storeBxEast, by, bz)] = gNode[ 7];
+             storeGhostXEast[g_idxPopX(ty, tz, 2, storeBxEast, by, bz)] = gNode[ 9];
+             storeGhostXEast[g_idxPopX(ty, tz, 3, storeBxEast, by, bz)] = gNode[13];
+             storeGhostXEast[g_idxPopX(ty, tz, 4, storeBxEast, by, bz)] = gNode[15];
+             storeGhostXEast[g_idxPopX(ty, tz, 5, storeBxEast, by, bz)] = gNode[19];
+             storeGhostXEast[g_idxPopX(ty, tz, 6, storeBxEast, by, bz)] = gNode[21];
+             storeGhostXEast[g_idxPopX(ty, tz, 7, storeBxEast, by, bz)] = gNode[23];
+             storeGhostXEast[g_idxPopX(ty, tz, 8, storeBxEast, by, bz)] = gNode[26];
+#endif
         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 6, bx, by, bz)] = gNode[22];
         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 7, bx, by, bz)] = gNode[24];
         ghostInterface.phi_gGhost.X_0[g_idxPopX(ty, tz, 8, bx, by, bz)] = gNode[25];
@@ -118,6 +138,16 @@ DEV_REF_END */
              storeGhostYSouth[g_idxPopY(tx, tz, 3, bx, storeBySouth, bz)] = gNode[13];
              storeGhostYSouth[g_idxPopY(tx, tz, 4, bx, storeBySouth, bz)] = gNode[18];
 #endif
+#ifdef D3G27
+             storeGhostYSouth[g_idxPopY(tx, tz, 1, bx, storeBySouth, bz)] = gNode[ 8];
+             storeGhostYSouth[g_idxPopY(tx, tz, 2, bx, storeBySouth, bz)] = gNode[12];
+             storeGhostYSouth[g_idxPopY(tx, tz, 3, bx, storeBySouth, bz)] = gNode[13];
+             storeGhostYSouth[g_idxPopY(tx, tz, 4, bx, storeBySouth, bz)] = gNode[18];
+             storeGhostYSouth[g_idxPopY(tx, tz, 5, bx, storeBySouth, bz)] = gNode[20];
+             storeGhostYSouth[g_idxPopY(tx, tz, 6, bx, storeBySouth, bz)] = gNode[22];
+             storeGhostYSouth[g_idxPopY(tx, tz, 7, bx, storeBySouth, bz)] = gNode[23];
+             storeGhostYSouth[g_idxPopY(tx, tz, 8, bx, storeBySouth, bz)] = gNode[26];
+#endif
         }
         if (INTERFACE_BC_NORTH){//n
              storeGhostYNorth[g_idxPopY(tx, tz, 0, bx, storeByNorth, bz)] = gNode[ 3]; 
@@ -126,6 +156,16 @@ DEV_REF_END */
              storeGhostYNorth[g_idxPopY(tx, tz, 2, bx, storeByNorth, bz)] = gNode[11];
              storeGhostYNorth[g_idxPopY(tx, tz, 3, bx, storeByNorth, bz)] = gNode[14];
              storeGhostYNorth[g_idxPopY(tx, tz, 4, bx, storeByNorth, bz)] = gNode[17];
+#endif
+#ifdef D3G27
+             storeGhostYNorth[g_idxPopY(tx, tz, 1, bx, storeByNorth, bz)] = gNode[ 7];
+             storeGhostYNorth[g_idxPopY(tx, tz, 2, bx, storeByNorth, bz)] = gNode[11];
+             storeGhostYNorth[g_idxPopY(tx, tz, 3, bx, storeByNorth, bz)] = gNode[14];
+             storeGhostYNorth[g_idxPopY(tx, tz, 4, bx, storeByNorth, bz)] = gNode[17];
+             storeGhostYNorth[g_idxPopY(tx, tz, 5, bx, storeByNorth, bz)] = gNode[19];
+             storeGhostYNorth[g_idxPopY(tx, tz, 6, bx, storeByNorth, bz)] = gNode[21];
+             storeGhostYNorth[g_idxPopY(tx, tz, 7, bx, storeByNorth, bz)] = gNode[24];
+             storeGhostYNorth[g_idxPopY(tx, tz, 8, bx, storeByNorth, bz)] = gNode[25];
 #endif
         }
 
@@ -137,6 +177,16 @@ DEV_REF_END */
              storeGhostZBack[g_idxPopZ(tx, ty, 3, bx, by, storeBzBack)] = gNode[15];
              storeGhostZBack[g_idxPopZ(tx, ty, 4, bx, by, storeBzBack)] = gNode[17];
 #endif
+#ifdef D3G27
+             storeGhostZBack[g_idxPopZ(tx, ty, 1, bx, by, storeBzBack)] = gNode[10];
+             storeGhostZBack[g_idxPopZ(tx, ty, 2, bx, by, storeBzBack)] = gNode[12];
+             storeGhostZBack[g_idxPopZ(tx, ty, 3, bx, by, storeBzBack)] = gNode[15];
+             storeGhostZBack[g_idxPopZ(tx, ty, 4, bx, by, storeBzBack)] = gNode[17];
+             storeGhostZBack[g_idxPopZ(tx, ty, 5, bx, by, storeBzBack)] = gNode[20];
+             storeGhostZBack[g_idxPopZ(tx, ty, 6, bx, by, storeBzBack)] = gNode[21];
+             storeGhostZBack[g_idxPopZ(tx, ty, 7, bx, by, storeBzBack)] = gNode[24];
+             storeGhostZBack[g_idxPopZ(tx, ty, 8, bx, by, storeBzBack)] = gNode[26];
+#endif
         }
         if (INTERFACE_BC_FRONT){//f
              storeGhostZFront[g_idxPopZ(tx, ty, 0, bx, by, storeBzFront)] = gNode[ 5]; 
@@ -145,6 +195,16 @@ DEV_REF_END */
              storeGhostZFront[g_idxPopZ(tx, ty, 2, bx, by, storeBzFront)] = gNode[11];
              storeGhostZFront[g_idxPopZ(tx, ty, 3, bx, by, storeBzFront)] = gNode[16];
              storeGhostZFront[g_idxPopZ(tx, ty, 4, bx, by, storeBzFront)] = gNode[18];
+#endif
+#ifdef D3G27
+             storeGhostZFront[g_idxPopZ(tx, ty, 1, bx, by, storeBzFront)] = gNode[ 9];
+             storeGhostZFront[g_idxPopZ(tx, ty, 2, bx, by, storeBzFront)] = gNode[11];
+             storeGhostZFront[g_idxPopZ(tx, ty, 3, bx, by, storeBzFront)] = gNode[16];
+             storeGhostZFront[g_idxPopZ(tx, ty, 4, bx, by, storeBzFront)] = gNode[18];
+             storeGhostZFront[g_idxPopZ(tx, ty, 5, bx, by, storeBzFront)] = gNode[19];
+             storeGhostZFront[g_idxPopZ(tx, ty, 6, bx, by, storeBzFront)] = gNode[22];
+             storeGhostZFront[g_idxPopZ(tx, ty, 7, bx, by, storeBzFront)] = gNode[23];
+             storeGhostZFront[g_idxPopZ(tx, ty, 8, bx, by, storeBzFront)] = gNode[25];
 #endif
         }
 
@@ -157,6 +217,16 @@ DEV_REF_END */
              storeGhostXEast[g_idxPopX(typ1, tz, 3, storeBxWest, byAtNorth, bz)] = gNode[14];
              storeGhostXEast[g_idxPopX(ty, tzp1, 4, storeBxWest, by, bzAtFront)] = gNode[16];
 #endif
+#ifdef D3G27
+             storeGhostXEast[g_idxPopX(tym1, tz, 1, storeBxWest, byAtSouth, bz)] = gNode[ 8];
+             storeGhostXEast[g_idxPopX(ty, tzm1, 2, storeBxWest, by, bzAtBack)] = gNode[10];
+             storeGhostXEast[g_idxPopX(typ1, tz, 3, storeBxWest, byAtNorth, bz)] = gNode[14];
+             storeGhostXEast[g_idxPopX(ty, tzp1, 4, storeBxWest, by, bzAtFront)] = gNode[16];
+             storeGhostXEast[g_idxPopX(tym1, tzm1, 5, storeBxWest, byAtSouth, bzAtBack)] = gNode[19];
+             storeGhostXEast[g_idxPopX(tym1, tzp1, 6, storeBxWest, byAtSouth, bzAtFront)] = gNode[21];
+             storeGhostXEast[g_idxPopX(typ1, tzm1, 7, storeBxWest, byAtNorth, bzAtBack)] = gNode[23];
+             storeGhostXEast[g_idxPopX(typ1, tzp1, 8, storeBxWest, byAtNorth, bzAtFront)] = gNode[26];
+#endif
         }
         if (INTERFACE_BC_EAST){//e
              storeGhostXWest[g_idxPopX(ty, tz, 0, storeBxEast, by, bz)] = gNode[ 1]; 
@@ -165,6 +235,16 @@ DEV_REF_END */
              storeGhostXWest[g_idxPopX(ty, tzp1, 2, storeBxEast, by, bzAtFront)] = gNode[ 9];
              storeGhostXWest[g_idxPopX(tym1, tz, 3, storeBxEast, byAtSouth, bz)] = gNode[13];
              storeGhostXWest[g_idxPopX(ty, tzm1, 4, storeBxEast, by, bzAtBack)] = gNode[15];
+#endif
+#ifdef D3G27
+             storeGhostXWest[g_idxPopX(typ1, tz, 1, storeBxEast, byAtNorth, bz)] = gNode[ 7];
+             storeGhostXWest[g_idxPopX(ty, tzp1, 2, storeBxEast, by, bzAtFront)] = gNode[ 9];
+             storeGhostXWest[g_idxPopX(tym1, tz, 3, storeBxEast, byAtSouth, bz)] = gNode[13];
+             storeGhostXWest[g_idxPopX(ty, tzm1, 4, storeBxEast, by, bzAtBack)] = gNode[15];
+             storeGhostXWest[g_idxPopX(typ1, tzp1, 5, storeBxEast, byAtNorth, bzAtFront)] = gNode[20];
+             storeGhostXWest[g_idxPopX(typ1, tzm1, 6, storeBxEast, byAtNorth, bzAtBack)] = gNode[22];
+             storeGhostXWest[g_idxPopX(tym1, tzp1, 7, storeBxEast, byAtSouth, bzAtFront)] = gNode[24];
+             storeGhostXWest[g_idxPopX(tym1, tzm1, 8, storeBxEast, byAtSouth, bzAtBack)] = gNode[25];
 #endif
         }
 
@@ -176,6 +256,16 @@ DEV_REF_END */
              storeGhostYNorth[g_idxPopY(txp1, tz, 3, bxAtEast, storeBySouth, bz)] = gNode[13];
              storeGhostYNorth[g_idxPopY(tx, tzp1, 4, bx, storeBySouth, bzAtFront)] = gNode[18];
 #endif
+#ifdef D3G27
+             storeGhostYNorth[g_idxPopY(txm1, tz, 1, bxAtWest, storeBySouth, bz)] = gNode[ 8];
+             storeGhostYNorth[g_idxPopY(tx, tzm1, 2, bx, storeBySouth, bzAtBack)] = gNode[12];
+             storeGhostYNorth[g_idxPopY(txp1, tz, 3, bxAtEast, storeBySouth, bz)] = gNode[13];
+             storeGhostYNorth[g_idxPopY(tx, tzp1, 4, bx, storeBySouth, bzAtFront)] = gNode[18];
+             storeGhostYNorth[g_idxPopY(txm1, tzm1, 5, bxAtWest, storeBySouth, bzAtBack)] = gNode[19];
+             storeGhostYNorth[g_idxPopY(txm1, tzp1, 6, bxAtWest, storeBySouth, bzAtFront)] = gNode[21];
+             storeGhostYNorth[g_idxPopY(txp1, tzp1, 7, bxAtEast, storeBySouth, bzAtFront)] = gNode[24];
+             storeGhostYNorth[g_idxPopY(txp1, tzm1, 8, bxAtEast, storeBySouth, bzAtBack)] = gNode[25];
+#endif
         }
         if (INTERFACE_BC_NORTH){//n
              storeGhostYSouth[g_idxPopY(tx, tz, 0, bx, storeByNorth, bz)] = gNode[ 3]; 
@@ -184,6 +274,16 @@ DEV_REF_END */
              storeGhostYSouth[g_idxPopY(tx, tzp1, 2, bx, storeByNorth, bzAtFront)] = gNode[11];
              storeGhostYSouth[g_idxPopY(txm1, tz, 3, bxAtWest, storeByNorth, bz)] = gNode[14];
              storeGhostYSouth[g_idxPopY(tx, tzm1, 4, bx, storeByNorth, bzAtBack)] = gNode[17];
+#endif
+#ifdef D3G27
+             storeGhostYSouth[g_idxPopY(txp1, tz, 1, bxAtEast, storeByNorth, bz)] = gNode[ 7];
+             storeGhostYSouth[g_idxPopY(tx, tzp1, 2, bx, storeByNorth, bzAtFront)] = gNode[11];
+             storeGhostYSouth[g_idxPopY(txm1, tz, 3, bxAtWest, storeByNorth, bz)] = gNode[14];
+             storeGhostYSouth[g_idxPopY(tx, tzm1, 4, bx, storeByNorth, bzAtBack)] = gNode[17];
+             storeGhostYSouth[g_idxPopY(txp1, tzp1, 5, bxAtEast, storeByNorth, bzAtFront)] = gNode[20];
+             storeGhostYSouth[g_idxPopY(txp1, tzm1, 6, bxAtEast, storeByNorth, bzAtBack)] = gNode[22];
+             storeGhostYSouth[g_idxPopY(txm1, tzm1, 7, bxAtWest, storeByNorth, bzAtBack)] = gNode[23];
+             storeGhostYSouth[g_idxPopY(txm1, tzp1, 8, bxAtWest, storeByNorth, bzAtFront)] = gNode[26];
 #endif
         }
 
@@ -195,6 +295,16 @@ DEV_REF_END */
              storeGhostZFront[g_idxPopZ(txp1, ty, 3, bxAtEast, by, storeBzBack)] = gNode[15];
              storeGhostZFront[g_idxPopZ(tx, typ1, 4, bx, byAtNorth, storeBzBack)] = gNode[17];
 #endif
+#ifdef D3G27
+             storeGhostZFront[g_idxPopZ(txm1, ty, 1, bxAtWest, by, storeBzBack)] = gNode[10];
+             storeGhostZFront[g_idxPopZ(tx, tym1, 2, bx, byAtSouth, storeBzBack)] = gNode[12];
+             storeGhostZFront[g_idxPopZ(txp1, ty, 3, bxAtEast, by, storeBzBack)] = gNode[15];
+             storeGhostZFront[g_idxPopZ(tx, typ1, 4, bx, byAtNorth, storeBzBack)] = gNode[17];
+             storeGhostZFront[g_idxPopZ(txm1, tym1, 5, bxAtWest, byAtSouth, storeBzBack)] = gNode[19];
+             storeGhostZFront[g_idxPopZ(txp1, typ1, 6, bxAtEast, byAtNorth, storeBzBack)] = gNode[22];
+             storeGhostZFront[g_idxPopZ(txm1, typ1, 7, bxAtWest, byAtNorth, storeBzBack)] = gNode[23];
+             storeGhostZFront[g_idxPopZ(txp1, tym1, 8, bxAtEast, byAtSouth, storeBzBack)] = gNode[25];
+#endif
         }
         if (INTERFACE_BC_FRONT){//f
              storeGhostZBack[g_idxPopZ(tx, ty, 0, bx, by, storeBzFront)] = gNode[ 5]; 
@@ -203,6 +313,16 @@ DEV_REF_END */
              storeGhostZBack[g_idxPopZ(tx, typ1, 2, bx, byAtNorth, storeBzFront)] = gNode[11];
              storeGhostZBack[g_idxPopZ(txm1, ty, 3, bxAtWest, by, storeBzFront)] = gNode[16];
              storeGhostZBack[g_idxPopZ(tx, tym1, 4, bx, byAtSouth, storeBzFront)] = gNode[18];
+#endif
+#ifdef D3G27
+             storeGhostZBack[g_idxPopZ(txp1, ty, 1, bxAtEast, by, storeBzFront)] = gNode[ 9];
+             storeGhostZBack[g_idxPopZ(tx, typ1, 2, bx, byAtNorth, storeBzFront)] = gNode[11];
+             storeGhostZBack[g_idxPopZ(txm1, ty, 3, bxAtWest, by, storeBzFront)] = gNode[16];
+             storeGhostZBack[g_idxPopZ(tx, tym1, 4, bx, byAtSouth, storeBzFront)] = gNode[18];
+             storeGhostZBack[g_idxPopZ(txp1, typ1, 5, bxAtEast, byAtNorth, storeBzFront)] = gNode[20];
+             storeGhostZBack[g_idxPopZ(txm1, tym1, 6, bxAtWest, byAtSouth, storeBzFront)] = gNode[21];
+             storeGhostZBack[g_idxPopZ(txp1, tym1, 7, bxAtEast, byAtSouth, storeBzFront)] = gNode[24];
+             storeGhostZBack[g_idxPopZ(txm1, typ1, 8, bxAtWest, byAtNorth, storeBzFront)] = gNode[26];
 #endif
         }
     }
