@@ -1,4 +1,4 @@
-dfloat3 pos = {(NX-1)/2.0,65,(NZ-1)/2.0};
+dfloat3 pos = {(NX-1)/2.0,127.5,(NZ-1)/2.0};
 dfloat3 vel = {0.0, 0.0, 0.0};
 dfloat3 w = {0.0, 0.0, 0.0};
 
@@ -16,7 +16,7 @@ for (int i = 0; i<NUM_PARTICLES;i++){
     center.setVel(vel);
     center.setVel_old(vel);
     center.setDensity(1.166666);
-    center.setDiameter(30);
+    center.setDiameter(15);
     center.setSemiAxis1(sa1);
     center.setSemiAxis2(sa2);
     center.setSemiAxis3(sa3);

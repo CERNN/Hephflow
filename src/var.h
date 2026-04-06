@@ -35,7 +35,7 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 007_oscillatingDroplet
+#define BC_PROBLEM 007_twoLayerChannel
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 

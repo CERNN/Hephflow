@@ -9,13 +9,13 @@ constexpr dfloat RE = 10;                   // Reynolds number (custom for settl
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- TIME STEPPING --------------------- */
-constexpr int N_STEPS = 100000;             // Total simulation steps
+constexpr int N_STEPS = 20000;             // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
-constexpr int N = 200;                      // Reference grid size
+constexpr int N = 96;                      // Reference grid size
 constexpr int NX = N;                       // Grid size in X
-constexpr int NY = 320 * SCALE;             // Grid size in Y (irregular grid)
+constexpr int NY = 160 * SCALE;             // Grid size in Y (irregular grid)
 constexpr int NZ = N;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
@@ -47,7 +47,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
 /* --------------------- FLUID PROPERTIES --------------------- */
 constexpr dfloat VISC = U_MAX * L / RE;     // Kinematic viscosity
-constexpr dfloat TAU = 0.5 + 3.0 * VISC;    // Relaxation time
+constexpr dfloat TAU = 0.65;    // Relaxation time
 constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 
 /* --------------------- CHECKPOINT AND INITIALIZATION --------------------- */
@@ -73,7 +73,7 @@ constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 
 /* --------------------- GRAVITY PARAMETERS --------------------- */
 constexpr dfloat GX = 0.0;                  // Gravity in X direction
-constexpr dfloat GY = -0.0001;              // Gravity in Y direction (settling force)
+constexpr dfloat GY = -6.72e-3;              // Gravity in Y direction (settling force)
 constexpr dfloat GZ = 0.0;                  // Gravity in Z direction
 
 /* --------------------- FLUID PROPERTIES FOR PARTICLES --------------------- */

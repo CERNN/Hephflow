@@ -8,7 +8,7 @@
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- TIME STEPPING --------------------- */
-constexpr int N_STEPS = 250000;               // Total simulation steps
+constexpr int N_STEPS = 2500000;               // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
@@ -45,7 +45,8 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 #define BC_Z_PERIODIC
 
 /* --------------------- FLUID PROPERTIES --------------------- */
-constexpr dfloat TAU = 0.8;                // Relaxation time
+constexpr dfloat TAU = 0.8;                // Relaxation time for phase 1
+constexpr dfloat TAU_PHASE2 = 0.8;         // Relaxation time for phase 2 (sweep variable)
 constexpr dfloat VISC = (TAU - 0.5) / 3;    // Kinematic viscosity
 constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 
@@ -64,9 +65,7 @@ static inline fluidProps makeCaseNnfPropsPhase2(){
 	fp.type = FLUID_BINGHAM;        // Zero-yield Bingham → Newtonian
 	fp.hasLambda = false;
 	fp.u.bingham.s_y = 0.0_df;
-	// nu2 = 2 * nu1 => tau2 = 0.5 + 2*(TAU - 0.5)
-	constexpr dfloat TAU2 = 10.0_df * TAU - 0.5_df;
-	fp.u.bingham.omega_p = 1.0_df / TAU2;
+	fp.u.bingham.omega_p = 1.0_df / TAU_PHASE2;
 	return fp;
 }
 
