@@ -637,6 +637,71 @@ void omegaProfile(
     #endif //OMEGA_FIELD
 }
 
+__host__
+void phiProfile(
+    dfloat* fMom,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
+){
+    #ifdef PHI_DIST
+    std::ostringstream strDataInfo;
+    strDataInfo << std::scientific;
+    strDataInfo << std::setprecision(6);
+    strDataInfo << "step " << step;
+
+    int x_loc, y_loc, z_loc;
+    dfloat hostVal;
+    std::stringstream name;
+
+    switch (dir_index)
+    {
+    case 1: // phi on x-direction
+        y_loc = y0;
+        z_loc = z0;
+        for (x_loc = 0; x_loc < NX; ++x_loc) {
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                             M3_PHI_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << (hostVal - PHI_ZERO) * PHI_SCALE;
+        }
+        name << "phiProfile_dx_y" << y0 << "_z" << z0;
+        saveTreatData(name.str(), strDataInfo.str(), step);
+        break;
+
+    case 2: // phi on y-direction
+        x_loc = x0;
+        z_loc = z0;
+        for (y_loc = 0; y_loc < NY; ++y_loc) {
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                             M3_PHI_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << (hostVal - PHI_ZERO) * PHI_SCALE;
+        }
+        name << "phiProfile_dy_x" << x0 << "_z" << z0;
+        saveTreatData(name.str(), strDataInfo.str(), step);
+        break;
+
+    case 3: // phi on z-direction
+        y_loc = y0;
+        x_loc = x0;
+        for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                             M3_PHI_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << (hostVal - PHI_ZERO) * PHI_SCALE;
+        }
+        name << "phiProfile_dz_x" << x0 << "_y" << y0;
+        saveTreatData(name.str(), strDataInfo.str(), step);
+        break;
+
+    default:
+        std::cerr << "phiProfile: unknown dir_index " << dir_index << std::endl;
+        break;
+    }
+    #endif //PHI_DIST
+}
+
 
 
 
