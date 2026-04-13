@@ -234,8 +234,6 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
         #ifdef PHI_DIST 
 
             dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-            phiVar -= PHI_ZERO;
-            phiVar *= PHI_SCALE;
             
             #include "fragments/phiTransport/phase_gradient.inc"
             //#include "fragments/phiTransport/normal_gradient.inc"
@@ -245,8 +243,6 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             L_Fy += F_phase_y;
             L_Fz += F_phase_z;
 
-            dfloat phi_for_sharp = phiVar;
-            phi_for_sharp = fmaxf(0.0_df, fminf(1.0_df, phi_for_sharp));
             dfloat phiSource = 0.0_df;
             #ifdef INTERFACE_SHARPENING
                 #include "fragments/phiTransport/phi_sharpening.inc"
@@ -254,11 +250,6 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             #else
                 dfloat phiSharpSource = 0.0_df;
             #endif //INTERFACE_SHARPENING
-
-
-            phiVar /= PHI_SCALE;
-            phiVar += PHI_ZERO;
-            dfloat invPhi = 1/phiVar;
             dfloat phi_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat phi_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat phi_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -287,14 +278,12 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 ;
                 phiVar = phiVar + phiSource; 
                 //clamp 
-                if(phiVar > PHI_TWO + PHI_ZERO)
-                    phiVar = PHI_TWO + PHI_ZERO;
-                if(phiVar < PHI_ONE + PHI_ZERO)
-                    phiVar = PHI_ONE + PHI_ZERO;
+                if(phiVar > PHI_TWO)
+                    phiVar = PHI_TWO;
+                if(phiVar < PHI_ONE)
+                    phiVar = PHI_ONE;
 
-                invPhi= 1.0/phiVar;
-
-                phi_qx_t30 = ((gNode[1] - gNode[2] 
+                phi_qx_t30 = (gNode[1] - gNode[2] 
                     #ifdef D3G19
                     + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]
                     #endif
@@ -302,8 +291,8 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                     + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]
                     + gNode[19] - gNode[20] + gNode[21] - gNode[22] + gNode[23] - gNode[24] - gNode[25] + gNode[26]
                     #endif
-                ))*invPhi;
-                phi_qy_t30 = ((gNode[3] - gNode[4]
+                );
+                phi_qy_t30 = (gNode[3] - gNode[4]
                     #ifdef D3G19 
                     + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]
                     #endif
@@ -311,8 +300,8 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                     + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]
                     + gNode[19] - gNode[20] + gNode[21] - gNode[22] - gNode[23] + gNode[24] + gNode[25] - gNode[26]
                     #endif
-                ))*invPhi;
-                phi_qz_t30 = ((gNode[5] - gNode[6]
+                );
+                phi_qz_t30 = (gNode[5] - gNode[6]
                     #ifdef D3G19 
                     + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]
                     #endif
@@ -320,7 +309,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                     + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]
                     + gNode[19] - gNode[20] - gNode[21] + gNode[22] + gNode[23] - gNode[24] + gNode[25] - gNode[26]
                     #endif
-                ))*invPhi;
+                );
             }
 
             
@@ -746,8 +735,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                     // Normalize phi to [0,1] for blending between phase A (phi=PHI_ONE) and phase B (phi=PHI_TWO)
                     // Stored phi includes PHI_ZERO offset; rescale to physical order parameter before mapping
                     dfloat phiLocal = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-                    dfloat phiPhysical = (phiLocal - PHI_ZERO) * PHI_SCALE; // back to [-1,1] range
-                    dfloat phiNorm = (phiPhysical - PHI_ONE) / (PHI_TWO - PHI_ONE);
+                    dfloat phiNorm = (phiLocal - PHI_ONE) / (PHI_TWO - PHI_ONE);
                     phiNorm = fmax(0.0_df, fmin(1.0_df, phiNorm));
 
                     // Compute phase-specific omegas, convert to apparent viscosities, then blend and back to omega
@@ -1036,10 +1024,10 @@ __global__ void gpuComputePhaseNormals(
         int nby = ny / BLOCK_NY;
         int nbz = nz / BLOCK_NZ;
         
-        return (fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)] - PHI_ZERO)* PHI_SCALE;
+        return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)];
     };
 
-    dfloat phi_c = (fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)] - PHI_ZERO)* PHI_SCALE;
+    dfloat phi_c = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
 
     // Load Neighbors
     dfloat phi_xm1 = getPhi(-1, 0, 0); dfloat phi_xp1 = getPhi(+1, 0, 0);
@@ -1121,7 +1109,7 @@ __global__ void gpuComputeChemicalPotential(
     const int by = blockIdx.y;
     const int bz = blockIdx.z;
 
-    dfloat phi = (fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)] - PHI_ZERO)* PHI_SCALE;
+    dfloat phi = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
     dfloat lap_phi = fMom[idxMom(tx, ty, tz, M3_LP_INDEX, bx, by, bz)];
 
     // Standard Double-Well: f(phi) = A * phi^2 * (1 - phi)^2

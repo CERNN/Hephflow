@@ -663,7 +663,7 @@ void phiProfile(
             size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              M3_PHI_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo << "\t" << (hostVal - PHI_ZERO) * PHI_SCALE;
+            strDataInfo << "\t" << hostVal;
         }
         name << "phiProfile_dx_y" << y0 << "_z" << z0;
         saveTreatData(name.str(), strDataInfo.str(), step);
@@ -676,7 +676,7 @@ void phiProfile(
             size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              M3_PHI_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo << "\t" << (hostVal - PHI_ZERO) * PHI_SCALE;
+            strDataInfo << "\t" << hostVal;
         }
         name << "phiProfile_dy_x" << x0 << "_z" << z0;
         saveTreatData(name.str(), strDataInfo.str(), step);
@@ -689,7 +689,7 @@ void phiProfile(
             size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              M3_PHI_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo << "\t" << (hostVal - PHI_ZERO) * PHI_SCALE;
+            strDataInfo << "\t" << hostVal;
         }
         name << "phiProfile_dz_x" << x0 << "_y" << y0;
         saveTreatData(name.str(), strDataInfo.str(), step);

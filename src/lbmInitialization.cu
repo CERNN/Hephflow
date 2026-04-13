@@ -54,7 +54,7 @@ __global__ void gpuInitialization_mom(
     dfloat qz_t30 = 3.0_df*(uz - 0.0_df);
     #endif //SECOND_DIST
     #ifdef PHI_DIST 
-    dfloat phiVar = 1.0_df + PHI_ZERO;
+    dfloat phiVar = PHI_TWO;  // default: all phase 2; overridden by CASE_FIELD_INIT
     dfloat phi_qx_t30 = 3.0_df*(ux - 0.0_df);
     dfloat phi_qy_t30 = 3.0_df*(uy - 0.0_df);
     dfloat phi_qz_t30 = 3.0_df*(uz - 0.0_df);

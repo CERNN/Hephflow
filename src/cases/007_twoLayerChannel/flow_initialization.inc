@@ -22,6 +22,4 @@ dfloat delta = Y - y0;
 // liquid below, gas above
 phiVar = phi_mid + phi_half * tanh(delta / denom);
 
-phiVar += PHI_ZERO;
-
 #endif
