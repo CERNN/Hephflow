@@ -78,6 +78,9 @@
 // Physics regression test metric
 #define CASE_TEST_METRIC STR(CASE_DIRECTORY/BC_PROBLEM/_test/test_metric.inc)
 
+// Spatially-varying body force field
+#define CASE_FORCE_FIELD STR(CASE_DIRECTORY/BC_PROBLEM/force_field.inc)
+
 
 
 /* ======================== TWO PHASE FLUIDS ====================== */

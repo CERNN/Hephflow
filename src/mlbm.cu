@@ -102,14 +102,18 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
 
     #ifdef LOCAL_FORCES
-    dfloat L_Fx = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)]; // F_0 * sin(K_const*x) * cos(K_const*y) ;
-    dfloat L_Fy = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)]; //-F_0 * sin(K_const*y) * cos(K_const*x) ;
+    dfloat L_Fx = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+    dfloat L_Fy = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
     dfloat L_Fz = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
     #else
-    dfloat L_Fx = FX; // F_0 * sin(K_const*x) * cos(K_const*y) ;
-    dfloat L_Fy = FY; //-F_0 * sin(K_const*y) * cos(K_const*x) ;
+    dfloat L_Fx = FX;
+    dfloat L_Fy = FY;
     dfloat L_Fz = FZ;
     #endif //LOCAL_FORCES
+
+    #ifdef FORCE_FIELD_INCLUDE
+    #include CASE_FORCE_FIELD
+    #endif //FORCE_FIELD_INCLUDE
 
 
     #ifdef BC_FORCES
