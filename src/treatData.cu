@@ -887,7 +887,7 @@ void computeTurbulentEnergies(
         }
     }
 
-    SS = SS/(N*N*N);
+    SS = SS/(NX*NY*NZ_TOTAL);
     f_SS = f_SS / (count);
     dfloat epsilon = 2.0_df*((TAU-0.5_df)/3.0_df)*f_SS;
 

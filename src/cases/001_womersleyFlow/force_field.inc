@@ -1,0 +1,1 @@
+L_Fx += G_L * cos(OMEGA_OSC * (dfloat)step);
