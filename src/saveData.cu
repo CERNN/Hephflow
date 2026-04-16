@@ -601,7 +601,7 @@ void saveVarVTK(const SaveDataParams* params)
             //Header 
             ofs << "# vtk DataFile Version 3.0\n"
                 << "LBM output (binary)\n"
-                << "BINARY\n"                               // ← here!
+                << "BINARY\n"
                 << "DATASET STRUCTURED_POINTS\n"
                 << "DIMENSIONS " << NX << " " << NY << " " << NZ << "\n"
                 << "ORIGIN 0 0 0\n"
@@ -1085,21 +1085,34 @@ void saveTreatData(std::string fileName, std::string dataString, int step, bool 
     #if SAVEDATA
     std::filesystem::path baseDir = folderSetup();;
 
-    std::filesystem::path strInf = baseDir / (ID_SIM + fileName + ".txt");
+    std::filesystem::path strInf = baseDir / (fileName + ".txt");
 
-    std::ifstream file(strInf.c_str());
+    // On Windows, prepend the extended-path prefix to bypass the 260-char MAX_PATH limit.
+    #if defined(_WIN32)
+    std::string pathStr = "\\\\?\\" + strInf.string();
+    std::replace(pathStr.begin(), pathStr.end(), '/', '\\');
+    #else
+    std::string pathStr = strInf.string();
+    #endif
+
+    std::ifstream file(pathStr);
     std::ofstream outfile;
 
     if(step == REPORT_SAVE  && !headerExist){ //check if first time step to save data
-        outfile.open(strInf.c_str());
+        outfile.open(pathStr);
     }else{
         if (file.good()) {
-            outfile.open(strInf.c_str(), std::ios::app);
+            outfile.open(pathStr, std::ios::app);
         }else{ 
-            outfile.open(strInf.c_str());
+            outfile.open(pathStr);
         }
     }
 
+    if (!outfile.is_open()) {
+        std::cerr << "[saveTreatData] ERROR: failed to open output file: "
+                  << strInf << " (path length: " << strInf.string().size() << ")" << std::endl;
+        return;
+    }
 
     outfile << dataString.c_str() << std::endl; 
     outfile.close(); 
@@ -1113,9 +1126,21 @@ void saveTreatDataHeader(std::string fileName, std::string headerString)
 {
     #if SAVEDATA
     std::filesystem::path baseDir = folderSetup();
-    std::filesystem::path strInf = baseDir / (ID_SIM + fileName + ".txt");
+    std::filesystem::path strInf = baseDir / (fileName + ".txt");
 
-    std::ofstream outfile(strInf.c_str()); // overwrite file
+    #if defined(_WIN32)
+    std::string pathStr = "\\\\?\\" + strInf.string();
+    std::replace(pathStr.begin(), pathStr.end(), '/', '\\');
+    #else
+    std::string pathStr = strInf.string();
+    #endif
+
+    std::ofstream outfile(pathStr); // overwrite file
+    if (!outfile.is_open()) {
+        std::cerr << "[saveTreatDataHeader] ERROR: failed to open output file: "
+                  << strInf << " (path length: " << strInf.string().size() << ")" << std::endl;
+        return;
+    }
     outfile << headerString << std::endl;
     outfile.close();
     #endif //SAVEDATA

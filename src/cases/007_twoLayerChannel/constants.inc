@@ -12,7 +12,7 @@ constexpr int N_STEPS = 2500000;               // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
-constexpr int N = 128 * SCALE;              // Reference grid size
+constexpr int N = 256 * SCALE;              // Reference grid size
 constexpr int NX = 8;                       // Grid size in X (thin channel)
 constexpr int NY = N;                       // Grid size in Y (channel height)
 constexpr int NZ = 8;                       // Grid size in Z (thin channel)
@@ -25,7 +25,7 @@ constexpr dfloat L = N;                     // Reference length
 /* --------------------- BODY FORCES --------------------- */
 constexpr dfloat FX = 0.0;                  // Force in X direction
 constexpr dfloat FY = 0.0;                  // Force in Y direction
-constexpr dfloat FZ = 1e-6;                 // Force in Z direction (flow driving)
+constexpr dfloat FZ = 2.5e-7;                 // Force in Z direction (flow driving)
 
 /* --------------------- INITIAL CONDITIONS --------------------- */
 constexpr dfloat RHO_0 = 1.0;               // Initial density
@@ -46,7 +46,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
 /* --------------------- FLUID PROPERTIES --------------------- */
 constexpr dfloat TAU = 0.8;                // Relaxation time for phase 1
-constexpr dfloat TAU_PHASE2 = 0.8;         // Relaxation time for phase 2 (sweep variable)
+constexpr dfloat TAU_PHASE2 = 1.1;         // Relaxation time for phase 2 (sweep variable)
 constexpr dfloat VISC = (TAU - 0.5) / 3;    // Kinematic viscosity
 constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 
@@ -99,7 +99,7 @@ constexpr dfloat PHI_REFERENCE = (dfloat)(0.0);   // Reference phase value
 constexpr dfloat PHI_DELTA_PHI = 2.0_df;                // Phase field range
 constexpr dfloat PHI_ONE = PHI_REFERENCE - PHI_DELTA_PHI/2.0;   // Phase 1 value
 constexpr dfloat PHI_TWO = PHI_REFERENCE + PHI_DELTA_PHI/2.0;   // Phase 2 value
-constexpr dfloat PHI_ZERO = (dfloat)(1.1);        // Initial phase value
+constexpr dfloat PHI_ZERO = (dfloat)(0.0);        // No offset: stored phi = physical phi in [-1,+1]
 // Physical CH order parameter mapping
 constexpr dfloat PHI_SCALE = 2.0/PHI_DELTA_PHI;
 
@@ -108,10 +108,17 @@ constexpr dfloat PHI_SCALE = 2.0/PHI_DELTA_PHI;
 // Physical surface tension
 constexpr dfloat phi_sigma = 0.0003;
 constexpr dfloat phi_del = 4.0;
-constexpr dfloat phi_xi = phi_del / 2.94;
-constexpr dfloat phi_beta  = 12.0 * phi_sigma / phi_del;
-constexpr dfloat phi_kappa = 1.5 * phi_sigma * phi_del;
-constexpr dfloat phi_gamma = 1.0 / (2.0 * 1.41421356237309 * phi_xi);
+constexpr dfloat M_CH      = 0.005_df;  // Mobility
+
+// --- 2. Cahn-Hilliard Constants ---
+constexpr dfloat kappa_CH  = 0.75_df * phi_sigma * phi_del; 
+constexpr dfloat A_CH      = (6.0_df * phi_sigma) / phi_del;
+
+// constexpr dfloat phi_xi = phi_del / 2.94;
+// Unused in current METHOD_CAHN_HILLIARD path (Allen-Cahn only):
+// constexpr dfloat phi_beta  = 12.0 * phi_sigma / phi_del;
+// constexpr dfloat phi_kappa = 1.5 * phi_sigma * phi_del;
+// constexpr dfloat phi_gamma = 1.0 / (2.0 * 1.41421356237309 * phi_xi);
 
 /* --------------------- DENSITY COUPLING --------------------- */
 
@@ -143,15 +150,4 @@ constexpr dfloat PHI_DIFF_REF = 0.0000033333;
 constexpr dfloat PHI_TAU   = 0.5 + 3.0 * PHI_DIFF_REF;
 constexpr dfloat PHI_OMEGA = 1.0 / PHI_TAU;
 
-/* --------------------- INTERFACE SHARPENING --------------------- */
-
-// Dimensionless sharpening strength (0.3–0.6 recommended)
-constexpr dfloat SHARP_FACTOR = 30.0_df;
-
-// Sharpening coefficient (now scale-consistent)
-constexpr dfloat phi_sharp_c = SHARP_FACTOR * phi_gamma * PHI_DIFF_REF;
-
-constexpr dfloat M_CH = 0.005_df;
-constexpr dfloat kappa_CH = 0.75_df * phi_sigma * phi_del; 
-constexpr dfloat A_CH     = (6.0_df * phi_sigma) / phi_del;
 /* ----- END CONSTANTS CONFIGURATION ----- */
