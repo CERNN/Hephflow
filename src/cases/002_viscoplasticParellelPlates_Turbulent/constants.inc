@@ -55,15 +55,16 @@ constexpr dfloat TAU = 3.0*VISC + 0.5;      // Relaxation time
 constexpr dfloat S_Y = Bn*U_MAX*U_MAX;      // Yield stress (Bingham)
 constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 
-static inline fluidProps makeCaseNnfProps(){
-	fluidProps fp{};
-	fp.type = FLUID_BINGHAM;
-	fp.hasLambda = false;
-	fp.u.bingham.s_y = S_Y;
-	fp.u.bingham.omega_p = 1.0 / TAU;
-	return fp;
+static inline fluidPhaseProps makeCasePhaseProps(){
+        fluidPhaseProps pp{};
+        pp.nnf.type = FLUID_BINGHAM;
+        pp.nnf.hasLambda = false;
+        pp.nnf.u.bingham.s_y = S_Y;
+        pp.nnf.u.bingham.omega_p = 1.0 / TAU;
+        pp.ve.type = VE_NEWTONIAN;
+        return pp;
 }
-#define CASE_NNF_PROPS makeCaseNnfProps()
+#define CASE_PHASE_PROPS makeCasePhaseProps()
 
 /* --------------------- INITIALIZATION LOADING DEFINES -------------------- */
 #define LOAD_CHECKPOINT false   // loads simulation checkpoint from folder 

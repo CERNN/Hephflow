@@ -51,27 +51,28 @@ constexpr dfloat VISC = (TAU - 0.5) / 3;    // Kinematic viscosity
 constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 
 // Two-phase Newtonian viscosities: phase B is 2x phase A
-static inline fluidProps makeCaseNnfPropsPhase1(){
-	fluidProps fp{};
-	fp.type = FLUID_BINGHAM;        // Use Bingham with zero yield to represent Newtonian
-	fp.hasLambda = false;
-	fp.u.bingham.s_y = 0.0_df;
-	fp.u.bingham.omega_p = 1.0_df / TAU; // tau = TAU
-	return fp;
+static inline fluidPhaseProps makeCasePhasePropsPhase1(){
+        fluidPhaseProps pp{};
+        pp.nnf.type = FLUID_BINGHAM;
+        pp.nnf.hasLambda = false;
+        pp.nnf.u.bingham.s_y = 0.0_df;
+        pp.nnf.u.bingham.omega_p = 1.0_df / TAU;
+        pp.ve.type = VE_NEWTONIAN;
+        return pp;
 }
 
-static inline fluidProps makeCaseNnfPropsPhase2(){
-	fluidProps fp{};
-	fp.type = FLUID_BINGHAM;        // Zero-yield Bingham → Newtonian
-	fp.hasLambda = false;
-	fp.u.bingham.s_y = 0.0_df;
-	fp.u.bingham.omega_p = 1.0_df / TAU_PHASE2;
-	return fp;
+static inline fluidPhaseProps makeCasePhasePropsPhase2(){
+        fluidPhaseProps pp{};
+        pp.nnf.type = FLUID_BINGHAM;
+        pp.nnf.hasLambda = false;
+        pp.nnf.u.bingham.s_y = 0.0_df;
+        pp.nnf.u.bingham.omega_p = 1.0_df / TAU_PHASE2;
+        pp.ve.type = VE_NEWTONIAN;
+        return pp;
 }
 
-#define CASE_NNF_PROPS_PHASE1 makeCaseNnfPropsPhase1()
-#define CASE_NNF_PROPS_PHASE2 makeCaseNnfPropsPhase2()
-
+#define CASE_PHASE_PROPS_PHASE1 makeCasePhasePropsPhase1()
+#define CASE_PHASE_PROPS_PHASE2 makeCasePhasePropsPhase2()
 /* --------------------- CHECKPOINT AND INITIALIZATION --------------------- */
 #define LOAD_CHECKPOINT false               // Load simulation checkpoint
 #define CHECKPOINT_SAVE false               // Save checkpoint frequency
