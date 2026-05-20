@@ -35,6 +35,7 @@ Flags
 """
 
 import csv
+import os
 import re
 import sys
 import argparse
@@ -51,6 +52,8 @@ SRC_DIR   = ROOT_DIR / "src"
 BIN_DIR   = ROOT_DIR / "bin"
 CASES_DIR = SRC_DIR  / "cases"
 VAR_H     = SRC_DIR  / "var.h"
+VAR_TYPES_H = SRC_DIR / "include" / "var_types.h"
+MEMORY_LAYOUT_H = SRC_DIR / "include" / "memory_layout.h"
 
 
 # ---------------------------------------------------------------------------
@@ -63,7 +66,7 @@ CASE_NAME = "007_twoLayerChannel"
 # - Variables in the SAME dict are LOCKED (zipped together, move as a pair).
 # - Cartesian product is taken ACROSS dicts (independent axes).
 #
-# Example below: 5 N/FZ pairs × 5 viscosity ratios × 5 PHI_DIFF_REF = 125 runs
+# Example below: 5 N/FZ pairs × 6 viscosity ratios × 4 PHI_DIFF_REF × 2 phi_del × 2 precision = 480 runs
 PARAM_GROUPS = [
     # Group 1 — mesh resolution (N and FZ locked so U_max stays constant)
     # FZ = FZ_ref * (N_ref/N)²,  ref: N=128, FZ=1e-6
@@ -72,13 +75,21 @@ PARAM_GROUPS = [
         "FZ": ["1.6e-5",  "4e-6",  "1e-6",  "2.5e-7",  "6.25e-8"],
     },
     # Group 2 — viscosity ratio of phase 2 relative to phase 1 (TAU1 = 0.8, nu1 = 0.1)
-    # TAU_PHASE2 = 0.5 + 3 * ratio * nu1   →  ratios 1, 2, 4, 8, 16
+    # TAU_PHASE2 = 0.5 + 3 * ratio * nu1   →  ratios 1, 2, 4, 8, 16, 32
     {
-        "TAU_PHASE2": ["0.8", "1.1", "1.7", "2.9", "5.3"],
+        "TAU_PHASE2": ["0.8", "1.1", "1.7", "2.9", "5.3", "10.1"],
     },
     # Group 3 — phase-field diffusivity
     {
-        "PHI_DIFF_REF": ["0.0000033333", "0.000033333", "0.00033333", "0.0033333", "0.033333"],
+        "PHI_DIFF_REF": ["1e-5", "1e-6", "1e-7", "0"],
+    },
+    # Group 4 — interface thickness parameter
+    {
+        "phi_del": ["4.0", "6.0"],
+    },
+    # Group 5 — numeric precision
+    {
+        "PRECISION": ["single", "double"],
     },
 ]
 
@@ -162,11 +173,71 @@ def set_id_sim(output_inc: Path, id_sim: str, dry_run: bool = False) -> None:
         output_inc.write_text(patched, encoding="utf-8")
 
 
+def _set_define_state(text: str, macro: str, enabled: bool) -> str:
+    """Enable or disable '#define MACRO' (supports commented form too)."""
+    pattern = rf'^\s*(//\s*)?#define\s+{re.escape(macro)}\b.*$'
+    line = f"#define {macro}" if enabled else f"// #define {macro}"
+    if re.search(pattern, text, flags=re.MULTILINE):
+        return re.sub(pattern, line, text, flags=re.MULTILINE)
+
+    anchor = "/* ========================= PRECISION DEFINITIONS ========================= */"
+    if anchor in text:
+        return text.replace(anchor, anchor + "\n\n" + line, 1)
+    return line + "\n" + text
+
+
+def _set_precision_in_file(file_path: Path, mode: str, dry_run: bool = False) -> bool:
+    """Apply precision mode to a file if it contains precision defines."""
+    if not file_path.exists():
+        return False
+
+    text = file_path.read_text(encoding="utf-8")
+    has_precision_markers = (
+        re.search(r'(^|\n)\s*(//\s*)?#define\s+SINGLE_PRECISION\b', text) is not None
+        or re.search(r'(^|\n)\s*(//\s*)?#define\s+DOUBLE_PRECISION\b', text) is not None
+    )
+
+    # For var_types.h, add markers if missing; for other files, skip if absent.
+    if not has_precision_markers and file_path != VAR_TYPES_H:
+        return False
+
+    if mode == "single":
+        patched = _set_define_state(text, "SINGLE_PRECISION", True)
+        patched = _set_define_state(patched, "DOUBLE_PRECISION", False)
+    else:
+        patched = _set_define_state(text, "SINGLE_PRECISION", False)
+        patched = _set_define_state(patched, "DOUBLE_PRECISION", True)
+
+    if not dry_run:
+        file_path.write_text(patched, encoding="utf-8")
+    return True
+
+
+def set_precision_mode(mode_raw: str, dry_run: bool = False) -> None:
+    """Set simulation precision to single or double precision."""
+    mode = mode_raw.strip().lower()
+    if mode in ("single", "float", "fp32"):
+        target = "single"
+    elif mode in ("double", "fp64"):
+        target = "double"
+    else:
+        raise ValueError(f"Unsupported PRECISION value '{mode_raw}'. Use single or double.")
+
+    applied = False
+    # Primary precision control in this codebase.
+    applied |= _set_precision_in_file(VAR_TYPES_H, target, dry_run=dry_run)
+    # Optional fallback if the user stores precision defines in memory_layout.h.
+    applied |= _set_precision_in_file(MEMORY_LAYOUT_H, target, dry_run=dry_run)
+
+    if not applied:
+        raise ValueError("Could not find precision defines in var_types.h or memory_layout.h")
+
+
 # ---------------------------------------------------------------------------
 # Compilation and execution
 # ---------------------------------------------------------------------------
 
-def compile_case(prefix: str, log_path: Path, dry_run: bool = False) -> int:
+def compile_case(prefix: str, log_path: Path | None = None, dry_run: bool = False) -> int:
     """
     Run  bash compile.sh <prefix>  in SRC_DIR.
     Streams output to stdout and also writes it to *log_path*.
@@ -179,8 +250,7 @@ def compile_case(prefix: str, log_path: Path, dry_run: bool = False) -> int:
         print("  [dry-run] skipping compilation")
         return 0
 
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("w", encoding="utf-8") as log_fh:
+    if log_path is None:
         proc = subprocess.Popen(
             cmd,
             cwd=str(SRC_DIR),
@@ -190,8 +260,21 @@ def compile_case(prefix: str, log_path: Path, dry_run: bool = False) -> int:
         )
         for line in proc.stdout:
             sys.stdout.write(line)
-            log_fh.write(line)
         proc.wait()
+    else:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("w", encoding="utf-8") as log_fh:
+            proc = subprocess.Popen(
+                cmd,
+                cwd=str(SRC_DIR),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            for line in proc.stdout:
+                sys.stdout.write(line)
+                log_fh.write(line)
+            proc.wait()
 
     return proc.returncode
 
@@ -204,7 +287,7 @@ def find_binary(prefix: str) -> Path | None:
     return exes[0] if exes else None
 
 
-def run_simulation(binary: Path, log_path: Path, dry_run: bool = False) -> int:
+def run_simulation(binary: Path, log_path: Path | None = None, dry_run: bool = False) -> int:
     """
     Execute *binary* from BIN_DIR.
     Returns the process exit code.
@@ -215,8 +298,7 @@ def run_simulation(binary: Path, log_path: Path, dry_run: bool = False) -> int:
         print("  [dry-run] skipping run")
         return 0
 
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("w", encoding="utf-8") as log_fh:
+    if log_path is None:
         proc = subprocess.Popen(
             [str(binary)],
             cwd=str(BIN_DIR),
@@ -226,10 +308,47 @@ def run_simulation(binary: Path, log_path: Path, dry_run: bool = False) -> int:
         )
         for line in proc.stdout:
             sys.stdout.write(line)
-            log_fh.write(line)
         proc.wait()
+    else:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("w", encoding="utf-8") as log_fh:
+            proc = subprocess.Popen(
+                [str(binary)],
+                cwd=str(BIN_DIR),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            for line in proc.stdout:
+                sys.stdout.write(line)
+                log_fh.write(line)
+            proc.wait()
 
     return proc.returncode
+
+
+def find_latest_run_dir(base_dir: Path) -> Path | None:
+    if not base_dir.exists():
+        return None
+    candidates = [d for d in base_dir.iterdir() if d.is_dir()]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda p: p.name)
+    return candidates[-1]
+
+
+def load_completed_sim_ids(csv_path: Path) -> set[str]:
+    if not csv_path.exists():
+        return set()
+
+    completed = set()
+    with csv_path.open("r", newline="", encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        for row in reader:
+            sim_id = (row.get("sim_id") or "").strip()
+            if sim_id:
+                completed.add(sim_id)
+    return completed
 
 
 # ---------------------------------------------------------------------------
@@ -306,7 +425,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--log-dir",
         default="sweep_logs",
-        help="Directory for per-run logs (default: sweep_logs/)",
+        help="Directory to store sweep CSV and optional logs (default: sweep_logs/)",
+    )
+    p.add_argument(
+        "--keep-run-logs",
+        action="store_true",
+        help="Write per-run compile/run log files (default: off)",
+    )
+    p.add_argument(
+        "--resume",
+        nargs="?",
+        const="LATEST",
+        default=None,
+        metavar="RUN_DIR",
+        help="Resume from an existing sweep folder; omit value to use latest",
     )
     p.add_argument(
         "--file",
@@ -401,8 +533,26 @@ def main() -> int:
         prefix = m.group(1) if m else "000"
 
     total = len(combos)
-    log_dir = ROOT_DIR / args.log_dir / case_name / datetime.now().strftime("%Y%m%d_%H%M%S")
+    runs_base_dir = ROOT_DIR / args.log_dir / case_name
+    if args.resume is None:
+        log_dir = runs_base_dir / datetime.now().strftime("%Y%m%d_%H%M%S")
+    else:
+        if args.resume == "LATEST":
+            latest = find_latest_run_dir(runs_base_dir)
+            if latest is None:
+                print(f"Error: no existing run folder found in {runs_base_dir}", file=sys.stderr)
+                return 1
+            log_dir = latest
+        else:
+            log_dir = Path(args.resume)
+            if not log_dir.is_absolute():
+                log_dir = runs_base_dir / log_dir
+        if not log_dir.exists():
+            print(f"Error: resume folder does not exist: {log_dir}", file=sys.stderr)
+            return 1
     csv_path = log_dir / "sweep_runs.csv"
+
+    completed_sim_ids = load_completed_sim_ids(csv_path) if args.resume is not None else set()
 
     print(f"\nHephflow sweep: {case_name}")
     print(f"  Target file : {target_file.relative_to(ROOT_DIR)}")
@@ -412,30 +562,46 @@ def main() -> int:
     print(f"  Prefix      : {prefix}")
     print(f"  Logs        : {log_dir.relative_to(ROOT_DIR)}")
     print(f"  CSV summary : {csv_path.relative_to(ROOT_DIR)}")
+    print(f"  Keep logs   : {'yes' if args.keep_run_logs else 'no'}")
+    if completed_sim_ids:
+        print(f"  Resume skip : {len(completed_sim_ids)} existing runs")
     print()
 
     # --- Backup originals ---
     original_constants = target_file.read_text(encoding="utf-8")
     original_var_h     = VAR_H.read_text(encoding="utf-8")
     original_output    = output_inc.read_text(encoding="utf-8") if output_inc.is_file() else None
+    original_var_types = VAR_TYPES_H.read_text(encoding="utf-8") if VAR_TYPES_H.is_file() else None
+    original_memory_layout = MEMORY_LAYOUT_H.read_text(encoding="utf-8") if MEMORY_LAYOUT_H.is_file() else None
 
     def restore_originals():
         target_file.write_text(original_constants, encoding="utf-8")
         VAR_H.write_text(original_var_h, encoding="utf-8")
         if original_output is not None and output_inc.is_file():
             output_inc.write_text(original_output, encoding="utf-8")
+        if original_var_types is not None and VAR_TYPES_H.is_file():
+            VAR_TYPES_H.write_text(original_var_types, encoding="utf-8")
+        if original_memory_layout is not None and MEMORY_LAYOUT_H.is_file():
+            MEMORY_LAYOUT_H.write_text(original_memory_layout, encoding="utf-8")
 
     failed_runs = []
 
     try:
         log_dir.mkdir(parents=True, exist_ok=True)
         csv_fields = ["run_index", "sim_id", *var_names, "status", "compile_rc", "run_rc"]
-        with csv_path.open("w", newline="", encoding="utf-8") as csv_fh:
+        write_mode = "a" if (args.resume is not None and csv_path.exists()) else "w"
+        with csv_path.open(write_mode, newline="", encoding="utf-8") as csv_fh:
             writer = csv.DictWriter(csv_fh, fieldnames=csv_fields)
-            writer.writeheader()
+            if write_mode == "w":
+                writer.writeheader()
+                csv_fh.flush()
+                os.fsync(csv_fh.fileno())
 
             for i, param_set in enumerate(combos, 1):
                 run_id = make_id(param_set)
+                if run_id in completed_sim_ids:
+                    print(f"[skip] Existing result found for {run_id}")
+                    continue
                 compile_rc = ""
                 run_rc = ""
                 status = "success"
@@ -448,8 +614,12 @@ def main() -> int:
                 if not args.run_only:
                     try:
                         for var, val in param_set.items():
-                            print(f"  [patch] {var} = {val} in {target_file.name}")
-                            patch_variable(target_file, var, val, dry_run=args.dry_run)
+                            if var.upper() == "PRECISION":
+                                print(f"  [patch] PRECISION = {val} in include files")
+                                set_precision_mode(val, dry_run=args.dry_run)
+                            else:
+                                print(f"  [patch] {var} = {val} in {target_file.name}")
+                                patch_variable(target_file, var, val, dry_run=args.dry_run)
                     except ValueError as e:
                         print(f"  Error: {e}", file=sys.stderr)
                         restore_originals()
@@ -470,7 +640,7 @@ def main() -> int:
 
                 # 4. Compile
                 if not args.run_only:
-                    compile_log = log_dir / f"{run_id}_compile.log"
+                    compile_log = (log_dir / f"{run_id}_compile.log") if args.keep_run_logs else None
                     rc = compile_case(prefix, compile_log, dry_run=args.dry_run)
                     compile_rc = str(rc)
                     if rc != 0:
@@ -480,6 +650,8 @@ def main() -> int:
                         row = {"run_index": i, "sim_id": run_id, "status": status, "compile_rc": compile_rc, "run_rc": run_rc}
                         row.update(param_set)
                         writer.writerow(row)
+                        csv_fh.flush()
+                        os.fsync(csv_fh.fileno())
                         # Restore constants for next iteration
                         target_file.write_text(original_constants, encoding="utf-8")
                         if original_output is not None:
@@ -496,9 +668,11 @@ def main() -> int:
                         row = {"run_index": i, "sim_id": run_id, "status": status, "compile_rc": compile_rc, "run_rc": run_rc}
                         row.update(param_set)
                         writer.writerow(row)
+                        csv_fh.flush()
+                        os.fsync(csv_fh.fileno())
                         continue
 
-                    run_log = log_dir / f"{run_id}_run.log"
+                    run_log = (log_dir / f"{run_id}_run.log") if args.keep_run_logs else None
                     rc = run_simulation(binary, run_log, dry_run=args.dry_run)
                     run_rc = str(rc)
                     if rc != 0:
@@ -513,6 +687,8 @@ def main() -> int:
                 row = {"run_index": i, "sim_id": run_id, "status": status, "compile_rc": compile_rc, "run_rc": run_rc}
                 row.update(param_set)
                 writer.writerow(row)
+                csv_fh.flush()
+                os.fsync(csv_fh.fileno())
                 print()
 
     except KeyboardInterrupt:
