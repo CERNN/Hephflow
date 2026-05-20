@@ -24,12 +24,12 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     CurvedBoundary* d_curvedBC_array = params.d_curvedBC_array;
     #endif //CURVED_BOUNDARY_CONDITION
 
-    #ifdef NON_NEWTONIAN_FLUID
-    const fluidProps nnfPropsA = params.nnfPropsA;
+    #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
+    const fluidPhaseProps phasePropsA = params.phasePropsA;
     #ifdef PHI_DIST
-    const fluidProps nnfPropsB = params.nnfPropsB;
+    const fluidPhaseProps phasePropsB = params.phasePropsB;
     #endif
-    #endif //NON_NEWTONIAN_FLUID
+    #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
 
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
@@ -329,7 +329,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             // Compute source term using function-based dispatch
             dfloat lambdaSource = computeLambdaSourceFromStress(
-                nnfPropsA,
+                phasePropsA.nnf,
                 rhoVar, ux_t30, uy_t30, uz_t30,
                 m_xx_t45, m_yy_t45, m_zz_t45,
                 m_xy_t90, m_xz_t90, m_yz_t90,
@@ -748,17 +748,16 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             #ifdef NON_NEWTONIAN_FLUID 
                 dfloat gammaDot = omegaVar * auxStressMag * as2;
                 #if defined(PHI_DIST)
-                    // Normalize phi to [0,1] for blending between phase A (phi=PHI_ONE) and phase B (phi=PHI_TWO)
-                    // Stored phi includes PHI_ZERO offset; rescale to physical order parameter before mapping
+                    // Bounded indicator h(phi)=0.5*(1+phi) in [0,1] for two-layer interpolation.
                     dfloat phiLocal = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-                    dfloat phiNorm = (phiLocal - PHI_ONE) / (PHI_TWO - PHI_ONE);
-                    phiNorm = fmax(0.0_df, fmin(1.0_df, phiNorm));
+                    dfloat h_phi = 0.5_df * (1.0_df + phiLocal);
+                    h_phi = fmax(0.0_df, fmin(1.0_df, h_phi));
 
                     // Compute phase-specific omegas, convert to apparent viscosities, then blend and back to omega
                     const dfloat omega_eps = 1.0e-12_df;
 
-                    dfloat omegaA = calcOmega(nnfPropsA, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
-                    dfloat omegaB = calcOmega(nnfPropsB, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
+                    dfloat omegaA = calcOmega(phasePropsA.nnf, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
+                    dfloat omegaB = calcOmega(phasePropsB.nnf, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
 
                     dfloat tauA = (omegaA > omega_eps) ? (1.0_df / omegaA) : (1.0_df / omega_eps);
                     dfloat tauB = (omegaB > omega_eps) ? (1.0_df / omegaB) : (1.0_df / omega_eps);
@@ -766,11 +765,12 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                     dfloat muA = (tauA - 0.5_df) * RHO_0 * cs2;
                     dfloat muB = (tauB - 0.5_df) * RHO_0 * cs2;
 
-                    dfloat muMix = interpolateProperty(muA, muB, phiNorm);
-                    dfloat tauMix = muMix / (rhoVar * cs2) + 0.5_df;
+                    // eta_s = eta_s_N + (eta_s_V - eta_s_N) * h(phi)
+                    dfloat eta_s = muA + (muB - muA) * h_phi;
+                    dfloat tauMix = eta_s / (rhoVar * cs2) + 0.5_df;
                     omegaVar = 1.0_df / fmax(tauMix, omega_eps);
                 #else
-                    omegaVar = calcOmega(nnfPropsA, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
+                    omegaVar = calcOmega(phasePropsA.nnf, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
                 #endif
             #endif //NON_NEWTONIAN_FLUID
 

@@ -521,12 +521,12 @@ struct DeviceKernelParams {
     unsigned int step;                      ///< Current time step
     bool save;                              ///< Whether to save data
 
-    #ifdef NON_NEWTONIAN_FLUID
-    fluidProps nnfPropsA;                   ///< Primary-phase non-Newtonian properties
+    #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
+    fluidPhaseProps phasePropsA;            ///< Phase-1 fluid properties (viscous + viscoelastic)
     #ifdef PHI_DIST
-    fluidProps nnfPropsB;                   ///< Secondary-phase non-Newtonian properties
+    fluidPhaseProps phasePropsB;            ///< Phase-2 fluid properties (viscous + viscoelastic)
     #endif
-    #endif //NON_NEWTONIAN_FLUID
+    #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
 
     // Conditional parameters with #ifdef guards
     #ifdef DENSITY_CORRECTION

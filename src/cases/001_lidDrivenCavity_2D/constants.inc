@@ -13,7 +13,7 @@ constexpr int SCALE = 1;                    // Grid scaling factor
 constexpr dfloat RE = 1000;                 // Reynolds number
 
 /* --------------------- TIME STEPPING --------------------- */
-constexpr int N_STEPS = 10000;              // Total simulation steps
+constexpr int N_STEPS = 100000;              // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
@@ -56,16 +56,17 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 
 /* --------------------- BINGHAM MODEL PARAMETERS --------------------- */
 #ifdef BINGHAM
-    constexpr dfloat Bn = 0.1;              // Bingham number (0 < Bn < 0.5)
-    constexpr dfloat S_Y = Bn*L/(U_MAX*VISC); // Yield stress
-    static inline fluidProps makeCaseNnfProps(){
-        fluidProps fp{};
-        fp.type = FLUID_BINGHAM;
-        fp.hasLambda = false;
-        fp.u.bingham.s_y = S_Y;
-        fp.u.bingham.omega_p = 1.0 / TAU;
-        return fp;
+    constexpr dfloat Bn = 1.0;              // Bingham number (0 < Bn < 0.5)
+    constexpr dfloat S_Y = Bn*(U_MAX*VISC)/L; // Yield stress
+    static inline fluidPhaseProps makeCasePhaseProps(){
+        fluidPhaseProps pp{};
+        pp.nnf.type = FLUID_BINGHAM;
+        pp.nnf.hasLambda = false;
+        pp.nnf.u.bingham.s_y = S_Y;
+        pp.nnf.u.bingham.omega_p = 1.0 / TAU;
+        pp.ve.type = VE_NEWTONIAN;
+        return pp;
     }
-    #define CASE_NNF_PROPS makeCaseNnfProps()
+    #define CASE_PHASE_PROPS makeCasePhaseProps()
 #endif //BINGHAM
 
