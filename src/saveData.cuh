@@ -188,16 +188,15 @@ std::string getVarFilename(
  *  @param MLUPS: Mega Lattice Updates Per Second
  *  @return string with simulation info
 */
-std::string getSimInfoString(int step, dfloat MLUPS, const fluidPhaseProps& phasePropsA = {}, const fluidPhaseProps& phasePropsB = {}, bool hasSecond = false);
+std::string getSimInfoString(int step, dfloat MLUPS, const fluidProps& nnfPropsA = {}, const fluidProps& nnfPropsB = {}, bool hasSecond = false);
 
 /**
 *   Save simulation's information
  *  @param info: simulation's informations
  *  @param MLUPS: Mega Lattice Updates Per Second
- *  @param phasePropsA: Phase A fluid properties (viscous + viscoelastic)
- *  @param phasePropsB: Phase B fluid properties (optional, multiphase)
+ *  @param nnfProps: Non-Newtonian fluid properties (optional)
 */
-void saveSimInfo(int step, dfloat MLUPS, const fluidPhaseProps& phasePropsA, const fluidPhaseProps& phasePropsB = {}, bool hasSecond = false);
+void saveSimInfo(int step, dfloat MLUPS, const fluidProps& nnfPropsA, const fluidProps& nnfPropsB = {}, bool hasSecond = false);
 
 
 

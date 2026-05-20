@@ -27,12 +27,12 @@ typedef struct deviceField{
         dfloat* d_BC_Fz;
     #endif //_BC_FORCES
 
-    #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
-    fluidPhaseProps phasePropsA;             ///< Phase-1 fluid properties (viscous + viscoelastic)
+    #ifdef NON_NEWTONIAN_FLUID
+    fluidProps nnfPropsA;                    ///< Primary-phase non-Newtonian properties
     #ifdef PHI_DIST
-    fluidPhaseProps phasePropsB;             ///< Phase-2 fluid properties (viscous + viscoelastic)
+    fluidProps nnfPropsB;                    ///< Secondary-phase non-Newtonian properties
     #endif
-    #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
+    #endif //NON_NEWTONIAN_FLUID
 
     void allocateDeviceMemoryDeviceField() {
         unsigned int memAllocated = 0;
@@ -261,12 +261,12 @@ typedef struct deviceField{
         params.d_curvedBC_array = d_curvedBC_array;
         #endif //CURVED_BOUNDARY_CONDITION
         
-        #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
-        params.phasePropsA = phasePropsA;
+        #ifdef NON_NEWTONIAN_FLUID
+        params.nnfPropsA = nnfPropsA;
         #ifdef PHI_DIST
-        params.phasePropsB = phasePropsB;
+        params.nnfPropsB = nnfPropsB;
         #endif
-        #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
+        #endif //NON_NEWTONIAN_FLUID
         
         // Pass struct by value - CUDA handles this efficiently
         gpuMomCollisionStream<<<gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>>>(params);

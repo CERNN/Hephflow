@@ -873,49 +873,7 @@ static void appendFluidProps(std::ostringstream& strSimInfo, const fluidProps& f
     strSimInfo << "--------------------------------------------------------------------------------\n";
 }
 
-static void appendVeProps(std::ostringstream& strSimInfo, const veFluidProps& vp)
-{
-    switch (vp.type) {
-        case VE_NEWTONIAN:
-            strSimInfo << "         VE model: None (Newtonian solvent)\n";
-            break;
-        case VE_OLDROYD_B:
-            strSimInfo << "         VE model: Oldroyd-B\n";
-            strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
-            strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
-            break;
-        case VE_FENE_P:
-            strSimInfo << "         VE model: FENE-P\n";
-            strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
-            strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
-            strSimInfo << "              L_sq: " << vp.u.fenep.L_sq << "\n";
-            strSimInfo << "                 L: " << std::sqrt(vp.u.fenep.L_sq) << "\n";
-            break;
-        case VE_GIESEKUS:
-            strSimInfo << "         VE model: Giesekus\n";
-            strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
-            strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
-            strSimInfo << "             Alpha: " << vp.u.giesekus.alpha << "\n";
-            break;
-        case VE_PTT_LINEAR:
-            strSimInfo << "         VE model: PTT (linear)\n";
-            strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
-            strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
-            strSimInfo << "           Epsilon: " << vp.u.ptt.epsilon << "\n";
-            break;
-        case VE_PTT_EXPONENTIAL:
-            strSimInfo << "         VE model: PTT (exponential)\n";
-            strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
-            strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
-            strSimInfo << "           Epsilon: " << vp.u.ptt.epsilon << "\n";
-            break;
-        default:
-            strSimInfo << "         VE model: Unknown\n";
-            break;
-    }
-}
-
-std::string getSimInfoString(int step, dfloat MLUPS, const fluidPhaseProps& phasePropsA, const fluidPhaseProps& phasePropsB, bool hasSecond)
+std::string getSimInfoString(int step, dfloat MLUPS, const fluidProps& nnfPropsA, const fluidProps& nnfPropsB, bool hasSecond)
 {
     std::ostringstream strSimInfo("");
     
@@ -984,32 +942,12 @@ std::string getSimInfoString(int step, dfloat MLUPS, const fluidPhaseProps& phas
     strSimInfo << std::scientific << std::setprecision(6);
     
     #ifdef NON_NEWTONIAN_FLUID
-    appendFluidProps(strSimInfo, phasePropsA.nnf, "Phase A properties:");
+    appendFluidProps(strSimInfo, nnfPropsA, "Phase A properties:");
     if (hasSecond) {
-        appendFluidProps(strSimInfo, phasePropsB.nnf, "Phase B properties:");
+        appendFluidProps(strSimInfo, nnfPropsB, "Phase B properties:");
     }
     #endif // NON_NEWTONIAN_FLUID
     #endif // OMEGA_FIELD
-    #ifdef CONFORMATION_TENSOR
-    strSimInfo << "\n------------------------------ VISCOELASTIC FLUID ------------------------------\n";
-    strSimInfo << std::scientific << std::setprecision(6);
-    strSimInfo << "Phase A:\n";
-    appendVeProps(strSimInfo, phasePropsA.ve);
-    if (hasSecond) {
-        strSimInfo << "Phase B:\n";
-        appendVeProps(strSimInfo, phasePropsB.ve);
-    }
-    strSimInfo << "\n  --- Conformation transport ---\n";
-    strSimInfo << std::scientific << std::setprecision(4);
-    strSimInfo << "  Diffusivity ratio: " << CONF_DIFFUSIVITY_RATIO << "\n";
-    strSimInfo << "  Diffusivity Coef.: " << CONF_DIFFUSIVITY << "\n";
-    strSimInfo << "Conformation Offset: " << CONF_ZERO << "\n";
-    strSimInfo << "           CONF_TAU: " << CONF_TAU << "\n";
-    strSimInfo << "         CONF_OMEGA: " << CONF_OMEGA << "\n";
-    strSimInfo << "     CONF_DIFF_FLUC: " << CONF_DIFF_FLUC << "\n";
-    strSimInfo << "CONF_DIFF_FLUC_COEF: " << CONF_DIFF_FLUC_COEF << "\n";
-    strSimInfo << "--------------------------------------------------------------------------------\n";
-    #endif // CONFORMATION_TENSOR
     #ifdef PARTICLE_MODEL
     strSimInfo << "\n---------------------------------- PARTICLES -----------------------------------\n";
     strSimInfo << std::scientific << std::setprecision(6);
@@ -1093,46 +1031,49 @@ std::string getSimInfoString(int step, dfloat MLUPS, const fluidPhaseProps& phas
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif// PHASE_MODEL
     #if defined(FENE_P) || defined(OLDROYD_B)
-    // Note: model details already covered by the CONFORMATION_TENSOR block above (runtime dispatch).
-    // Legacy compile-time constants printed here for reference.
-    strSimInfo << "\n------------------------------ VISCOELASTIC (compile-time) -------------------\n";
+    strSimInfo << "\n------------------------------ VISCOELASTIC -----------------------------\n";
         strSimInfo << std::scientific << std::setprecision(4);
     strSimInfo << " Weissenberg Number: " << Weissenberg_number << "\n";
     strSimInfo << "    Sum Viscosities: " << SUM_VISC << "\n";
     strSimInfo << "    Viscosity Ratio: " << BETA << "\n";
     strSimInfo << "  Solvent Viscosity: " << VISC << "\n";
+    strSimInfo << "  Polymer Viscosity: " << nu_p << "\n";
+    strSimInfo << "             Lambda: " << LAMBDA << "\n";
+    strSimInfo << "          FENE-P Re: " << fenep_re << "\n";
+    strSimInfo << "\n                                                                         \n";
+        strSimInfo << std::scientific << std::setprecision(4);
+    strSimInfo << "  Diffusivity ratio: " << CONF_DIFFUSIVITY_RATIO << "\n";
+    strSimInfo << "  Diffusivity Coef.: " << CONF_DIFFUSIVITY << "\n";
+    strSimInfo << "Conformation Offset: " << CONF_ZERO << "\n";
+    strSimInfo << "           CONF_TAU: " << CONF_TAU << "\n";
+    strSimInfo << "         CONF_OMEGA: " << CONF_OMEGA << "\n";
+    strSimInfo << "     CONF_DIFF_FLUC: " << CONF_DIFF_FLUC << "\n";
+    strSimInfo << "           CONF_AAA: " << CONF_AAA << "\n";
+    strSimInfo << "CONF_DIFF_FLUC_COEF: " << CONF_DIFF_FLUC_COEF << "\n";
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif// FENE_P
     return strSimInfo.str();
 }
 
-void saveSimInfo(int step, dfloat MLUPS, const fluidPhaseProps& phasePropsA, const fluidPhaseProps& phasePropsB, bool hasSecond)
+void saveSimInfo(int step, dfloat MLUPS, const fluidProps& nnfPropsA, const fluidProps& nnfPropsB, bool hasSecond)
 {
     std::filesystem::path baseDir = folderSetup();
 
-    // Use a fixed-length substring of ID_SIM for the info file name (e.g., first 16 chars)
-    std::string idSimShort = std::string(ID_SIM).substr(0, 16);
-    std::string baseName = idSimShort + std::string("_info.txt");
-    std::filesystem::path strInf = baseDir / baseName;
+    std::string baseName = ID_SIM + std::string("_info.txt");
+    std::filesystem::path strInf =  (baseDir / baseName).string();
 
-    // On Windows, prepend the extended-path prefix to bypass the 260-char MAX_PATH limit.
-    #if defined(_WIN32)
-    std::string pathStr = "\\\\?\\" + strInf.string();
-    std::replace(pathStr.begin(), pathStr.end(), '/', '\\');
-    #else
-    std::string pathStr = strInf.string();
-    #endif
+    FILE* outFile = nullptr;
 
-    FILE* outFile = fopen(pathStr.c_str(), "w");
+    outFile = fopen(strInf.string().c_str(), "w");
     if(outFile != nullptr)
     {
-        std::string strSimInfo = getSimInfoString(step, MLUPS, phasePropsA, phasePropsB, hasSecond);
-        fprintf(outFile, "%s", strSimInfo.c_str());
+        std::string strSimInfo = getSimInfoString(step, MLUPS, nnfPropsA, nnfPropsB, hasSecond);
+        fprintf(outFile, strSimInfo.c_str());
         fclose(outFile);
     }
     else
     {
-        printf("Error saving \"%s\" \nProbably wrong path!\n", pathStr.c_str());
+        printf("Error saving \"%s\" \nProbably wrong path!\n", strInf.string().c_str());
     }
     
 }

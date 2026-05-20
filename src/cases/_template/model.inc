@@ -32,8 +32,8 @@
 //#define RANDOM_NUMBERS true             // Enable random number generation
 
 /* --------------------- NON-NEWTONIAN / THIXOTROPIC FLUIDS --------------------- */
-// Choose ONE model and declare its properties in constants.inc via CASE_PHASE_PROPS
-// See src/non_newtonian/nnf.h and src/non_newtonian/nnf_types.h for details
+// Choose ONE model and declare its properties in constants.inc via CASE_NNF_PROPS
+// See src/include/nnf.h and src/non_newtonian/nnf_types.h for details
 //#define POWERLAW                        // Power-law model (shear thinning/thickening)
 //#define BINGHAM                         // Bingham viscoplastic model
 //#define BI_VISCOSITY                    // Bi-viscosity model
@@ -42,5 +42,5 @@
 
 // Enable variable viscosity / lambda fields for non-Newtonian fluids
 //#define OMEGA_FIELD                     // Required for POWERLAW/BINGHAM/BI_VISCOSITY
-//#define NON_NEWTONIAN_FLUID             // Required when using CASE_PHASE_PROPS
+//#define NON_NEWTONIAN_FLUID             // Required when using CASE_NNF_PROPS
 //#define LAMBDA_DIST                     // Extra scalar distribution for lambda transport (when LAMBDA_MODEL)

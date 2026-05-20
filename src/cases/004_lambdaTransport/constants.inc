@@ -81,19 +81,19 @@ constexpr dfloat LAMBDA_DIFF_FLUC_COEF = LAMBDA_AAA/(1.0+LAMBDA_AAA);
 
 /* --------------------- NON-NEWTONIAN FLUID PROPERTIES --------------------- */
 // Moore1959 thixotropic model: k1 (breakdown), k2 (build), lambda_0 (eq struct param)
-static inline fluidPhaseProps makeCasePhaseProps()
+static inline fluidProps makeCaseNnfProps()
 {
-        fluidPhaseProps pp{};
-        pp.nnf.type = FLUID_THIXO;
-        pp.nnf.hasLambda = true;
-        pp.nnf.u.thixo.model = THIXO_MOORE1959;
-        pp.nnf.u.thixo.u.moore1959.k1 = LAMBDA_K1;
-        pp.nnf.u.thixo.u.moore1959.k2 = LAMBDA_K2;
-        pp.nnf.u.thixo.u.moore1959.lambda_0 = THIXO_LAMBDA_0;
-        pp.nnf.u.thixo.u.moore1959.eta_0 = 1.0_df;
-        pp.ve.type = VE_NEWTONIAN;
-        return pp;
+	fluidProps fp{};
+	fp.type = FLUID_THIXO;
+	fp.hasLambda = true;
+	fp.u.thixo.model = THIXO_MOORE1959;
+	fp.u.thixo.u.moore1959.k1 = LAMBDA_K1;
+	fp.u.thixo.u.moore1959.k2 = LAMBDA_K2;
+	fp.u.thixo.u.moore1959.lambda_0 = THIXO_LAMBDA_0;
+	fp.u.thixo.u.moore1959.eta_0 = 1.0_df;
+	return fp;
 }
 
-#define CASE_PHASE_PROPS makeCasePhaseProps()
+#define CASE_NNF_PROPS makeCaseNnfProps()
+
 /* ----- END CONSTANTS CONFIGURATION ----- */

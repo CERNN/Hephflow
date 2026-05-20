@@ -36,16 +36,13 @@ int main() {
     /* -------------- ALLOCATION FOR GPU ------------- */
     deviceField.allocateDeviceMemoryDeviceField();
     
-    // Initialize per-phase fluid properties (viscous + viscoelastic bundled in fluidPhaseProps).
-    // Each case's constants.inc must define CASE_PHASE_PROPS (single-phase) or
-    // CASE_PHASE_PROPS_PHASE1 / CASE_PHASE_PROPS_PHASE2 (multiphase) via a factory function.
-    #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
-    deviceField.phasePropsA = CASE_PHASE_PROPS_PHASE1;
+    #ifdef NON_NEWTONIAN_FLUID
+    deviceField.nnfPropsA = CASE_NNF_PROPS_PHASE1;
     #ifdef PHI_DIST
-    deviceField.phasePropsB = CASE_PHASE_PROPS_PHASE2;
+    deviceField.nnfPropsB = CASE_NNF_PROPS_PHASE2;
     #endif
-    #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
-
+    #endif //NON_NEWTONIAN_FLUID
+    
     #ifdef PARTICLE_MODEL
     // Particle field initialization and allocation
     ParticleField particleField;
@@ -202,11 +199,11 @@ int main() {
     
     //Save info file
     //TODO: fix this later so it doesnt have defines
-    #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
+    #ifdef NON_NEWTONIAN_FLUID
     #ifdef PHI_DIST
-    saveSimInfo(step, MLUPS, deviceField.phasePropsA, deviceField.phasePropsB, true);
+    saveSimInfo(step, MLUPS, deviceField.nnfPropsA, deviceField.nnfPropsB, true);
     #else
-    saveSimInfo(step, MLUPS, deviceField.phasePropsA);
+    saveSimInfo(step, MLUPS, deviceField.nnfPropsA);
     #endif
     #else
     saveSimInfo(step, MLUPS, {});
