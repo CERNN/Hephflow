@@ -269,7 +269,6 @@ The following table summarizes performance benchmarks on various NVIDIA GPUs. Pe
 
 | GPU | Compute Capability | Frequency | Memory | Block Size | MLUPs | Notes |
 |-----|---|---|---|---|---|---|
-| RTX 5090 | 120 | 2.8 GHz | 1.7 GHz | 8×8×8 | 13075 | Compute-limited (86%) |
 | RTX 4090 OC | 89 | 3.0 GHz | 1.5 GHz | 8×8×8 | 9075 | Overclocked |
 | RTX 4090 | 89 | 2.8 GHz | 1.3 GHz | 8×8×8 | 7899 | Stock |
 | RTX 4060 | 89 | 2.8 GHz | 2.1 GHz | 8×8×8 | 2167 | - |
