@@ -482,7 +482,7 @@ std::vector<dfloat3> convertPointToCellVector(
 
 std::vector<dfloat6> convertPointToCellTensor6(
     const dfloat* Axx, const dfloat* Ayy, const dfloat* Azz,
-    const dfloat* Axy, const dfloat* Ayz, const dfloat* Axz,
+    const dfloat* Axy, const dfloat* Axz, const dfloat* Ayz,
     size_t NX, size_t NY, size_t NZ)
 {
     size_t Ncells = (NX-1)*(NY-1)*(NZ-1);
@@ -492,16 +492,16 @@ std::vector<dfloat6> convertPointToCellTensor6(
     for (size_t y=0; y<NY-1; y++)
     for (size_t x=0; x<NX-1; x++) {
         size_t cidx = x + y*(NX-1) + z*(NX-1)*(NY-1);
-        dfloat sumxx=0,sumyy=0,sumzz=0,sumxy=0,sumyz=0,sumxz=0;
+        dfloat sumxx=0,sumyy=0,sumzz=0,sumxy=0,sumxz=0,sumyz=0;
         for(int dz=0; dz<=1; dz++)
         for(int dy=0; dy<=1; dy++)
         for(int dx=0; dx<=1; dx++) {
             size_t pidx = idxScalarGlobal(x+dx, y+dy, z+dz);
             sumxx += Axx[pidx]; sumyy += Ayy[pidx]; sumzz += Azz[pidx];
-            sumxy += Axy[pidx]; sumyz += Ayz[pidx]; sumxz += Axz[pidx];
+            sumxy += Axy[pidx]; sumxz += Axz[pidx]; sumyz += Ayz[pidx];
         }
         cellField[cidx] = { sumxx/8.0f, sumyy/8.0f, sumzz/8.0f,
-                            sumxy/8.0f, sumyz/8.0f, sumxz/8.0f };
+                            sumxy/8.0f, sumxz/8.0f, sumyz/8.0f };
     }
     return cellField;
 }
@@ -646,7 +646,7 @@ void saveVarVTK(const SaveDataParams* params)
                 for (size_t i = 0; i < N; ++i) {
                     dfloat tensor[6] = {
                         Axx[i], Ayy[i], Azz[i],
-                        Axy[i], Ayz[i], Axz[i]
+                        Axy[i], Axz[i], Ayz[i]
                     };
                     writeBigEndian(ofs, tensor, 6);
                 }
@@ -726,12 +726,12 @@ void saveVarVTK(const SaveDataParams* params)
             #endif //LAMBDA_DIST
 
             #ifdef CONFORMATION_TENSOR
-                auto A_cell = convertPointToCellTensor6(Axx,Ayy,Azz,Axy,Ayz,Axz,NX,NY,NZ);
+                auto A_cell = convertPointToCellTensor6(Axx,Ayy,Azz,Axy,Axz,Ayz,NX,NY,NZ);
                 ofs << "TENSORS6 Aij  " << VTK_TYPE << "\n";
                 for (size_t i = 0; i < Ncells; ++i) {
                     dfloat tensor[6] = {
                         A_cell[i].xx,A_cell[i].yy,A_cell[i].zz,
-                        A_cell[i].xy,A_cell[i].yz,A_cell[i].xz
+                        A_cell[i].xy,A_cell[i].xz,A_cell[i].yz
                     };
                     writeBigEndian(ofs, tensor, 6);
                 }

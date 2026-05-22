@@ -157,6 +157,23 @@ void phiProfile(
     unsigned int step
 );
 
+#ifdef CONFORMATION_TENSOR
+/**
+ *  @brief Save conformation-tensor component profiles in the middle of the domain.
+ *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param dir_index: Which line direction will be saved.
+ *  @param x0, y0, z0: Coordinates where the profile will be extracted.
+ *  @param step: Current time step.
+ */
+__host__
+void conformationProfile(
+    dfloat* fMom,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
+);
+#endif //CONFORMATION_TENSOR
+
 
 /**
  *  @brief Calculate the Nusselt number based on the temperature field

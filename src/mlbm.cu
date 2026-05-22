@@ -167,6 +167,55 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
         #include "fragments/velocity_gradient.inc"
     #endif //COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
+    #ifdef PHI_DIST
+        // Precompute phase-force contribution before conformation evolution so we can
+        // remove its induced part from velocity gradients used by conformation transport.
+        dfloat F_phase_x = 0.0_df;
+        dfloat F_phase_y = 0.0_df;
+        dfloat F_phase_z = 0.0_df;
+
+        dfloat phase_dphidx = 0.0_df;
+        dfloat phase_dphidy = 0.0_df;
+        dfloat phase_dphidz = 0.0_df;
+        dfloat phase_laplacian_phi = 0.0_df;
+
+        dfloat phase_du_xx = 0.0_df, phase_du_xy = 0.0_df, phase_du_xz = 0.0_df;
+        dfloat phase_du_yx = 0.0_df, phase_du_yy = 0.0_df, phase_du_yz = 0.0_df;
+        dfloat phase_du_zx = 0.0_df, phase_du_zy = 0.0_df, phase_du_zz = 0.0_df;
+
+        {
+            dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            #include "fragments/phiTransport/phase_gradient.inc"
+            // We only need force decomposition terms here; avoid direct body-force side-effects.
+            #define PHI_FORCE_NO_APPLY_BODY_FORCE
+            #include "fragments/phiTransport/phase_coupling_forces.inc"
+            #undef PHI_FORCE_NO_APPLY_BODY_FORCE
+
+            phase_dphidx = dphidx;
+            phase_dphidy = dphidy;
+            phase_dphidz = dphidz;
+            phase_laplacian_phi = laplacian_phi;
+
+            // First-order estimate: u_phase ~ F_phase/(2*rho). Approximate grad(u_phase)
+            // by density-gradient coupling to remove phase-force-induced strain from VE evolution.
+            const dfloat invRhoLocal = 1.0_df / fmax(rhoVar, 1.0e-12_df);
+            const dfloat phaseVelCoef = 0.5_df * invRhoLocal * invRhoLocal;
+
+            phase_du_xx = -phaseVelCoef * F_phase_x * drhox;
+            phase_du_xy = -phaseVelCoef * F_phase_x * drhoy;
+            phase_du_xz = -phaseVelCoef * F_phase_x * drhoz;
+
+            phase_du_yx = -phaseVelCoef * F_phase_y * drhox;
+            phase_du_yy = -phaseVelCoef * F_phase_y * drhoy;
+            phase_du_yz = -phaseVelCoef * F_phase_y * drhoz;
+
+            phase_du_zx = -phaseVelCoef * F_phase_z * drhox;
+            phase_du_zy = -phaseVelCoef * F_phase_z * drhoy;
+            phase_du_zz = -phaseVelCoef * F_phase_z * drhoz;
+        }
+    #endif //PHI_DIST
+
     
     #ifdef CONFORMATION_TENSOR
         #ifdef A_XX_DIST
@@ -238,10 +287,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
         #ifdef PHI_DIST 
 
             dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-            
-            #include "fragments/phiTransport/phase_gradient.inc"
-            //#include "fragments/phiTransport/normal_gradient.inc"
-            #include "fragments/phiTransport/phase_coupling_forces.inc"
+            dfloat dphidx = phase_dphidx;
+            dfloat dphidy = phase_dphidy;
+            dfloat dphidz = phase_dphidz;
+            dfloat laplacian_phi = phase_laplacian_phi;
 
             L_Fx += F_phase_x;
             L_Fy += F_phase_y;
@@ -748,10 +797,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             #ifdef NON_NEWTONIAN_FLUID 
                 dfloat gammaDot = omegaVar * auxStressMag * as2;
                 #if defined(PHI_DIST)
-                    // Bounded indicator h(phi)=0.5*(1+phi) in [0,1] for two-layer interpolation.
+
                     dfloat phiLocal = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-                    dfloat h_phi = 0.5_df * (1.0_df + phiLocal);
-                    h_phi = fmax(0.0_df, fmin(1.0_df, h_phi));
+                    dfloat phiNorm = (phiLocal - PHI_ONE) / (PHI_TWO - PHI_ONE);
+                    phiNorm = fmax(0.0_df, fmin(1.0_df, phiNorm));
 
                     // Compute phase-specific omegas, convert to apparent viscosities, then blend and back to omega
                     const dfloat omega_eps = 1.0e-12_df;
@@ -765,9 +814,8 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                     dfloat muA = (tauA - 0.5_df) * RHO_0 * cs2;
                     dfloat muB = (tauB - 0.5_df) * RHO_0 * cs2;
 
-                    // eta_s = eta_s_N + (eta_s_V - eta_s_N) * h(phi)
-                    dfloat eta_s = muA + (muB - muA) * h_phi;
-                    dfloat tauMix = eta_s / (rhoVar * cs2) + 0.5_df;
+                    dfloat muMix = interpolateProperty(muA, muB, phiNorm);
+                    dfloat tauMix = muMix / (rhoVar * cs2) + 0.5_df;
                     omegaVar = 1.0_df / fmax(tauMix, omega_eps);
                 #else
                     omegaVar = calcOmega(phasePropsA.nnf, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);

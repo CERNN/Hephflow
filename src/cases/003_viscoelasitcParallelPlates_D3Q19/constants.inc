@@ -31,7 +31,7 @@ constexpr dfloat t_c = L/U_C;               // Characteristic time
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int CONFORMATION_SWITCH = 0;      // Step to switch on conformation
-constexpr int N_STEPS = 60*t_c;             // Total simulation steps
+constexpr int N_STEPS = 5000;             // Total simulation steps (viscoelastic comparison)
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- BODY FORCES --------------------- */
@@ -94,6 +94,20 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
     constexpr dfloat LAMBDA = Weissenberg_number*t_c;
     constexpr dfloat inv_lambda = 1.0/LAMBDA;
     constexpr dfloat fenep_re = 10.0;
+
+    static inline fluidPhaseProps makeCasePhaseProps(){
+        fluidPhaseProps pp{};
+        pp.nnf.type = FLUID_BINGHAM;
+        pp.nnf.hasLambda = false;
+        pp.nnf.u.bingham.s_y = 0.0_df;
+        pp.nnf.u.bingham.omega_p = 1.0_df / TAU;
+        pp.ve.type = VE_OLDROYD_B;
+        pp.ve.eta_p = nu_p;
+        pp.ve.lambda = LAMBDA;
+        return pp;
+    }
+
+    #define CASE_PHASE_PROPS makeCasePhaseProps()
 
     //ADVECTION-DIFFUSIONS CONSTANTS
     constexpr dfloat CONF_DIFFUSIVITY_RATIO = 100; //OR Pr in malaspinas

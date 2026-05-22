@@ -218,9 +218,18 @@ __host__ __device__
 veFluidProps __forceinline__ blendVeProps(
     const veFluidProps& A, const veFluidProps& B, dfloat h)
 {
+    h = fmax(0.0_df, fmin(1.0_df, h));
     const dfloat inv_h = 1.0_df - h;
     const dfloat lambda_min = 1.0e-5_df;
+    const dfloat phase_eps = 1.0e-4_df;
     veFluidProps vp;
+
+    if (h <= phase_eps) {
+        return A;
+    }
+    if (h >= 1.0_df - phase_eps) {
+        return B;
+    }
 
     // 1. Resolve the active model type for the mixture
     if (A.type == B.type) {
@@ -231,45 +240,43 @@ veFluidProps __forceinline__ blendVeProps(
         vp.type = A.type;
     } else {
         // Edge Case: Mixing two DIFFERENT viscoelastic models (e.g., FENE-P and PTT).
-        // Pick the type of the dominant phase to prevent rheological undefined behavior.
-        vp.type = (h >= 0.5_df) ? B.type : A.type;
+        //TODO: Need figure out how to implement
     }
 
     // 2. Interpolate macroscopic properties
-    vp.eta_p  = inv_h * A.eta_p  + h * B.eta_p;
-    vp.lambda = fmax(inv_h * A.lambda + h * B.lambda, lambda_min);
+    vp.eta_p = inv_h * A.eta_p + h * B.eta_p;
+
+    const dfloat eps = 1.0e-14_df;
+
+    // Interpolate eta and lambda directly, then compute Gmix = eta_mix/lambda_mix.
+    const dfloat eta_mix = vp.eta_p;
+    const dfloat lambda_mix = inv_h * A.lambda + h * B.lambda;
+    const dfloat lambda_mix_safe = fmax(lambda_mix, lambda_min);
+    const dfloat Gmix = eta_mix / lambda_mix_safe;
+
+    if (vp.eta_p <= eps || Gmix <= eps) {
+        // No polymer contribution in mixture cell: treat it as Newtonian.
+        vp.type = VE_NEWTONIAN;
+        vp.eta_p = 0.0_df;
+        vp.lambda = 0.0_df;
+    } else {
+        vp.lambda = fmax(vp.eta_p / Gmix, lambda_min);
+    }
 
     // 3. Handle internal structural parameters
     bool same_ve_model = (A.type == B.type && A.type != VE_NEWTONIAN);
 
     switch (vp.type) {
         case VE_FENE_P:
-            if (same_ve_model) {
-                // Both are FENE-P: Blend the maximum extensibility
-                vp.u.fenep.L_sq = inv_h * A.u.fenep.L_sq + h * B.u.fenep.L_sq;
-            } else {
-                // One is Newtonian/Different: Inherit safely
-                vp.u.fenep.L_sq = (A.type == VE_FENE_P) ? A.u.fenep.L_sq : B.u.fenep.L_sq;
-            }
+            vp.u.fenep.L_sq = inv_h * A.u.fenep.L_sq + h * B.u.fenep.L_sq;
             break;
-
         case VE_GIESEKUS:
-            if (same_ve_model) {
-                vp.u.giesekus.alpha = inv_h * A.u.giesekus.alpha + h * B.u.giesekus.alpha;
-            } else {
-                vp.u.giesekus.alpha = (A.type == VE_GIESEKUS) ? A.u.giesekus.alpha : B.u.giesekus.alpha;
-            }
+            vp.u.giesekus.alpha = inv_h * A.u.giesekus.alpha + h * B.u.giesekus.alpha;
             break;
-
         case VE_PTT_LINEAR:
         case VE_PTT_EXPONENTIAL:
-            if (same_ve_model) {
-                vp.u.ptt.epsilon = inv_h * A.u.ptt.epsilon + h * B.u.ptt.epsilon;
-            } else {
-                vp.u.ptt.epsilon = (A.type == vp.type) ? A.u.ptt.epsilon : B.u.ptt.epsilon;
-            }
+            vp.u.ptt.epsilon = inv_h * A.u.ptt.epsilon + h * B.u.ptt.epsilon;
             break;
-
         default: 
             break;
     }

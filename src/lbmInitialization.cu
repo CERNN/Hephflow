@@ -74,13 +74,13 @@ __global__ void gpuInitialization_mom(
         dfloat Axx_qz_t30 = 3.0_df*(uz + 0.0_df);
         #endif
         #ifdef A_XY_DIST 
-        dfloat AxyVar = 1.0_df + CONF_ZERO;
+        dfloat AxyVar = 0.0_df + CONF_ZERO;
         dfloat Axy_qx_t30 = 3.0_df*(ux + 0.0_df);
         dfloat Axy_qy_t30 = 3.0_df*(uy + 0.0_df);
         dfloat Axy_qz_t30 = 3.0_df*(uz + 0.0_df);
         #endif
         #ifdef A_XZ_DIST 
-        dfloat AxzVar = 1.0_df + CONF_ZERO;
+        dfloat AxzVar = 0.0_df + CONF_ZERO;
         dfloat Axz_qx_t30 = 3.0_df*(ux + 0.0_df);
         dfloat Axz_qy_t30 = 3.0_df*(uy + 0.0_df);
         dfloat Axz_qz_t30 = 3.0_df*(uz + 0.0_df);
@@ -92,7 +92,7 @@ __global__ void gpuInitialization_mom(
         dfloat Ayy_qz_t30 = 3.0_df*(uz + 0.0_df);
         #endif
         #ifdef A_YZ_DIST 
-        dfloat AyzVar = 1.0_df + CONF_ZERO;
+        dfloat AyzVar = 0.0_df + CONF_ZERO;
         dfloat Ayz_qx_t30 = 3.0_df*(ux + 0.0_df);
         dfloat Ayz_qy_t30 = 3.0_df*(uy + 0.0_df);
         dfloat Ayz_qz_t30 = 3.0_df*(uz + 0.0_df);

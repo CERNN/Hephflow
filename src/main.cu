@@ -40,9 +40,17 @@ int main() {
     // Each case's constants.inc must define CASE_PHASE_PROPS (single-phase) or
     // CASE_PHASE_PROPS_PHASE1 / CASE_PHASE_PROPS_PHASE2 (multiphase) via a factory function.
     #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
+    #if defined(CASE_PHASE_PROPS_PHASE1)
     deviceField.phasePropsA = CASE_PHASE_PROPS_PHASE1;
+    #elif defined(CASE_PHASE_PROPS)
+    deviceField.phasePropsA = CASE_PHASE_PROPS;
+    #endif
     #ifdef PHI_DIST
+    #if defined(CASE_PHASE_PROPS_PHASE2)
     deviceField.phasePropsB = CASE_PHASE_PROPS_PHASE2;
+    #elif defined(CASE_PHASE_PROPS)
+    deviceField.phasePropsB = CASE_PHASE_PROPS;
+    #endif
     #endif
     #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
 

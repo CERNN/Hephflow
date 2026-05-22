@@ -455,7 +455,7 @@ void velocityProfile(
                              1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             // optional: validate idx if you have TOTAL_SIZE available
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo << "\t" << hostVal;
+            strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
         name << "velProfile_ux_dy_x" << x0 << "_z" << z0;
         saveTreatData(name.str(), strDataInfo.str(), step);
@@ -468,7 +468,7 @@ void velocityProfile(
             size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo << "\t" << hostVal;
+            strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
         name << "velProfile_uy_dy_x" << x0 << "_z" << z0;
         saveTreatData(name.str(), strDataInfo.str(), step);
@@ -481,7 +481,7 @@ void velocityProfile(
             size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo << "\t" << hostVal;
+            strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
         name << "velProfile_uz_dy_x" << x0 << "_z" << z0;
         saveTreatData(name.str(), strDataInfo.str(), step);
@@ -494,7 +494,7 @@ void velocityProfile(
             size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo << "\t" << hostVal;
+            strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
         name << "velProfile_ux_dx_y" << y0 << "_z" << z0;
         saveTreatData(name.str(), strDataInfo.str(), step);
@@ -507,7 +507,7 @@ void velocityProfile(
             size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo << "\t" << hostVal;
+            strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
         name << "velProfile_uy_dx_y" << y0 << "_z" << z0;
         saveTreatData(name.str(), strDataInfo.str(), step);
@@ -520,7 +520,7 @@ void velocityProfile(
             size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo << "\t" << hostVal; // fixed: use hostVal
+            strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
         name << "velProfile_uz_dx_y" << y0 << "_z" << z0;
         saveTreatData(name.str(), strDataInfo.str(), step);
@@ -533,7 +533,7 @@ void velocityProfile(
             size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo << "\t" << hostVal;
+            strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
         name << "velProfile_ux_dz_x" << x0 << "_y" << y0;
         saveTreatData(name.str(), strDataInfo.str(), step);
@@ -546,7 +546,7 @@ void velocityProfile(
             size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo << "\t" << hostVal;
+            strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
         name << "velProfile_uy_dz_x" << x0 << "_y" << y0;
         saveTreatData(name.str(), strDataInfo.str(), step);
@@ -559,7 +559,7 @@ void velocityProfile(
             size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
                              3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             checkCudaErrors(cudaMemcpy(&hostVal, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
-            strDataInfo << "\t" << hostVal; // fixed: use hostVal
+            strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
         name << "velProfile_uz_dz_x" << x0 << "_y" << y0;
         saveTreatData(name.str(), strDataInfo.str(), step);
@@ -701,6 +701,101 @@ void phiProfile(
     }
     #endif //PHI_DIST
 }
+
+#ifdef CONFORMATION_TENSOR
+__host__
+void conformationProfile(
+    dfloat* fMom,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
+){
+    std::ostringstream strAxx;
+    std::ostringstream strAxy;
+    std::ostringstream strAxz;
+    std::ostringstream strAyy;
+    std::ostringstream strAyz;
+    std::ostringstream strAzz;
+    strAxx << std::scientific << std::setprecision(6) << "step " << step;
+    strAxy << std::scientific << std::setprecision(6) << "step " << step;
+    strAxz << std::scientific << std::setprecision(6) << "step " << step;
+    strAyy << std::scientific << std::setprecision(6) << "step " << step;
+    strAyz << std::scientific << std::setprecision(6) << "step " << step;
+    strAzz << std::scientific << std::setprecision(6) << "step " << step;
+
+    auto appendPoint = [&](int x_loc, int y_loc, int z_loc) {
+        dfloat hostAxx;
+        dfloat hostAxy;
+        dfloat hostAxz;
+        dfloat hostAyy;
+        dfloat hostAyz;
+        dfloat hostAzz;
+
+        const size_t idxAxx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            A_XX_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+        const size_t idxAxy = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            A_XY_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+        const size_t idxAxz = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            A_XZ_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+        const size_t idxAyy = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            A_YY_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+        const size_t idxAyz = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            A_YZ_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+        const size_t idxAzz = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+            A_ZZ_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+
+        checkCudaErrors(cudaMemcpy(&hostAxx, fMom + idxAxx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(&hostAxy, fMom + idxAxy, sizeof(dfloat), cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(&hostAxz, fMom + idxAxz, sizeof(dfloat), cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(&hostAyy, fMom + idxAyy, sizeof(dfloat), cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(&hostAyz, fMom + idxAyz, sizeof(dfloat), cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(&hostAzz, fMom + idxAzz, sizeof(dfloat), cudaMemcpyDeviceToHost));
+
+        strAxx << "\t" << (hostAxx - CONF_ZERO);
+        strAxy << "\t" << (hostAxy - CONF_ZERO);
+        strAxz << "\t" << (hostAxz - CONF_ZERO);
+        strAyy << "\t" << (hostAyy - CONF_ZERO);
+        strAyz << "\t" << (hostAyz - CONF_ZERO);
+        strAzz << "\t" << (hostAzz - CONF_ZERO);
+    };
+
+    std::stringstream suffix;
+    switch (dir_index)
+    {
+    case 1:
+        for (int y_loc = 0; y_loc < NY; ++y_loc) {
+            appendPoint(x0, y_loc, z0);
+        }
+        suffix << "_dy_x" << x0 << "_z" << z0;
+        break;
+
+    case 2:
+        for (int x_loc = 0; x_loc < NX; ++x_loc) {
+            appendPoint(x_loc, y0, z0);
+        }
+        suffix << "_dx_y" << y0 << "_z" << z0;
+        break;
+
+    case 3:
+        for (int z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
+            appendPoint(x0, y0, z_loc);
+        }
+        suffix << "_dz_x" << x0 << "_y" << y0;
+        break;
+
+    default:
+        std::cerr << "conformationProfile: unknown dir_index " << dir_index << std::endl;
+        return;
+    }
+
+    saveTreatData(std::string("confProfile_Axx") + suffix.str(), strAxx.str(), step);
+    saveTreatData(std::string("confProfile_Axy") + suffix.str(), strAxy.str(), step);
+    saveTreatData(std::string("confProfile_Axz") + suffix.str(), strAxz.str(), step);
+    saveTreatData(std::string("confProfile_Ayy") + suffix.str(), strAyy.str(), step);
+    saveTreatData(std::string("confProfile_Ayz") + suffix.str(), strAyz.str(), step);
+    saveTreatData(std::string("confProfile_Azz") + suffix.str(), strAzz.str(), step);
+}
+#endif //CONFORMATION_TENSOR
 
 
 
