@@ -46,6 +46,8 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
 /* --------------------- FLUID PROPERTIES --------------------- */
 constexpr dfloat TAU = 0.55;                // Relaxation time
+constexpr dfloat TAU_PHASE1 = TAU;
+constexpr dfloat TAU_PHASE2 = TAU;
 constexpr dfloat VISC = (TAU - 0.5) / 3;    // Kinematic viscosity
 constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 
@@ -92,16 +94,12 @@ constexpr dfloat phi_gamma = 1.0 / (2.0 * 1.41421356237309 * phi_xi);
 
 /* --------------------- DENSITY COUPLING --------------------- */
 
-constexpr dfloat phi_rho_l = 1.0;
-constexpr dfloat phi_rho_g = 0.9;
-constexpr dfloat phi_drho = phi_rho_l - phi_rho_g;
+constexpr dfloat PHI_RHO_PHASE2 = 1.0;
+constexpr dfloat PHI_RHO_PHASE1 = 0.9;
+constexpr dfloat PHI_DRHO_PHASE12 = PHI_RHO_PHASE2 - PHI_RHO_PHASE1;
 
 constexpr dfloat g_value = 1.0e-5_df; 
 __device__ const dfloat gravity_vector[3] = {0.0, 0.0, 0.0}; // Gravity direction
-
-
-constexpr dfloat tau_H = TAU;
-constexpr dfloat tau_L = TAU;
 
 /* --------------------- FORCE COUPLING CONTROL FLAGS --------------------- */
 #define PHI_FORCE_FS_ENABLED 1

@@ -27,6 +27,13 @@
     #define COMPUTE_SHEAR
 #endif //LES_MODEL
 
+#if defined(PHI_DIST)
+    #define COMPUTE_SHEAR
+    #define NON_NEWTONIAN_FLUID
+    #define OMEGA_FIELD
+#endif //PHI_DIST
+
+
 #if defined(HO_RR) || defined(HOME_LBM)
     #define HIGH_ORDER_COLLISION
 #endif // HO_RR || HOME_LBM

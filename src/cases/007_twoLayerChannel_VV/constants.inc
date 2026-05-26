@@ -56,6 +56,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 /* --------------------- FLUID PROPERTIES --------------------- */
 constexpr dfloat VISC = BETA * SUM_VISC;                     // Solvent viscosity (003 reference)
 constexpr dfloat TAU = 0.5 + 3.0*VISC;                       // Relaxation time from 003 reference
+constexpr dfloat TAU_PHASE1 = TAU;
 constexpr dfloat TAU_PHASE2 = TAU;                           // Both phases identical in VV debug case
 
 constexpr dfloat MU_1 = VISC;
@@ -183,16 +184,12 @@ constexpr dfloat A_CH      = (6.0_df * phi_sigma) / phi_del;
 
 /* --------------------- DENSITY COUPLING --------------------- */
 
-constexpr dfloat phi_rho_l = 1.0;
-constexpr dfloat phi_rho_g = 1.0;
-constexpr dfloat phi_drho = phi_rho_l - phi_rho_g;
+constexpr dfloat PHI_RHO_PHASE2 = 1.0;
+constexpr dfloat PHI_RHO_PHASE1 = 1.0;
+constexpr dfloat PHI_DRHO_PHASE12 = PHI_RHO_PHASE2 - PHI_RHO_PHASE1;
 
 constexpr dfloat g_value = -1.5e-5_df; 
 __device__ const dfloat gravity_vector[3] = {0.0, 0.0, 0.0}; // Gravity direction
-
-
-constexpr dfloat tau_H = TAU;
-constexpr dfloat tau_L = TAU;
 
 /* --------------------- FORCE COUPLING CONTROL FLAGS --------------------- */
 #define PHI_FORCE_FS_ENABLED 1

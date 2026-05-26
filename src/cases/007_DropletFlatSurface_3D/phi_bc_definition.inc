@@ -1,0 +1,58 @@
+dfloat invPhi;
+const dfloat wettingQ = -sqrt(2.0_df * A_CH / kappa_CH) * cos(CONTACT_ANGLE_RAD);
+
+switch (nodeType){
+    case BULK:
+        break;
+
+    case NORTH:
+        gNode[ 4] = gNode[ 3];
+        gNode[13] = gNode[ 7];
+        gNode[18] = gNode[11];
+        gNode[ 8] = gNode[14];
+        gNode[12] = gNode[17];
+
+        phiVar = gNode[0] + gNode[1] + gNode[2] + gNode[3] + gNode[4] + gNode[5] + gNode[6] +
+                 gNode[7] + gNode[8] + gNode[9] + gNode[10] + gNode[11] + gNode[12] + gNode[13] +
+                 gNode[14] + gNode[15] + gNode[16] + gNode[17] + gNode[18];
+        invPhi = 1.0_df / phiVar;
+
+        phi_qx_t30 = (gNode[1] - gNode[2] + gNode[7] - gNode[8] + gNode[9] - gNode[10] +
+                      gNode[13] - gNode[14] + gNode[15] - gNode[16]) * invPhi;
+        phi_qz_t30 = (gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] +
+                      gNode[16] - gNode[15] + gNode[18] - gNode[17]) * invPhi;
+
+        // Cubic wetting BC in [0,1] order-parameter form.
+        {
+            const dfloat phi01 = 0.5_df * (phiVar + 1.0_df);
+            phi_qy_t30 = -wettingQ * (phi01 - phi01 * phi01);
+        }
+        break;
+
+    case SOUTH:
+        gNode[ 3] = gNode[ 4];
+        gNode[ 7] = gNode[13];
+        gNode[11] = gNode[18];
+        gNode[14] = gNode[ 8];
+        gNode[17] = gNode[12];
+
+        phiVar = gNode[0] + gNode[1] + gNode[2] + gNode[3] + gNode[4] + gNode[5] + gNode[6] +
+                 gNode[7] + gNode[8] + gNode[9] + gNode[10] + gNode[11] + gNode[12] + gNode[13] +
+                 gNode[14] + gNode[15] + gNode[16] + gNode[17] + gNode[18];
+        invPhi = 1.0_df / phiVar;
+
+        phi_qx_t30 = (gNode[1] - gNode[2] + gNode[7] - gNode[8] + gNode[9] - gNode[10] +
+                      gNode[13] - gNode[14] + gNode[15] - gNode[16]) * invPhi;
+        phi_qz_t30 = (gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] +
+                      gNode[16] - gNode[15] + gNode[18] - gNode[17]) * invPhi;
+
+        // Bottom wall normal points +y.
+        {
+            const dfloat phi01 = 0.5_df * (phiVar + 1.0_df);
+            phi_qy_t30 = wettingQ * (phi01 - phi01 * phi01);
+        }
+        break;
+
+    default:
+        break;
+}

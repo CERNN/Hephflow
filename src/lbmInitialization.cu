@@ -259,6 +259,15 @@ __global__ void gpuInitialization_pop(
     dfloat pop[Q];
     dfloat multiplyTerm;
     dfloat pics2;
+
+    #ifdef PHI_DIST
+        const dfloat phiVar_phi = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat h_phi = (phiVar_phi - PHI_ONE) / (PHI_TWO - PHI_ONE);
+        h_phi = fmaxf(0.0_df, fminf(1.0_df, h_phi));
+        const dfloat rho_pf   = PHI_RHO_PHASE1 + PHI_DRHO_PHASE12 * h_phi;
+        const dfloat invRhoPF = 1.0_df / rho_pf;
+    #endif //PHI_DIST
+
     #include COLREC_RECONSTRUCTION
     
     //thread xyz
