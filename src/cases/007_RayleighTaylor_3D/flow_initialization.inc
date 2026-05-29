@@ -20,7 +20,7 @@ const dfloat h = 0.05_df * (dfloat)L * (
 );
 
 const dfloat y0 = 0.5_df * (dfloat)NY;
-const dfloat delta = (dfloat)y - (y0 + h);
+const dfloat delta = (y0 + h) - (dfloat)y;
 
 // Heavy liquid (phi=+1) above, lighter gas (phi=-1) below.
 phiVar = phi_mid + phi_half * tanh(2.0_df * delta / phi_del);

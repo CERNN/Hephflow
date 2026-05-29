@@ -93,13 +93,36 @@ dfloat __forceinline__ calcOmegaPowerLaw(dfloat k_consistency, dfloat n_index, d
 
 __host__ __device__ 
 dfloat __forceinline__ calcOmegaBingham(dfloat omega_p, dfloat s_y, dfloat auxStressMag){
+    if (s_y <= 0.0_df)
+        return omega_p;
+    if (auxStressMag <= 1.0e-12_df)
+        return 0.0_df;
     return omega_p * myMax(0.0_df, (1.0_df - s_y / auxStressMag));
 }
 
 __host__ __device__ 
 dfloat __forceinline__ calcOmegaHerschelBulkley(dfloat k_consistency, dfloat n_index, dfloat s_y, dfloat omegaOld, dfloat const auxStressMag){
-    dfloat omega = omegaOld;
-    if(auxStressMag < 1e-6_df) return 0.0_df;
+float omega = omegaOld; //initial guess
+
+    dfloat fx, fx_dx;
+    const dfloat cs2 = 1.0_df / 3.0_df;
+    const dfloat a = k_consistency * POW_FUNCTION(auxStressMag / (RHO_0 * cs2), n_index);
+    const dfloat b = 0.5_df * auxStressMag;
+    const dfloat c = s_y -auxStressMag;
+
+    if(auxStressMag * (1.0_df - auxStressMag * 0.5_df)  < s_y)
+        return 0.0_df;
+
+    for (int i = 0; i < 7; i++){
+        fx = a * POW_FUNCTION(omega, n_index) + b * omega + c;
+        fx_dx = a * n_index * POW_FUNCTION(omega, n_index - 1.0_df) + b;
+
+        if (fabs(fx / fx_dx) < 1e-6_df){
+            break;
+        }
+            
+        omega = omega - fx / fx_dx;
+    }
     return omega;
 }
 

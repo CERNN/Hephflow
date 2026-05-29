@@ -12,11 +12,12 @@ if (step>CONFORMATION_SWITCH){
     switch_conf = 1.0_df;     
 }
 
-dfloat h_phi = 1.0_df;
-#ifdef PHI_DIST
+#ifndef PHI_DIST
 
-    dfloat phi_local = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    h_phi = (phi_local - PHI_ONE) / (PHI_TWO - PHI_ONE);    h_phi = fmax(0.0_df, fmin(1.0_df, h_phi)); // normalize from [-1,1] -> [0,1]
+dfloat h_phi = 1.0_df;
+#endif //PHI_DIST
+
+#ifdef PHI_DIST
     const veFluidProps veLocal = blendVeProps(phasePropsA.ve, phasePropsB.ve, h_phi);
 #else
     const veFluidProps& veLocal = phasePropsA.ve;

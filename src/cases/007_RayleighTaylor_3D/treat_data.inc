@@ -1,6 +1,10 @@
 // Track RTI front coordinates at the three canonical points of the single-mode perturbation.
 // Bubble: (x=L/2,z=L/2), Spike: (x=0,z=0), Saddle: (x=0,z=L/2).
 {
+	// Iso-value used to detect the tracked interface position.
+	// Change this value to track a different phi contour.
+	constexpr dfloat interfacePhiIso = 0.0_df;
+
 	auto samplePhiAt = [&](int x, int y, int z) -> dfloat {
 		dfloat phi = 0.0_df;
 		const size_t idx = idxMom(
@@ -16,37 +20,48 @@
 		return phi;
 	};
 
-	auto findInterfaceYAtXZ = [&](int xProbe, int zProbe, dfloat phiIso) -> dfloat {
+	auto findInterfaceYAtXZ = [&](int xProbe, int zProbe, dfloat phiIso, bool topToBottom) -> dfloat {
 		const dfloat yMid = 0.5_df * (dfloat)(NY - 1);
-		bool found = false;
-		dfloat bestY = yMid;
-		dfloat bestDist = 1.0e30_df;
 
-		dfloat prev = samplePhiAt(xProbe, 0, zProbe);
-		for (int y = 1; y < NY; ++y) {
-			const dfloat curr = samplePhiAt(xProbe, y, zProbe);
-			const dfloat s0 = prev - phiIso;
-			const dfloat s1 = curr - phiIso;
+		if (topToBottom) {
+			dfloat prev = samplePhiAt(xProbe, NY - 1, zProbe);
+			for (int y = NY - 2; y >= 0; --y) {
+				const dfloat curr = samplePhiAt(xProbe, y, zProbe);
+				const dfloat s0 = prev - phiIso;
+				const dfloat s1 = curr - phiIso;
 
-			if ((s0 == 0.0_df) || (s0 * s1 <= 0.0_df)) {
-				dfloat yCross = (dfloat)(y - 1);
-				const dfloat denom = curr - prev;
-				if (fabs(denom) > 1.0e-12_df) {
-					yCross += (phiIso - prev) / denom;
+				if ((s0 == 0.0_df) || (s0 * s1 <= 0.0_df)) {
+					dfloat yCross = (dfloat)(y + 1);
+					const dfloat denom = curr - prev;
+					if (fabs(denom) > 1.0e-12_df) {
+						yCross += (phiIso - prev) / denom;
+					}
+					return yCross;
 				}
 
-				const dfloat distMid = fabs(yCross - yMid);
-				if (!found || distMid < bestDist) {
-					found = true;
-					bestDist = distMid;
-					bestY = yCross;
-				}
+				prev = curr;
 			}
+		} else {
+			dfloat prev = samplePhiAt(xProbe, 0, zProbe);
+			for (int y = 1; y < NY; ++y) {
+				const dfloat curr = samplePhiAt(xProbe, y, zProbe);
+				const dfloat s0 = prev - phiIso;
+				const dfloat s1 = curr - phiIso;
 
-			prev = curr;
+				if ((s0 == 0.0_df) || (s0 * s1 <= 0.0_df)) {
+					dfloat yCross = (dfloat)(y - 1);
+					const dfloat denom = curr - prev;
+					if (fabs(denom) > 1.0e-12_df) {
+						yCross += (phiIso - prev) / denom;
+					}
+					return yCross;
+				}
+
+				prev = curr;
+			}
 		}
 
-		return bestY;
+		return yMid;
 	};
 
 	const int bubbleX = NX / 2;
@@ -56,9 +71,10 @@
 	const int saddleX = 0;
 	const int saddleZ = NZ / 2;
 
-	const dfloat bubbleY_idx = findInterfaceYAtXZ(bubbleX, bubbleZ, PHI_REFERENCE);
-	const dfloat spikeY_idx = findInterfaceYAtXZ(spikeX, spikeZ, PHI_REFERENCE);
-	const dfloat saddleY_idx = findInterfaceYAtXZ(saddleX, saddleZ, PHI_REFERENCE);
+	// Bubble uses a top-down scan; spike/saddle keep bottom-up scans.
+	const dfloat bubbleY_idx = findInterfaceYAtXZ(bubbleX, bubbleZ, interfacePhiIso, true);
+	const dfloat spikeY_idx = findInterfaceYAtXZ(spikeX, spikeZ, interfacePhiIso, false);
+	const dfloat saddleY_idx = findInterfaceYAtXZ(saddleX, saddleZ, interfacePhiIso, false);
 
 	const dfloat yCenter = 0.5_df * (dfloat)NY;
 	const dfloat bubbleY = (bubbleY_idx - yCenter) / (dfloat)L;

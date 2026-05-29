@@ -22,7 +22,6 @@
 
 #include <map>
 #include <cstddef>
-#include <string>
 #include <fstream>
 #include <sstream>
 #include <iostream>     // std::cout, std::fixed
@@ -39,10 +38,6 @@
 #include <thread>
 
 #include "globalFunctions.h"
-#include <cuda.h>
-#include <curand.h>
-#include <cuda_runtime.h>
-#include <builtin_types.h>
 #include "include/errorDef.h"
 #include "globalStructs.h"
 #include <atomic>
@@ -157,7 +152,7 @@ std::vector<dfloat6> convertPointToCellTensor6(
  *  @return std::vector<int> Vector containing integer values aggregated at cell centers
  */
 std::vector<int> convertPointToCellIntMode(
-    const int* pointField,
+    const unsigned int* pointField,
     size_t NX,
     size_t NY,
     size_t NZ

@@ -122,6 +122,17 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     dfloat L_BC_Fz = 0.0_df;
     #endif //BC_FORCES
 
+    // Load phi once here and compute all phase-property scalars used throughout the kernel:
+    // h_phi ∈ [0,1], rho_pf (physical mass density), invRhoPF.
+    // Avoids redundant global memory reads in PHI_DIST blocks, OMEGA_FIELD, and conformation_evolution.
+    #ifdef PHI_DIST
+        const dfloat phiVar_phi = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat h_phi = (phiVar_phi - PHI_ONE) / (PHI_TWO - PHI_ONE);
+        h_phi = fmaxf(0.0_df, fminf(1.0_df, h_phi));
+        const dfloat rho_pf   = PHI_RHO_PHASE1 + PHI_DRHO_PHASE12 * h_phi;
+        const dfloat invRhoPF = 1.0_df / rho_pf;
+    #endif //PHI_DIST
+
 
     #include COLREC_RECONSTRUCTION
 
@@ -184,13 +195,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
         dfloat phase_du_zx = 0.0_df, phase_du_zy = 0.0_df, phase_du_zz = 0.0_df;
 
         {
-            dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+            const dfloat phiVar = phiVar_phi;  // reuse pre-loaded phi; avoids a second global memory read
 
             #include "fragments/phiTransport/phase_gradient.inc"
-            // We only need force decomposition terms here; avoid direct body-force side-effects.
-            #define PHI_FORCE_NO_APPLY_BODY_FORCE
             #include "fragments/phiTransport/phase_coupling_forces.inc"
-            #undef PHI_FORCE_NO_APPLY_BODY_FORCE
 
             phase_dphidx = dphidx;
             phase_dphidy = dphidy;
@@ -798,11 +806,8 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 dfloat gammaDot = omegaVar * auxStressMag * as2;
                 #if defined(PHI_DIST)
 
-                    dfloat phiLocal = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-                    dfloat phiNorm = (phiLocal - PHI_ONE) / (PHI_TWO - PHI_ONE);
-                    phiNorm = fmax(0.0_df, fmin(1.0_df, phiNorm));
-
-                    // Compute phase-specific omegas, convert to apparent viscosities, then blend and back to omega
+                    // h_phi is pre-computed from the early phi load — avoids redundant global memory read.
+                    // Compute phase-specific omegas, convert to apparent viscosities, then blend back.
                     const dfloat omega_eps = 1.0e-12_df;
 
                     dfloat omegaA = calcOmega(phasePropsA.nnf, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
@@ -811,11 +816,11 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                     dfloat tauA = (omegaA > omega_eps) ? (1.0_df / omegaA) : (1.0_df / omega_eps);
                     dfloat tauB = (omegaB > omega_eps) ? (1.0_df / omegaB) : (1.0_df / omega_eps);
 
-                    dfloat muA = (tauA - 0.5_df) * RHO_0 * cs2;
-                    dfloat muB = (tauB - 0.5_df) * RHO_0 * cs2;
+                    dfloat muA = (tauA - 0.5_df) * PHI_RHO_PHASE1 * cs2;
+                    dfloat muB = (tauB - 0.5_df) * PHI_RHO_PHASE2 * cs2;
 
-                    dfloat muMix = interpolateProperty(muA, muB, phiNorm);
-                    dfloat tauMix = muMix / (rhoVar * cs2) + 0.5_df;
+                    dfloat muMix = interpolateProperty(muA, muB, h_phi);
+                    dfloat tauMix = muMix / (rho_pf * cs2) + 0.5_df;
                     omegaVar = 1.0_df / fmax(tauMix, omega_eps);
                 #else
                     omegaVar = calcOmega(phasePropsA.nnf, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
@@ -846,7 +851,6 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     if (((nodeType & FRONT) == FRONT) || ((nodeType & BACK)  == BACK)) {
         L_Fz = 0;
     }
-
 
     // COLLIDE
     #include COLREC_COLLISION

@@ -19,7 +19,7 @@ constexpr int NZ_TOTAL = NZ;
 
 /* --------------------- BENCHMARK TARGETS (NON-DIMENSIONAL INPUTS) --------------------- */
 constexpr dfloat ATWOOD_NUMBER = 0.5_df;      // At = (rho_l-rho_g)/(rho_l+rho_g)
-constexpr dfloat REYNOLDS_NUMBER = 128.0_df;  // Re = L*sqrt(gL)/nu_l
+constexpr dfloat REYNOLDS_NUMBER = 1024.0_df;  // Re = L*sqrt(gL)/nu_l
 constexpr dfloat CAPILLARY_NUMBER = 9.1_df;   // Ca = mu_l*sqrt(gL)/sigma
 constexpr dfloat PECLET_NUMBER = 744.0_df;    // Pe = L*sqrt(gL)/M
 constexpr dfloat INTERFACE_WIDTH = 5.0_df;    // W [lu]
@@ -27,6 +27,8 @@ constexpr dfloat INTERFACE_WIDTH = 5.0_df;    // W [lu]
 /* --------------------- REFERENCE VALUES --------------------- */
 constexpr dfloat U_REF = 0.05_df;          // U_ref = sqrt(gL), kept low for low-Mach stability
 constexpr dfloat U_MAX = U_REF;
+
+constexpr dfloat vtk_time = U_REF/L;                   // Physical time per VTK step (if HAS_VTK_TIME defined)
 
 /* --------------------- BODY FORCES --------------------- */
 constexpr dfloat FX = 0.0_df;
@@ -54,12 +56,12 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
 // Atwood-locked density ratio: rho_l/rho_g = (1+At)/(1-At)
 constexpr dfloat DENSITY_RATIO = (1.0_df + ATWOOD_NUMBER) / (1.0_df - ATWOOD_NUMBER);
-// Phase mapping for this RTI case:
-//   Phase 1 -> bottom, lighter fluid
-//   Phase 2 -> top, heavier fluid
+
 constexpr dfloat PHI_RHO_PHASE2 = 1.5_df;
 constexpr dfloat PHI_RHO_PHASE1 = PHI_RHO_PHASE2 / DENSITY_RATIO;
 constexpr dfloat PHI_DRHO_PHASE12 = PHI_RHO_PHASE2 - PHI_RHO_PHASE1;
+
+constexpr dfloat RHO_MID_REF = (PHI_RHO_PHASE1 + PHI_RHO_PHASE2) / 2.0_df;
 
 // Paper setup uses viscosity ratio = 1 as kinematic viscosity ratio (nu_l/nu_g).
 constexpr dfloat KINEMATIC_VISCOSITY_RATIO = 1.0_df;
@@ -147,7 +149,7 @@ constexpr dfloat A_CH = (6.0_df * phi_sigma) / phi_del;
 // g is derived from U_ref = sqrt(gL).
 constexpr dfloat g_value = (U_REF * U_REF) / (dfloat)L;
 // Downward gravity in y to destabilize heavy-over-light stratification.
-__device__ const dfloat gravity_vector[3] = {0.0_df, -1.0_df, 0.0_df};
+__device__ const dfloat gravity_vector[3] = {0.0_df, 1.0_df, 0.0_df};
 
 /* --------------------- FORCE COUPLING CONTROL FLAGS --------------------- */
 #define PHI_FORCE_FS_ENABLED 1

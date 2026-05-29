@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <functional>
 #include <chrono>
+#include <algorithm>
 
 
 std::filesystem::path getExecutablePath() {
@@ -28,6 +29,55 @@ std::filesystem::path getExecutablePath() {
     #endif
 }
 
+namespace {
+    std::mutex vtkSeriesMutex;
+    std::vector<std::pair<std::string, double>> vtkSeriesEntries;
+
+    void updateVtkSeries(const std::string& vtkFilePath, unsigned int nSteps)
+    {
+#if defined(HAS_VTK_TIME)
+        const double vtkPhysicalTime = static_cast<double>(nSteps) * static_cast<double>(vtk_time);
+        const std::filesystem::path vtkPath(vtkFilePath);
+        const std::filesystem::path seriesPath = vtkPath.parent_path() / (std::string(ID_SIM) + "_vtk.vtk.series");
+        const std::string fileName = vtkPath.filename().string();
+
+        std::lock_guard<std::mutex> lock(vtkSeriesMutex);
+        auto it = std::find_if(
+            vtkSeriesEntries.begin(),
+            vtkSeriesEntries.end(),
+            [&](const std::pair<std::string, double>& entry) {
+                return entry.first == fileName;
+            });
+
+        if (it == vtkSeriesEntries.end()) {
+            vtkSeriesEntries.emplace_back(fileName, vtkPhysicalTime);
+        } else {
+            it->second = vtkPhysicalTime;
+        }
+
+        std::ofstream series(seriesPath);
+        if (!series) {
+            std::cerr << "[updateVtkSeries] ERROR: cannot open " << seriesPath << "\n";
+            return;
+        }
+
+        series << "{\n";
+        series << "  \"file-series-version\" : \"1.0\",\n";
+        series << "  \"files\" : [\n";
+        for (size_t i = 0; i < vtkSeriesEntries.size(); ++i) {
+            series << "    { \"name\" : \"" << vtkSeriesEntries[i].first
+                   << "\", \"time\" : " << vtkSeriesEntries[i].second << " }";
+            if (i + 1 < vtkSeriesEntries.size()) series << ",";
+            series << "\n";
+        }
+        series << "  ]\n";
+        series << "}\n";
+#else
+        (void)vtkFilePath;
+        (void)nSteps;
+#endif
+    }
+}
 std::filesystem::path folderSetup()
 {
     std::filesystem::path exePath = getExecutablePath();
@@ -262,6 +312,7 @@ void saveMacr(const SaveDataParams* params)
         std::string strFileVtk, strFileVtr;
         strFileVtk = getVarFilename("vtk", nSteps, ".vtk");
         while (savingMacrVtk) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        updateVtkSeries(strFileVtk, nSteps);
         
         SaveDataParams saveVarVtkParams;
         saveVarVtkParams.vtkFilename = strFileVtk.c_str();
@@ -605,8 +656,8 @@ void saveVarVTK(const SaveDataParams* params)
                 << "DATASET STRUCTURED_POINTS\n"
                 << "DIMENSIONS " << NX << " " << NY << " " << NZ << "\n"
                 << "ORIGIN 0 0 0\n"
-                << "SPACING 1 1 1\n"
-                << "POINT_DATA " << N << "\n";
+                << "SPACING 1 1 1\n";
+            ofs << "POINT_DATA " << N << "\n";
             ofs << "SCALARS rho " << VTK_TYPE << " 1\n"
                 << "LOOKUP_TABLE default\n";
             writeBigEndian(ofs, rho, N);
@@ -681,8 +732,8 @@ void saveVarVTK(const SaveDataParams* params)
                 << "DATASET STRUCTURED_POINTS\n"
                 << "DIMENSIONS " << NX << " " << NY << " " << NZ << "\n"
                 << "ORIGIN 0 0 0\n"
-                << "SPACING 1 1 1\n"
-                << "CELL_DATA " << Ncells << "\n";
+                << "SPACING 1 1 1\n";
+            ofs << "CELL_DATA " << Ncells << "\n";
             auto rho_cell = convertPointToCellScalar(rho,NX,NY,NZ);
             ofs << "SCALARS rho  " << VTK_TYPE << " 1\n"
                 << "LOOKUP_TABLE default\n";
