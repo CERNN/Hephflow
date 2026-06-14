@@ -127,6 +127,7 @@ constexpr dfloat A_CH      = (6.0_df * phi_sigma) / phi_del;
 constexpr dfloat PHI_RHO_PHASE2 = 1.0;
 constexpr dfloat PHI_RHO_PHASE1 = 1.0;
 constexpr dfloat PHI_DRHO_PHASE12 = PHI_RHO_PHASE2 - PHI_RHO_PHASE1;
+constexpr dfloat RHO_MID_REF = (PHI_RHO_PHASE1 + PHI_RHO_PHASE2) / 2.0_df;
 
 constexpr dfloat g_value = -1.5e-5_df; 
 __device__ const dfloat gravity_vector[3] = {0.0, 0.0, 0.0}; // Gravity direction

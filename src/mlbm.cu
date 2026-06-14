@@ -1066,7 +1066,7 @@ void gpuResetMacroForces(dfloat *fMom){
 
 
 #ifdef PHI_DIST
-
+/*
 __global__ void gpuComputePhaseNormals(
     dfloat *fMom,
     unsigned int *dNodeType
@@ -1288,7 +1288,7 @@ __global__ void gpuComputeChemicalPotential(
         }
     }
     #endif
-    */
+    *//*
 
     fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)] = mu;
 }
@@ -1413,7 +1413,8 @@ __global__ void gpuComputeLaplacianMu(
     fMom[idxMom(tx, ty, tz, M3_LM_INDEX, bx, by, bz)] = laplacian_mu;
 }
 
-/*
+
+*/
 __global__ void gpuComputePhaseNormals(
     dfloat *fMom,
     unsigned int *dNodeType
@@ -1589,7 +1590,7 @@ __global__ void gpuComputeChemicalPotential(
     const bool is_wall = wall_xm || wall_xp || wall_ym || wall_yp
                       || wall_zm || wall_zp;
                       
-    
+    /*
     if (is_wall) {
         // Load fluid-side phi neighbors (needed for solve_wetting)
         auto getPhi = [&](int dx, int dy, int dz) -> dfloat {
@@ -1612,7 +1613,7 @@ __global__ void gpuComputeChemicalPotential(
             int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
             return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)];
         };
-
+        
         auto solve_wetting = [](dfloat phi_p, dfloat q) -> dfloat {
             if (fabs(q) < 1e-6_df) return phi_p;
             phi_p = fmax(PHI_ONE, fmin(PHI_TWO, phi_p));
@@ -1667,8 +1668,9 @@ __global__ void gpuComputeChemicalPotential(
             const dfloat phi_wall = solve_wetting(getPhi(0,0,-1), q_wet);
             mu += -kappa_CH * (phi_wall - phi);
         }
+        
     }
-    
+    */
     fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)] = mu;
 }
 
@@ -1740,6 +1742,6 @@ __global__ void gpuComputeLaplacianMu(
     fMom[idxMom(tx, ty, tz, M3_LM_INDEX, bx, by, bz)] = laplacian_mu;
 }
 
-*/
+/**/
 
 #endif // PHI_DIST
