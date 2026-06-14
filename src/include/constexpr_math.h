@@ -55,4 +55,18 @@ constexpr dfloat constexprLn(dfloat x) {
     return 2.0_df * constexprLnHelper(y, 1, 0.0_df);
 }
 
+constexpr dfloat constexprCos(dfloat x)
+{
+    dfloat term = 1.0_df;
+    dfloat sum  = 1.0_df;
+
+    for (int n = 1; n < 12; ++n)
+    {
+        term *= -x * x / ((2*n - 1) * (2*n));
+        sum += term;
+    }
+
+    return sum;
+}
+
 #endif //__CONSTEXPR_MATH_H

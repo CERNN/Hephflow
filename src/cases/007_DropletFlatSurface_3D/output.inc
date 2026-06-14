@@ -4,15 +4,15 @@
  * ========================================================================== */
 
 /* --------------------- OUTPUT FILES --------------------- */
-#define ID_SIM "000"
+#define ID_SIM "001"
 #define PATH_FILES "DropletFlatSurface_3D"
 
 /* --------------------- OUTPUT FORMATS --------------------- */
 #define VTK_SAVE (true)
 #define BIN_SAVE (false)
 #define ONLY_FINAL_MACRO (false)
-#define MACR_SAVE (2000)
-#define REPORT_SAVE (1000)
+#define MACR_SAVE (2500)
+#define REPORT_SAVE (250)
 
 /* --------------------- DATA TREATMENT --------------------- */
 #define TREATFIELD (false)

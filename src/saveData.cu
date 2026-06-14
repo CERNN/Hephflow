@@ -213,6 +213,17 @@ void saveMacr(const SaveDataParams* params)
     std::atomic<bool>& savingMacrVtk = *params->savingMacrVtk;
     std::vector<std::atomic<bool>>& savingMacrBin = *params->savingMacrBin;
 
+    // Reuse of rho/ux/uy/uz buffers across saves requires waiting for previous
+    // asynchronous file writes to finish before linearizing new data into them.
+    while (savingMacrVtk.load(std::memory_order_acquire)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    for (size_t i = 0; i < savingMacrBin.size(); ++i) {
+        while (savingMacrBin[i].load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+    }
+
     //linearize
     size_t indexMacr;
     for(int z = 0; z< NZ;z++){

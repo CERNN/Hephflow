@@ -123,7 +123,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     #endif //BC_FORCES
 
     // Load phi once here and compute all phase-property scalars used throughout the kernel:
-    // h_phi ∈ [0,1], rho_pf (physical mass density), invRhoPF.
+    // h_phi e [0,1], rho_pf (physical mass density), invRhoPF.
     // Avoids redundant global memory reads in PHI_DIST blocks, OMEGA_FIELD, and conformation_evolution.
     #ifdef PHI_DIST
         const dfloat phiVar_phi = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -806,7 +806,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 dfloat gammaDot = omegaVar * auxStressMag * as2;
                 #if defined(PHI_DIST)
 
-                    // h_phi is pre-computed from the early phi load — avoids redundant global memory read.
+                    // h_phi is pre-computed from the early phi load - avoids redundant global memory read.
                     // Compute phase-specific omegas, convert to apparent viscosities, then blend back.
                     const dfloat omega_eps = 1.0e-12_df;
 
@@ -1068,30 +1068,22 @@ void gpuResetMacroForces(dfloat *fMom){
 #ifdef PHI_DIST
 
 __global__ void gpuComputePhaseNormals(
-    dfloat *fMom, 
+    dfloat *fMom,
     unsigned int *dNodeType
 )
 {
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;
-    
     if (x >= NX || y >= NY || z >= NZ) return;
 
-    // Retrieve indices
-    const int tx = threadIdx.x;
-    const int ty = threadIdx.y;
-    const int tz = threadIdx.z;
-    const int bx = blockIdx.x;
-    const int by = blockIdx.y;
-    const int bz = blockIdx.z;
+    const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
+    const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
 
     unsigned int nodeType = dNodeType[idxScalarBlock(tx, ty, tz, bx, by, bz)];
-    if (nodeType == 0b11111111) return; // Skip solids if necessary
+    if (nodeType == 0b11111111) return;
+    if (nodeType != BULK) return;
 
-    // Helper: Load phi (scalar)
-    // Use Neumann (zero-gradient) clamping for wall directions,
-    // periodic wrapping for periodic directions.
     auto getPhi = [&](int dx, int dy, int dz) -> dfloat {
         #ifdef BC_X_WALL
         int nx = min(NX - 1, max(0, x + dx));
@@ -1108,58 +1100,96 @@ __global__ void gpuComputePhaseNormals(
         #else
         int nz = (z + dz + NZ) % NZ;
         #endif
-        
-        int ntx = nx % BLOCK_NX;
-        int nty = ny % BLOCK_NY;
-        int ntz = nz % BLOCK_NZ;
-        int nbx = nx / BLOCK_NX;
-        int nby = ny / BLOCK_NY;
-        int nbz = nz / BLOCK_NZ;
-        
+        int ntx = nx % BLOCK_NX, nty = ny % BLOCK_NY, ntz = nz % BLOCK_NZ;
+        int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
         return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)];
     };
 
     dfloat phi_c = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
 
-    // Load Neighbors
-    dfloat phi_xm1 = getPhi(-1, 0, 0); dfloat phi_xp1 = getPhi(+1, 0, 0);
-    dfloat phi_ym1 = getPhi(0, -1, 0); dfloat phi_yp1 = getPhi(0, +1, 0);
-    dfloat phi_zm1 = getPhi(0, 0, -1); dfloat phi_zp1 = getPhi(0, 0, +1);
-    
-    // Edges
-    dfloat phi_xm1_ym1 = getPhi(-1, -1, 0); dfloat phi_xp1_ym1 = getPhi(+1, -1, 0);
-    dfloat phi_xm1_yp1 = getPhi(-1, +1, 0); dfloat phi_xp1_yp1 = getPhi(+1, +1, 0);
-    dfloat phi_xm1_zm1 = getPhi(-1, 0, -1); dfloat phi_xp1_zm1 = getPhi(+1, 0, -1);
-    dfloat phi_xm1_zp1 = getPhi(-1, 0, +1); dfloat phi_xp1_zp1 = getPhi(+1, 0, +1);
-    dfloat phi_ym1_zm1 = getPhi(0, -1, -1); dfloat phi_yp1_zm1 = getPhi(0, +1, -1);
-    dfloat phi_ym1_zp1 = getPhi(0, -1, +1); dfloat phi_yp1_zp1 = getPhi(0, +1, +1);
+    // ---- load all neighbors with standard clamping/periodic ----
+    dfloat phi_xm1 = getPhi(-1, 0, 0);  dfloat phi_xp1 = getPhi(+1, 0, 0);
+    dfloat phi_ym1 = getPhi( 0,-1, 0);  dfloat phi_yp1 = getPhi( 0,+1, 0);
+    dfloat phi_zm1 = getPhi( 0, 0,-1);  dfloat phi_zp1 = getPhi( 0, 0,+1);
 
-    // ---------------------------------------------------------
-    // 1. ISOTROPIC GRADIENT
-    // ---------------------------------------------------------
-    constexpr dfloat w_axis = 1.0_df / 6.0_df;  // 3 * (1/18)
-    constexpr dfloat w_edge = 1.0_df / 12.0_df; // 3 * (1/36)
+    dfloat phi_xm1_ym1 = getPhi(-1,-1, 0);  dfloat phi_xp1_ym1 = getPhi(+1,-1, 0);
+    dfloat phi_xm1_yp1 = getPhi(-1,+1, 0);  dfloat phi_xp1_yp1 = getPhi(+1,+1, 0);
+    dfloat phi_xm1_zm1 = getPhi(-1, 0,-1);  dfloat phi_xp1_zm1 = getPhi(+1, 0,-1);
+    dfloat phi_xm1_zp1 = getPhi(-1, 0,+1);  dfloat phi_xp1_zp1 = getPhi(+1, 0,+1);
+    dfloat phi_ym1_zm1 = getPhi( 0,-1,-1);  dfloat phi_yp1_zm1 = getPhi( 0,+1,-1);
+    dfloat phi_ym1_zp1 = getPhi( 0,-1,+1);  dfloat phi_yp1_zp1 = getPhi( 0,+1,+1);
+
+    #ifdef BC_Y_WALL
+    if (y == 1) {           // adjacent to SOUTH wall (y=0)
+        phi_ym1     = phi_c;    // axis
+        phi_xp1_ym1 = phi_xp1; // edges: project y-1 out, keep lateral offset
+        phi_xm1_ym1 = phi_xm1;
+        phi_ym1_zp1 = phi_zp1;
+        phi_ym1_zm1 = phi_zm1;
+    }
+    if (y == NY-2) {        // adjacent to NORTH wall (y=NY-1)
+        phi_yp1     = phi_c;
+        phi_xp1_yp1 = phi_xp1;
+        phi_xm1_yp1 = phi_xm1;
+        phi_yp1_zp1 = phi_zp1;
+        phi_yp1_zm1 = phi_zm1;
+    }
+    #endif
+
+    #ifdef BC_X_WALL
+    if (x == 1) {           // adjacent to WEST wall (x=0)
+        phi_xm1     = phi_c;
+        phi_xm1_yp1 = phi_yp1;
+        phi_xm1_ym1 = phi_ym1;
+        phi_xm1_zp1 = phi_zp1;
+        phi_xm1_zm1 = phi_zm1;
+    }
+    if (x == NX-2) {        // adjacent to EAST wall (x=NX-1)
+        phi_xp1     = phi_c;
+        phi_xp1_yp1 = phi_yp1;
+        phi_xp1_ym1 = phi_ym1;
+        phi_xp1_zp1 = phi_zp1;
+        phi_xp1_zm1 = phi_zm1;
+    }
+    #endif
+
+    #ifdef BC_Z_WALL
+    if (z == 1) {           // adjacent to BACK wall (z=0)
+        phi_zm1     = phi_c;
+        phi_xp1_zm1 = phi_xp1;
+        phi_xm1_zm1 = phi_xm1;
+        phi_yp1_zm1 = phi_yp1;
+        phi_ym1_zm1 = phi_ym1;
+    }
+    if (z == NZ-2) {        // adjacent to FRONT wall (z=NZ-1)
+        phi_zp1     = phi_c;
+        phi_xp1_zp1 = phi_xp1;
+        phi_xm1_zp1 = phi_xm1;
+        phi_yp1_zp1 = phi_yp1;
+        phi_ym1_zp1 = phi_ym1;
+    }
+    #endif
+
+    // ---- isotropic gradient  ----
+    constexpr dfloat w_axis = 1.0_df / 6.0_df;
+    constexpr dfloat w_edge = 1.0_df / 12.0_df;
 
     dfloat dphidx = w_axis * (phi_xp1 - phi_xm1)
                   + w_edge * (phi_xp1_ym1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xm1_yp1
                             + phi_xp1_zm1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xm1_zp1);
-    
+
     dfloat dphidy = w_axis * (phi_yp1 - phi_ym1)
                   + w_edge * (phi_xm1_yp1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xp1_ym1
                             + phi_yp1_zm1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_ym1_zp1);
-    
+
     dfloat dphidz = w_axis * (phi_zp1 - phi_zm1)
                   + w_edge * (phi_xm1_zp1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xp1_zm1
                             + phi_ym1_zp1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_yp1_zm1);
 
-
-    // ---------------------------------------------------------
-    // 2. ISOTROPIC LAPLACIAN (Corrected)
-    // ---------------------------------------------------------
-    
+    // ---- isotropic Laplacian ----
     constexpr dfloat w_lap_axis = 1.0_df / 3.0_df;
     constexpr dfloat w_lap_edge = 1.0_df / 6.0_df;
-    constexpr dfloat w_lap_zero = -4.0_df; 
+    constexpr dfloat w_lap_zero = -4.0_df;
 
     dfloat laplacian_phi =
         w_lap_zero * phi_c
@@ -1168,14 +1198,12 @@ __global__ void gpuComputePhaseNormals(
                       + phi_xp1_zp1 + phi_xp1_zm1 + phi_xm1_zp1 + phi_xm1_zm1
                       + phi_yp1_zp1 + phi_yp1_zm1 + phi_ym1_zp1 + phi_ym1_zm1);
 
-    // Store Gradients
     fMom[idxMom(tx, ty, tz, M3_NX_INDEX, bx, by, bz)] = dphidx;
     fMom[idxMom(tx, ty, tz, M3_NY_INDEX, bx, by, bz)] = dphidy;
     fMom[idxMom(tx, ty, tz, M3_NZ_INDEX, bx, by, bz)] = dphidz;
-
-    // Store Laplacian
     fMom[idxMom(tx, ty, tz, M3_LP_INDEX, bx, by, bz)] = laplacian_phi;
 }
+
 
 __global__ void gpuComputeChemicalPotential(
     dfloat *fMom,
@@ -1185,35 +1213,82 @@ __global__ void gpuComputeChemicalPotential(
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;
-
-    if (x >= NX || y >= NY || z >= NZ)
-        return;
+    if (x >= NX || y >= NY || z >= NZ) return;
 
     unsigned int nodeType =
         dNodeType[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,
                                  blockIdx.x, blockIdx.y, blockIdx.z)];
     if (nodeType == 0b11111111) return;
+    if (nodeType != BULK) return;
 
-    const int tx = threadIdx.x;
-    const int ty = threadIdx.y;
-    const int tz = threadIdx.z;
-    const int bx = blockIdx.x;
-    const int by = blockIdx.y;
-    const int bz = blockIdx.z;
+    const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
+    const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
 
-    dfloat phi = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
-    dfloat lap_phi = fMom[idxMom(tx, ty, tz, M3_LP_INDEX, bx, by, bz)];
+    dfloat phi     = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
+    dfloat lap_phi = fMom[idxMom(tx, ty, tz, M3_LP_INDEX,  bx, by, bz)]; // Neumann from above
 
-    // Standard Double-Well: f(phi) = A * phi^2 * (1 - phi)^2
-    // Derivative: df/dphi = 2 * A * phi * (1 - phi) * (1 - 2*phi)
+    dfloat dfdphi = A_CH * (phi*phi*phi - phi);
+    dfloat mu     = dfdphi - kappa_CH * lap_phi;
+/*
+    // ---- wetting surface energy correction ----
+    auto solve_wetting = [](dfloat phi_p, dfloat q) -> dfloat {
+        if (fabs(q) < 1e-6_df) return phi_p;
+        phi_p = fmax(PHI_ONE, fmin(PHI_TWO, phi_p));
+        const dfloat indicator = 1.0_df - phi_p * phi_p;
+        if (indicator < 1e-4_df) return phi_p;  // bulk: no correction
 
-    // Use the A_CH and kappa_CH values calculated from sigma and width
-    //dfloat dfdphi = 2.0_df * A_CH * phi * (1.0_df - phi) * (1.0_df - 2.0_df * phi); this is for 0 to 1
-    dfloat dfdphi = A_CH * (phi*phi*phi - phi); // -1 to 1
+        const dfloat a = q, b = -1.0_df, c = phi_p - q;
+        const dfloat disc = b*b - 4.0_df*a*c;
+        if (disc < 0.0_df) return phi_p;
 
+        const dfloat sq       = sqrt(disc);
+        const dfloat phi_plus  = (-b + sq) / (2.0_df*a);
+        const dfloat phi_minus = (-b - sq) / (2.0_df*a);
 
-    // Chemical Potential: mu = df/dphi - kappa * Laplacian(phi)
-    dfloat mu = dfdphi - kappa_CH * lap_phi;
+        const dfloat lo = PHI_ONE - 1e-6_df, hi = PHI_TWO + 1e-6_df;
+        const bool p_ok = (phi_plus  >= lo && phi_plus  <= hi);
+        const bool m_ok = (phi_minus >= lo && phi_minus <= hi);
+
+        dfloat raw;
+        if      (p_ok && m_ok) raw = (fabs(phi_plus-phi_p) <= fabs(phi_minus-phi_p))
+                                      ? phi_plus : phi_minus;
+        else if (p_ok)         raw = phi_plus;
+        else if (m_ok)         raw = phi_minus;
+        else                   raw = phi_p;
+
+        return fmax(PHI_ONE, fmin(PHI_TWO, phi_p + indicator*(raw - phi_p)));
+    };
+
+    #ifdef BC_Y_WALL
+    {
+        const dfloat q_wet = -sqrt(A_CH / (2.0_df * kappa_CH)) * cos(M_PI/2.0); //FIX FOR CONTACT ANGLE
+        if (y == 1 || y == NY-2) {
+            const dfloat phi_wall = solve_wetting(phi, q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+    }
+    #endif
+
+    #ifdef BC_X_WALL
+    {
+        const dfloat q_wet = -sqrt(A_CH / (2.0_df * kappa_CH)) * cos(contact_angle);
+        if (x == 1 || x == NX-2) {
+            const dfloat phi_wall = solve_wetting(phi, q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+    }
+    #endif
+
+    #ifdef BC_Z_WALL
+    {
+        const dfloat q_wet = -sqrt(A_CH / (2.0_df * kappa_CH)) * cos(contact_angle);
+        if (z == 1 || z == NZ-2) {
+            const dfloat phi_wall = solve_wetting(phi, q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+    }
+    #endif
+    */
 
     fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)] = mu;
 }
@@ -1226,26 +1301,19 @@ __global__ void gpuComputeLaplacianMu(
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;
-
-    if (x >= NX || y >= NY || z >= NZ)
-        return;
+    if (x >= NX || y >= NY || z >= NZ) return;
 
     unsigned int nodeType =
         dNodeType[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,
                                  blockIdx.x, blockIdx.y, blockIdx.z)];
     if (nodeType == 0b11111111) return;
+    if (nodeType != BULK) return;
 
-    const int tx = threadIdx.x;
-    const int ty = threadIdx.y;
-    const int tz = threadIdx.z;
-    const int bx = blockIdx.x;
-    const int by = blockIdx.y;
-    const int bz = blockIdx.z;
+    const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
+    const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
 
     dfloat mu0 = fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)];
 
-    // Use Neumann (zero-gradient) clamping for wall directions,
-    // periodic wrapping for periodic directions.
     auto getMu = [&](int dx, int dy, int dz) -> dfloat {
         #ifdef BC_X_WALL
         int nx = min(NX - 1, max(0, x + dx));
@@ -1262,60 +1330,416 @@ __global__ void gpuComputeLaplacianMu(
         #else
         int nz = (z + dz + NZ) % NZ;
         #endif
-
-        int ntx = nx % BLOCK_NX;
-        int nty = ny % BLOCK_NY;
-        int ntz = nz % BLOCK_NZ;
-
-        int nbx = nx / BLOCK_NX;
-        int nby = ny / BLOCK_NY;
-        int nbz = nz / BLOCK_NZ;
-
+        int ntx = nx % BLOCK_NX, nty = ny % BLOCK_NY, ntz = nz % BLOCK_NZ;
+        int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
         return fMom[idxMom(ntx, nty, ntz, M3_MU_INDEX, nbx, nby, nbz)];
     };
 
+    // ---- load all mu neighbors ----
+    dfloat mu_xp1 = getMu(+1, 0, 0);  dfloat mu_xm1 = getMu(-1, 0, 0);
+    dfloat mu_yp1 = getMu( 0,+1, 0);  dfloat mu_ym1 = getMu( 0,-1, 0);
+    dfloat mu_zp1 = getMu( 0, 0,+1);  dfloat mu_zm1 = getMu( 0, 0,-1);
 
-    // Axis neighbors
-    dfloat mu_xp1 = getMu(+1, 0, 0);
-    dfloat mu_xm1 = getMu(-1, 0, 0);
-    dfloat mu_yp1 = getMu(0, +1, 0);
-    dfloat mu_ym1 = getMu(0, -1, 0);
-    dfloat mu_zp1 = getMu(0, 0, +1);
-    dfloat mu_zm1 = getMu(0, 0, -1);
+    dfloat mu_xp1_yp1 = getMu(+1,+1, 0);  dfloat mu_xp1_ym1 = getMu(+1,-1, 0);
+    dfloat mu_xm1_yp1 = getMu(-1,+1, 0);  dfloat mu_xm1_ym1 = getMu(-1,-1, 0);
+    dfloat mu_xp1_zp1 = getMu(+1, 0,+1);  dfloat mu_xp1_zm1 = getMu(+1, 0,-1);
+    dfloat mu_xm1_zp1 = getMu(-1, 0,+1);  dfloat mu_xm1_zm1 = getMu(-1, 0,-1);
+    dfloat mu_yp1_zp1 = getMu( 0,+1,+1);  dfloat mu_yp1_zm1 = getMu( 0,+1,-1);
+    dfloat mu_ym1_zp1 = getMu( 0,-1,+1);  dfloat mu_ym1_zm1 = getMu( 0,-1,-1);
 
-    // Edge neighbors
-    dfloat mu_xp1_yp1 = getMu(+1, +1, 0);
-    dfloat mu_xp1_ym1 = getMu(+1, -1, 0);
-    dfloat mu_xm1_yp1 = getMu(-1, +1, 0);
-    dfloat mu_xm1_ym1 = getMu(-1, -1, 0);
+    #ifdef BC_Y_WALL
+    if (y == 1) {           // SOUTH wall adjacent
+        mu_ym1     = mu0;
+        mu_xp1_ym1 = mu_xp1;
+        mu_xm1_ym1 = mu_xm1;
+        mu_ym1_zp1 = mu_zp1;
+        mu_ym1_zm1 = mu_zm1;
+    }
+    if (y == NY-2) {        // NORTH wall adjacent
+        mu_yp1     = mu0;
+        mu_xp1_yp1 = mu_xp1;
+        mu_xm1_yp1 = mu_xm1;
+        mu_yp1_zp1 = mu_zp1;
+        mu_yp1_zm1 = mu_zm1;
+    }
+    #endif
 
-    dfloat mu_xp1_zp1 = getMu(+1, 0, +1);
-    dfloat mu_xp1_zm1 = getMu(+1, 0, -1);
-    dfloat mu_xm1_zp1 = getMu(-1, 0, +1);
-    dfloat mu_xm1_zm1 = getMu(-1, 0, -1);
+    #ifdef BC_X_WALL
+    if (x == 1) {
+        mu_xm1     = mu0;
+        mu_xm1_yp1 = mu_yp1;
+        mu_xm1_ym1 = mu_ym1;
+        mu_xm1_zp1 = mu_zp1;
+        mu_xm1_zm1 = mu_zm1;
+    }
+    if (x == NX-2) {
+        mu_xp1     = mu0;
+        mu_xp1_yp1 = mu_yp1;
+        mu_xp1_ym1 = mu_ym1;
+        mu_xp1_zp1 = mu_zp1;
+        mu_xp1_zm1 = mu_zm1;
+    }
+    #endif
 
-    dfloat mu_yp1_zp1 = getMu(0, +1, +1);
-    dfloat mu_yp1_zm1 = getMu(0, +1, -1);
-    dfloat mu_ym1_zp1 = getMu(0, -1, +1);
-    dfloat mu_ym1_zm1 = getMu(0, -1, -1);
+    #ifdef BC_Z_WALL
+    if (z == 1) {
+        mu_zm1     = mu0;
+        mu_xp1_zm1 = mu_xp1;
+        mu_xm1_zm1 = mu_xm1;
+        mu_yp1_zm1 = mu_yp1;
+        mu_ym1_zm1 = mu_ym1;
+    }
+    if (z == NZ-2) {
+        mu_zp1     = mu0;
+        mu_xp1_zp1 = mu_xp1;
+        mu_xm1_zp1 = mu_xm1;
+        mu_yp1_zp1 = mu_yp1;
+        mu_ym1_zp1 = mu_ym1;
+    }
+    #endif
 
-    // D3Q19 isotropic Laplacian
+    // ---- isotropic Laplacian ----
     constexpr dfloat w0 = -4.0_df;
-    constexpr dfloat w1 = 1.0_df / 3.0_df;
-    constexpr dfloat w2 = 1.0_df / 6.0_df;
+    constexpr dfloat w1 =  1.0_df / 3.0_df;
+    constexpr dfloat w2 =  1.0_df / 6.0_df;
 
     dfloat laplacian_mu =
         w0 * mu0
       + w1 * (mu_xp1 + mu_xm1 + mu_yp1 + mu_ym1 + mu_zp1 + mu_zm1)
-      + w2 * (
-            mu_xp1_yp1 + mu_xp1_ym1 + mu_xm1_yp1 + mu_xm1_ym1 +
-            mu_xp1_zp1 + mu_xp1_zm1 + mu_xm1_zp1 + mu_xm1_zm1 +
-            mu_yp1_zp1 + mu_yp1_zm1 + mu_ym1_zp1 + mu_ym1_zm1
-        );
+      + w2 * (mu_xp1_yp1 + mu_xp1_ym1 + mu_xm1_yp1 + mu_xm1_ym1
+            + mu_xp1_zp1 + mu_xp1_zm1 + mu_xm1_zp1 + mu_xm1_zm1
+            + mu_yp1_zp1 + mu_yp1_zm1 + mu_ym1_zp1 + mu_ym1_zm1);
 
     fMom[idxMom(tx, ty, tz, M3_LM_INDEX, bx, by, bz)] = laplacian_mu;
 }
 
+/*
+__global__ void gpuComputePhaseNormals(
+    dfloat *fMom,
+    unsigned int *dNodeType
+)
+{
+    const int x = threadIdx.x + blockDim.x * blockIdx.x;
+    const int y = threadIdx.y + blockDim.y * blockIdx.y;
+    const int z = threadIdx.z + blockDim.z * blockIdx.z;
+    if (x >= NX || y >= NY || z >= NZ) return;
 
+    const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
+    const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
+
+    unsigned int nodeType = dNodeType[idxScalarBlock(tx, ty, tz, bx, by, bz)];
+    if (nodeType == 0b11111111) return;  // only skip fully solid
+
+    auto getPhi = [&](int dx, int dy, int dz) -> dfloat {
+        #ifdef BC_X_WALL
+        int nx = min(NX - 1, max(0, x + dx));
+        #else
+        int nx = (x + dx + NX) % NX;
+        #endif
+        #ifdef BC_Y_WALL
+        int ny = min(NY - 1, max(0, y + dy));
+        #else
+        int ny = (y + dy + NY) % NY;
+        #endif
+        #ifdef BC_Z_WALL
+        int nz = min(NZ - 1, max(0, z + dz));
+        #else
+        int nz = (z + dz + NZ) % NZ;
+        #endif
+        int ntx = nx % BLOCK_NX, nty = ny % BLOCK_NY, ntz = nz % BLOCK_NZ;
+        int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
+        return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)];
+    };
+
+    dfloat phi_c = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
+
+    // load all neighbors with standard clamping
+    dfloat phi_xm1 = getPhi(-1, 0, 0);  dfloat phi_xp1 = getPhi(+1, 0, 0);
+    dfloat phi_ym1 = getPhi( 0,-1, 0);  dfloat phi_yp1 = getPhi( 0,+1, 0);
+    dfloat phi_zm1 = getPhi( 0, 0,-1);  dfloat phi_zp1 = getPhi( 0, 0,+1);
+
+    dfloat phi_xm1_ym1 = getPhi(-1,-1, 0);  dfloat phi_xp1_ym1 = getPhi(+1,-1, 0);
+    dfloat phi_xm1_yp1 = getPhi(-1,+1, 0);  dfloat phi_xp1_yp1 = getPhi(+1,+1, 0);
+    dfloat phi_xm1_zm1 = getPhi(-1, 0,-1);  dfloat phi_xp1_zm1 = getPhi(+1, 0,-1);
+    dfloat phi_xm1_zp1 = getPhi(-1, 0,+1);  dfloat phi_xp1_zp1 = getPhi(+1, 0,+1);
+    dfloat phi_ym1_zm1 = getPhi( 0,-1,-1);  dfloat phi_yp1_zm1 = getPhi( 0,+1,-1);
+    dfloat phi_ym1_zp1 = getPhi( 0,-1,+1);  dfloat phi_yp1_zp1 = getPhi( 0,+1,+1);
+
+    // ---- bitmask wall detection (fires at the wall node itself) ----
+    const bool wall_xm = (nodeType & 0b01010101) == 0b01010101;  // WEST  wall in -x
+    const bool wall_xp = (nodeType & 0b10101010) == 0b10101010;  // EAST  wall in +x
+    const bool wall_ym = (nodeType & 0b00110011) == 0b00110011;  // SOUTH wall in -y
+    const bool wall_yp = (nodeType & 0b11001100) == 0b11001100;  // NORTH wall in +y
+    const bool wall_zm = (nodeType & 0b00001111) == 0b00001111;  // BACK  wall in -z
+    const bool wall_zp = (nodeType & 0b11110000) == 0b11110000;  // FRONT wall in +z
+
+    // Neumann BC: ghost = phi_c for each wall direction.
+    // Edges at corners use phi_c if BOTH directions are walls, else the
+    // single-direction Neumann value.
+    if (wall_ym) {
+        phi_ym1     = phi_c;
+        phi_xp1_ym1 = wall_xp ? phi_c : phi_xp1;
+        phi_xm1_ym1 = wall_xm ? phi_c : phi_xm1;
+        phi_ym1_zp1 = wall_zp ? phi_c : phi_zp1;
+        phi_ym1_zm1 = wall_zm ? phi_c : phi_zm1;
+    }
+    if (wall_yp) {
+        phi_yp1     = phi_c;
+        phi_xp1_yp1 = wall_xp ? phi_c : phi_xp1;
+        phi_xm1_yp1 = wall_xm ? phi_c : phi_xm1;
+        phi_yp1_zp1 = wall_zp ? phi_c : phi_zp1;
+        phi_yp1_zm1 = wall_zm ? phi_c : phi_zm1;
+    }
+    if (wall_xm) {
+        phi_xm1     = phi_c;
+        phi_xm1_yp1 = wall_yp ? phi_c : phi_yp1;
+        phi_xm1_ym1 = wall_ym ? phi_c : phi_ym1;
+        phi_xm1_zp1 = wall_zp ? phi_c : phi_zp1;
+        phi_xm1_zm1 = wall_zm ? phi_c : phi_zm1;
+    }
+    if (wall_xp) {
+        phi_xp1     = phi_c;
+        phi_xp1_yp1 = wall_yp ? phi_c : phi_yp1;
+        phi_xp1_ym1 = wall_ym ? phi_c : phi_ym1;
+        phi_xp1_zp1 = wall_zp ? phi_c : phi_zp1;
+        phi_xp1_zm1 = wall_zm ? phi_c : phi_zm1;
+    }
+    if (wall_zm) {
+        phi_zm1     = phi_c;
+        phi_xp1_zm1 = wall_xp ? phi_c : phi_xp1;
+        phi_xm1_zm1 = wall_xm ? phi_c : phi_xm1;
+        phi_yp1_zm1 = wall_yp ? phi_c : phi_yp1;
+        phi_ym1_zm1 = wall_ym ? phi_c : phi_ym1;
+    }
+    if (wall_zp) {
+        phi_zp1     = phi_c;
+        phi_xp1_zp1 = wall_xp ? phi_c : phi_xp1;
+        phi_xm1_zp1 = wall_xm ? phi_c : phi_xm1;
+        phi_yp1_zp1 = wall_yp ? phi_c : phi_yp1;
+        phi_ym1_zp1 = wall_ym ? phi_c : phi_ym1;
+    }
+
+    // ---- isotropic gradient ----
+    constexpr dfloat w_axis = 1.0_df / 6.0_df;
+    constexpr dfloat w_edge = 1.0_df / 12.0_df;
+
+    dfloat dphidx = w_axis * (phi_xp1 - phi_xm1)
+                  + w_edge * (phi_xp1_ym1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xm1_yp1
+                            + phi_xp1_zm1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xm1_zp1);
+
+    dfloat dphidy = w_axis * (phi_yp1 - phi_ym1)
+                  + w_edge * (phi_xm1_yp1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xp1_ym1
+                            + phi_yp1_zm1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_ym1_zp1);
+
+    dfloat dphidz = w_axis * (phi_zp1 - phi_zm1)
+                  + w_edge * (phi_xm1_zp1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xp1_zm1
+                            + phi_ym1_zp1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_yp1_zm1);
+
+    // ---- isotropic Laplacian ----
+    constexpr dfloat w_lap_zero = -4.0_df;
+    constexpr dfloat w_lap_axis =  1.0_df / 3.0_df;
+    constexpr dfloat w_lap_edge =  1.0_df / 6.0_df;
+
+    dfloat laplacian_phi =
+        w_lap_zero * phi_c
+        + w_lap_axis * (phi_xp1 + phi_xm1 + phi_yp1 + phi_ym1 + phi_zp1 + phi_zm1)
+        + w_lap_edge * (phi_xp1_yp1 + phi_xp1_ym1 + phi_xm1_yp1 + phi_xm1_ym1
+                      + phi_xp1_zp1 + phi_xp1_zm1 + phi_xm1_zp1 + phi_xm1_zm1
+                      + phi_yp1_zp1 + phi_yp1_zm1 + phi_ym1_zp1 + phi_ym1_zm1);
+
+    fMom[idxMom(tx, ty, tz, M3_NX_INDEX, bx, by, bz)] = dphidx;
+    fMom[idxMom(tx, ty, tz, M3_NY_INDEX, bx, by, bz)] = dphidy;
+    fMom[idxMom(tx, ty, tz, M3_NZ_INDEX, bx, by, bz)] = dphidz;
+    fMom[idxMom(tx, ty, tz, M3_LP_INDEX, bx, by, bz)] = laplacian_phi;
+}
+
+
+
+__global__ void gpuComputeChemicalPotential(
+    dfloat *fMom,
+    unsigned int *dNodeType
+)
+{
+    const int x = threadIdx.x + blockDim.x * blockIdx.x;
+    const int y = threadIdx.y + blockDim.y * blockIdx.y;
+    const int z = threadIdx.z + blockDim.z * blockIdx.z;
+    if (x >= NX || y >= NY || z >= NZ) return;
+
+    const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
+    const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
+
+    unsigned int nodeType =
+        dNodeType[idxScalarBlock(tx, ty, tz, bx, by, bz)];
+    if (nodeType == 0b11111111) return;  // only skip fully solid
+
+    dfloat phi     = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
+    dfloat lap_phi = fMom[idxMom(tx, ty, tz, M3_LP_INDEX,  bx, by, bz)];
+
+    dfloat dfdphi = A_CH * (phi*phi*phi - phi);
+    dfloat mu     = dfdphi - kappa_CH * lap_phi;
+
+    // ---- bitmask wall detection ----
+    const bool wall_xm = (nodeType & 0b01010101) == 0b01010101;  // WEST
+    const bool wall_xp = (nodeType & 0b10101010) == 0b10101010;  // EAST
+    const bool wall_ym = (nodeType & 0b00110011) == 0b00110011;  // SOUTH
+    const bool wall_yp = (nodeType & 0b11001100) == 0b11001100;  // NORTH
+    const bool wall_zm = (nodeType & 0b00001111) == 0b00001111;  // BACK
+    const bool wall_zp = (nodeType & 0b11110000) == 0b11110000;  // FRONT
+
+    const bool is_wall = wall_xm || wall_xp || wall_ym || wall_yp
+                      || wall_zm || wall_zp;
+                      
+    
+    if (is_wall) {
+        // Load fluid-side phi neighbors (needed for solve_wetting)
+        auto getPhi = [&](int dx, int dy, int dz) -> dfloat {
+            #ifdef BC_X_WALL
+            int nx = min(NX - 1, max(0, x + dx));
+            #else
+            int nx = (x + dx + NX) % NX;
+            #endif
+            #ifdef BC_Y_WALL
+            int ny = min(NY - 1, max(0, y + dy));
+            #else
+            int ny = (y + dy + NY) % NY;
+            #endif
+            #ifdef BC_Z_WALL
+            int nz = min(NZ - 1, max(0, z + dz));
+            #else
+            int nz = (z + dz + NZ) % NZ;
+            #endif
+            int ntx = nx % BLOCK_NX, nty = ny % BLOCK_NY, ntz = nz % BLOCK_NZ;
+            int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
+            return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)];
+        };
+
+        auto solve_wetting = [](dfloat phi_p, dfloat q) -> dfloat {
+            if (fabs(q) < 1e-6_df) return phi_p;
+            phi_p = fmax(PHI_ONE, fmin(PHI_TWO, phi_p));
+            const dfloat indicator = 1.0_df - phi_p * phi_p;
+            if (indicator < 1e-4_df) return phi_p;  // bulk: no correction
+
+            const dfloat a = q, b = -1.0_df, c = phi_p - q;
+            const dfloat disc = b*b - 4.0_df*a*c;
+            if (disc < 0.0_df) return phi_p;
+
+            const dfloat sq        = sqrt(disc);
+            const dfloat phi_plus  = (-b + sq) / (2.0_df*a);
+            const dfloat phi_minus = (-b - sq) / (2.0_df*a);
+
+            const dfloat lo = PHI_ONE - 1e-6_df, hi = PHI_TWO + 1e-6_df;
+            const bool p_ok = (phi_plus  >= lo && phi_plus  <= hi);
+            const bool m_ok = (phi_minus >= lo && phi_minus <= hi);
+
+            dfloat raw;
+            if      (p_ok && m_ok) raw = (fabs(phi_plus-phi_p) <= fabs(phi_minus-phi_p))
+                                          ? phi_plus : phi_minus;
+            else if (p_ok)         raw = phi_plus;
+            else if (m_ok)         raw = phi_minus;
+            else                   raw = phi_p;
+
+            return fmax(PHI_ONE, fmin(PHI_TWO, phi_p + indicator*(raw - phi_p)));
+        };
+
+        const dfloat q_wet = -sqrt(A_CH / (2.0_df * kappa_CH)) * cos(contact_angle);
+
+        if (wall_ym) {
+            const dfloat phi_wall = solve_wetting(getPhi(0,+1,0), q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+        if (wall_yp) {
+            const dfloat phi_wall = solve_wetting(getPhi(0,-1,0), q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+        if (wall_xm) {
+            const dfloat phi_wall = solve_wetting(getPhi(+1,0,0), q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+        if (wall_xp) {
+            const dfloat phi_wall = solve_wetting(getPhi(-1,0,0), q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+        if (wall_zm) {
+            const dfloat phi_wall = solve_wetting(getPhi(0,0,+1), q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+        if (wall_zp) {
+            const dfloat phi_wall = solve_wetting(getPhi(0,0,-1), q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+    }
+    
+    fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)] = mu;
+}
+
+
+
+__global__ void gpuComputeLaplacianMu(
+    dfloat *fMom,
+    unsigned int *dNodeType
+)
+{
+    const int x = threadIdx.x + blockDim.x * blockIdx.x;
+    const int y = threadIdx.y + blockDim.y * blockIdx.y;
+    const int z = threadIdx.z + blockDim.z * blockIdx.z;
+    if (x >= NX || y >= NY || z >= NZ) return;
+
+    const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
+    const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
+
+    unsigned int nodeType =
+        dNodeType[idxScalarBlock(tx, ty, tz, bx, by, bz)];
+    if (nodeType == 0b11111111) return;  // only skip fully solid
+
+    dfloat mu0 = fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)];
+
+
+    auto getMu = [&](int dx, int dy, int dz) -> dfloat {
+        #ifdef BC_X_WALL
+        int nx = min(NX - 1, max(0, x + dx));
+        #else
+        int nx = (x + dx + NX) % NX;
+        #endif
+        #ifdef BC_Y_WALL
+        int ny = min(NY - 1, max(0, y + dy));
+        #else
+        int ny = (y + dy + NY) % NY;
+        #endif
+        #ifdef BC_Z_WALL
+        int nz = min(NZ - 1, max(0, z + dz));
+        #else
+        int nz = (z + dz + NZ) % NZ;
+        #endif
+        int ntx = nx % BLOCK_NX, nty = ny % BLOCK_NY, ntz = nz % BLOCK_NZ;
+        int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
+        return fMom[idxMom(ntx, nty, ntz, M3_MU_INDEX, nbx, nby, nbz)];
+    };
+
+    dfloat mu_xp1 = getMu(+1, 0, 0);  dfloat mu_xm1 = getMu(-1, 0, 0);
+    dfloat mu_yp1 = getMu( 0,+1, 0);  dfloat mu_ym1 = getMu( 0,-1, 0);
+    dfloat mu_zp1 = getMu( 0, 0,+1);  dfloat mu_zm1 = getMu( 0, 0,-1);
+
+    dfloat mu_xp1_yp1 = getMu(+1,+1, 0);  dfloat mu_xp1_ym1 = getMu(+1,-1, 0);
+    dfloat mu_xm1_yp1 = getMu(-1,+1, 0);  dfloat mu_xm1_ym1 = getMu(-1,-1, 0);
+    dfloat mu_xp1_zp1 = getMu(+1, 0,+1);  dfloat mu_xp1_zm1 = getMu(+1, 0,-1);
+    dfloat mu_xm1_zp1 = getMu(-1, 0,+1);  dfloat mu_xm1_zm1 = getMu(-1, 0,-1);
+    dfloat mu_yp1_zp1 = getMu( 0,+1,+1);  dfloat mu_yp1_zm1 = getMu( 0,+1,-1);
+    dfloat mu_ym1_zp1 = getMu( 0,-1,+1);  dfloat mu_ym1_zm1 = getMu( 0,-1,-1);
+
+    constexpr dfloat w0 = -4.0_df;
+    constexpr dfloat w1 =  1.0_df / 3.0_df;
+    constexpr dfloat w2 =  1.0_df / 6.0_df;
+
+    dfloat laplacian_mu =
+        w0 * mu0
+      + w1 * (mu_xp1 + mu_xm1 + mu_yp1 + mu_ym1 + mu_zp1 + mu_zm1)
+      + w2 * (mu_xp1_yp1 + mu_xp1_ym1 + mu_xm1_yp1 + mu_xm1_ym1
+            + mu_xp1_zp1 + mu_xp1_zm1 + mu_xm1_zp1 + mu_xm1_zm1
+            + mu_yp1_zp1 + mu_yp1_zm1 + mu_ym1_zp1 + mu_ym1_zm1);
+
+    fMom[idxMom(tx, ty, tz, M3_LM_INDEX, bx, by, bz)] = laplacian_mu;
+}
+
+*/
 
 #endif // PHI_DIST

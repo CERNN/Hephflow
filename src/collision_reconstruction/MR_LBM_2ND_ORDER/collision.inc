@@ -4,6 +4,7 @@
 #else
     const dfloat invRhoCol = invRho;
     const dfloat rhoCol = rhoVar; 
+#endif
 
 ux_t30 = ux_t30 + 3.0_df*invRhoCol * L_Fx;
 uy_t30 = uy_t30 + 3.0_df*invRhoCol * L_Fy;
