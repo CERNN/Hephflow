@@ -89,16 +89,16 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
         { // b
             // Condition for reading the boundary from the neighboring GPU.
             if  (bz == 0) {
-                pop[ 5] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 0, bx, by, top)];
-                pop[ 9] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 1, bx, by, top)];
-                pop[11] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 2, bx, by, top)];
-                pop[16] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 3, bx, by, top)];
-                pop[18] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 4, bx, by, top)];
+                pop[ 5] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 0, bx, by, 0)];
+                pop[ 9] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 1, bx, by, 0)];
+                pop[11] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 2, bx, by, 0)];
+                pop[16] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 3, bx, by, 0)];
+                pop[18] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 4, bx, by, 0)];
                 #ifdef D3Q27
-                pop[19] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 5, bx, by, top)];
-                pop[22] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 6, bx, by, top)];
-                pop[23] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 7, bx, by, top)];
-                pop[25] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 8, bx, by, top)];
+                pop[19] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 5, bx, by, 0)];
+                pop[22] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 6, bx, by, 0)];
+                pop[23] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 7, bx, by, 0)];
+                pop[25] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 8, bx, by, 0)];
                 #endif // D3Q27
                
             } else {
@@ -119,16 +119,16 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
         { // f
             // Condition for reading the boundary from the neighboring GPU.
             if (bz == top) {
-                pop[ 6] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 0, bx, by, 0)];
-                pop[10] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 1, bx, by, 0)];
-                pop[12] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 2, bx, by, 0)];
-                pop[15] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 3, bx, by, 0)];
-                pop[17] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 4, bx, by, 0)];
+                pop[ 6] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 0, bx, by, top)];
+                pop[10] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 1, bx, by, top)];
+                pop[12] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 2, bx, by, top)];
+                pop[15] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 3, bx, by, top)];
+                pop[17] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 4, bx, by, top)];
                 #ifdef D3Q27
-                pop[20] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 5, bx, by, 0)];
-                pop[21] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 6, bx, by, 0)];
-                pop[24] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 7, bx, by, 0)];
-                pop[26] = ghostInterface.popAux.Z_1[idxPopZ(tx, ty, 8, bx, by, 0)];
+                pop[20] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 5, bx, by, top)];
+                pop[21] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 6, bx, by, top)];
+                pop[24] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 7, bx, by, top)];
+                pop[26] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 8, bx, by, top)];
                 #endif // D3Q27
             } else {
                 pop[ 6] = loadGhostZBack[idxPopZ(tx, ty, 0, bx, by, loadBzFront)];

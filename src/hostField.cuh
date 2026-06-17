@@ -290,6 +290,11 @@ typedef struct hostField{
         memAllocated += sizeof(unsigned int) * NUMBER_LBM_NODES;
         #endif //NODE_TYPE_SAVE
 
+        // Node type host array - allocated once for the global domain.
+        // Each GPU thread writes/reads its own slice at offset (zStart * NX * NY).
+        checkCudaErrors(cudaMallocHost((void**)&hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
+        memAllocated += sizeof(unsigned int) * NUMBER_LBM_NODES;
+
         printf("Host Memory Allocated: %0.2f MB\n", (float)memAllocated / (1024.0 * 1024.0)); if(console_flush) fflush(stdout);
     }
 

@@ -146,29 +146,39 @@ const int storeBzFront =  (stepParity ? bz : bzp1);
             #endif //D3Q27
         }
         
+        // Edge-block overrides for multi-GPU transfer: the transfer always reads
+        // from pop.Z_0[0] (back face) and pop.Z_1[top] (front face).
+        // In stepParity=false the AA scheme would normally write these to
+        // pop.Z_1[-1] and pop.Z_0[top+1] which are wrong for the transfer and
+        // out of bounds.  Clamp them to the fixed locations the transfer expects.
+        dfloat* storeZBack_edge  = (bz == 0)  ? ghostInterface.pop.Z_0 : storeGhostZFront;
+        const int     storeBzBack_edge  = (bz == 0)  ? 0   : storeBzBack;
+        dfloat* storeZFront_edge = (bz == top) ? ghostInterface.pop.Z_1 : storeGhostZBack;
+        const int     storeBzFront_edge = (bz == top) ? top : storeBzFront;
+        
         if (INTERFACE_BC_BACK){ //b
-            storeGhostZFront[idxPopZ(tx, ty, 0, bx, by, storeBzBack)] = pop[ 6];
-            storeGhostZFront[idxPopZ(txm1, ty, 1, bxAtWest, by, storeBzBack)] = pop[10];
-            storeGhostZFront[idxPopZ(tx, tym1, 2, bx, byAtSouth, storeBzBack)] = pop[12];
-            storeGhostZFront[idxPopZ(txp1, ty, 3, bxAtEast, by, storeBzBack)] = pop[15];
-            storeGhostZFront[idxPopZ(tx, typ1, 4, bx, byAtNorth, storeBzBack)] = pop[17];
+            storeZBack_edge[idxPopZ(tx, ty, 0, bx, by, storeBzBack_edge)] = pop[ 6];
+            storeZBack_edge[idxPopZ(txm1, ty, 1, bxAtWest, by, storeBzBack_edge)] = pop[10];
+            storeZBack_edge[idxPopZ(tx, tym1, 2, bx, byAtSouth, storeBzBack_edge)] = pop[12];
+            storeZBack_edge[idxPopZ(txp1, ty, 3, bxAtEast, by, storeBzBack_edge)] = pop[15];
+            storeZBack_edge[idxPopZ(tx, typ1, 4, bx, byAtNorth, storeBzBack_edge)] = pop[17];
             #ifdef D3Q27
-            storeGhostZFront[idxPopZ(txm1, tym1, 5, bxAtWest, byAtSouth, storeBzBack)] = pop[20];
-            storeGhostZFront[idxPopZ(txp1, typ1, 6, bxAtEast, byAtNorth, storeBzBack)] = pop[21];
-            storeGhostZFront[idxPopZ(txm1, typ1, 7, bxAtWest, byAtNorth, storeBzBack)] = pop[24];
-            storeGhostZFront[idxPopZ(txp1, tym1, 8, bxAtEast, byAtSouth, storeBzBack)] = pop[26];
+            storeZBack_edge[idxPopZ(txm1, tym1, 5, bxAtWest, byAtSouth, storeBzBack_edge)] = pop[20];
+            storeZBack_edge[idxPopZ(txp1, typ1, 6, bxAtEast, byAtNorth, storeBzBack_edge)] = pop[21];
+            storeZBack_edge[idxPopZ(txm1, typ1, 7, bxAtWest, byAtNorth, storeBzBack_edge)] = pop[24];
+            storeZBack_edge[idxPopZ(txp1, tym1, 8, bxAtEast, byAtSouth, storeBzBack_edge)] = pop[26];
             #endif //D3Q27
         }if (INTERFACE_BC_FRONT){
-            storeGhostZBack[idxPopZ(tx, ty, 0, bx, by, storeBzFront)] = pop[ 5];
-            storeGhostZBack[idxPopZ(txp1, ty, 1, bxAtEast, by, storeBzFront)] = pop[ 9];
-            storeGhostZBack[idxPopZ(tx, typ1, 2, bx, byAtNorth, storeBzFront)] = pop[11];
-            storeGhostZBack[idxPopZ(txm1, ty, 3, bxAtWest, by, storeBzFront)] = pop[16];
-            storeGhostZBack[idxPopZ(tx, tym1, 4, bx, byAtSouth, storeBzFront)] = pop[18];
+            storeZFront_edge[idxPopZ(tx, ty, 0, bx, by, storeBzFront_edge)] = pop[ 5];
+            storeZFront_edge[idxPopZ(txp1, ty, 1, bxAtEast, by, storeBzFront_edge)] = pop[ 9];
+            storeZFront_edge[idxPopZ(tx, typ1, 2, bx, byAtNorth, storeBzFront_edge)] = pop[11];
+            storeZFront_edge[idxPopZ(txm1, ty, 3, bxAtWest, by, storeBzFront_edge)] = pop[16];
+            storeZFront_edge[idxPopZ(tx, tym1, 4, bx, byAtSouth, storeBzFront_edge)] = pop[18];
             #ifdef D3Q27
-            storeGhostZBack[idxPopZ(txp1, typ1, 5, bxAtEast, byAtNorth, storeBzFront)] = pop[19];
-            storeGhostZBack[idxPopZ(txm1, tym1, 6, bxAtWest, byAtSouth, storeBzFront)] = pop[22];
-            storeGhostZBack[idxPopZ(txp1, tym1, 7, bxAtEast, byAtSouth, storeBzFront)] = pop[23];
-            storeGhostZBack[idxPopZ(txm1, typ1, 8, bxAtWest, byAtNorth, storeBzFront)] = pop[25];
+            storeZFront_edge[idxPopZ(txp1, typ1, 5, bxAtEast, byAtNorth, storeBzFront_edge)] = pop[19];
+            storeZFront_edge[idxPopZ(txm1, tym1, 6, bxAtWest, byAtSouth, storeBzFront_edge)] = pop[22];
+            storeZFront_edge[idxPopZ(txp1, tym1, 7, bxAtEast, byAtSouth, storeBzFront_edge)] = pop[23];
+            storeZFront_edge[idxPopZ(txm1, typ1, 8, bxAtWest, byAtNorth, storeBzFront_edge)] = pop[25];
             #endif //D3Q27
         }
     }

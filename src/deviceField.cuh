@@ -166,37 +166,36 @@ typedef struct deviceField{
             checkCudaErrors(cudaMemcpy(hostField.m_fMom, d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
         #endif //MEAN_FLOW
 
-        // Node type initialization
-        checkCudaErrors(cudaMallocHost((void**)&hostField.hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
-        // When NODE_TYPE_SAVE is enabled we only need a host copy for dumping;
-        // keep dNodeType as the device-resident buffer allocated above.
+        // Node type initialization - hNodeType is allocated once globally in allocateHostMemoryHostField().
+        // Each GPU operates on its own slice: offset = zStart * NX * NY into the global array.
+        unsigned int* const hNodeType_slice = hostField.hNodeType + zStart * NX * NY;
 
         unsigned int numberCurvedBoundaryNodes_local = 0;
 
         #ifndef VOXEL_FILENAME
-            hostInitialization_nodeType(hostField.hNodeType, zStart, localNZ
+            hostInitialization_nodeType(hNodeType_slice, zStart, localNZ
             #ifdef CURVED_BOUNDARY_CONDITION
             ,&numberCurvedBoundaryNodes_local
             #endif
             );
-            checkCudaErrors(cudaMemcpy(dNodeType[g], hostField.hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyHostToDevice));  
+            checkCudaErrors(cudaMemcpy(dNodeType[g], hNodeType_slice, sizeof(unsigned int) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyHostToDevice));  
             checkCudaErrors(cudaDeviceSynchronize());
             #ifdef FORCE_VOXEL_BC_BUILDING
                 define_voxel_bc<<<gridBlock, threadBlock>>>(dNodeType); 
-                checkCudaErrors(cudaMemcpy(hostField.hNodeType, dNodeType[g], sizeof(unsigned int) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost)); 
+                checkCudaErrors(cudaMemcpy(hNodeType_slice, dNodeType[g], sizeof(unsigned int) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost)); 
             #endif
         #else
             hostInitialization_nodeType_bulk(hostField.hNodeType); 
             read_xyz_file(VOXEL_FILENAME, hostField.hNodeType);
-            hostInitialization_nodeType(hostField.hNodeType
+            hostInitialization_nodeType(hNodeType_slice
             #ifdef CURVED_BOUNDARY_CONDITION
             ,&numberCurvedBoundaryNodes_local
             #endif
             );
-            checkCudaErrors(cudaMemcpy(dNodeType[g], hostField.hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyHostToDevice));  
+            checkCudaErrors(cudaMemcpy(dNodeType[g], hNodeType_slice, sizeof(unsigned int) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyHostToDevice));  
             checkCudaErrors(cudaDeviceSynchronize());
             define_voxel_bc<<<gridBlock, threadBlock>>>(dNodeType[g]); 
-            checkCudaErrors(cudaMemcpy(hostField.hNodeType, dNodeType[g], sizeof(unsigned int) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost)); 
+            checkCudaErrors(cudaMemcpy(hNodeType_slice, dNodeType[g], sizeof(unsigned int) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost)); 
         #endif //!VOXEL_FILENAME
 
         // Boundary condition forces initialization
