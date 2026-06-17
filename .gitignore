@@ -25,6 +25,7 @@ bin/**/*.txt
 bin/**/*.bin
 bin/**/*.vtr
 bin/**/*.vtk
+bin/**/*.series
 bin/**/*.csv
 src/CUDA/.vs/
 src/CUDA/x64

@@ -3,10 +3,10 @@
 dfloat phi_normalized = (phiVar - PHI_ONE) / (PHI_TWO - PHI_ONE);
 phi_normalized = fmaxf(0.0_df, fminf(1.0_df, phi_normalized)); // clamp to [0,1]
 
-dfloat rho_local = phi_rho_g + phi_drho * phi_normalized;
+dfloat rho_local = PHI_RHO_PHASE1 + PHI_DRHO_PHASE12 * phi_normalized;
 
 // nabla rho = (rho_l - rho_g) * nabla phi / (PHI_TWO - PHI_ONE)
-dfloat drho_scale = phi_drho / (PHI_TWO - PHI_ONE);
+dfloat drho_scale = PHI_DRHO_PHASE12 / (PHI_TWO - PHI_ONE);
 dfloat drhox = drho_scale * dphidx;
 dfloat drhoy = drho_scale * dphidy;
 dfloat drhoz = drho_scale * dphidz;
@@ -62,7 +62,7 @@ dfloat Fn_z = 0.0_df;
 
 #if PHI_FORCE_FN_ENABLED
 
-    dfloat tau_local = tau_L + (tau_H - tau_L) * phi_normalized;
+    dfloat tau_local = TAU_PHASE1 + (TAU_PHASE2 - TAU_PHASE1) * phi_normalized;
     dfloat omega_local = 1.0_df / tau_local;
     dfloat tt_omegaVar_local = 1.0_df - 0.5_df * omega_local;
 
@@ -90,7 +90,9 @@ dfloat F_phase_y = Fs_y + Fp_y + Fn_y;
 dfloat F_phase_z = Fs_z + Fp_z + Fn_z;
 
 #if PHI_FORCE_FB_ENABLED
-L_Fx += gravity_vector[0]*g_value * (rho_local - phi_rho_g);;
-L_Fy += gravity_vector[1]*g_value * (rho_local - phi_rho_g);;
-L_Fz += gravity_vector[2]*g_value * (rho_local - phi_rho_g);;
+#ifndef PHI_FORCE_NO_APPLY_BODY_FORCE
+L_Fx += gravity_vector[0]*g_value * (rho_local - RHO_MID_REF) + F_phase_x;
+L_Fy += gravity_vector[1]*g_value * (rho_local - RHO_MID_REF) + F_phase_y;
+L_Fz += gravity_vector[2]*g_value * (rho_local - RHO_MID_REF) + F_phase_z;
+#endif
 #endif

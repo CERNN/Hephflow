@@ -53,12 +53,20 @@ int main() {
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
             devices[g].allocateDeviceMemoryDeviceField(g);
     
-            #ifdef NON_NEWTONIAN_FLUID
-            devices[g].nnfPropsA = CASE_NNF_PROPS_PHASE1;
-            #ifdef PHI_DIST
-            devices[g].nnfPropsB = CASE_NNF_PROPS_PHASE2;
+            #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
+            #if defined(CASE_PHASE_PROPS_PHASE1)
+            devices[g].phasePropsA = CASE_PHASE_PROPS_PHASE1;
+            #elif defined(CASE_PHASE_PROPS)
+            devices[g].phasePropsA = CASE_PHASE_PROPS;
             #endif
-            #endif //NON_NEWTONIAN_FLUID
+            #ifdef PHI_DIST
+            #if defined(CASE_PHASE_PROPS_PHASE2)
+            devices[g].phasePropsB = CASE_PHASE_PROPS_PHASE2;
+            #elif defined(CASE_PHASE_PROPS)
+            devices[g].phasePropsB = CASE_PHASE_PROPS;
+            #endif
+            #endif
+            #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
             
             #ifdef PARTICLE_MODEL
             // Particle field initialization and allocation
@@ -349,11 +357,11 @@ int main() {
     
     //Save info file
     //TODO: fix this later so it doesnt have defines
-    #ifdef NON_NEWTONIAN_FLUID
+    #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
     #ifdef PHI_DIST
-    saveSimInfo(step, MLUPS, deviceField.nnfPropsA, deviceField.nnfPropsB, true);
+    saveSimInfo(step, MLUPS, deviceField.phasePropsA, deviceField.phasePropsB, true);
     #else
-    saveSimInfo(step, MLUPS, deviceField.nnfPropsA);
+    saveSimInfo(step, MLUPS, deviceField.phasePropsA);
     #endif
     #else
     // saveSimInfo(step, MLUPS, {});

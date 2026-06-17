@@ -8,7 +8,7 @@ uz  = U_0_Z;
 const dfloat phi_mid  = 0.5 * (PHI_ONE + PHI_TWO);
 const dfloat phi_half = 0.5 * (PHI_TWO - PHI_ONE);
 
-const dfloat denom = sqrt(2.0) * phi_xi;
+const dfloat denom = 0.5_df * phi_del;
 
 dfloat X = (dfloat)x;
 dfloat Y = (dfloat)y;
@@ -21,7 +21,5 @@ dfloat delta = Y - y0;
 
 // liquid below, gas above
 phiVar = phi_mid + phi_half * tanh(delta / denom);
-
-phiVar += PHI_ZERO;
 
 #endif

@@ -15,13 +15,13 @@
 #include "../var.h"
 #include "nnf_types.h"
 
-// Provide PHASE1/PHASE2 aliases when a case only defines CASE_NNF_PROPS
-#ifdef CASE_NNF_PROPS
-#ifndef CASE_NNF_PROPS_PHASE1
-#define CASE_NNF_PROPS_PHASE1 CASE_NNF_PROPS
+// Provide PHASE1/PHASE2 aliases when a case only defines CASE_PHASE_PROPS
+#ifdef CASE_PHASE_PROPS
+#ifndef CASE_PHASE_PROPS_PHASE1
+#define CASE_PHASE_PROPS_PHASE1 CASE_PHASE_PROPS
 #endif
-#ifndef CASE_NNF_PROPS_PHASE2
-#define CASE_NNF_PROPS_PHASE2 CASE_NNF_PROPS
+#ifndef CASE_PHASE_PROPS_PHASE2
+#define CASE_PHASE_PROPS_PHASE2 CASE_PHASE_PROPS
 #endif
 #endif
 
@@ -93,13 +93,36 @@ dfloat __forceinline__ calcOmegaPowerLaw(dfloat k_consistency, dfloat n_index, d
 
 __host__ __device__ 
 dfloat __forceinline__ calcOmegaBingham(dfloat omega_p, dfloat s_y, dfloat auxStressMag){
+    if (s_y <= 0.0_df)
+        return omega_p;
+    if (auxStressMag <= 1.0e-12_df)
+        return 0.0_df;
     return omega_p * myMax(0.0_df, (1.0_df - s_y / auxStressMag));
 }
 
 __host__ __device__ 
 dfloat __forceinline__ calcOmegaHerschelBulkley(dfloat k_consistency, dfloat n_index, dfloat s_y, dfloat omegaOld, dfloat const auxStressMag){
-    dfloat omega = omegaOld;
-    if(auxStressMag < 1e-6_df) return 0.0_df;
+float omega = omegaOld; //initial guess
+
+    dfloat fx, fx_dx;
+    const dfloat cs2 = 1.0_df / 3.0_df;
+    const dfloat a = k_consistency * POW_FUNCTION(auxStressMag / (RHO_0 * cs2), n_index);
+    const dfloat b = 0.5_df * auxStressMag;
+    const dfloat c = s_y -auxStressMag;
+
+    if(auxStressMag * (1.0_df - auxStressMag * 0.5_df)  < s_y)
+        return 0.0_df;
+
+    for (int i = 0; i < 7; i++){
+        fx = a * POW_FUNCTION(omega, n_index) + b * omega + c;
+        fx_dx = a * n_index * POW_FUNCTION(omega, n_index - 1.0_df) + b;
+
+        if (fabs(fx / fx_dx) < 1e-6_df){
+            break;
+        }
+            
+        omega = omega - fx / fx_dx;
+    }
     return omega;
 }
 
@@ -202,8 +225,205 @@ dfloat __forceinline__ calcOmega_thixo(const fluidProps& fp, dfloat lambda, dflo
 
 
 
+// ============================================================================
+// VISCOELASTIC FLUID DISPATCH
+// ============================================================================
 
 
+// Forward declarations
+__host__ __device__ veRelaxTerm __forceinline__ calcVeRelaxationTerm_OldroydB(dfloat inv_lambda, dfloat Axx, dfloat Axy, dfloat Axz, dfloat Ayy, dfloat Ayz, dfloat Azz);
+__host__ __device__ veRelaxTerm __forceinline__ calcVeRelaxationTerm_FeneP(dfloat L_sq, dfloat inv_lambda, dfloat Axx, dfloat Axy, dfloat Axz, dfloat Ayy, dfloat Ayz, dfloat Azz);
+__host__ __device__ veRelaxTerm __forceinline__ calcVeRelaxationTerm_Giesekus(dfloat alpha, dfloat inv_lambda, dfloat Axx, dfloat Axy, dfloat Axz, dfloat Ayy, dfloat Ayz, dfloat Azz);
+__host__ __device__ veRelaxTerm __forceinline__ calcVeRelaxationTerm_PttLinear(dfloat epsilon, dfloat inv_lambda, dfloat Axx, dfloat Axy, dfloat Axz, dfloat Ayy, dfloat Ayz, dfloat Azz);
+__host__ __device__ veRelaxTerm __forceinline__ calcVeRelaxationTerm_PttExponential(dfloat epsilon, dfloat inv_lambda, dfloat Axx, dfloat Axy, dfloat Axz, dfloat Ayy, dfloat Ayz, dfloat Azz);
+
+__host__ __device__
+veFluidProps __forceinline__ blendVeProps(
+    const veFluidProps& A, const veFluidProps& B, dfloat h)
+{
+    h = fmax(0.0_df, fmin(1.0_df, h));
+    const dfloat inv_h = 1.0_df - h;
+    const dfloat lambda_min = 1.0e-5_df;
+    const dfloat phase_eps = 1.0e-4_df;
+    veFluidProps vp;
+
+    if (h <= phase_eps) {
+        return A;
+    }
+    if (h >= 1.0_df - phase_eps) {
+        return B;
+    }
+
+    // 1. Resolve the active model type for the mixture
+    if (A.type == B.type) {
+        vp.type = A.type;
+    } else if (A.type == VE_NEWTONIAN) { // Assuming VE_NEWTONIAN is defined
+        vp.type = B.type;
+    } else if (B.type == VE_NEWTONIAN) {
+        vp.type = A.type;
+    } else {
+        // Edge Case: Mixing two DIFFERENT viscoelastic models (e.g., FENE-P and PTT).
+        //TODO: Need figure out how to implement
+    }
+
+    // 2. Interpolate macroscopic properties
+    vp.eta_p = inv_h * A.eta_p + h * B.eta_p;
+
+    const dfloat eps = 1.0e-14_df;
+
+    // Interpolate eta and lambda directly, then compute Gmix = eta_mix/lambda_mix.
+    const dfloat eta_mix = vp.eta_p;
+    const dfloat lambda_mix = inv_h * A.lambda + h * B.lambda;
+    const dfloat lambda_mix_safe = fmax(lambda_mix, lambda_min);
+    const dfloat Gmix = eta_mix / lambda_mix_safe;
+
+    if (vp.eta_p <= eps || Gmix <= eps) {
+        // No polymer contribution in mixture cell: treat it as Newtonian.
+        vp.type = VE_NEWTONIAN;
+        vp.eta_p = 0.0_df;
+        vp.lambda = 0.0_df;
+    } else {
+        vp.lambda = fmax(vp.eta_p / Gmix, lambda_min);
+    }
+
+    // 3. Handle internal structural parameters
+    bool same_ve_model = (A.type == B.type && A.type != VE_NEWTONIAN);
+
+    switch (vp.type) {
+        case VE_FENE_P:
+            vp.u.fenep.L_sq = inv_h * A.u.fenep.L_sq + h * B.u.fenep.L_sq;
+            break;
+        case VE_GIESEKUS:
+            vp.u.giesekus.alpha = inv_h * A.u.giesekus.alpha + h * B.u.giesekus.alpha;
+            break;
+        case VE_PTT_LINEAR:
+        case VE_PTT_EXPONENTIAL:
+            vp.u.ptt.epsilon = inv_h * A.u.ptt.epsilon + h * B.u.ptt.epsilon;
+            break;
+        default: 
+            break;
+    }
+
+    return vp;
+}
+
+__host__ __device__
+veRelaxTerm __forceinline__ calcVeRelaxationTerm(
+    const veFluidProps& vp, dfloat inv_lambda_local,
+    dfloat Axx, dfloat Axy, dfloat Axz,
+    dfloat Ayy, dfloat Ayz, dfloat Azz)
+{
+    switch (vp.type) {
+    case VE_NEWTONIAN:       return veRelaxTerm{};
+    case VE_OLDROYD_B:       return calcVeRelaxationTerm_OldroydB(inv_lambda_local, Axx, Axy, Axz, Ayy, Ayz, Azz);
+    case VE_FENE_P:          return calcVeRelaxationTerm_FeneP(vp.u.fenep.L_sq, inv_lambda_local, Axx, Axy, Axz, Ayy, Ayz, Azz);
+    case VE_GIESEKUS:        return calcVeRelaxationTerm_Giesekus(vp.u.giesekus.alpha, inv_lambda_local, Axx, Axy, Axz, Ayy, Ayz, Azz);
+    case VE_PTT_LINEAR:      return calcVeRelaxationTerm_PttLinear(vp.u.ptt.epsilon, inv_lambda_local, Axx, Axy, Axz, Ayy, Ayz, Azz);
+    case VE_PTT_EXPONENTIAL: return calcVeRelaxationTerm_PttExponential(vp.u.ptt.epsilon, inv_lambda_local, Axx, Axy, Axz, Ayy, Ayz, Azz);
+    default: return veRelaxTerm{};
+    }
+}
+
+// ---- Oldroyd-B ---------------------------------------------------------------
+__host__ __device__
+veRelaxTerm __forceinline__ calcVeRelaxationTerm_OldroydB(
+    dfloat inv_lambda,
+    dfloat Axx, dfloat Axy, dfloat Axz,
+    dfloat Ayy, dfloat Ayz, dfloat Azz)
+{
+    veRelaxTerm R;
+    R.xx = inv_lambda * (1.0_df - Axx); 
+    R.yy = inv_lambda * (1.0_df - Ayy);
+    R.zz = inv_lambda * (1.0_df - Azz); 
+    R.xy = inv_lambda * (-Axy);
+    R.xz = inv_lambda * (-Axz);         
+    R.yz = inv_lambda * (-Ayz);
+    return R;
+}
+
+// ---- FENE-P ------------------------------------------------------------------
+// aa = b/(b-trA),  bb = b/(b-3),  b = L_sq. Recovers Oldroyd-B as L_sq->inf.
+__host__ __device__
+veRelaxTerm __forceinline__ calcVeRelaxationTerm_FeneP(
+    dfloat L_sq, dfloat inv_lambda,
+    dfloat Axx, dfloat Axy, dfloat Axz,
+    dfloat Ayy, dfloat Ayz, dfloat Azz)
+{
+    dfloat trA = Axx + Ayy + Azz;
+    dfloat aa  = 1.0_df / (1.0_df - trA   / L_sq);
+    dfloat bb  = 1.0_df / (1.0_df - 3.0_df / L_sq);
+    veRelaxTerm R;
+    R.xx = inv_lambda * (bb - aa * Axx); 
+    R.yy = inv_lambda * (bb - aa * Ayy);
+    R.zz = inv_lambda * (bb - aa * Azz); 
+    R.xy = inv_lambda * (-aa * Axy);
+    R.xz = inv_lambda * (-aa * Axz);     
+    R.yz = inv_lambda * (-aa * Ayz);
+    return R;
+}
+
+// ---- Giesekus ----------------------------------------------------------------
+// G = (1/lambda)*(I - A - alpha*(A-I)^2).  alpha=0 -> Oldroyd-B.
+__host__ __device__
+veRelaxTerm __forceinline__ calcVeRelaxationTerm_Giesekus(
+    dfloat alpha, dfloat inv_lambda,
+    dfloat Axx, dfloat Axy, dfloat Axz,
+    dfloat Ayy, dfloat Ayz, dfloat Azz)
+{
+    dfloat A2xx = Axx*Axx + Axy*Axy + Axz*Axz;
+    dfloat A2yy = Axy*Axy + Ayy*Ayy + Ayz*Ayz;
+    dfloat A2zz = Axz*Axz + Ayz*Ayz + Azz*Azz;
+    dfloat A2xy = Axx*Axy + Axy*Ayy + Axz*Ayz;
+    dfloat A2xz = Axx*Axz + Axy*Ayz + Axz*Azz;
+    dfloat A2yz = Axy*Axz + Ayy*Ayz + Ayz*Azz;
+    dfloat c1 = 1.0_df - alpha, c2 = 1.0_df - 2.0_df * alpha;
+    veRelaxTerm R;
+    R.xx = inv_lambda * (c1     - c2*Axx - alpha*A2xx);
+    R.yy = inv_lambda * (c1     - c2*Ayy - alpha*A2yy);
+    R.zz = inv_lambda * (c1     - c2*Azz - alpha*A2zz);
+    R.xy = inv_lambda * (0.0_df - c2*Axy - alpha*A2xy);
+    R.xz = inv_lambda * (0.0_df - c2*Axz - alpha*A2xz);
+    R.yz = inv_lambda * (0.0_df - c2*Ayz - alpha*A2yz);
+    return R;
+}
+
+// ---- PTT linear --------------------------------------------------------------
+// f(trA) = 1 + epsilon*(trA - 3).  epsilon=0 -> Oldroyd-B.
+__host__ __device__
+veRelaxTerm __forceinline__ calcVeRelaxationTerm_PttLinear(
+    dfloat epsilon, dfloat inv_lambda,
+    dfloat Axx, dfloat Axy, dfloat Axz,
+    dfloat Ayy, dfloat Ayz, dfloat Azz)
+{
+    dfloat f = 1.0_df + epsilon * (Axx + Ayy + Azz - 3.0_df);
+    veRelaxTerm R;
+    R.xx = inv_lambda * f * (1.0_df - Axx);
+    R.yy = inv_lambda * f * (1.0_df - Ayy);
+    R.zz = inv_lambda * f * (1.0_df - Azz);
+    R.xy = inv_lambda * f * (-Axy);
+    R.xz = inv_lambda * f * (-Axz);
+    R.yz = inv_lambda * f * (-Ayz);
+    return R;
+}
+
+// ---- PTT exponential ---------------------------------------------------------
+// f(trA) = exp(epsilon*(trA - 3)).  epsilon=0 -> Oldroyd-B.
+__host__ __device__
+veRelaxTerm __forceinline__ calcVeRelaxationTerm_PttExponential(
+    dfloat epsilon, dfloat inv_lambda,
+    dfloat Axx, dfloat Axy, dfloat Axz,
+    dfloat Ayy, dfloat Ayz, dfloat Azz)
+{
+    dfloat f = EXP_FUNCTION(epsilon * (Axx + Ayy + Azz - 3.0_df));
+    veRelaxTerm R;
+    R.xx = inv_lambda * f * (1.0_df - Axx); 
+    R.yy = inv_lambda * f * (1.0_df - Ayy);
+    R.zz = inv_lambda * f * (1.0_df - Azz); 
+    R.xy = inv_lambda * f * (-Axy);
+    R.xz = inv_lambda * f * (-Axz);    
+    R.yz = inv_lambda * f * (-Ayz);
+    return R;
+}
 
 #endif // __NNF_H
 

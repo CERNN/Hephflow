@@ -101,4 +101,14 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
     constexpr dfloat CONF_DIFF_FLUC = CONF_DIFFUSIVITY - CONF_DIFF_REF;
     constexpr dfloat CONF_AAA = (3*CONF_DIFF_FLUC*CONF_OMEGA);
     constexpr dfloat CONF_DIFF_FLUC_COEF = CONF_AAA/(1.0+CONF_AAA);
+
+    static inline fluidPhaseProps makeCasePhaseProps() {
+        fluidPhaseProps pp{};
+        pp.nnf.type      = FLUID_NEWTONIAN;
+        pp.ve.type       = VE_OLDROYD_B;
+        pp.ve.eta_p      = nu_p;
+        pp.ve.lambda     = LAMBDA;
+        return pp;
+    }
+    #define CASE_PHASE_PROPS makeCasePhaseProps()
 #endif

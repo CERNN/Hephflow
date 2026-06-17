@@ -73,18 +73,30 @@ fi
 echo "Block size: ${BLOCK_NX}x${BLOCK_NY}x${BLOCK_NZ} = $BLOCK_SIZE threads"
 echo "Max registers per thread: $MAX_REGS"
 
-if [[ "$1" = "D3Q19" || "$1" = "D3Q27" ]]; then
-    nvcc --std=c++17 -gencode arch=compute_${CC},code=sm_${CC} -rdc=true -O3 --restrict -DSM_${CC}  \
-        --maxrregcount=$MAX_REGS \
-        $(find . -name '*.cu') \
-        -diag-suppress 39 \
-        -diag-suppress 179 \
-        -lcudadevrt -lcurand -o ./../bin/$2sim_$1_sm${CC} 2>&1 | tee compile_log.txt
-else
-    echo "Input error, example of usage is:"
-    echo "sh compile.sh D3Q19 011"
-    echo "sh compile.sh D3Q27 202"
+# Auto-detect velocity set (D3Q19/D3Q27) from the active case's model.inc
+BC_PROBLEM=$(grep -E "^#define BC_PROBLEM" "./var.h" | awk '{print $3}')
+if [ -z "$BC_PROBLEM" ]; then
+    echo "Error: Could not read BC_PROBLEM from var.h"
+    exit 1
 fi
+MODEL_INC="./cases/${BC_PROBLEM}/model.inc"
+if [ ! -f "$MODEL_INC" ]; then
+    echo "Error: model.inc not found at $MODEL_INC"
+    exit 1
+fi
+VELOCITY_SET=$(grep -E "^#define (D3Q19|D3Q27)" "$MODEL_INC" | awk '{print $2}' | head -n 1)
+if [ -z "$VELOCITY_SET" ]; then
+    echo "Error: D3Q19 or D3Q27 not defined in $MODEL_INC"
+    exit 1
+fi
+echo "Velocity set: $VELOCITY_SET (from cases/${BC_PROBLEM}/model.inc)"
+
+nvcc --std=c++17 -gencode arch=compute_${CC},code=sm_${CC} -rdc=true -O3 --restrict -DSM_${CC}  \
+    --maxrregcount=$MAX_REGS \
+    $(find . -name '*.cu') \
+    -diag-suppress 39 \
+    -diag-suppress 179 \
+    -lcudadevrt -lcurand -o ./../bin/$1sim_${VELOCITY_SET}_sm${CC} 2>&1 | tee compile_log.txt
 
 rm -f ./../bin/*.exp ./../bin/*.lib
 

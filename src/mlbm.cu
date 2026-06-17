@@ -26,12 +26,12 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     CurvedBoundary* d_curvedBC_array = params.d_curvedBC_array;
     #endif //CURVED_BOUNDARY_CONDITION
 
-    #ifdef NON_NEWTONIAN_FLUID
-    const fluidProps nnfPropsA = params.nnfPropsA;
+    #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
+    const fluidPhaseProps phasePropsA = params.phasePropsA;
     #ifdef PHI_DIST
-    const fluidProps nnfPropsB = params.nnfPropsB;
+    const fluidPhaseProps phasePropsB = params.phasePropsB;
     #endif
-    #endif //NON_NEWTONIAN_FLUID
+    #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
 
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
@@ -108,14 +108,18 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
 
     #ifdef LOCAL_FORCES
-    dfloat L_Fx = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)]; // F_0 * sin(K_const*x) * cos(K_const*y) ;
-    dfloat L_Fy = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)]; //-F_0 * sin(K_const*y) * cos(K_const*x) ;
+    dfloat L_Fx = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+    dfloat L_Fy = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
     dfloat L_Fz = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_FZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
     #else
-    dfloat L_Fx = FX; // F_0 * sin(K_const*x) * cos(K_const*y) ;
-    dfloat L_Fy = FY; //-F_0 * sin(K_const*y) * cos(K_const*x) ;
+    dfloat L_Fx = FX;
+    dfloat L_Fy = FY;
     dfloat L_Fz = FZ;
     #endif //LOCAL_FORCES
+
+    #ifdef FORCE_FIELD_INCLUDE
+    #include CASE_FORCE_FIELD
+    #endif //FORCE_FIELD_INCLUDE
 
 
     #ifdef BC_FORCES
@@ -123,6 +127,17 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     dfloat L_BC_Fy = 0.0_df;
     dfloat L_BC_Fz = 0.0_df;
     #endif //BC_FORCES
+
+    // Load phi once here and compute all phase-property scalars used throughout the kernel:
+    // h_phi e [0,1], rho_pf (physical mass density), invRhoPF.
+    // Avoids redundant global memory reads in PHI_DIST blocks, OMEGA_FIELD, and conformation_evolution.
+    #ifdef PHI_DIST
+        const dfloat phiVar_phi = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        dfloat h_phi = (phiVar_phi - PHI_ONE) / (PHI_TWO - PHI_ONE);
+        h_phi = fmaxf(0.0_df, fminf(1.0_df, h_phi));
+        const dfloat rho_pf   = PHI_RHO_PHASE1 + PHI_DRHO_PHASE12 * h_phi;
+        const dfloat invRhoPF = 1.0_df / rho_pf;
+    #endif //PHI_DIST
 
 
     #include COLREC_RECONSTRUCTION
@@ -168,6 +183,52 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     #ifdef COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
         #include "fragments/velocity_gradient.inc"
     #endif //COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
+
+    #ifdef PHI_DIST
+        // Precompute phase-force contribution before conformation evolution so we can
+        // remove its induced part from velocity gradients used by conformation transport.
+        dfloat F_phase_x = 0.0_df;
+        dfloat F_phase_y = 0.0_df;
+        dfloat F_phase_z = 0.0_df;
+
+        dfloat phase_dphidx = 0.0_df;
+        dfloat phase_dphidy = 0.0_df;
+        dfloat phase_dphidz = 0.0_df;
+        dfloat phase_laplacian_phi = 0.0_df;
+
+        dfloat phase_du_xx = 0.0_df, phase_du_xy = 0.0_df, phase_du_xz = 0.0_df;
+        dfloat phase_du_yx = 0.0_df, phase_du_yy = 0.0_df, phase_du_yz = 0.0_df;
+        dfloat phase_du_zx = 0.0_df, phase_du_zy = 0.0_df, phase_du_zz = 0.0_df;
+
+        {
+            const dfloat phiVar = phiVar_phi;  // reuse pre-loaded phi; avoids a second global memory read
+
+            #include "fragments/phiTransport/phase_gradient.inc"
+            #include "fragments/phiTransport/phase_coupling_forces.inc"
+
+            phase_dphidx = dphidx;
+            phase_dphidy = dphidy;
+            phase_dphidz = dphidz;
+            phase_laplacian_phi = laplacian_phi;
+
+            // First-order estimate: u_phase ~ F_phase/(2*rho). Approximate grad(u_phase)
+            // by density-gradient coupling to remove phase-force-induced strain from VE evolution.
+            const dfloat invRhoLocal = 1.0_df / fmax(rhoVar, 1.0e-12_df);
+            const dfloat phaseVelCoef = 0.5_df * invRhoLocal * invRhoLocal;
+
+            phase_du_xx = -phaseVelCoef * F_phase_x * drhox;
+            phase_du_xy = -phaseVelCoef * F_phase_x * drhoy;
+            phase_du_xz = -phaseVelCoef * F_phase_x * drhoz;
+
+            phase_du_yx = -phaseVelCoef * F_phase_y * drhox;
+            phase_du_yy = -phaseVelCoef * F_phase_y * drhoy;
+            phase_du_yz = -phaseVelCoef * F_phase_y * drhoz;
+
+            phase_du_zx = -phaseVelCoef * F_phase_z * drhox;
+            phase_du_zy = -phaseVelCoef * F_phase_z * drhoy;
+            phase_du_zz = -phaseVelCoef * F_phase_z * drhoz;
+        }
+    #endif //PHI_DIST
 
     
     #ifdef CONFORMATION_TENSOR
@@ -240,19 +301,15 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
         #ifdef PHI_DIST 
 
             dfloat phiVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-            phiVar -= PHI_ZERO;
-            phiVar *= PHI_SCALE;
-            
-            #include "fragments/phiTransport/phase_gradient.inc"
-            //#include "fragments/phiTransport/normal_gradient.inc"
-            #include "fragments/phiTransport/phase_coupling_forces.inc"
+            dfloat dphidx = phase_dphidx;
+            dfloat dphidy = phase_dphidy;
+            dfloat dphidz = phase_dphidz;
+            dfloat laplacian_phi = phase_laplacian_phi;
 
             L_Fx += F_phase_x;
             L_Fy += F_phase_y;
             L_Fz += F_phase_z;
 
-            dfloat phi_for_sharp = phiVar;
-            phi_for_sharp = fmaxf(0.0_df, fminf(1.0_df, phi_for_sharp));
             dfloat phiSource = 0.0_df;
             #ifdef INTERFACE_SHARPENING
                 #include "fragments/phiTransport/phi_sharpening.inc"
@@ -260,11 +317,6 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             #else
                 dfloat phiSharpSource = 0.0_df;
             #endif //INTERFACE_SHARPENING
-
-
-            phiVar /= PHI_SCALE;
-            phiVar += PHI_ZERO;
-            dfloat invPhi = 1/phiVar;
             dfloat phi_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat phi_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat phi_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -293,14 +345,12 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 ;
                 phiVar = phiVar + phiSource; 
                 //clamp 
-                if(phiVar > PHI_TWO + PHI_ZERO)
-                    phiVar = PHI_TWO + PHI_ZERO;
-                if(phiVar < PHI_ONE + PHI_ZERO)
-                    phiVar = PHI_ONE + PHI_ZERO;
+                if(phiVar > PHI_TWO)
+                    phiVar = PHI_TWO;
+                if(phiVar < PHI_ONE)
+                    phiVar = PHI_ONE;
 
-                invPhi= 1.0/phiVar;
-
-                phi_qx_t30 = ((gNode[1] - gNode[2] 
+                phi_qx_t30 = (gNode[1] - gNode[2] 
                     #ifdef D3G19
                     + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]
                     #endif
@@ -308,8 +358,8 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                     + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]
                     + gNode[19] - gNode[20] + gNode[21] - gNode[22] + gNode[23] - gNode[24] - gNode[25] + gNode[26]
                     #endif
-                ))*invPhi;
-                phi_qy_t30 = ((gNode[3] - gNode[4]
+                );
+                phi_qy_t30 = (gNode[3] - gNode[4]
                     #ifdef D3G19 
                     + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]
                     #endif
@@ -317,8 +367,8 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                     + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]
                     + gNode[19] - gNode[20] + gNode[21] - gNode[22] - gNode[23] + gNode[24] + gNode[25] - gNode[26]
                     #endif
-                ))*invPhi;
-                phi_qz_t30 = ((gNode[5] - gNode[6]
+                );
+                phi_qz_t30 = (gNode[5] - gNode[6]
                     #ifdef D3G19 
                     + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]
                     #endif
@@ -326,7 +376,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                     + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]
                     + gNode[19] - gNode[20] - gNode[21] + gNode[22] + gNode[23] - gNode[24] + gNode[25] - gNode[26]
                     #endif
-                ))*invPhi;
+                );
             }
 
             
@@ -342,7 +392,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
             // Compute source term using function-based dispatch
             dfloat lambdaSource = computeLambdaSourceFromStress(
-                nnfPropsA,
+                phasePropsA.nnf,
                 rhoVar, ux_t30, uy_t30, uz_t30,
                 m_xx_t45, m_yy_t45, m_zz_t45,
                 m_xy_t90, m_xz_t90, m_yz_t90,
@@ -391,6 +441,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             dfloat Axx_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Axx_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
+                        dfloat Axx_udx_t30 = CONF_DIFF_FLUC_COEF * (Axx_qx_t30*invAxx - ux_t30);
+                        dfloat Axx_udy_t30 = CONF_DIFF_FLUC_COEF * (Axx_qy_t30*invAxx - uy_t30);
+                        dfloat Axx_udz_t30 = CONF_DIFF_FLUC_COEF * (Axx_qz_t30*invAxx - uz_t30);
+
             #include COLREC_AXX_RECONSTRUCTION
 
             __syncthreads();
@@ -408,18 +462,20 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 AxxVar = AxxVar + Gxx;
                 invAxx= 1.0/AxxVar;
 
-                Axx_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]))*invAxx;
-                Axx_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]))*invAxx;
-                Axx_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]))*invAxx;
+                Axx_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
+                Axx_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
+                Axx_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
             }
-
-            #include COLREC_AXX_COLLISION
         #endif //A_XX_DIST
         #ifdef A_XY_DIST
             dfloat invAxy = 1/AxyVar;
             dfloat Axy_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Axy_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Axy_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            dfloat Axy_udx_t30 = CONF_DIFF_FLUC_COEF * (Axy_qx_t30*invAxy - ux_t30);
+            dfloat Axy_udy_t30 = CONF_DIFF_FLUC_COEF * (Axy_qy_t30*invAxy - uy_t30);
+            dfloat Axy_udz_t30 = CONF_DIFF_FLUC_COEF * (Axy_qz_t30*invAxy - uz_t30);
 
             #include COLREC_AXY_RECONSTRUCTION
 
@@ -438,18 +494,20 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 AxyVar = AxyVar + Gxy;
                 invAxy= 1.0/AxyVar;
 
-                Axy_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]))*invAxy;
-                Axy_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]))*invAxy;
-                Axy_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]))*invAxy;
+                Axy_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
+                Axy_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
+                Axy_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
             }
-
-            #include COLREC_AXY_COLLISION
         #endif //A_XY_DIST
         #ifdef A_XZ_DIST
             dfloat invAxz = 1/AxzVar;
             dfloat Axz_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Axz_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Axz_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            dfloat Axz_udx_t30 = CONF_DIFF_FLUC_COEF * (Axz_qx_t30*invAxz - ux_t30);
+            dfloat Axz_udy_t30 = CONF_DIFF_FLUC_COEF * (Axz_qy_t30*invAxz - uy_t30);
+            dfloat Axz_udz_t30 = CONF_DIFF_FLUC_COEF * (Axz_qz_t30*invAxz - uz_t30);
 
             #include COLREC_AXZ_RECONSTRUCTION
 
@@ -468,18 +526,20 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 AxzVar = AxzVar + Gxz;
                 invAxz= 1.0/AxzVar;
 
-                Axz_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]))*invAxz;
-                Axz_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]))*invAxz;
-                Axz_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]))*invAxz;
+                Axz_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
+                Axz_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
+                Axz_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
             }
-
-            #include COLREC_AXZ_COLLISION
         #endif //A_XZ_DIST
         #ifdef A_YY_DIST
             dfloat invAyy = 1/AyyVar;
             dfloat Ayy_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Ayy_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Ayy_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            dfloat Ayy_udx_t30 = CONF_DIFF_FLUC_COEF * (Ayy_qx_t30*invAyy - ux_t30);
+            dfloat Ayy_udy_t30 = CONF_DIFF_FLUC_COEF * (Ayy_qy_t30*invAyy - uy_t30);
+            dfloat Ayy_udz_t30 = CONF_DIFF_FLUC_COEF * (Ayy_qz_t30*invAyy - uz_t30);
 
             #include COLREC_AYY_RECONSTRUCTION
 
@@ -498,18 +558,20 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 AyyVar = AyyVar + Gyy;
                 invAyy= 1.0/AyyVar;
 
-                Ayy_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]))*invAyy;
-                Ayy_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]))*invAyy;
-                Ayy_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]))*invAyy;
+                Ayy_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
+                Ayy_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
+                Ayy_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
             }
-
-            #include COLREC_AYY_COLLISION
         #endif //A_YY_DIST
         #ifdef A_YZ_DIST
             dfloat invAyz = 1/AyzVar;
             dfloat Ayz_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Ayz_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Ayz_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            dfloat Ayz_udx_t30 = CONF_DIFF_FLUC_COEF * (Ayz_qx_t30*invAyz - ux_t30);
+            dfloat Ayz_udy_t30 = CONF_DIFF_FLUC_COEF * (Ayz_qy_t30*invAyz - uy_t30);
+            dfloat Ayz_udz_t30 = CONF_DIFF_FLUC_COEF * (Ayz_qz_t30*invAyz - uz_t30);
 
             #include COLREC_AYZ_RECONSTRUCTION
 
@@ -528,18 +590,20 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 AyzVar = AyzVar + Gyz;
                 invAyz= 1.0/AyzVar;
 
-                Ayz_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]))*invAyz;
-                Ayz_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]))*invAyz;
-                Ayz_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]))*invAyz;
+                Ayz_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
+                Ayz_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
+                Ayz_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
             }
-
-            #include COLREC_AYZ_COLLISION
         #endif //A_YZ_DIST
         #ifdef A_ZZ_DIST
             dfloat invAzz = 1/AzzVar;
             dfloat Azz_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Azz_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat Azz_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+
+            dfloat Azz_udx_t30 = CONF_DIFF_FLUC_COEF * (Azz_qx_t30*invAzz - ux_t30);
+            dfloat Azz_udy_t30 = CONF_DIFF_FLUC_COEF * (Azz_qy_t30*invAzz - uy_t30);
+            dfloat Azz_udz_t30 = CONF_DIFF_FLUC_COEF * (Azz_qz_t30*invAzz - uz_t30);
 
             #include COLREC_AZZ_RECONSTRUCTION
 
@@ -558,12 +622,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 AzzVar = AzzVar + Gzz;
                 invAzz= 1.0/AzzVar;
 
-                Azz_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]))*invAzz;
-                Azz_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]))*invAzz;
-                Azz_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]))*invAzz;
+                Azz_qx_t30 = F_M_I_SCALE*((gNode[1] - gNode[2] + gNode[7] - gNode[ 8] + gNode[ 9] - gNode[10] + gNode[13] - gNode[14] + gNode[15] - gNode[16]));
+                Azz_qy_t30 = F_M_I_SCALE*((gNode[3] - gNode[4] + gNode[7] - gNode[ 8] + gNode[11] - gNode[12] + gNode[14] - gNode[13] + gNode[17] - gNode[18]));
+                Azz_qz_t30 = F_M_I_SCALE*((gNode[5] - gNode[6] + gNode[9] - gNode[10] + gNode[11] - gNode[12] + gNode[16] - gNode[15] + gNode[18] - gNode[17]));
             }
-
-            #include COLREC_AZZ_COLLISION
         #endif //A_ZZ_DIST
         
 
@@ -749,30 +811,25 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             #ifdef NON_NEWTONIAN_FLUID 
                 dfloat gammaDot = omegaVar * auxStressMag * as2;
                 #if defined(PHI_DIST)
-                    // Normalize phi to [0,1] for blending between phase A (phi=PHI_ONE) and phase B (phi=PHI_TWO)
-                    // Stored phi includes PHI_ZERO offset; rescale to physical order parameter before mapping
-                    dfloat phiLocal = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PHI_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-                    dfloat phiPhysical = (phiLocal - PHI_ZERO) * PHI_SCALE; // back to [-1,1] range
-                    dfloat phiNorm = (phiPhysical - PHI_ONE) / (PHI_TWO - PHI_ONE);
-                    phiNorm = fmax(0.0_df, fmin(1.0_df, phiNorm));
 
-                    // Compute phase-specific omegas, convert to apparent viscosities, then blend and back to omega
+                    // h_phi is pre-computed from the early phi load - avoids redundant global memory read.
+                    // Compute phase-specific omegas, convert to apparent viscosities, then blend back.
                     const dfloat omega_eps = 1.0e-12_df;
 
-                    dfloat omegaA = calcOmega(nnfPropsA, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
-                    dfloat omegaB = calcOmega(nnfPropsB, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
+                    dfloat omegaA = calcOmega(phasePropsA.nnf, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
+                    dfloat omegaB = calcOmega(phasePropsB.nnf, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
 
                     dfloat tauA = (omegaA > omega_eps) ? (1.0_df / omegaA) : (1.0_df / omega_eps);
                     dfloat tauB = (omegaB > omega_eps) ? (1.0_df / omegaB) : (1.0_df / omega_eps);
 
-                    dfloat muA = (tauA - 0.5_df) * RHO_0 * cs2;
-                    dfloat muB = (tauB - 0.5_df) * RHO_0 * cs2;
+                    dfloat muA = (tauA - 0.5_df) * PHI_RHO_PHASE1 * cs2;
+                    dfloat muB = (tauB - 0.5_df) * PHI_RHO_PHASE2 * cs2;
 
-                    dfloat muMix = interpolateProperty(muA, muB, phiNorm);
-                    dfloat tauMix = muMix / (rhoVar * cs2) + 0.5_df;
+                    dfloat muMix = interpolateProperty(muA, muB, h_phi);
+                    dfloat tauMix = muMix / (rho_pf * cs2) + 0.5_df;
                     omegaVar = 1.0_df / fmax(tauMix, omega_eps);
                 #else
-                    omegaVar = calcOmega(nnfPropsA, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
+                    omegaVar = calcOmega(phasePropsA.nnf, omegaVar, auxStressMag, lambdaVar, gammaDot, rhoVar, step);
                 #endif
             #endif //NON_NEWTONIAN_FLUID
 
@@ -800,7 +857,6 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     if (((nodeType & FRONT) == FRONT) || ((nodeType & BACK)  == BACK)) {
         L_Fz = 0;
     }
-
 
     // COLLIDE
     #include COLREC_COLLISION
@@ -886,6 +942,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
         #endif //LAMBDA_DIST
         #ifdef A_XX_DIST
 
+            Axx_udx_t30 = CONF_DIFF_FLUC_COEF * (Axx_qx_t30*invAxx - ux_t30);
+            Axx_udy_t30 = CONF_DIFF_FLUC_COEF * (Axx_qy_t30*invAxx - uy_t30);
+            Axx_udz_t30 = CONF_DIFF_FLUC_COEF * (Axx_qz_t30*invAxx - uz_t30);
+
             #include COLREC_AXX_RECONSTRUCTION
 
             {
@@ -898,6 +958,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qz_t30;
         #endif //A_XX_DIST
         #ifdef A_XY_DIST
+
+            Axy_udx_t30 = CONF_DIFF_FLUC_COEF * (Axy_qx_t30*invAxy - ux_t30);
+            Axy_udy_t30 = CONF_DIFF_FLUC_COEF * (Axy_qy_t30*invAxy - uy_t30);
+            Axy_udz_t30 = CONF_DIFF_FLUC_COEF * (Axy_qz_t30*invAxy - uz_t30);
 
             #include COLREC_AXY_RECONSTRUCTION
 
@@ -912,6 +976,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
         #endif //A_XY_DIST
         #ifdef A_XZ_DIST
 
+            Axz_udx_t30 = CONF_DIFF_FLUC_COEF * (Axz_qx_t30*invAxz - ux_t30);
+            Axz_udy_t30 = CONF_DIFF_FLUC_COEF * (Axz_qy_t30*invAxz - uy_t30);
+            Axz_udz_t30 = CONF_DIFF_FLUC_COEF * (Axz_qz_t30*invAxz - uz_t30);
+
             #include COLREC_AXZ_RECONSTRUCTION
 
             {
@@ -924,6 +992,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qz_t30;
         #endif //A_XZ_DIST
         #ifdef A_YY_DIST
+
+            Ayy_udx_t30 = CONF_DIFF_FLUC_COEF * (Ayy_qx_t30*invAyy - ux_t30);
+            Ayy_udy_t30 = CONF_DIFF_FLUC_COEF * (Ayy_qy_t30*invAyy - uy_t30);
+            Ayy_udz_t30 = CONF_DIFF_FLUC_COEF * (Ayy_qz_t30*invAyy - uz_t30);
 
             #include COLREC_AYY_RECONSTRUCTION
 
@@ -938,6 +1010,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
         #endif //A_YY_DIST
         #ifdef A_YZ_DIST
 
+            Ayz_udx_t30 = CONF_DIFF_FLUC_COEF * (Ayz_qx_t30*invAyz - ux_t30);
+            Ayz_udy_t30 = CONF_DIFF_FLUC_COEF * (Ayz_qy_t30*invAyz - uy_t30);
+            Ayz_udz_t30 = CONF_DIFF_FLUC_COEF * (Ayz_qz_t30*invAyz - uz_t30);
+
             #include COLREC_AYZ_RECONSTRUCTION
 
             {
@@ -950,6 +1026,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qz_t30;
         #endif //A_YZ_DIST
         #ifdef A_ZZ_DIST
+
+            Azz_udx_t30 = CONF_DIFF_FLUC_COEF * (Azz_qx_t30*invAzz - ux_t30);
+            Azz_udy_t30 = CONF_DIFF_FLUC_COEF * (Azz_qy_t30*invAzz - uy_t30);
+            Azz_udz_t30 = CONF_DIFF_FLUC_COEF * (Azz_qz_t30*invAzz - uz_t30);
 
             #include COLREC_AZZ_RECONSTRUCTION
 
@@ -992,32 +1072,24 @@ void gpuResetMacroForces(dfloat *fMom){
 
 
 #ifdef PHI_DIST
-
+/*
 __global__ void gpuComputePhaseNormals(
-    dfloat *fMom, 
+    dfloat *fMom,
     unsigned int *dNodeType
 )
 {
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;
-    
     if (x >= NX || y >= NY || z >= NZ) return;
 
-    // Retrieve indices
-    const int tx = threadIdx.x;
-    const int ty = threadIdx.y;
-    const int tz = threadIdx.z;
-    const int bx = blockIdx.x;
-    const int by = blockIdx.y;
-    const int bz = blockIdx.z;
+    const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
+    const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
 
     unsigned int nodeType = dNodeType[idxScalarBlock(tx, ty, tz, bx, by, bz)];
-    if (nodeType == 0b11111111) return; // Skip solids if necessary
+    if (nodeType == 0b11111111) return;
+    if (nodeType != BULK) return;
 
-    // Helper: Load phi (scalar)
-    // Use Neumann (zero-gradient) clamping for wall directions,
-    // periodic wrapping for periodic directions.
     auto getPhi = [&](int dx, int dy, int dz) -> dfloat {
         #ifdef BC_X_WALL
         int nx = min(NX - 1, max(0, x + dx));
@@ -1034,58 +1106,96 @@ __global__ void gpuComputePhaseNormals(
         #else
         int nz = (z + dz + NZ) % NZ;
         #endif
-        
-        int ntx = nx % BLOCK_NX;
-        int nty = ny % BLOCK_NY;
-        int ntz = nz % BLOCK_NZ;
-        int nbx = nx / BLOCK_NX;
-        int nby = ny / BLOCK_NY;
-        int nbz = nz / BLOCK_NZ;
-        
-        return (fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)] - PHI_ZERO)* PHI_SCALE;
+        int ntx = nx % BLOCK_NX, nty = ny % BLOCK_NY, ntz = nz % BLOCK_NZ;
+        int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
+        return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)];
     };
 
-    dfloat phi_c = (fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)] - PHI_ZERO)* PHI_SCALE;
+    dfloat phi_c = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
 
-    // Load Neighbors
-    dfloat phi_xm1 = getPhi(-1, 0, 0); dfloat phi_xp1 = getPhi(+1, 0, 0);
-    dfloat phi_ym1 = getPhi(0, -1, 0); dfloat phi_yp1 = getPhi(0, +1, 0);
-    dfloat phi_zm1 = getPhi(0, 0, -1); dfloat phi_zp1 = getPhi(0, 0, +1);
-    
-    // Edges
-    dfloat phi_xm1_ym1 = getPhi(-1, -1, 0); dfloat phi_xp1_ym1 = getPhi(+1, -1, 0);
-    dfloat phi_xm1_yp1 = getPhi(-1, +1, 0); dfloat phi_xp1_yp1 = getPhi(+1, +1, 0);
-    dfloat phi_xm1_zm1 = getPhi(-1, 0, -1); dfloat phi_xp1_zm1 = getPhi(+1, 0, -1);
-    dfloat phi_xm1_zp1 = getPhi(-1, 0, +1); dfloat phi_xp1_zp1 = getPhi(+1, 0, +1);
-    dfloat phi_ym1_zm1 = getPhi(0, -1, -1); dfloat phi_yp1_zm1 = getPhi(0, +1, -1);
-    dfloat phi_ym1_zp1 = getPhi(0, -1, +1); dfloat phi_yp1_zp1 = getPhi(0, +1, +1);
+    // ---- load all neighbors with standard clamping/periodic ----
+    dfloat phi_xm1 = getPhi(-1, 0, 0);  dfloat phi_xp1 = getPhi(+1, 0, 0);
+    dfloat phi_ym1 = getPhi( 0,-1, 0);  dfloat phi_yp1 = getPhi( 0,+1, 0);
+    dfloat phi_zm1 = getPhi( 0, 0,-1);  dfloat phi_zp1 = getPhi( 0, 0,+1);
 
-    // ---------------------------------------------------------
-    // 1. ISOTROPIC GRADIENT
-    // ---------------------------------------------------------
-    constexpr dfloat w_axis = 1.0_df / 6.0_df;  // 3 * (1/18)
-    constexpr dfloat w_edge = 1.0_df / 12.0_df; // 3 * (1/36)
+    dfloat phi_xm1_ym1 = getPhi(-1,-1, 0);  dfloat phi_xp1_ym1 = getPhi(+1,-1, 0);
+    dfloat phi_xm1_yp1 = getPhi(-1,+1, 0);  dfloat phi_xp1_yp1 = getPhi(+1,+1, 0);
+    dfloat phi_xm1_zm1 = getPhi(-1, 0,-1);  dfloat phi_xp1_zm1 = getPhi(+1, 0,-1);
+    dfloat phi_xm1_zp1 = getPhi(-1, 0,+1);  dfloat phi_xp1_zp1 = getPhi(+1, 0,+1);
+    dfloat phi_ym1_zm1 = getPhi( 0,-1,-1);  dfloat phi_yp1_zm1 = getPhi( 0,+1,-1);
+    dfloat phi_ym1_zp1 = getPhi( 0,-1,+1);  dfloat phi_yp1_zp1 = getPhi( 0,+1,+1);
+
+    #ifdef BC_Y_WALL
+    if (y == 1) {           // adjacent to SOUTH wall (y=0)
+        phi_ym1     = phi_c;    // axis
+        phi_xp1_ym1 = phi_xp1; // edges: project y-1 out, keep lateral offset
+        phi_xm1_ym1 = phi_xm1;
+        phi_ym1_zp1 = phi_zp1;
+        phi_ym1_zm1 = phi_zm1;
+    }
+    if (y == NY-2) {        // adjacent to NORTH wall (y=NY-1)
+        phi_yp1     = phi_c;
+        phi_xp1_yp1 = phi_xp1;
+        phi_xm1_yp1 = phi_xm1;
+        phi_yp1_zp1 = phi_zp1;
+        phi_yp1_zm1 = phi_zm1;
+    }
+    #endif
+
+    #ifdef BC_X_WALL
+    if (x == 1) {           // adjacent to WEST wall (x=0)
+        phi_xm1     = phi_c;
+        phi_xm1_yp1 = phi_yp1;
+        phi_xm1_ym1 = phi_ym1;
+        phi_xm1_zp1 = phi_zp1;
+        phi_xm1_zm1 = phi_zm1;
+    }
+    if (x == NX-2) {        // adjacent to EAST wall (x=NX-1)
+        phi_xp1     = phi_c;
+        phi_xp1_yp1 = phi_yp1;
+        phi_xp1_ym1 = phi_ym1;
+        phi_xp1_zp1 = phi_zp1;
+        phi_xp1_zm1 = phi_zm1;
+    }
+    #endif
+
+    #ifdef BC_Z_WALL
+    if (z == 1) {           // adjacent to BACK wall (z=0)
+        phi_zm1     = phi_c;
+        phi_xp1_zm1 = phi_xp1;
+        phi_xm1_zm1 = phi_xm1;
+        phi_yp1_zm1 = phi_yp1;
+        phi_ym1_zm1 = phi_ym1;
+    }
+    if (z == NZ-2) {        // adjacent to FRONT wall (z=NZ-1)
+        phi_zp1     = phi_c;
+        phi_xp1_zp1 = phi_xp1;
+        phi_xm1_zp1 = phi_xm1;
+        phi_yp1_zp1 = phi_yp1;
+        phi_ym1_zp1 = phi_ym1;
+    }
+    #endif
+
+    // ---- isotropic gradient  ----
+    constexpr dfloat w_axis = 1.0_df / 6.0_df;
+    constexpr dfloat w_edge = 1.0_df / 12.0_df;
 
     dfloat dphidx = w_axis * (phi_xp1 - phi_xm1)
                   + w_edge * (phi_xp1_ym1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xm1_yp1
                             + phi_xp1_zm1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xm1_zp1);
-    
+
     dfloat dphidy = w_axis * (phi_yp1 - phi_ym1)
                   + w_edge * (phi_xm1_yp1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xp1_ym1
                             + phi_yp1_zm1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_ym1_zp1);
-    
+
     dfloat dphidz = w_axis * (phi_zp1 - phi_zm1)
                   + w_edge * (phi_xm1_zp1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xp1_zm1
                             + phi_ym1_zp1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_yp1_zm1);
 
-
-    // ---------------------------------------------------------
-    // 2. ISOTROPIC LAPLACIAN (Corrected)
-    // ---------------------------------------------------------
-    
+    // ---- isotropic Laplacian ----
     constexpr dfloat w_lap_axis = 1.0_df / 3.0_df;
     constexpr dfloat w_lap_edge = 1.0_df / 6.0_df;
-    constexpr dfloat w_lap_zero = -4.0_df; 
+    constexpr dfloat w_lap_zero = -4.0_df;
 
     dfloat laplacian_phi =
         w_lap_zero * phi_c
@@ -1094,14 +1204,12 @@ __global__ void gpuComputePhaseNormals(
                       + phi_xp1_zp1 + phi_xp1_zm1 + phi_xm1_zp1 + phi_xm1_zm1
                       + phi_yp1_zp1 + phi_yp1_zm1 + phi_ym1_zp1 + phi_ym1_zm1);
 
-    // Store Gradients
     fMom[idxMom(tx, ty, tz, M3_NX_INDEX, bx, by, bz)] = dphidx;
     fMom[idxMom(tx, ty, tz, M3_NY_INDEX, bx, by, bz)] = dphidy;
     fMom[idxMom(tx, ty, tz, M3_NZ_INDEX, bx, by, bz)] = dphidz;
-
-    // Store Laplacian
     fMom[idxMom(tx, ty, tz, M3_LP_INDEX, bx, by, bz)] = laplacian_phi;
 }
+
 
 __global__ void gpuComputeChemicalPotential(
     dfloat *fMom,
@@ -1111,35 +1219,82 @@ __global__ void gpuComputeChemicalPotential(
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;
-
-    if (x >= NX || y >= NY || z >= NZ)
-        return;
+    if (x >= NX || y >= NY || z >= NZ) return;
 
     unsigned int nodeType =
         dNodeType[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,
                                  blockIdx.x, blockIdx.y, blockIdx.z)];
     if (nodeType == 0b11111111) return;
+    if (nodeType != BULK) return;
 
-    const int tx = threadIdx.x;
-    const int ty = threadIdx.y;
-    const int tz = threadIdx.z;
-    const int bx = blockIdx.x;
-    const int by = blockIdx.y;
-    const int bz = blockIdx.z;
+    const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
+    const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
 
-    dfloat phi = (fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)] - PHI_ZERO)* PHI_SCALE;
-    dfloat lap_phi = fMom[idxMom(tx, ty, tz, M3_LP_INDEX, bx, by, bz)];
+    dfloat phi     = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
+    dfloat lap_phi = fMom[idxMom(tx, ty, tz, M3_LP_INDEX,  bx, by, bz)]; // Neumann from above
 
-    // Standard Double-Well: f(phi) = A * phi^2 * (1 - phi)^2
-    // Derivative: df/dphi = 2 * A * phi * (1 - phi) * (1 - 2*phi)
+    dfloat dfdphi = A_CH * (phi*phi*phi - phi);
+    dfloat mu     = dfdphi - kappa_CH * lap_phi;
+/*
+    // ---- wetting surface energy correction ----
+    auto solve_wetting = [](dfloat phi_p, dfloat q) -> dfloat {
+        if (fabs(q) < 1e-6_df) return phi_p;
+        phi_p = fmax(PHI_ONE, fmin(PHI_TWO, phi_p));
+        const dfloat indicator = 1.0_df - phi_p * phi_p;
+        if (indicator < 1e-4_df) return phi_p;  // bulk: no correction
 
-    // Use the A_CH and kappa_CH values calculated from sigma and width
-    //dfloat dfdphi = 2.0_df * A_CH * phi * (1.0_df - phi) * (1.0_df - 2.0_df * phi); this is for 0 to 1
-    dfloat dfdphi = A_CH * (phi*phi*phi - phi); // -1 to 1
+        const dfloat a = q, b = -1.0_df, c = phi_p - q;
+        const dfloat disc = b*b - 4.0_df*a*c;
+        if (disc < 0.0_df) return phi_p;
 
+        const dfloat sq       = sqrt(disc);
+        const dfloat phi_plus  = (-b + sq) / (2.0_df*a);
+        const dfloat phi_minus = (-b - sq) / (2.0_df*a);
 
-    // Chemical Potential: mu = df/dphi - kappa * Laplacian(phi)
-    dfloat mu = dfdphi - kappa_CH * lap_phi;
+        const dfloat lo = PHI_ONE - 1e-6_df, hi = PHI_TWO + 1e-6_df;
+        const bool p_ok = (phi_plus  >= lo && phi_plus  <= hi);
+        const bool m_ok = (phi_minus >= lo && phi_minus <= hi);
+
+        dfloat raw;
+        if      (p_ok && m_ok) raw = (fabs(phi_plus-phi_p) <= fabs(phi_minus-phi_p))
+                                      ? phi_plus : phi_minus;
+        else if (p_ok)         raw = phi_plus;
+        else if (m_ok)         raw = phi_minus;
+        else                   raw = phi_p;
+
+        return fmax(PHI_ONE, fmin(PHI_TWO, phi_p + indicator*(raw - phi_p)));
+    };
+
+    #ifdef BC_Y_WALL
+    {
+        const dfloat q_wet = -sqrt(A_CH / (2.0_df * kappa_CH)) * cos(M_PI/2.0); //FIX FOR CONTACT ANGLE
+        if (y == 1 || y == NY-2) {
+            const dfloat phi_wall = solve_wetting(phi, q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+    }
+    #endif
+
+    #ifdef BC_X_WALL
+    {
+        const dfloat q_wet = -sqrt(A_CH / (2.0_df * kappa_CH)) * cos(contact_angle);
+        if (x == 1 || x == NX-2) {
+            const dfloat phi_wall = solve_wetting(phi, q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+    }
+    #endif
+
+    #ifdef BC_Z_WALL
+    {
+        const dfloat q_wet = -sqrt(A_CH / (2.0_df * kappa_CH)) * cos(contact_angle);
+        if (z == 1 || z == NZ-2) {
+            const dfloat phi_wall = solve_wetting(phi, q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+    }
+    #endif
+    *//*
 
     fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)] = mu;
 }
@@ -1152,26 +1307,19 @@ __global__ void gpuComputeLaplacianMu(
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;
-
-    if (x >= NX || y >= NY || z >= NZ)
-        return;
+    if (x >= NX || y >= NY || z >= NZ) return;
 
     unsigned int nodeType =
         dNodeType[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,
                                  blockIdx.x, blockIdx.y, blockIdx.z)];
     if (nodeType == 0b11111111) return;
+    if (nodeType != BULK) return;
 
-    const int tx = threadIdx.x;
-    const int ty = threadIdx.y;
-    const int tz = threadIdx.z;
-    const int bx = blockIdx.x;
-    const int by = blockIdx.y;
-    const int bz = blockIdx.z;
+    const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
+    const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
 
     dfloat mu0 = fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)];
 
-    // Use Neumann (zero-gradient) clamping for wall directions,
-    // periodic wrapping for periodic directions.
     auto getMu = [&](int dx, int dy, int dz) -> dfloat {
         #ifdef BC_X_WALL
         int nx = min(NX - 1, max(0, x + dx));
@@ -1188,60 +1336,418 @@ __global__ void gpuComputeLaplacianMu(
         #else
         int nz = (z + dz + NZ) % NZ;
         #endif
-
-        int ntx = nx % BLOCK_NX;
-        int nty = ny % BLOCK_NY;
-        int ntz = nz % BLOCK_NZ;
-
-        int nbx = nx / BLOCK_NX;
-        int nby = ny / BLOCK_NY;
-        int nbz = nz / BLOCK_NZ;
-
+        int ntx = nx % BLOCK_NX, nty = ny % BLOCK_NY, ntz = nz % BLOCK_NZ;
+        int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
         return fMom[idxMom(ntx, nty, ntz, M3_MU_INDEX, nbx, nby, nbz)];
     };
 
+    // ---- load all mu neighbors ----
+    dfloat mu_xp1 = getMu(+1, 0, 0);  dfloat mu_xm1 = getMu(-1, 0, 0);
+    dfloat mu_yp1 = getMu( 0,+1, 0);  dfloat mu_ym1 = getMu( 0,-1, 0);
+    dfloat mu_zp1 = getMu( 0, 0,+1);  dfloat mu_zm1 = getMu( 0, 0,-1);
 
-    // Axis neighbors
-    dfloat mu_xp1 = getMu(+1, 0, 0);
-    dfloat mu_xm1 = getMu(-1, 0, 0);
-    dfloat mu_yp1 = getMu(0, +1, 0);
-    dfloat mu_ym1 = getMu(0, -1, 0);
-    dfloat mu_zp1 = getMu(0, 0, +1);
-    dfloat mu_zm1 = getMu(0, 0, -1);
+    dfloat mu_xp1_yp1 = getMu(+1,+1, 0);  dfloat mu_xp1_ym1 = getMu(+1,-1, 0);
+    dfloat mu_xm1_yp1 = getMu(-1,+1, 0);  dfloat mu_xm1_ym1 = getMu(-1,-1, 0);
+    dfloat mu_xp1_zp1 = getMu(+1, 0,+1);  dfloat mu_xp1_zm1 = getMu(+1, 0,-1);
+    dfloat mu_xm1_zp1 = getMu(-1, 0,+1);  dfloat mu_xm1_zm1 = getMu(-1, 0,-1);
+    dfloat mu_yp1_zp1 = getMu( 0,+1,+1);  dfloat mu_yp1_zm1 = getMu( 0,+1,-1);
+    dfloat mu_ym1_zp1 = getMu( 0,-1,+1);  dfloat mu_ym1_zm1 = getMu( 0,-1,-1);
 
-    // Edge neighbors
-    dfloat mu_xp1_yp1 = getMu(+1, +1, 0);
-    dfloat mu_xp1_ym1 = getMu(+1, -1, 0);
-    dfloat mu_xm1_yp1 = getMu(-1, +1, 0);
-    dfloat mu_xm1_ym1 = getMu(-1, -1, 0);
+    #ifdef BC_Y_WALL
+    if (y == 1) {           // SOUTH wall adjacent
+        mu_ym1     = mu0;
+        mu_xp1_ym1 = mu_xp1;
+        mu_xm1_ym1 = mu_xm1;
+        mu_ym1_zp1 = mu_zp1;
+        mu_ym1_zm1 = mu_zm1;
+    }
+    if (y == NY-2) {        // NORTH wall adjacent
+        mu_yp1     = mu0;
+        mu_xp1_yp1 = mu_xp1;
+        mu_xm1_yp1 = mu_xm1;
+        mu_yp1_zp1 = mu_zp1;
+        mu_yp1_zm1 = mu_zm1;
+    }
+    #endif
 
-    dfloat mu_xp1_zp1 = getMu(+1, 0, +1);
-    dfloat mu_xp1_zm1 = getMu(+1, 0, -1);
-    dfloat mu_xm1_zp1 = getMu(-1, 0, +1);
-    dfloat mu_xm1_zm1 = getMu(-1, 0, -1);
+    #ifdef BC_X_WALL
+    if (x == 1) {
+        mu_xm1     = mu0;
+        mu_xm1_yp1 = mu_yp1;
+        mu_xm1_ym1 = mu_ym1;
+        mu_xm1_zp1 = mu_zp1;
+        mu_xm1_zm1 = mu_zm1;
+    }
+    if (x == NX-2) {
+        mu_xp1     = mu0;
+        mu_xp1_yp1 = mu_yp1;
+        mu_xp1_ym1 = mu_ym1;
+        mu_xp1_zp1 = mu_zp1;
+        mu_xp1_zm1 = mu_zm1;
+    }
+    #endif
 
-    dfloat mu_yp1_zp1 = getMu(0, +1, +1);
-    dfloat mu_yp1_zm1 = getMu(0, +1, -1);
-    dfloat mu_ym1_zp1 = getMu(0, -1, +1);
-    dfloat mu_ym1_zm1 = getMu(0, -1, -1);
+    #ifdef BC_Z_WALL
+    if (z == 1) {
+        mu_zm1     = mu0;
+        mu_xp1_zm1 = mu_xp1;
+        mu_xm1_zm1 = mu_xm1;
+        mu_yp1_zm1 = mu_yp1;
+        mu_ym1_zm1 = mu_ym1;
+    }
+    if (z == NZ-2) {
+        mu_zp1     = mu0;
+        mu_xp1_zp1 = mu_xp1;
+        mu_xm1_zp1 = mu_xm1;
+        mu_yp1_zp1 = mu_yp1;
+        mu_ym1_zp1 = mu_ym1;
+    }
+    #endif
 
-    // D3Q19 isotropic Laplacian
+    // ---- isotropic Laplacian ----
     constexpr dfloat w0 = -4.0_df;
-    constexpr dfloat w1 = 1.0_df / 3.0_df;
-    constexpr dfloat w2 = 1.0_df / 6.0_df;
+    constexpr dfloat w1 =  1.0_df / 3.0_df;
+    constexpr dfloat w2 =  1.0_df / 6.0_df;
 
     dfloat laplacian_mu =
         w0 * mu0
       + w1 * (mu_xp1 + mu_xm1 + mu_yp1 + mu_ym1 + mu_zp1 + mu_zm1)
-      + w2 * (
-            mu_xp1_yp1 + mu_xp1_ym1 + mu_xm1_yp1 + mu_xm1_ym1 +
-            mu_xp1_zp1 + mu_xp1_zm1 + mu_xm1_zp1 + mu_xm1_zm1 +
-            mu_yp1_zp1 + mu_yp1_zm1 + mu_ym1_zp1 + mu_ym1_zm1
-        );
+      + w2 * (mu_xp1_yp1 + mu_xp1_ym1 + mu_xm1_yp1 + mu_xm1_ym1
+            + mu_xp1_zp1 + mu_xp1_zm1 + mu_xm1_zp1 + mu_xm1_zm1
+            + mu_yp1_zp1 + mu_yp1_zm1 + mu_ym1_zp1 + mu_ym1_zm1);
 
     fMom[idxMom(tx, ty, tz, M3_LM_INDEX, bx, by, bz)] = laplacian_mu;
 }
 
 
+*/
+__global__ void gpuComputePhaseNormals(
+    dfloat *fMom,
+    unsigned int *dNodeType
+)
+{
+    const int x = threadIdx.x + blockDim.x * blockIdx.x;
+    const int y = threadIdx.y + blockDim.y * blockIdx.y;
+    const int z = threadIdx.z + blockDim.z * blockIdx.z;
+    if (x >= NX || y >= NY || z >= NZ) return;
+
+    const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
+    const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
+
+    unsigned int nodeType = dNodeType[idxScalarBlock(tx, ty, tz, bx, by, bz)];
+    if (nodeType == 0b11111111) return;  // only skip fully solid
+
+    auto getPhi = [&](int dx, int dy, int dz) -> dfloat {
+        #ifdef BC_X_WALL
+        int nx = min(NX - 1, max(0, x + dx));
+        #else
+        int nx = (x + dx + NX) % NX;
+        #endif
+        #ifdef BC_Y_WALL
+        int ny = min(NY - 1, max(0, y + dy));
+        #else
+        int ny = (y + dy + NY) % NY;
+        #endif
+        #ifdef BC_Z_WALL
+        int nz = min(NZ - 1, max(0, z + dz));
+        #else
+        int nz = (z + dz + NZ) % NZ;
+        #endif
+        int ntx = nx % BLOCK_NX, nty = ny % BLOCK_NY, ntz = nz % BLOCK_NZ;
+        int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
+        return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)];
+    };
+
+    dfloat phi_c = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
+
+    // load all neighbors with standard clamping
+    dfloat phi_xm1 = getPhi(-1, 0, 0);  dfloat phi_xp1 = getPhi(+1, 0, 0);
+    dfloat phi_ym1 = getPhi( 0,-1, 0);  dfloat phi_yp1 = getPhi( 0,+1, 0);
+    dfloat phi_zm1 = getPhi( 0, 0,-1);  dfloat phi_zp1 = getPhi( 0, 0,+1);
+
+    dfloat phi_xm1_ym1 = getPhi(-1,-1, 0);  dfloat phi_xp1_ym1 = getPhi(+1,-1, 0);
+    dfloat phi_xm1_yp1 = getPhi(-1,+1, 0);  dfloat phi_xp1_yp1 = getPhi(+1,+1, 0);
+    dfloat phi_xm1_zm1 = getPhi(-1, 0,-1);  dfloat phi_xp1_zm1 = getPhi(+1, 0,-1);
+    dfloat phi_xm1_zp1 = getPhi(-1, 0,+1);  dfloat phi_xp1_zp1 = getPhi(+1, 0,+1);
+    dfloat phi_ym1_zm1 = getPhi( 0,-1,-1);  dfloat phi_yp1_zm1 = getPhi( 0,+1,-1);
+    dfloat phi_ym1_zp1 = getPhi( 0,-1,+1);  dfloat phi_yp1_zp1 = getPhi( 0,+1,+1);
+
+    // ---- bitmask wall detection (fires at the wall node itself) ----
+    const bool wall_xm = (nodeType & 0b01010101) == 0b01010101;  // WEST  wall in -x
+    const bool wall_xp = (nodeType & 0b10101010) == 0b10101010;  // EAST  wall in +x
+    const bool wall_ym = (nodeType & 0b00110011) == 0b00110011;  // SOUTH wall in -y
+    const bool wall_yp = (nodeType & 0b11001100) == 0b11001100;  // NORTH wall in +y
+    const bool wall_zm = (nodeType & 0b00001111) == 0b00001111;  // BACK  wall in -z
+    const bool wall_zp = (nodeType & 0b11110000) == 0b11110000;  // FRONT wall in +z
+
+    // Neumann BC: ghost = phi_c for each wall direction.
+    // Edges at corners use phi_c if BOTH directions are walls, else the
+    // single-direction Neumann value.
+    if (wall_ym) {
+        phi_ym1     = phi_c;
+        phi_xp1_ym1 = wall_xp ? phi_c : phi_xp1;
+        phi_xm1_ym1 = wall_xm ? phi_c : phi_xm1;
+        phi_ym1_zp1 = wall_zp ? phi_c : phi_zp1;
+        phi_ym1_zm1 = wall_zm ? phi_c : phi_zm1;
+    }
+    if (wall_yp) {
+        phi_yp1     = phi_c;
+        phi_xp1_yp1 = wall_xp ? phi_c : phi_xp1;
+        phi_xm1_yp1 = wall_xm ? phi_c : phi_xm1;
+        phi_yp1_zp1 = wall_zp ? phi_c : phi_zp1;
+        phi_yp1_zm1 = wall_zm ? phi_c : phi_zm1;
+    }
+    if (wall_xm) {
+        phi_xm1     = phi_c;
+        phi_xm1_yp1 = wall_yp ? phi_c : phi_yp1;
+        phi_xm1_ym1 = wall_ym ? phi_c : phi_ym1;
+        phi_xm1_zp1 = wall_zp ? phi_c : phi_zp1;
+        phi_xm1_zm1 = wall_zm ? phi_c : phi_zm1;
+    }
+    if (wall_xp) {
+        phi_xp1     = phi_c;
+        phi_xp1_yp1 = wall_yp ? phi_c : phi_yp1;
+        phi_xp1_ym1 = wall_ym ? phi_c : phi_ym1;
+        phi_xp1_zp1 = wall_zp ? phi_c : phi_zp1;
+        phi_xp1_zm1 = wall_zm ? phi_c : phi_zm1;
+    }
+    if (wall_zm) {
+        phi_zm1     = phi_c;
+        phi_xp1_zm1 = wall_xp ? phi_c : phi_xp1;
+        phi_xm1_zm1 = wall_xm ? phi_c : phi_xm1;
+        phi_yp1_zm1 = wall_yp ? phi_c : phi_yp1;
+        phi_ym1_zm1 = wall_ym ? phi_c : phi_ym1;
+    }
+    if (wall_zp) {
+        phi_zp1     = phi_c;
+        phi_xp1_zp1 = wall_xp ? phi_c : phi_xp1;
+        phi_xm1_zp1 = wall_xm ? phi_c : phi_xm1;
+        phi_yp1_zp1 = wall_yp ? phi_c : phi_yp1;
+        phi_ym1_zp1 = wall_ym ? phi_c : phi_ym1;
+    }
+
+    // ---- isotropic gradient ----
+    constexpr dfloat w_axis = 1.0_df / 6.0_df;
+    constexpr dfloat w_edge = 1.0_df / 12.0_df;
+
+    dfloat dphidx = w_axis * (phi_xp1 - phi_xm1)
+                  + w_edge * (phi_xp1_ym1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xm1_yp1
+                            + phi_xp1_zm1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xm1_zp1);
+
+    dfloat dphidy = w_axis * (phi_yp1 - phi_ym1)
+                  + w_edge * (phi_xm1_yp1 - phi_xm1_ym1 + phi_xp1_yp1 - phi_xp1_ym1
+                            + phi_yp1_zm1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_ym1_zp1);
+
+    dfloat dphidz = w_axis * (phi_zp1 - phi_zm1)
+                  + w_edge * (phi_xm1_zp1 - phi_xm1_zm1 + phi_xp1_zp1 - phi_xp1_zm1
+                            + phi_ym1_zp1 - phi_ym1_zm1 + phi_yp1_zp1 - phi_yp1_zm1);
+
+    // ---- isotropic Laplacian ----
+    constexpr dfloat w_lap_zero = -4.0_df;
+    constexpr dfloat w_lap_axis =  1.0_df / 3.0_df;
+    constexpr dfloat w_lap_edge =  1.0_df / 6.0_df;
+
+    dfloat laplacian_phi =
+        w_lap_zero * phi_c
+        + w_lap_axis * (phi_xp1 + phi_xm1 + phi_yp1 + phi_ym1 + phi_zp1 + phi_zm1)
+        + w_lap_edge * (phi_xp1_yp1 + phi_xp1_ym1 + phi_xm1_yp1 + phi_xm1_ym1
+                      + phi_xp1_zp1 + phi_xp1_zm1 + phi_xm1_zp1 + phi_xm1_zm1
+                      + phi_yp1_zp1 + phi_yp1_zm1 + phi_ym1_zp1 + phi_ym1_zm1);
+
+    fMom[idxMom(tx, ty, tz, M3_NX_INDEX, bx, by, bz)] = dphidx;
+    fMom[idxMom(tx, ty, tz, M3_NY_INDEX, bx, by, bz)] = dphidy;
+    fMom[idxMom(tx, ty, tz, M3_NZ_INDEX, bx, by, bz)] = dphidz;
+    fMom[idxMom(tx, ty, tz, M3_LP_INDEX, bx, by, bz)] = laplacian_phi;
+}
+
+
+
+__global__ void gpuComputeChemicalPotential(
+    dfloat *fMom,
+    unsigned int *dNodeType
+)
+{
+    const int x = threadIdx.x + blockDim.x * blockIdx.x;
+    const int y = threadIdx.y + blockDim.y * blockIdx.y;
+    const int z = threadIdx.z + blockDim.z * blockIdx.z;
+    if (x >= NX || y >= NY || z >= NZ) return;
+
+    const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
+    const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
+
+    unsigned int nodeType =
+        dNodeType[idxScalarBlock(tx, ty, tz, bx, by, bz)];
+    if (nodeType == 0b11111111) return;  // only skip fully solid
+
+    dfloat phi     = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
+    dfloat lap_phi = fMom[idxMom(tx, ty, tz, M3_LP_INDEX,  bx, by, bz)];
+
+    dfloat dfdphi = A_CH * (phi*phi*phi - phi);
+    dfloat mu     = dfdphi - kappa_CH * lap_phi;
+
+    // ---- bitmask wall detection ----
+    const bool wall_xm = (nodeType & 0b01010101) == 0b01010101;  // WEST
+    const bool wall_xp = (nodeType & 0b10101010) == 0b10101010;  // EAST
+    const bool wall_ym = (nodeType & 0b00110011) == 0b00110011;  // SOUTH
+    const bool wall_yp = (nodeType & 0b11001100) == 0b11001100;  // NORTH
+    const bool wall_zm = (nodeType & 0b00001111) == 0b00001111;  // BACK
+    const bool wall_zp = (nodeType & 0b11110000) == 0b11110000;  // FRONT
+
+    const bool is_wall = wall_xm || wall_xp || wall_ym || wall_yp
+                      || wall_zm || wall_zp;
+                      
+    /*
+    if (is_wall) {
+        // Load fluid-side phi neighbors (needed for solve_wetting)
+        auto getPhi = [&](int dx, int dy, int dz) -> dfloat {
+            #ifdef BC_X_WALL
+            int nx = min(NX - 1, max(0, x + dx));
+            #else
+            int nx = (x + dx + NX) % NX;
+            #endif
+            #ifdef BC_Y_WALL
+            int ny = min(NY - 1, max(0, y + dy));
+            #else
+            int ny = (y + dy + NY) % NY;
+            #endif
+            #ifdef BC_Z_WALL
+            int nz = min(NZ - 1, max(0, z + dz));
+            #else
+            int nz = (z + dz + NZ) % NZ;
+            #endif
+            int ntx = nx % BLOCK_NX, nty = ny % BLOCK_NY, ntz = nz % BLOCK_NZ;
+            int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
+            return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)];
+        };
+        
+        auto solve_wetting = [](dfloat phi_p, dfloat q) -> dfloat {
+            if (fabs(q) < 1e-6_df) return phi_p;
+            phi_p = fmax(PHI_ONE, fmin(PHI_TWO, phi_p));
+            const dfloat indicator = 1.0_df - phi_p * phi_p;
+            if (indicator < 1e-4_df) return phi_p;  // bulk: no correction
+
+            const dfloat a = q, b = -1.0_df, c = phi_p - q;
+            const dfloat disc = b*b - 4.0_df*a*c;
+            if (disc < 0.0_df) return phi_p;
+
+            const dfloat sq        = sqrt(disc);
+            const dfloat phi_plus  = (-b + sq) / (2.0_df*a);
+            const dfloat phi_minus = (-b - sq) / (2.0_df*a);
+
+            const dfloat lo = PHI_ONE - 1e-6_df, hi = PHI_TWO + 1e-6_df;
+            const bool p_ok = (phi_plus  >= lo && phi_plus  <= hi);
+            const bool m_ok = (phi_minus >= lo && phi_minus <= hi);
+
+            dfloat raw;
+            if      (p_ok && m_ok) raw = (fabs(phi_plus-phi_p) <= fabs(phi_minus-phi_p))
+                                          ? phi_plus : phi_minus;
+            else if (p_ok)         raw = phi_plus;
+            else if (m_ok)         raw = phi_minus;
+            else                   raw = phi_p;
+
+            return fmax(PHI_ONE, fmin(PHI_TWO, phi_p + indicator*(raw - phi_p)));
+        };
+
+        const dfloat q_wet = -sqrt(A_CH / (2.0_df * kappa_CH)) * cos(contact_angle);
+
+        if (wall_ym) {
+            const dfloat phi_wall = solve_wetting(getPhi(0,+1,0), q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+        if (wall_yp) {
+            const dfloat phi_wall = solve_wetting(getPhi(0,-1,0), q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+        if (wall_xm) {
+            const dfloat phi_wall = solve_wetting(getPhi(+1,0,0), q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+        if (wall_xp) {
+            const dfloat phi_wall = solve_wetting(getPhi(-1,0,0), q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+        if (wall_zm) {
+            const dfloat phi_wall = solve_wetting(getPhi(0,0,+1), q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+        if (wall_zp) {
+            const dfloat phi_wall = solve_wetting(getPhi(0,0,-1), q_wet);
+            mu += -kappa_CH * (phi_wall - phi);
+        }
+        
+    }
+    */
+    fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)] = mu;
+}
+
+
+
+__global__ void gpuComputeLaplacianMu(
+    dfloat *fMom,
+    unsigned int *dNodeType
+)
+{
+    const int x = threadIdx.x + blockDim.x * blockIdx.x;
+    const int y = threadIdx.y + blockDim.y * blockIdx.y;
+    const int z = threadIdx.z + blockDim.z * blockIdx.z;
+    if (x >= NX || y >= NY || z >= NZ) return;
+
+    const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
+    const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
+
+    unsigned int nodeType =
+        dNodeType[idxScalarBlock(tx, ty, tz, bx, by, bz)];
+    if (nodeType == 0b11111111) return;  // only skip fully solid
+
+    dfloat mu0 = fMom[idxMom(tx, ty, tz, M3_MU_INDEX, bx, by, bz)];
+
+
+    auto getMu = [&](int dx, int dy, int dz) -> dfloat {
+        #ifdef BC_X_WALL
+        int nx = min(NX - 1, max(0, x + dx));
+        #else
+        int nx = (x + dx + NX) % NX;
+        #endif
+        #ifdef BC_Y_WALL
+        int ny = min(NY - 1, max(0, y + dy));
+        #else
+        int ny = (y + dy + NY) % NY;
+        #endif
+        #ifdef BC_Z_WALL
+        int nz = min(NZ - 1, max(0, z + dz));
+        #else
+        int nz = (z + dz + NZ) % NZ;
+        #endif
+        int ntx = nx % BLOCK_NX, nty = ny % BLOCK_NY, ntz = nz % BLOCK_NZ;
+        int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
+        return fMom[idxMom(ntx, nty, ntz, M3_MU_INDEX, nbx, nby, nbz)];
+    };
+
+    dfloat mu_xp1 = getMu(+1, 0, 0);  dfloat mu_xm1 = getMu(-1, 0, 0);
+    dfloat mu_yp1 = getMu( 0,+1, 0);  dfloat mu_ym1 = getMu( 0,-1, 0);
+    dfloat mu_zp1 = getMu( 0, 0,+1);  dfloat mu_zm1 = getMu( 0, 0,-1);
+
+    dfloat mu_xp1_yp1 = getMu(+1,+1, 0);  dfloat mu_xp1_ym1 = getMu(+1,-1, 0);
+    dfloat mu_xm1_yp1 = getMu(-1,+1, 0);  dfloat mu_xm1_ym1 = getMu(-1,-1, 0);
+    dfloat mu_xp1_zp1 = getMu(+1, 0,+1);  dfloat mu_xp1_zm1 = getMu(+1, 0,-1);
+    dfloat mu_xm1_zp1 = getMu(-1, 0,+1);  dfloat mu_xm1_zm1 = getMu(-1, 0,-1);
+    dfloat mu_yp1_zp1 = getMu( 0,+1,+1);  dfloat mu_yp1_zm1 = getMu( 0,+1,-1);
+    dfloat mu_ym1_zp1 = getMu( 0,-1,+1);  dfloat mu_ym1_zm1 = getMu( 0,-1,-1);
+
+    constexpr dfloat w0 = -4.0_df;
+    constexpr dfloat w1 =  1.0_df / 3.0_df;
+    constexpr dfloat w2 =  1.0_df / 6.0_df;
+
+    dfloat laplacian_mu =
+        w0 * mu0
+      + w1 * (mu_xp1 + mu_xm1 + mu_yp1 + mu_ym1 + mu_zp1 + mu_zm1)
+      + w2 * (mu_xp1_yp1 + mu_xp1_ym1 + mu_xm1_yp1 + mu_xm1_ym1
+            + mu_xp1_zp1 + mu_xp1_zm1 + mu_xm1_zp1 + mu_xm1_zm1
+            + mu_yp1_zp1 + mu_yp1_zm1 + mu_ym1_zp1 + mu_ym1_zm1);
+
+    fMom[idxMom(tx, ty, tz, M3_LM_INDEX, bx, by, bz)] = laplacian_mu;
+}
+
+/**/
 
 #endif // PHI_DIST

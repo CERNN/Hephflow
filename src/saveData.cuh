@@ -22,7 +22,6 @@
 
 #include <map>
 #include <cstddef>
-#include <string>
 #include <fstream>
 #include <sstream>
 #include <iostream>     // std::cout, std::fixed
@@ -39,10 +38,6 @@
 #include <thread>
 
 #include "globalFunctions.h"
-#include <cuda.h>
-#include <curand.h>
-#include <cuda_runtime.h>
-#include <builtin_types.h>
 #include "include/errorDef.h"
 #include "globalStructs.h"
 #include <atomic>
@@ -157,7 +152,7 @@ std::vector<dfloat6> convertPointToCellTensor6(
  *  @return std::vector<int> Vector containing integer values aggregated at cell centers
  */
 std::vector<int> convertPointToCellIntMode(
-    const int* pointField,
+    const unsigned int* pointField,
     size_t NX,
     size_t NY,
     size_t NZ
@@ -188,15 +183,16 @@ std::string getVarFilename(
  *  @param MLUPS: Mega Lattice Updates Per Second
  *  @return string with simulation info
 */
-std::string getSimInfoString(int step, dfloat MLUPS, const fluidProps& nnfPropsA = {}, const fluidProps& nnfPropsB = {}, bool hasSecond = false);
+std::string getSimInfoString(int step, dfloat MLUPS, const fluidPhaseProps& phasePropsA = {}, const fluidPhaseProps& phasePropsB = {}, bool hasSecond = false);
 
 /**
 *   Save simulation's information
  *  @param info: simulation's informations
  *  @param MLUPS: Mega Lattice Updates Per Second
- *  @param nnfProps: Non-Newtonian fluid properties (optional)
+ *  @param phasePropsA: Phase A fluid properties (viscous + viscoelastic)
+ *  @param phasePropsB: Phase B fluid properties (optional, multiphase)
 */
-void saveSimInfo(int step, dfloat MLUPS, const fluidProps& nnfPropsA, const fluidProps& nnfPropsB = {}, bool hasSecond = false);
+void saveSimInfo(int step, dfloat MLUPS, const fluidPhaseProps& phasePropsA, const fluidPhaseProps& phasePropsB = {}, bool hasSecond = false);
 
 
 

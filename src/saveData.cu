@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <functional>
 #include <chrono>
+#include <algorithm>
 
 
 std::filesystem::path getExecutablePath() {
@@ -28,6 +29,55 @@ std::filesystem::path getExecutablePath() {
     #endif
 }
 
+namespace {
+    std::mutex vtkSeriesMutex;
+    std::vector<std::pair<std::string, double>> vtkSeriesEntries;
+
+    void updateVtkSeries(const std::string& vtkFilePath, unsigned int nSteps)
+    {
+#if defined(HAS_VTK_TIME)
+        const double vtkPhysicalTime = static_cast<double>(nSteps) * static_cast<double>(vtk_time);
+        const std::filesystem::path vtkPath(vtkFilePath);
+        const std::filesystem::path seriesPath = vtkPath.parent_path() / (std::string(ID_SIM) + "_vtk.vtk.series");
+        const std::string fileName = vtkPath.filename().string();
+
+        std::lock_guard<std::mutex> lock(vtkSeriesMutex);
+        auto it = std::find_if(
+            vtkSeriesEntries.begin(),
+            vtkSeriesEntries.end(),
+            [&](const std::pair<std::string, double>& entry) {
+                return entry.first == fileName;
+            });
+
+        if (it == vtkSeriesEntries.end()) {
+            vtkSeriesEntries.emplace_back(fileName, vtkPhysicalTime);
+        } else {
+            it->second = vtkPhysicalTime;
+        }
+
+        std::ofstream series(seriesPath);
+        if (!series) {
+            std::cerr << "[updateVtkSeries] ERROR: cannot open " << seriesPath << "\n";
+            return;
+        }
+
+        series << "{\n";
+        series << "  \"file-series-version\" : \"1.0\",\n";
+        series << "  \"files\" : [\n";
+        for (size_t i = 0; i < vtkSeriesEntries.size(); ++i) {
+            series << "    { \"name\" : \"" << vtkSeriesEntries[i].first
+                   << "\", \"time\" : " << vtkSeriesEntries[i].second << " }";
+            if (i + 1 < vtkSeriesEntries.size()) series << ",";
+            series << "\n";
+        }
+        series << "  ]\n";
+        series << "}\n";
+#else
+        (void)vtkFilePath;
+        (void)nSteps;
+#endif
+    }
+}
 std::filesystem::path folderSetup()
 {
     std::filesystem::path exePath = getExecutablePath();
@@ -163,6 +213,17 @@ void saveMacr(const SaveDataParams* params)
     std::atomic<bool>& savingMacrVtk = *params->savingMacrVtk;
     std::vector<std::atomic<bool>>& savingMacrBin = *params->savingMacrBin;
 
+    // Reuse of rho/ux/uy/uz buffers across saves requires waiting for previous
+    // asynchronous file writes to finish before linearizing new data into them.
+    while (savingMacrVtk.load(std::memory_order_acquire)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    for (size_t i = 0; i < savingMacrBin.size(); ++i) {
+        while (savingMacrBin[i].load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+    }
+
     //linearize
     size_t indexMacr;
     for(int z = 0; z< NZ;z++){
@@ -183,7 +244,7 @@ void saveMacr(const SaveDataParams* params)
                 C[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
                 #endif //SECOND_DIST
                 #ifdef PHI_DIST 
-                phi[indexMacr]  = (h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M3_PHI_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - PHI_ZERO)*PHI_SCALE;
+                phi[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M3_PHI_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
                 #endif //PHI_DIST
                 #ifdef LAMBDA_DIST 
                 lambda[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M4_LAMBDA_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - LAMBDA_ZERO;
@@ -262,6 +323,7 @@ void saveMacr(const SaveDataParams* params)
         std::string strFileVtk, strFileVtr;
         strFileVtk = getVarFilename("vtk", nSteps, ".vtk");
         while (savingMacrVtk) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        updateVtkSeries(strFileVtk, nSteps);
         
         SaveDataParams saveVarVtkParams;
         saveVarVtkParams.vtkFilename = strFileVtk.c_str();
@@ -482,7 +544,7 @@ std::vector<dfloat3> convertPointToCellVector(
 
 std::vector<dfloat6> convertPointToCellTensor6(
     const dfloat* Axx, const dfloat* Ayy, const dfloat* Azz,
-    const dfloat* Axy, const dfloat* Ayz, const dfloat* Axz,
+    const dfloat* Axy, const dfloat* Axz, const dfloat* Ayz,
     size_t NX, size_t NY, size_t NZ)
 {
     size_t Ncells = (NX-1)*(NY-1)*(NZ-1);
@@ -492,16 +554,16 @@ std::vector<dfloat6> convertPointToCellTensor6(
     for (size_t y=0; y<NY-1; y++)
     for (size_t x=0; x<NX-1; x++) {
         size_t cidx = x + y*(NX-1) + z*(NX-1)*(NY-1);
-        dfloat sumxx=0,sumyy=0,sumzz=0,sumxy=0,sumyz=0,sumxz=0;
+        dfloat sumxx=0,sumyy=0,sumzz=0,sumxy=0,sumxz=0,sumyz=0;
         for(int dz=0; dz<=1; dz++)
         for(int dy=0; dy<=1; dy++)
         for(int dx=0; dx<=1; dx++) {
             size_t pidx = idxScalarGlobal(x+dx, y+dy, z+dz);
             sumxx += Axx[pidx]; sumyy += Ayy[pidx]; sumzz += Azz[pidx];
-            sumxy += Axy[pidx]; sumyz += Ayz[pidx]; sumxz += Axz[pidx];
+            sumxy += Axy[pidx]; sumxz += Axz[pidx]; sumyz += Ayz[pidx];
         }
         cellField[cidx] = { sumxx/8.0f, sumyy/8.0f, sumzz/8.0f,
-                            sumxy/8.0f, sumyz/8.0f, sumxz/8.0f };
+                            sumxy/8.0f, sumxz/8.0f, sumyz/8.0f };
     }
     return cellField;
 }
@@ -601,12 +663,12 @@ void saveVarVTK(const SaveDataParams* params)
             //Header 
             ofs << "# vtk DataFile Version 3.0\n"
                 << "LBM output (binary)\n"
-                << "BINARY\n"                               // ← here!
+                << "BINARY\n"
                 << "DATASET STRUCTURED_POINTS\n"
                 << "DIMENSIONS " << NX << " " << NY << " " << NZ << "\n"
                 << "ORIGIN 0 0 0\n"
-                << "SPACING 1 1 1\n"
-                << "POINT_DATA " << N << "\n";
+                << "SPACING 1 1 1\n";
+            ofs << "POINT_DATA " << N << "\n";
             ofs << "SCALARS rho " << VTK_TYPE << " 1\n"
                 << "LOOKUP_TABLE default\n";
             writeBigEndian(ofs, rho, N);
@@ -646,7 +708,7 @@ void saveVarVTK(const SaveDataParams* params)
                 for (size_t i = 0; i < N; ++i) {
                     dfloat tensor[6] = {
                         Axx[i], Ayy[i], Azz[i],
-                        Axy[i], Ayz[i], Axz[i]
+                        Axy[i], Axz[i], Ayz[i]
                     };
                     writeBigEndian(ofs, tensor, 6);
                 }
@@ -681,8 +743,8 @@ void saveVarVTK(const SaveDataParams* params)
                 << "DATASET STRUCTURED_POINTS\n"
                 << "DIMENSIONS " << NX << " " << NY << " " << NZ << "\n"
                 << "ORIGIN 0 0 0\n"
-                << "SPACING 1 1 1\n"
-                << "CELL_DATA " << Ncells << "\n";
+                << "SPACING 1 1 1\n";
+            ofs << "CELL_DATA " << Ncells << "\n";
             auto rho_cell = convertPointToCellScalar(rho,NX,NY,NZ);
             ofs << "SCALARS rho  " << VTK_TYPE << " 1\n"
                 << "LOOKUP_TABLE default\n";
@@ -726,12 +788,12 @@ void saveVarVTK(const SaveDataParams* params)
             #endif //LAMBDA_DIST
 
             #ifdef CONFORMATION_TENSOR
-                auto A_cell = convertPointToCellTensor6(Axx,Ayy,Azz,Axy,Ayz,Axz,NX,NY,NZ);
+                auto A_cell = convertPointToCellTensor6(Axx,Ayy,Azz,Axy,Axz,Ayz,NX,NY,NZ);
                 ofs << "TENSORS6 Aij  " << VTK_TYPE << "\n";
                 for (size_t i = 0; i < Ncells; ++i) {
                     dfloat tensor[6] = {
                         A_cell[i].xx,A_cell[i].yy,A_cell[i].zz,
-                        A_cell[i].xy,A_cell[i].yz,A_cell[i].xz
+                        A_cell[i].xy,A_cell[i].xz,A_cell[i].yz
                     };
                     writeBigEndian(ofs, tensor, 6);
                 }
@@ -873,7 +935,49 @@ static void appendFluidProps(std::ostringstream& strSimInfo, const fluidProps& f
     strSimInfo << "--------------------------------------------------------------------------------\n";
 }
 
-std::string getSimInfoString(int step, dfloat MLUPS, const fluidProps& nnfPropsA, const fluidProps& nnfPropsB, bool hasSecond)
+static void appendVeProps(std::ostringstream& strSimInfo, const veFluidProps& vp)
+{
+    switch (vp.type) {
+        case VE_NEWTONIAN:
+            strSimInfo << "         VE model: None (Newtonian solvent)\n";
+            break;
+        case VE_OLDROYD_B:
+            strSimInfo << "         VE model: Oldroyd-B\n";
+            strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
+            strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
+            break;
+        case VE_FENE_P:
+            strSimInfo << "         VE model: FENE-P\n";
+            strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
+            strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
+            strSimInfo << "              L_sq: " << vp.u.fenep.L_sq << "\n";
+            strSimInfo << "                 L: " << std::sqrt(vp.u.fenep.L_sq) << "\n";
+            break;
+        case VE_GIESEKUS:
+            strSimInfo << "         VE model: Giesekus\n";
+            strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
+            strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
+            strSimInfo << "             Alpha: " << vp.u.giesekus.alpha << "\n";
+            break;
+        case VE_PTT_LINEAR:
+            strSimInfo << "         VE model: PTT (linear)\n";
+            strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
+            strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
+            strSimInfo << "           Epsilon: " << vp.u.ptt.epsilon << "\n";
+            break;
+        case VE_PTT_EXPONENTIAL:
+            strSimInfo << "         VE model: PTT (exponential)\n";
+            strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
+            strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
+            strSimInfo << "           Epsilon: " << vp.u.ptt.epsilon << "\n";
+            break;
+        default:
+            strSimInfo << "         VE model: Unknown\n";
+            break;
+    }
+}
+
+std::string getSimInfoString(int step, dfloat MLUPS, const fluidPhaseProps& phasePropsA, const fluidPhaseProps& phasePropsB, bool hasSecond)
 {
     std::ostringstream strSimInfo("");
     
@@ -942,12 +1046,32 @@ std::string getSimInfoString(int step, dfloat MLUPS, const fluidProps& nnfPropsA
     strSimInfo << std::scientific << std::setprecision(6);
     
     #ifdef NON_NEWTONIAN_FLUID
-    appendFluidProps(strSimInfo, nnfPropsA, "Phase A properties:");
+    appendFluidProps(strSimInfo, phasePropsA.nnf, "Phase A properties:");
     if (hasSecond) {
-        appendFluidProps(strSimInfo, nnfPropsB, "Phase B properties:");
+        appendFluidProps(strSimInfo, phasePropsB.nnf, "Phase B properties:");
     }
     #endif // NON_NEWTONIAN_FLUID
     #endif // OMEGA_FIELD
+    #ifdef CONFORMATION_TENSOR
+    strSimInfo << "\n------------------------------ VISCOELASTIC FLUID ------------------------------\n";
+    strSimInfo << std::scientific << std::setprecision(6);
+    strSimInfo << "Phase A:\n";
+    appendVeProps(strSimInfo, phasePropsA.ve);
+    if (hasSecond) {
+        strSimInfo << "Phase B:\n";
+        appendVeProps(strSimInfo, phasePropsB.ve);
+    }
+    strSimInfo << "\n  --- Conformation transport ---\n";
+    strSimInfo << std::scientific << std::setprecision(4);
+    strSimInfo << "  Diffusivity ratio: " << CONF_DIFFUSIVITY_RATIO << "\n";
+    strSimInfo << "  Diffusivity Coef.: " << CONF_DIFFUSIVITY << "\n";
+    strSimInfo << "Conformation Offset: " << CONF_ZERO << "\n";
+    strSimInfo << "           CONF_TAU: " << CONF_TAU << "\n";
+    strSimInfo << "         CONF_OMEGA: " << CONF_OMEGA << "\n";
+    strSimInfo << "     CONF_DIFF_FLUC: " << CONF_DIFF_FLUC << "\n";
+    strSimInfo << "CONF_DIFF_FLUC_COEF: " << CONF_DIFF_FLUC_COEF << "\n";
+    strSimInfo << "--------------------------------------------------------------------------------\n";
+    #endif // CONFORMATION_TENSOR
     #ifdef PARTICLE_MODEL
     strSimInfo << "\n---------------------------------- PARTICLES -----------------------------------\n";
     strSimInfo << std::scientific << std::setprecision(6);
@@ -1031,49 +1155,46 @@ std::string getSimInfoString(int step, dfloat MLUPS, const fluidProps& nnfPropsA
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif// PHASE_MODEL
     #if defined(FENE_P) || defined(OLDROYD_B)
-    strSimInfo << "\n------------------------------ VISCOELASTIC -----------------------------\n";
+    // Note: model details already covered by the CONFORMATION_TENSOR block above (runtime dispatch).
+    // Legacy compile-time constants printed here for reference.
+    strSimInfo << "\n------------------------------ VISCOELASTIC (compile-time) -------------------\n";
         strSimInfo << std::scientific << std::setprecision(4);
     strSimInfo << " Weissenberg Number: " << Weissenberg_number << "\n";
     strSimInfo << "    Sum Viscosities: " << SUM_VISC << "\n";
     strSimInfo << "    Viscosity Ratio: " << BETA << "\n";
     strSimInfo << "  Solvent Viscosity: " << VISC << "\n";
-    strSimInfo << "  Polymer Viscosity: " << nu_p << "\n";
-    strSimInfo << "             Lambda: " << LAMBDA << "\n";
-    strSimInfo << "          FENE-P Re: " << fenep_re << "\n";
-    strSimInfo << "\n                                                                         \n";
-        strSimInfo << std::scientific << std::setprecision(4);
-    strSimInfo << "  Diffusivity ratio: " << CONF_DIFFUSIVITY_RATIO << "\n";
-    strSimInfo << "  Diffusivity Coef.: " << CONF_DIFFUSIVITY << "\n";
-    strSimInfo << "Conformation Offset: " << CONF_ZERO << "\n";
-    strSimInfo << "           CONF_TAU: " << CONF_TAU << "\n";
-    strSimInfo << "         CONF_OMEGA: " << CONF_OMEGA << "\n";
-    strSimInfo << "     CONF_DIFF_FLUC: " << CONF_DIFF_FLUC << "\n";
-    strSimInfo << "           CONF_AAA: " << CONF_AAA << "\n";
-    strSimInfo << "CONF_DIFF_FLUC_COEF: " << CONF_DIFF_FLUC_COEF << "\n";
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif// FENE_P
     return strSimInfo.str();
 }
 
-void saveSimInfo(int step, dfloat MLUPS, const fluidProps& nnfPropsA, const fluidProps& nnfPropsB, bool hasSecond)
+void saveSimInfo(int step, dfloat MLUPS, const fluidPhaseProps& phasePropsA, const fluidPhaseProps& phasePropsB, bool hasSecond)
 {
     std::filesystem::path baseDir = folderSetup();
 
-    std::string baseName = ID_SIM + std::string("_info.txt");
-    std::filesystem::path strInf =  (baseDir / baseName).string();
+    // Use a fixed-length substring of ID_SIM for the info file name (e.g., first 16 chars)
+    std::string idSimShort = std::string(ID_SIM).substr(0, 16);
+    std::string baseName = idSimShort + std::string("_info.txt");
+    std::filesystem::path strInf = baseDir / baseName;
 
-    FILE* outFile = nullptr;
+    // On Windows, prepend the extended-path prefix to bypass the 260-char MAX_PATH limit.
+    #if defined(_WIN32)
+    std::string pathStr = "\\\\?\\" + strInf.string();
+    std::replace(pathStr.begin(), pathStr.end(), '/', '\\');
+    #else
+    std::string pathStr = strInf.string();
+    #endif
 
-    outFile = fopen(strInf.string().c_str(), "w");
+    FILE* outFile = fopen(pathStr.c_str(), "w");
     if(outFile != nullptr)
     {
-        std::string strSimInfo = getSimInfoString(step, MLUPS, nnfPropsA, nnfPropsB, hasSecond);
-        fprintf(outFile, strSimInfo.c_str());
+        std::string strSimInfo = getSimInfoString(step, MLUPS, phasePropsA, phasePropsB, hasSecond);
+        fprintf(outFile, "%s", strSimInfo.c_str());
         fclose(outFile);
     }
     else
     {
-        printf("Error saving \"%s\" \nProbably wrong path!\n", strInf.string().c_str());
+        printf("Error saving \"%s\" \nProbably wrong path!\n", pathStr.c_str());
     }
     
 }
@@ -1085,21 +1206,34 @@ void saveTreatData(std::string fileName, std::string dataString, int step, bool 
     #if SAVEDATA
     std::filesystem::path baseDir = folderSetup();;
 
-    std::filesystem::path strInf = baseDir / (ID_SIM + fileName + ".txt");
+    std::filesystem::path strInf = baseDir / (fileName + ".txt");
 
-    std::ifstream file(strInf.c_str());
+    // On Windows, prepend the extended-path prefix to bypass the 260-char MAX_PATH limit.
+    #if defined(_WIN32)
+    std::string pathStr = "\\\\?\\" + strInf.string();
+    std::replace(pathStr.begin(), pathStr.end(), '/', '\\');
+    #else
+    std::string pathStr = strInf.string();
+    #endif
+
+    std::ifstream file(pathStr);
     std::ofstream outfile;
 
     if(step == REPORT_SAVE  && !headerExist){ //check if first time step to save data
-        outfile.open(strInf.c_str());
+        outfile.open(pathStr);
     }else{
         if (file.good()) {
-            outfile.open(strInf.c_str(), std::ios::app);
+            outfile.open(pathStr, std::ios::app);
         }else{ 
-            outfile.open(strInf.c_str());
+            outfile.open(pathStr);
         }
     }
 
+    if (!outfile.is_open()) {
+        std::cerr << "[saveTreatData] ERROR: failed to open output file: "
+                  << strInf << " (path length: " << strInf.string().size() << ")" << std::endl;
+        return;
+    }
 
     outfile << dataString.c_str() << std::endl; 
     outfile.close(); 
@@ -1113,9 +1247,21 @@ void saveTreatDataHeader(std::string fileName, std::string headerString)
 {
     #if SAVEDATA
     std::filesystem::path baseDir = folderSetup();
-    std::filesystem::path strInf = baseDir / (ID_SIM + fileName + ".txt");
+    std::filesystem::path strInf = baseDir / (fileName + ".txt");
 
-    std::ofstream outfile(strInf.c_str()); // overwrite file
+    #if defined(_WIN32)
+    std::string pathStr = "\\\\?\\" + strInf.string();
+    std::replace(pathStr.begin(), pathStr.end(), '/', '\\');
+    #else
+    std::string pathStr = strInf.string();
+    #endif
+
+    std::ofstream outfile(pathStr); // overwrite file
+    if (!outfile.is_open()) {
+        std::cerr << "[saveTreatDataHeader] ERROR: failed to open output file: "
+                  << strInf << " (path length: " << strInf.string().size() << ")" << std::endl;
+        return;
+    }
     outfile << headerString << std::endl;
     outfile.close();
     #endif //SAVEDATA
