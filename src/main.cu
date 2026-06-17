@@ -27,6 +27,9 @@ int main() {
 
     int slice = NZ / N_GPUS;
 
+    static_assert(NZ % N_GPUS == 0,
+        "NZ must be exactly divisible by N_GPUS for uniform Z-slab decomposition.");
+
     threads.reserve(N_GPUS);
 
     /* ----------------- GRID AND THREADS DEFINITION FOR LBM ---------------- */
@@ -77,12 +80,12 @@ int main() {
             #ifdef DENSITY_CORRECTION
                 // Allocate density correction memory in both host and device fields
                 hostField.allocateDensityCorrectionMemory();
-                devices[g].allocateDensityCorrectionMemory();
+                devices[g].allocateDensityCorrectionMemory(g);
             #endif //DENSITY_CORRECTION
 
             /* -------------- Setup Streams ------------- */
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-            checkCudaErrors(cudaStreamCreate(&streamsLBM[g]));
+            checkCudaErrors(cudaStreamCreateWithFlags(&streamsLBM[g], cudaStreamNonBlocking));
             checkCudaErrors(cudaDeviceSynchronize());
             #ifdef PARTICLE_MODEL
             particleField.setupStreams();
@@ -144,7 +147,10 @@ int main() {
     /* ------------------------------ LBM LOOP ------------------------------ */
 
     #ifdef DYNAMIC_SHARED_MEMORY
-        if (configureDynamicSharedMemory(GPU_INDEX)) return 1;
+        for (int g = 0; g < N_GPUS; g++) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            if (configureDynamicSharedMemory(GPUS_TO_USE[g])) return 1;
+        }
     #endif //DYNAMIC_SHARED_MEMORY
    
     /* --------------------------------------------------------------------- */
@@ -159,20 +165,11 @@ int main() {
         saveField.flagsUpdate(step);
 
         /* -------------- Exchanging halos between neighboring GPUs using P2P ------------- */
+        // sendTopToNext and sendBottomToPrev access different ghost buffers
+        // (pop.Z_1/popAux.Z_1 vs pop.Z_0/popAux.Z_0) so they can launch together.
         for (int g = 0; g < N_GPUS; g++) {
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-                
             devices[g].sendTopToNext(g, devices.data(), streamsLBM[g]);
-            // devices[g].sendBottomToPrev(g, devices.data(), streamsLBM[g]);     
-        }
-    
-        for (int g = 0; g < N_GPUS; g++) {
-            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-            checkCudaErrors(cudaDeviceSynchronize());
-        }
-    
-        for (int g = 0; g < N_GPUS; g++) {
-            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
             devices[g].sendBottomToPrev(g, devices.data(), streamsLBM[g]);
         }
     
@@ -185,7 +182,7 @@ int main() {
         for(int g = 0; g < N_GPUS; g++){
             threads.emplace_back([&, g, slice]() {
                 checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-                devices[g].gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save, g, slice);
+                devices[g].gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save, g, slice, streamsLBM[g]);
             });
         }
         for (auto &t : threads) {
@@ -208,7 +205,7 @@ int main() {
         //------------------------- Auxiliary Kernels -------------------------
         for(int g = 0; g < N_GPUS; g++){
             threads.emplace_back([&, g, slice]() {
-                devices[g].halfStepKernels(gridBlock, threadBlock, step);
+                devices[g].halfStepKernels(gridBlock, threadBlock, step, streamsLBM[g]);
                 #ifdef PARTICLE_MODEL
                     particleField.simulationStep(deviceField.d_fMom, step);
                 #endif //PARTICLE_MODEL
@@ -376,6 +373,8 @@ int main() {
     hostField.freeHostField();
     for(int g = 0; g < N_GPUS; g++){
         threads.emplace_back([&, g]() {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            checkCudaErrors(cudaStreamDestroy(streamsLBM[g]));
             devices[g].freeDeviceField(g);
         });
     }

@@ -73,9 +73,9 @@ typedef struct deviceField{
         memAllocated += MEM_SIZE_MOM_LOCAL + sizeof(int) * NUMBER_LBM_NODES_LOCAL;
 
         #ifdef BC_FORCES
-        cudaMalloc((void**)&d_BC_Fx, MEM_SIZE_SCALAR);
-        cudaMalloc((void**)&d_BC_Fy, MEM_SIZE_SCALAR);
-        cudaMalloc((void**)&d_BC_Fz, MEM_SIZE_SCALAR);
+        cudaMalloc((void**)&d_BC_Fx[g], MEM_SIZE_SCALAR);
+        cudaMalloc((void**)&d_BC_Fy[g], MEM_SIZE_SCALAR);
+        cudaMalloc((void**)&d_BC_Fz[g], MEM_SIZE_SCALAR);
         memAllocated += 3 * MEM_SIZE_SCALAR;
         #endif //BC_FORCES
 
@@ -83,8 +83,8 @@ typedef struct deviceField{
     }
 
     #ifdef DENSITY_CORRECTION
-    void allocateDensityCorrectionMemory(){
-        cudaMalloc((void**)&d_mean_rho, sizeof(dfloat));
+    void allocateDensityCorrectionMemory(int g){
+        cudaMalloc((void**)&d_mean_rho[g], sizeof(dfloat));
     }
     #endif //DENSITY_CORRECTION
 
@@ -264,7 +264,7 @@ typedef struct deviceField{
     }
 
     #ifdef CURVED_BOUNDARY_CONDITION
-    void updateCurvedBoundaryVelocitiesDeviceField(){
+    void updateCurvedBoundaryVelocitiesDeviceField(cudaStream_t stream){
         // Skip launch when no curved-boundary nodes were found; zero grid size is invalid
         if (numberCurvedBoundaryNodes == 0) {
             return;
@@ -272,17 +272,17 @@ typedef struct deviceField{
 
         const int curvedBCBlockSize = 256;
         const int curvedBCGridSize = (numberCurvedBoundaryNodes + curvedBCBlockSize - 1) / curvedBCBlockSize;
-        updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize>>>(d_curvedBC_array, d_fMom, numberCurvedBoundaryNodes);
+        updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize, 0, stream>>>(d_curvedBC_array, d_fMom, numberCurvedBoundaryNodes);
     }
     #endif //CURVED_BOUNDARY_CONDITION
 
     #ifdef DENSITY_CORRECTION
-    void mean_rhoDeviceField(size_t step){
+    void mean_rhoDeviceField(size_t step, cudaStream_t stream){
         mean_rho(d_fMom,step,d_mean_rho);
     }
     #endif //DENSITY_CORRECTION
 
-    void gpuMomCollisionStreamDeviceField(dim3 gridBlock, dim3 threadBlock, unsigned int step, bool save, int g, int slice){
+    void gpuMomCollisionStreamDeviceField(dim3 gridBlock, dim3 threadBlock, unsigned int step, bool save, int g, int slice, cudaStream_t stream){
         // Create parameter struct and pass by value (most efficient!)
         cudaSetDevice(GPUS_TO_USE[g]);
         DeviceKernelParams params;
@@ -321,7 +321,11 @@ typedef struct deviceField{
         #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
         
         // Pass struct by value - CUDA handles this efficiently
-        gpuMomCollisionStream<<<gridBlock, threadBlock DYNAMIC_SHARED_MEMORY_PARAMS>>>(params);
+        #ifdef DYNAMIC_SHARED_MEMORY
+        gpuMomCollisionStream<<<gridBlock, threadBlock, MAX_SHARED_MEMORY_SIZE, stream>>>(params);
+        #else
+        gpuMomCollisionStream<<<gridBlock, threadBlock, 0, stream>>>(params);
+        #endif
     }
 
     /* -------------- Send the current GPU's Z_1 top to the nearest GPU's Z_1 base   ------------- */
@@ -361,11 +365,10 @@ typedef struct deviceField{
     }
 
     #ifdef PHI_DIST
-    void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock){
-        gpuComputePhaseNormals<<<gridBlock, threadBlock>>>(d_fMom, dNodeType);
-        gpuComputeChemicalPotential<<<gridBlock, threadBlock>>>(d_fMom, dNodeType);
-        gpuComputeLaplacianMu<<<gridBlock, threadBlock>>>(d_fMom, dNodeType);
-        cudaDeviceSynchronize();
+    void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock, cudaStream_t stream){
+        gpuComputePhaseNormals<<<gridBlock, threadBlock, 0, stream>>>(d_fMom, dNodeType);
+        gpuComputeChemicalPotential<<<gridBlock, threadBlock, 0, stream>>>(d_fMom, dNodeType);
+        gpuComputeLaplacianMu<<<gridBlock, threadBlock, 0, stream>>>(d_fMom, dNodeType);
     }
     #endif //PHI_DIST
 
@@ -373,28 +376,28 @@ typedef struct deviceField{
         swapGhostInterfaces(ghostInterface[g]);
     }
 
-    void halfStepKernels(dim3 gridBlock, dim3 threadBlock, size_t step){
+    void halfStepKernels(dim3 gridBlock, dim3 threadBlock, size_t step, cudaStream_t stream){
         #ifdef LOCAL_FORCES
-            gpuResetMacroForcesDeviceField(gridBlock, threadBlock);
+            gpuResetMacroForcesDeviceField(gridBlock, threadBlock, stream);
             CHECK_KERNEL_ERR("Force Reset kernel");
         #endif //LOCAL_FORCES
         #ifdef CURVED_BOUNDARY_CONDITION
-            updateCurvedBoundaryVelocitiesDeviceField();
+            updateCurvedBoundaryVelocitiesDeviceField(stream);
             CHECK_KERNEL_ERR("Curved BC kernel");
         #endif //CURVED_BOUNDARY_CONDITION
         #ifdef PHI_DIST
-            computePhaseNormalsDeviceField(gridBlock, threadBlock);
+            computePhaseNormalsDeviceField(gridBlock, threadBlock, stream);
             CHECK_KERNEL_ERR("Phi gradients kernel");
         #endif //PHI_DIST
         #ifdef DENSITY_CORRECTION
-            mean_rhoDeviceField(step);
+            mean_rhoDeviceField(step, stream);
             CHECK_KERNEL_ERR("Density correction kernel");
         #endif //DENSITY_CORRECTION
     }
     
     #ifdef LOCAL_FORCES
-    void gpuResetMacroForcesDeviceField(dim3 gridBlock, dim3 threadBlock){
-        gpuResetMacroForces<<<gridBlock, threadBlock>>>(d_fMom);
+    void gpuResetMacroForcesDeviceField(dim3 gridBlock, dim3 threadBlock, cudaStream_t stream){
+        gpuResetMacroForces<<<gridBlock, threadBlock, 0, stream>>>(d_fMom);
     }
     #endif //LOCAL_FORCES
 
