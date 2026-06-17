@@ -419,6 +419,7 @@ typedef struct ghostData {
 
 typedef struct ghostInterfaceData  {
     ghostData pop;
+    ghostData popAux;
     ghostData h_pop;
 
     #ifdef SECOND_DIST
@@ -520,6 +521,8 @@ struct DeviceKernelParams {
     ghostInterfaceData ghostInterface;      ///< Ghost interface block transfer data
     unsigned int step;                      ///< Current time step
     bool save;                              ///< Whether to save data
+    size_t localNZ; 
+    int zStart;
 
     #ifdef NON_NEWTONIAN_FLUID
     fluidProps nnfPropsA;                   ///< Primary-phase non-Newtonian properties

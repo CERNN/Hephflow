@@ -253,7 +253,8 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
  *  @param Q: number of quantities in the ghost data that are transfered
  */
 __host__
-void interfaceCudaMemcpy(GhostInterfaceData& ghostInterface, ghostData& dst, const ghostData& src, cudaMemcpyKind kind, int Q) {
+void interfaceCudaMemcpy(GhostInterfaceData& ghostInterface, ghostData& dst, const ghostData& src, cudaMemcpyKind kind, int Q, int g) {
+    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
     struct MemcpyPair {
         dfloat* dst;
         const dfloat* src;
@@ -261,12 +262,12 @@ void interfaceCudaMemcpy(GhostInterfaceData& ghostInterface, ghostData& dst, con
     };
 
     MemcpyPair memcpyPairs[] = {
-        { dst.X_0, src.X_0, sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * Q},
-        { dst.X_1, src.X_1, sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * Q},
-        { dst.Y_0, src.Y_0, sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * Q},
-        { dst.Y_1, src.Y_1, sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * Q},
-        { dst.Z_0, src.Z_0, sizeof(dfloat) * NUMBER_GHOST_FACE_XY * Q},
-        { dst.Z_1, src.Z_1, sizeof(dfloat) * NUMBER_GHOST_FACE_XY * Q}
+        { dst.X_0, src.X_0, sizeof(dfloat) * NUMBER_GHOST_FACE_YZ_LOCAL * Q},
+        { dst.X_1, src.X_1, sizeof(dfloat) * NUMBER_GHOST_FACE_YZ_LOCAL * Q},
+        { dst.Y_0, src.Y_0, sizeof(dfloat) * NUMBER_GHOST_FACE_XZ_LOCAL * Q},
+        { dst.Y_1, src.Y_1, sizeof(dfloat) * NUMBER_GHOST_FACE_XZ_LOCAL * Q},
+        { dst.Z_0, src.Z_0, sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * Q},
+        { dst.Z_1, src.Z_1, sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * Q}
     };
 
     checkCudaErrors(cudaDeviceSynchronize());
@@ -327,20 +328,22 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.pop.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * QF);
     cudaMalloc((void **)&(ghostInterface.pop.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF);
     cudaMalloc((void **)&(ghostInterface.pop.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF);
-    cudaMalloc((void **)&(ghostInterface.pop.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * QF);
-    cudaMalloc((void **)&(ghostInterface.pop.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * QF);
+    cudaMalloc((void **)&(ghostInterface.pop.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF);
+    cudaMalloc((void **)&(ghostInterface.pop.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF);
+    cudaMalloc((void **)&(ghostInterface.popAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF);
+    cudaMalloc((void **)&(ghostInterface.popAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF);
 
-    memAllocated = QF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);  // AA: ghost only
+    memAllocated = QF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);  // AA: ghost only
 
 #ifdef SECOND_DIST
     cudaMalloc((void **)&(ghostInterface.g.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
     cudaMalloc((void **)&(ghostInterface.g.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
     cudaMalloc((void **)&(ghostInterface.g.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
     cudaMalloc((void **)&(ghostInterface.g.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
-    cudaMalloc((void **)&(ghostInterface.g.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
-    cudaMalloc((void **)&(ghostInterface.g.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.g.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.g.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
-    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //SECOND_DIST
 
 #ifdef PHI_DIST
@@ -348,10 +351,10 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.phi.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
     cudaMalloc((void **)&(ghostInterface.phi.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
     cudaMalloc((void **)&(ghostInterface.phi.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
-    cudaMalloc((void **)&(ghostInterface.phi.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
-    cudaMalloc((void **)&(ghostInterface.phi.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.phi.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.phi.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
-    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //PHI_DIST
 
 #ifdef LAMBDA_DIST
@@ -359,10 +362,10 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.lambda.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
     cudaMalloc((void **)&(ghostInterface.lambda.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
     cudaMalloc((void **)&(ghostInterface.lambda.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
-    cudaMalloc((void **)&(ghostInterface.lambda.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
-    cudaMalloc((void **)&(ghostInterface.lambda.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.lambda.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.lambda.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
-    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //LAMBDA_DIST
 
 #ifdef A_XX_DIST
@@ -370,10 +373,10 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.Axx.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
     cudaMalloc((void **)&(ghostInterface.Axx.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
     cudaMalloc((void **)&(ghostInterface.Axx.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
-    cudaMalloc((void **)&(ghostInterface.Axx.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
-    cudaMalloc((void **)&(ghostInterface.Axx.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.Axx.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.Axx.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
-    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //A_XX_DIST
 
 #ifdef A_XY_DIST
@@ -381,10 +384,10 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.Axy.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
     cudaMalloc((void **)&(ghostInterface.Axy.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
     cudaMalloc((void **)&(ghostInterface.Axy.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
-    cudaMalloc((void **)&(ghostInterface.Axy.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
-    cudaMalloc((void **)&(ghostInterface.Axy.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.Axy.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.Axy.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
-    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //A_XY_DIST
 
 #ifdef A_XZ_DIST
@@ -392,10 +395,10 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.Axz.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
     cudaMalloc((void **)&(ghostInterface.Axz.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
     cudaMalloc((void **)&(ghostInterface.Axz.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
-    cudaMalloc((void **)&(ghostInterface.Axz.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
-    cudaMalloc((void **)&(ghostInterface.Axz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.Axz.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.Axz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
-    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //A_XZ_DIST
 
 #ifdef A_YY_DIST
@@ -403,10 +406,10 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.Ayy.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
     cudaMalloc((void **)&(ghostInterface.Ayy.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
     cudaMalloc((void **)&(ghostInterface.Ayy.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
-    cudaMalloc((void **)&(ghostInterface.Ayy.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
-    cudaMalloc((void **)&(ghostInterface.Ayy.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.Ayy.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.Ayy.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
-    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //A_YY_DIST
 
 #ifdef A_YZ_DIST
@@ -414,10 +417,10 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.Ayz.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
     cudaMalloc((void **)&(ghostInterface.Ayz.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
     cudaMalloc((void **)&(ghostInterface.Ayz.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
-    cudaMalloc((void **)&(ghostInterface.Ayz.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
-    cudaMalloc((void **)&(ghostInterface.Ayz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.Ayz.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.Ayz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
-    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //A_YZ_DIST
 
 #ifdef A_ZZ_DIST
@@ -425,10 +428,10 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.Azz.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);
     cudaMalloc((void **)&(ghostInterface.Azz.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
     cudaMalloc((void **)&(ghostInterface.Azz.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
-    cudaMalloc((void **)&(ghostInterface.Azz.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
-    cudaMalloc((void **)&(ghostInterface.Azz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF);
+    cudaMalloc((void **)&(ghostInterface.Azz.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.Azz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
-    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+    memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //A_ZZ_DIST
 
     if (LOAD_CHECKPOINT || CHECKPOINT_SAVE)
@@ -437,20 +440,20 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_pop.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * QF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_pop.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_pop.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_pop.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * QF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_pop.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * QF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_pop.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_pop.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF));
 
-        memAllocated += QF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+        memAllocated += QF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 
         #ifdef SECOND_DIST
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_g.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_g.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_g.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_g.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_g.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_g.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_g.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_g.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
 
-        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
         #endif //SECOND_DIST
 
         #ifdef PHI_DIST
@@ -458,10 +461,10 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_phi.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_phi.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_phi.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_phi.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_phi.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_phi.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_phi.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
 
-        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
         #endif //PHI_DIST
 
         #ifdef A_XX_DIST
@@ -469,60 +472,60 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axx.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axx.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axx.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axx.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axx.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axx.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axx.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
 
-        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
         #endif //A_XX_DIST
         #ifdef A_XY_DIST
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axy.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axy.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axy.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axy.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axy.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axy.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axy.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axy.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
 
-        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
         #endif //A_XY_DIST
         #ifdef A_XZ_DIST
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axz.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axz.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axz.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axz.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axz.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axz.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
 
-        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
         #endif //A_XZ_DIST
         #ifdef A_YY_DIST
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayy.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayy.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayy.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayy.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayy.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayy.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayy.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayy.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
 
-        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
         #endif //A_YY_DIST
         #ifdef A_YZ_DIST
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayz.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayz.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayz.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayz.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayz.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayz.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Ayz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
 
-        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
         #endif //A_YZ_DIST
         #ifdef A_ZZ_DIST
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Azz.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Azz.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Azz.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Azz.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Azz.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
-        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Azz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Azz.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Azz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
 
-        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY) * sizeof(dfloat);
+        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
         #endif //A_ZZ_DIST
     }
 

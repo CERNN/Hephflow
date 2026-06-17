@@ -8,6 +8,8 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     ghostInterfaceData ghostInterface = params.ghostInterface;
     unsigned int step = params.step;
     bool save = params.save;
+    size_t localNZ = params.localNZ;
+    int zStart = params.zStart;
     
     #ifdef DENSITY_CORRECTION
     dfloat* d_mean_rho = params.d_mean_rho;
@@ -33,9 +35,13 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
-    const int z = threadIdx.z + blockDim.z * blockIdx.z;
-    if (x >= NX || y >= NY || z >= NZ)
+    const int z_local = threadIdx.z + blockDim.z * blockIdx.z;
+
+    if (x >= NX || y >= NY || z_local >= localNZ+1)
         return;
+    
+    const int z = zStart + z_local;
+
     dfloat pop[Q];
     #ifdef CONVECTION_DIFFUSION_TRANSPORT
     dfloat gNode[GQ];
@@ -153,8 +159,8 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     const int bym1 = (by-1+NUM_BLOCK_Y)%NUM_BLOCK_Y;
     const int byp1 = (by+1+NUM_BLOCK_Y)%NUM_BLOCK_Y;
 
-    const int bzm1 = (bz-1+NUM_BLOCK_Z)%NUM_BLOCK_Z;
-    const int bzp1 = (bz+1+NUM_BLOCK_Z)%NUM_BLOCK_Z;
+    const int bzm1 = (bz-1+NUM_BLOCK_Z_LOCAL)%NUM_BLOCK_Z_LOCAL;
+    const int bzp1 = (bz+1+NUM_BLOCK_Z_LOCAL)%NUM_BLOCK_Z_LOCAL;
 
     const bool stepParity = (step & 1u);
 

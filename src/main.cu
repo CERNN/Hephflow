@@ -15,54 +15,78 @@ int main() {
     folderSetup();
 
     // Set cuda device
-    checkCudaErrors(cudaSetDevice(GPU_INDEX));
+    // checkCudaErrors(cudaSetDevice(GPU_INDEX));
 
     // Field Variables
     HostField hostField;
     DeviceField deviceField;
 
+    // Multi-GPU Variables
+    std::vector<std::thread> threads;
+    std::vector<DeviceField> devices(N_GPUS);
+
+    int slice = NZ / N_GPUS;
+
+    threads.reserve(N_GPUS);
+
     /* ----------------- GRID AND THREADS DEFINITION FOR LBM ---------------- */
     dim3 threadBlock(BLOCK_NX, BLOCK_NY, BLOCK_NZ);
-    dim3 gridBlock(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z);
+    dim3 gridBlock(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL);
+
+    // Enable peer-to-peer (P2P) access between GPUs
+    deviceField.enablePeerAccessDeviceField();
 
     /* ------------------------- ALLOCATION FOR CPU ------------------------- */
     int step = 0;
 
     dfloat** randomNumbers = nullptr;
-    randomNumbers = (dfloat**)malloc(sizeof(dfloat*));
+    randomNumbers = (dfloat**)malloc(sizeof(dfloat*) * N_GPUS);
 
     hostField.allocateHostMemoryHostField();
     
-    /* -------------- ALLOCATION FOR GPU ------------- */
-    deviceField.allocateDeviceMemoryDeviceField();
-    
-    #ifdef NON_NEWTONIAN_FLUID
-    deviceField.nnfPropsA = CASE_NNF_PROPS_PHASE1;
-    #ifdef PHI_DIST
-    deviceField.nnfPropsB = CASE_NNF_PROPS_PHASE2;
-    #endif
-    #endif //NON_NEWTONIAN_FLUID
-    
-    #ifdef PARTICLE_MODEL
-    // Particle field initialization and allocation
-    ParticleField particleField;
-    particleField.allocateMemory();
-    #endif //PARTICLE_MODEL
-    
-    #ifdef DENSITY_CORRECTION
-        // Allocate density correction memory in both host and device fields
-        hostField.allocateDensityCorrectionMemory();
-        deviceField.allocateDensityCorrectionMemory();
-    #endif //DENSITY_CORRECTION
+    /* -------------- ALLOCATION FOR GPUs ------------- */
+    cudaStream_t streamsLBM[N_GPUS];
+    threads.reserve(N_GPUS);
+    for(int g = 0; g < N_GPUS; g++){
 
-    /* -------------- Setup Streams ------------- */
-    cudaStream_t streamsLBM[1];
-    checkCudaErrors(cudaSetDevice(GPU_INDEX));
-    checkCudaErrors(cudaStreamCreate(&streamsLBM[0]));
-    checkCudaErrors(cudaDeviceSynchronize());
-    #ifdef PARTICLE_MODEL
-    particleField.setupStreams();
-    #endif //PARTICLE_MODEL
+        threads.emplace_back([&, g]() {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            devices[g].allocateDeviceMemoryDeviceField(g);
+    
+            #ifdef NON_NEWTONIAN_FLUID
+            devices[g].nnfPropsA = CASE_NNF_PROPS_PHASE1;
+            #ifdef PHI_DIST
+            devices[g].nnfPropsB = CASE_NNF_PROPS_PHASE2;
+            #endif
+            #endif //NON_NEWTONIAN_FLUID
+            
+            #ifdef PARTICLE_MODEL
+            // Particle field initialization and allocation
+            ParticleField particleField;
+            particleField.allocateMemory();
+            #endif //PARTICLE_MODEL
+            
+            #ifdef DENSITY_CORRECTION
+                // Allocate density correction memory in both host and device fields
+                hostField.allocateDensityCorrectionMemory();
+                devices[g].allocateDensityCorrectionMemory();
+            #endif //DENSITY_CORRECTION
+
+            /* -------------- Setup Streams ------------- */
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            checkCudaErrors(cudaStreamCreate(&streamsLBM[g]));
+            checkCudaErrors(cudaDeviceSynchronize());
+            #ifdef PARTICLE_MODEL
+            particleField.setupStreams();
+            #endif //PARTICLE_MODEL
+        });
+    }
+
+    for (auto &t : threads) {
+        t.join();
+    }
+
+    threads.clear();
 
     step = INI_STEP;
 
@@ -76,8 +100,24 @@ int main() {
         savingMacrBin[i].store(false);
     }
 
-    /* -------------- Initialize domain in the device ------------- */
-    deviceField.initializeDomainDeviceField(hostField, randomNumbers,  step, gridBlock, threadBlock);
+    /* -------------- Initialize the domain on the devices ------------- */
+    for(int g = 0; g < N_GPUS; g++){
+
+        threads.emplace_back([&, g, slice]() {
+            devices[g].initializeDomainDeviceField(hostField, randomNumbers,  step, gridBlock, threadBlock, g, slice);
+            cudaError_t err = cudaGetLastError();
+            if (err != cudaSuccess) {
+                printf("Erro no device %d após init: %s\n", GPUS_TO_USE[g], cudaGetErrorString(err));
+            }
+            checkCudaErrors(cudaDeviceSynchronize());
+        });
+    }
+
+    for (auto &t : threads) {
+        t.join();
+    }
+
+    threads.clear();
 
     int ini_step = step;
 
@@ -90,9 +130,9 @@ int main() {
     #endif //PARTICLE_MODEL
 
     /* ------------------------------ TIMER EVENTS  ------------------------------ */
-    checkCudaErrors(cudaSetDevice(GPU_INDEX));
-    cudaEvent_t start, stop, start_step, stop_step;
-    initializeCudaEvents(start, stop, start_step, stop_step);
+    // checkCudaErrors(cudaSetDevice(GPU_INDEX));
+    // cudaEvent_t start, stop, start_step, stop_step;
+    // initializeCudaEvents(start, stop, start_step, stop_step);
     
     /* ------------------------------ LBM LOOP ------------------------------ */
 
@@ -110,39 +150,110 @@ int main() {
 
         // update saving flags
         saveField.flagsUpdate(step);
+
+        /* -------------- Exchanging halos between neighboring GPUs using P2P ------------- */
+        for (int g = 0; g < N_GPUS; g++) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+                
+            devices[g].sendTopToNext(g, devices.data(), streamsLBM[g]);
+            // devices[g].sendBottomToPrev(g, devices.data(), streamsLBM[g]);     
+        }
+    
+        for (int g = 0; g < N_GPUS; g++) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            checkCudaErrors(cudaDeviceSynchronize());
+        }
+    
+        for (int g = 0; g < N_GPUS; g++) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            devices[g].sendBottomToPrev(g, devices.data(), streamsLBM[g]);
+        }
+    
+        for (int g = 0; g < N_GPUS; g++) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            checkCudaErrors(cudaDeviceSynchronize());
+        }
+
         //------------------------- Main LBM Kernels -------------------------
-        deviceField.gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save);
+        for(int g = 0; g < N_GPUS; g++){
+            threads.emplace_back([&, g, slice]() {
+                checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+                devices[g].gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save, g, slice);
+            });
+        }
+        for (auto &t : threads) {
+            t.join();
+        }                  
+        threads.clear();
+
+       
+        for (int g = 0; g < N_GPUS; g++) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            checkCudaErrors(cudaDeviceSynchronize());
+        }
+        
+
         // swap interface pointers
         //deviceField.swapGhostInterfacesDeviceField();
+            
         CHECK_KERNEL_ERR("Stream Collision kernel");
 
         //------------------------- Auxiliary Kernels -------------------------
-        deviceField.halfStepKernels(gridBlock, threadBlock, step);
-        #ifdef PARTICLE_MODEL
-            particleField.simulationStep(deviceField.d_fMom, step);
-        #endif //PARTICLE_MODEL
+        for(int g = 0; g < N_GPUS; g++){
+            threads.emplace_back([&, g, slice]() {
+                devices[g].halfStepKernels(gridBlock, threadBlock, step);
+                #ifdef PARTICLE_MODEL
+                    particleField.simulationStep(deviceField.d_fMom, step);
+                #endif //PARTICLE_MODEL
+            });
+        }
+
+        for (auto &t : threads) {
+            t.join();
+        }                  
+        threads.clear();
 
         //------------------------- Saving Data -------------------------
         // Saving checkpoint     
         if(saveField.checkpoint){
-            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
-            deviceField.cudaMemcpyDeviceField(hostField);
-            deviceField.interfaceCudaMemcpyDeviceField(true);       
-            deviceField.saveSimCheckpointHostDeviceField(hostField, step);
-            #ifdef PARTICLE_MODEL
-                particleField.saveCheckpoint(step);
-            #endif //PARTICLE_MODEL    
-            if(console_flush){fflush(stdout);} 
+            for(int g = 0; g < N_GPUS; g++){
+                threads.emplace_back([&, g, slice]() {
+                    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+                    printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
+                    devices[g].cudaMemcpyDeviceField(hostField, g, slice);
+                    devices[g].interfaceCudaMemcpyDeviceField(true, g);       
+                    devices[g].saveSimCheckpointHostDeviceField(hostField, step, g);
+                    #ifdef PARTICLE_MODEL
+                        particleField.saveCheckpoint(step);
+                    #endif //PARTICLE_MODEL    
+                    if(console_flush){fflush(stdout);} 
+                });
+            }
+
+            for (auto &t : threads) {
+                t.join();
+            }                  
+            threads.clear();
         }
        
         // Saving treat data  checks
         if(saveField.reportSave){
-            printf("\n--------------------------- Saving report %06d ---------------------------\n", step);
-            deviceField.treatDataDeviceField(hostField, step);
-            #ifdef PARTICLE_MODEL
-            particleField.exportWallForces(step);
-            #endif
-            if(console_flush){fflush(stdout);}
+            for(int g = 0; g < N_GPUS; g++){
+                threads.emplace_back([&, g, slice]() {
+                    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+                    printf("\n--------------------------- Saving report %06d ---------------------------\n", step);
+                    devices[g].treatDataDeviceField(hostField, step, g);
+                    #ifdef PARTICLE_MODEL
+                    particleField.exportWallForces(step);
+                    #endif
+                    if(console_flush){fflush(stdout);}
+                });
+            }
+
+            for (auto &t : threads) {
+                t.join();
+            }                  
+            threads.clear();
         }
 
         #ifdef TESTS
@@ -151,8 +262,18 @@ int main() {
         
         if(saveField.macrSave){
             //copy data from device to host
-            checkCudaErrors(cudaDeviceSynchronize()); 
-            deviceField.cudaMemcpyDeviceField(hostField);
+            for(int g = 0; g < N_GPUS; g++){
+                threads.emplace_back([&, g, slice]() {
+                    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+                    checkCudaErrors(cudaDeviceSynchronize()); 
+                    devices[g].cudaMemcpyDeviceField(hostField, g, slice);
+                });
+            }
+
+            for (auto &t : threads) {
+                t.join();
+            }                  
+            threads.clear();
             printf("\n--------------------------- Saving macro %06d ---------------------------\n", step);
             if(!ONLY_FINAL_MACRO){ hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);}
             if(console_flush){fflush(stdout);}
@@ -172,27 +293,56 @@ int main() {
     /* ------------------------------ END LOOP ----------------------------- */
     /* --------------------------------------------------------------------- */
 
-    checkCudaErrors(cudaDeviceSynchronize());
+    for(int g = 0; g < N_GPUS; g++){
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        cudaDeviceSynchronize();
+    }
+
 
     //Calculate MLUPS
 
-    dfloat MLUPS = recordElapsedTime(start_step, stop_step, step, ini_step, NUMBER_LBM_NODES);
-    printf("MLUPS: %f\n",MLUPS); if(console_flush){fflush(stdout);}     
+    // dfloat MLUPS = recordElapsedTime(start_step, stop_step, step, ini_step, NUMBER_LBM_NODES);
+    // printf("MLUPS: %f\n",MLUPS); if(console_flush){fflush(stdout);}     
     
     /* ------------------------------ POST ------------------------------ */
-    deviceField.cudaMemcpyDeviceField(hostField);
+    for(int g = 0; g < N_GPUS; g++){
+
+        threads.emplace_back([&, g, slice]() {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            devices[g].cudaMemcpyDeviceField(hostField, g, slice);
+        });
+    }
+
+    for (auto &t : threads) {
+        t.join();
+    }                  
+    threads.clear();
 
     hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
 
     if(CHECKPOINT_SAVE){
-        printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
-        deviceField.cudaMemcpyDeviceField(hostField);
-        deviceField.interfaceCudaMemcpyDeviceField(false); 
-        deviceField.saveSimCheckpointDeviceField(step);
-        if(console_flush){fflush(stdout);}
+        for(int g = 0; g < N_GPUS; g++){
+            threads.emplace_back([&, g, slice]() {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
+            devices[g].cudaMemcpyDeviceField(hostField, g, slice);
+            devices[g].interfaceCudaMemcpyDeviceField(false, g); 
+            devices[g].saveSimCheckpointDeviceField(step, g);
+            if(console_flush){fflush(stdout);}
+        });
     }
 
-    checkCudaErrors(cudaDeviceSynchronize());
+    for (auto &t : threads) {
+        t.join();
+    }                  
+    threads.clear();
+    }
+
+    for(int g = 0; g < N_GPUS; g++){
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        cudaDeviceSynchronize();
+    }
+
     #if MEAN_FLOW
             hostField.saveMacrHostField(INT_MAX, savingMacrVtk, savingMacrBin, true);
     #endif //MEAN_FLOW
@@ -206,7 +356,7 @@ int main() {
     saveSimInfo(step, MLUPS, deviceField.nnfPropsA);
     #endif
     #else
-    saveSimInfo(step, MLUPS, {});
+    // saveSimInfo(step, MLUPS, {});
     #endif //NON_NEWTONIAN_FLUID
 
     while (savingMacrVtk) std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -220,7 +370,17 @@ int main() {
     /* ------------------------------ FREE ------------------------------ */
 
     hostField.freeHostField();
-    deviceField.freeDeviceField();
+    for(int g = 0; g < N_GPUS; g++){
+        threads.emplace_back([&, g]() {
+            devices[g].freeDeviceField(g);
+        });
+    }
+
+    for (auto &t : threads) {
+        t.join();
+    }
+
+    threads.clear();
 
     // Free particle field
     #ifdef PARTICLE_MODEL
