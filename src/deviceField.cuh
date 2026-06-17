@@ -27,26 +27,36 @@ typedef struct deviceField{
         dfloat* d_BC_Fz[N_GPUS];
     #endif //_BC_FORCES
 
-    #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
-    fluidPhaseProps phasePropsA;             ///< Phase-1 fluid properties (viscous + viscoelastic)
+    fluidPhaseProps phasePropsA;             ///< Phase-1 fluid properties (viscous + viscoelastic), always present
     #ifdef PHI_DIST
     fluidPhaseProps phasePropsB;             ///< Phase-2 fluid properties (viscous + viscoelastic)
     #endif
-    #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
 
     void enablePeerAccessDeviceField(){
+        // Check if all GPUs are the same physical device (virtual multi-GPU emulation)
+        bool allSameGpu = true;
+        int firstGpu = GPUS_TO_USE[0];
+        for (int i = 1; i < N_GPUS; i++) {
+            if (GPUS_TO_USE[i] != firstGpu) { allSameGpu = false; break; }
+        }
+
+        if (allSameGpu) {
+            // Single physical GPU: no P2P needed. cudaMemcpyPeerAsync works as regular memcpy on same device.
+            printf("Virtual multi-GPU mode: all %d partitions on GPU %d (no P2P required)\n", N_GPUS, firstGpu);
+            return;
+        }
+
         for (int i = 0; i < N_GPUS; i++) {
             cudaSetDevice(GPUS_TO_USE[i]);
             for (int j = 0; j < N_GPUS; j++) {
-                if (i != j) {
-                    int canAccessPeer = 0;
-                    checkCudaErrors(cudaDeviceCanAccessPeer(&canAccessPeer, GPUS_TO_USE[i], GPUS_TO_USE[j]));
-                    if (canAccessPeer) {
-                        checkCudaErrors(cudaDeviceEnablePeerAccess(GPUS_TO_USE[j], 0));
-                        printf("P2P access enabled: GPU %d -> GPU %d\n", GPUS_TO_USE[i], GPUS_TO_USE[j]);
-                    } else {
-                        printf("⚠ GPU %d cannot access GPU %d via P2P\n", GPUS_TO_USE[i], GPUS_TO_USE[j]);
-                    }
+                if (i == j) continue;
+                int canAccessPeer = 0;
+                checkCudaErrors(cudaDeviceCanAccessPeer(&canAccessPeer, GPUS_TO_USE[i], GPUS_TO_USE[j]));
+                if (canAccessPeer) {
+                    checkCudaErrors(cudaDeviceEnablePeerAccess(GPUS_TO_USE[j], 0));
+                    printf("P2P access enabled: GPU %d -> GPU %d\n", GPUS_TO_USE[i], GPUS_TO_USE[j]);
+                } else {
+                    printf("⚠ GPU %d cannot access GPU %d via P2P\n", GPUS_TO_USE[i], GPUS_TO_USE[j]);
                 }
             }
         }
@@ -239,7 +249,9 @@ typedef struct deviceField{
         checkCudaErrors(cudaDeviceSynchronize());
         checkCudaErrors(cudaMemcpy(hostField.h_fMom + zOffset, d_fMom[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL * NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
         checkCudaErrors(cudaDeviceSynchronize());
-        printf("Synchorizing data back to host \n"); if(console_flush) fflush(stdout);
+
+        printf("Syncing data back to host (g=%d) \n", g); if(console_flush) fflush(stdout);
+
 
         // Free random numbers if initialized
         #ifdef RANDOM_NUMBERS
@@ -428,12 +440,6 @@ typedef struct deviceField{
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         int zStart = g * slice;
         size_t zOffset = zStart * NX * NY * NUMBER_MOMENTS;
-        printf("g=%d\n", g);
-        printf("device=%d\n", GPUS_TO_USE[g]);
-        printf("d_fMom[g]=%p\n", d_fMom[g]);
-        printf("h_fMom=%p\n", hostField.h_fMom);
-        printf("zOffset=%zu\n", zOffset);
-        printf("copy size=%zu\n", sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL * NUMBER_MOMENTS);
         checkCudaErrors(cudaMemcpy(hostField.h_fMom + zOffset, d_fMom[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
         
         // Copy BC forces arrays if enabled

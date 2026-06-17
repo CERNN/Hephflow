@@ -138,9 +138,8 @@ int main() {
     #endif //PARTICLE_MODEL
 
     /* ------------------------------ TIMER EVENTS  ------------------------------ */
-    // checkCudaErrors(cudaSetDevice(GPU_INDEX));
-    // cudaEvent_t start, stop, start_step, stop_step;
-    // initializeCudaEvents(start, stop, start_step, stop_step);
+    // Wall-clock timing for MLUPS (replaces CUDA event timing for multi-GPU compatibility)
+    auto simStartTime = std::chrono::high_resolution_clock::now();
     
     /* ------------------------------ LBM LOOP ------------------------------ */
 
@@ -307,10 +306,12 @@ int main() {
     }
 
 
-    //Calculate MLUPS
-
-    // dfloat MLUPS = recordElapsedTime(start_step, stop_step, step, ini_step, NUMBER_LBM_NODES);
-    // printf("MLUPS: %f\n",MLUPS); if(console_flush){fflush(stdout);}     
+    //Calculate MLUPS using wall-clock time (works for multi-GPU and virtual multi-GPU)
+    auto simEndTime = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> simElapsed = simEndTime - simStartTime;
+    dfloat MLUPS = (static_cast<dfloat>((step - ini_step) * NUMBER_LBM_NODES) / 1e6) / simElapsed.count();
+    printf("MLUPS: %f  (steps=%d, nodes=%zu, time=%.3fs)\n", MLUPS, step - ini_step, NUMBER_LBM_NODES, simElapsed.count());
+    if(console_flush) fflush(stdout);
     
     /* ------------------------------ POST ------------------------------ */
     for(int g = 0; g < N_GPUS; g++){
@@ -355,17 +356,12 @@ int main() {
             hostField.saveMacrHostField(INT_MAX, savingMacrVtk, savingMacrBin, true);
     #endif //MEAN_FLOW
     
-    //Save info file
-    //TODO: fix this later so it doesnt have defines
-    #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
+    //Save info file (always saved, regardless of fluid model)
     #ifdef PHI_DIST
     saveSimInfo(step, MLUPS, deviceField.phasePropsA, deviceField.phasePropsB, true);
     #else
     saveSimInfo(step, MLUPS, deviceField.phasePropsA);
     #endif
-    #else
-    // saveSimInfo(step, MLUPS, {});
-    #endif //NON_NEWTONIAN_FLUID
 
     while (savingMacrVtk) std::this_thread::sleep_for(std::chrono::milliseconds(1));
     #ifdef PARTICLE_MODEL
