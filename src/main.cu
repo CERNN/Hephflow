@@ -208,14 +208,14 @@ int main() {
 
         //------------------------- Auxiliary Kernels -------------------------
         if (N_GPUS == 1) {
-            devices[0].halfStepKernels(gridBlock, threadBlock, step, streamsLBM[0]);
+            devices[0].halfStepKernels(gridBlock, threadBlock, step, 0, streamsLBM[0]);
             #ifdef PARTICLE_MODEL
                 particleField.simulationStep(deviceField.d_fMom, step);
             #endif //PARTICLE_MODEL
         } else {
             for(int g = 0; g < N_GPUS; g++){
                 threads.emplace_back([&, g, slice]() {
-                    devices[g].halfStepKernels(gridBlock, threadBlock, step, streamsLBM[g]);
+                    devices[g].halfStepKernels(gridBlock, threadBlock, step, g, streamsLBM[g]);
                     #ifdef PARTICLE_MODEL
                         particleField.simulationStep(deviceField.d_fMom, step);
                     #endif //PARTICLE_MODEL

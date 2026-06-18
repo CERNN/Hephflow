@@ -101,10 +101,10 @@ typedef struct deviceField{
         // Offset within a global vector
         size_t zOffset = zStart * NX * NY * NUMBER_MOMENTS;
 
-        printf("GPU: %d\n", GPUS_TO_USE[g]);
-        printf("Start initialize: %d\n", zStart);
-        printf("End initialize: %d\n", zEnd);
-        printf("localNZ initialize: %d\n", localNZ);
+        printf("GPU: %d\n", (int)GPUS_TO_USE[g]);
+        printf("Start initialize: %d\n", (int)zStart);
+        printf("End initialize: %d\n", (int)zEnd);
+        printf("localNZ initialize: %d\n", (int)localNZ);
 
         // Random numbers initialization
         #ifdef RANDOM_NUMBERS 
@@ -264,7 +264,7 @@ typedef struct deviceField{
     }
 
     #ifdef CURVED_BOUNDARY_CONDITION
-    void updateCurvedBoundaryVelocitiesDeviceField(cudaStream_t stream){
+    void updateCurvedBoundaryVelocitiesDeviceField(int g, cudaStream_t stream){
         // Skip launch when no curved-boundary nodes were found; zero grid size is invalid
         if (numberCurvedBoundaryNodes == 0) {
             return;
@@ -272,13 +272,13 @@ typedef struct deviceField{
 
         const int curvedBCBlockSize = 256;
         const int curvedBCGridSize = (numberCurvedBoundaryNodes + curvedBCBlockSize - 1) / curvedBCBlockSize;
-        updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize, 0, stream>>>(d_curvedBC_array, d_fMom, numberCurvedBoundaryNodes);
+        updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize, 0, stream>>>(d_curvedBC_array[g], d_fMom[g], numberCurvedBoundaryNodes);
     }
     #endif //CURVED_BOUNDARY_CONDITION
 
     #ifdef DENSITY_CORRECTION
-    void mean_rhoDeviceField(size_t step, cudaStream_t stream){
-        mean_rho(d_fMom,step,d_mean_rho);
+    void mean_rhoDeviceField(size_t step, int g, cudaStream_t stream){
+        mean_rho(d_fMom[g], step, d_mean_rho[g], stream);
     }
     #endif //DENSITY_CORRECTION
 
@@ -372,10 +372,10 @@ typedef struct deviceField{
     }
 
     #ifdef PHI_DIST
-    void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock, cudaStream_t stream){
-        gpuComputePhaseNormals<<<gridBlock, threadBlock, 0, stream>>>(d_fMom, dNodeType);
-        gpuComputeChemicalPotential<<<gridBlock, threadBlock, 0, stream>>>(d_fMom, dNodeType);
-        gpuComputeLaplacianMu<<<gridBlock, threadBlock, 0, stream>>>(d_fMom, dNodeType);
+    void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock, int g, cudaStream_t stream){
+        gpuComputePhaseNormals<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g]);
+        gpuComputeChemicalPotential<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g]);
+        gpuComputeLaplacianMu<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g]);
     }
     #endif //PHI_DIST
 
@@ -383,28 +383,28 @@ typedef struct deviceField{
         swapGhostInterfaces(ghostInterface[g]);
     }
 
-    void halfStepKernels(dim3 gridBlock, dim3 threadBlock, size_t step, cudaStream_t stream){
+    void halfStepKernels(dim3 gridBlock, dim3 threadBlock, size_t step, int g, cudaStream_t stream){
         #ifdef LOCAL_FORCES
-            gpuResetMacroForcesDeviceField(gridBlock, threadBlock, stream);
+            gpuResetMacroForcesDeviceField(gridBlock, threadBlock, g, stream);
             CHECK_KERNEL_ERR("Force Reset kernel");
         #endif //LOCAL_FORCES
         #ifdef CURVED_BOUNDARY_CONDITION
-            updateCurvedBoundaryVelocitiesDeviceField(stream);
+            updateCurvedBoundaryVelocitiesDeviceField(g, stream);
             CHECK_KERNEL_ERR("Curved BC kernel");
         #endif //CURVED_BOUNDARY_CONDITION
         #ifdef PHI_DIST
-            computePhaseNormalsDeviceField(gridBlock, threadBlock, stream);
+            computePhaseNormalsDeviceField(gridBlock, threadBlock, g, stream);
             CHECK_KERNEL_ERR("Phi gradients kernel");
         #endif //PHI_DIST
         #ifdef DENSITY_CORRECTION
-            mean_rhoDeviceField(step, stream);
+            mean_rhoDeviceField(step, g, stream);
             CHECK_KERNEL_ERR("Density correction kernel");
         #endif //DENSITY_CORRECTION
     }
     
     #ifdef LOCAL_FORCES
-    void gpuResetMacroForcesDeviceField(dim3 gridBlock, dim3 threadBlock, cudaStream_t stream){
-        gpuResetMacroForces<<<gridBlock, threadBlock, 0, stream>>>(d_fMom);
+    void gpuResetMacroForcesDeviceField(dim3 gridBlock, dim3 threadBlock, int g, cudaStream_t stream){
+        gpuResetMacroForces<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g]);
     }
     #endif //LOCAL_FORCES
 
