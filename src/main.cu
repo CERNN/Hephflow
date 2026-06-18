@@ -43,7 +43,7 @@ int main() {
     int step = 0;
 
     dfloat** randomNumbers = nullptr;
-    randomNumbers = (dfloat**)malloc(sizeof(dfloat*) * N_GPUS);
+    randomNumbers = (dfloat**)calloc(N_GPUS, sizeof(dfloat*));
 
     hostField.allocateHostMemoryHostField();
     
@@ -129,6 +129,11 @@ int main() {
     }
 
     threads.clear();
+
+    #ifdef RANDOM_NUMBERS
+        free(randomNumbers);
+        randomNumbers = nullptr;
+    #endif
 
     int ini_step = step;
 

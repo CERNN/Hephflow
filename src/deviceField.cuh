@@ -109,7 +109,7 @@ typedef struct deviceField{
         // Random numbers initialization
         #ifdef RANDOM_NUMBERS 
             if(console_flush) fflush(stdout);
-            checkCudaErrors(cudaMallocManaged((void**)&randomNumbers[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL));
+            checkCudaErrors(cudaMalloc((void**)&randomNumbers[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL));
             initializationRandomNumbers(randomNumbers[g], CURAND_SEED);
             checkCudaErrors(cudaDeviceSynchronize());
             getLastCudaError("random numbers transfer error");
@@ -256,8 +256,9 @@ typedef struct deviceField{
         // Free random numbers if initialized
         #ifdef RANDOM_NUMBERS
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-            cudaFree(randomNumbers[g]);
-            free(randomNumbers);
+            checkCudaErrors(cudaFree(randomNumbers[g]));
+            randomNumbers[g] = nullptr;
+            // Do NOT call free(randomNumbers) here - the shared pointer array is freed in main.cu after threads join
             printf("Random numbers free \n"); if(console_flush) fflush(stdout);
         #endif //RANDOM_NUMBERS
         
