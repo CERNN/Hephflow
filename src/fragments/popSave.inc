@@ -182,31 +182,3 @@ const int storeBzFront =  (stepParity ? bz : bzp1);
             #endif //D3Q27
         }
     }
-
-    // if (INTERFACE_BC_BACK){ //b
-    //     storeGhostZBack[idxPopZ(tx, ty, 0, bx, by, bz)] = pop[ 6];
-    //     storeGhostZBack[idxPopZ(tx, ty, 1, bx, by, bz)] = pop[10];
-    //     storeGhostZBack[idxPopZ(tx, ty, 2, bx, by, bz)] = pop[12];
-    //     storeGhostZBack[idxPopZ(tx, ty, 3, bx, by, bz)] = pop[15];
-    //     storeGhostZBack[idxPopZ(tx, ty, 4, bx, by, bz)] = pop[17];
-    //     #ifdef D3Q27
-    //     storeGhostZBack[idxPopZ(tx, ty, 5, bx, by, bz)] = pop[20];
-    //     storeGhostZBack[idxPopZ(tx, ty, 6, bx, by, bz)] = pop[21];
-    //     storeGhostZBack[idxPopZ(tx, ty, 7, bx, by, bz)] = pop[24];
-    //     storeGhostZBack[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[26];
-    //     #endif //D3Q27
-    // }
-    
-    // if (INTERFACE_BC_FRONT){
-    //     storeGhostZFront[idxPopZ(tx, ty, 0, bx, by, bz)] = pop[ 5];
-    //     storeGhostZFront[idxPopZ(tx, ty, 1, bx, by, bz)] = pop[ 9];
-    //     storeGhostZFront[idxPopZ(tx, ty, 2, bx, by, bz)] = pop[11];
-    //     storeGhostZFront[idxPopZ(tx, ty, 3, bx, by, bz)] = pop[16];
-    //     storeGhostZFront[idxPopZ(tx, ty, 4, bx, by, bz)] = pop[18];
-    //     #ifdef D3Q27
-    //     storeGhostZFront[idxPopZ(tx, ty, 5, bx, by, bz)] = pop[19];
-    //     storeGhostZFront[idxPopZ(tx, ty, 6, bx, by, bz)] = pop[22];
-    //     storeGhostZFront[idxPopZ(tx, ty, 7, bx, by, bz)] = pop[23];
-    //     storeGhostZFront[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[25];
-    //     #endif //D3Q27
-    // }

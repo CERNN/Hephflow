@@ -356,7 +356,7 @@ typedef struct deviceField{
         const size_t topOffset = (size_t)(NUM_BLOCK_Z_LOCAL - 1) * planeSize;
 
         checkCudaErrors(cudaMemcpyPeerAsync(
-            allDevices[g].ghostInterface[g].popAux.Z_0 + topOffset,
+            allDevices[g].ghostInterface[g].popAux.Z_0,
             GPUS_TO_USE[g],
             allDevices[gNext].ghostInterface[gNext].pop.Z_0,
             GPUS_TO_USE[gNext],

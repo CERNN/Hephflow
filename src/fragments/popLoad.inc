@@ -119,16 +119,16 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
         { // f
             // Condition for reading the boundary from the neighboring GPU.
             if (bz == top) {
-                pop[ 6] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 0, bx, by, top)];
-                pop[10] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 1, bx, by, top)];
-                pop[12] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 2, bx, by, top)];
-                pop[15] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 3, bx, by, top)];
-                pop[17] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 4, bx, by, top)];
+                pop[ 6] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 0, bx, by, 0)];
+                pop[10] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 1, bx, by, 0)];
+                pop[12] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 2, bx, by, 0)];
+                pop[15] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 3, bx, by, 0)];
+                pop[17] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 4, bx, by, 0)];
                 #ifdef D3Q27
-                pop[20] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 5, bx, by, top)];
-                pop[21] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 6, bx, by, top)];
-                pop[24] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 7, bx, by, top)];
-                pop[26] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 8, bx, by, top)];
+                pop[20] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 5, bx, by, 0)];
+                pop[21] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 6, bx, by, 0)];
+                pop[24] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 7, bx, by, 0)];
+                pop[26] = ghostInterface.popAux.Z_0[idxPopZ(tx, ty, 8, bx, by, 0)];
                 #endif // D3Q27
             } else {
                 pop[ 6] = loadGhostZBack[idxPopZ(tx, ty, 0, bx, by, loadBzFront)];
@@ -227,16 +227,16 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
         }else if (tz == (BLOCK_NZ - 1)){ //f
             //Condition for reading the boundary from the neighboring GPU.
             if(bz == top){
-                pop[ 6] = ghostInterface.popAux.Z_0[idxPopZ(tx    , ty   ,   0, bx         , by        , top)];
-                pop[10] = ghostInterface.popAux.Z_0[idxPopZ(txp1  , ty   ,   1, bxAtEast   , by        , top)];
-                pop[12] = ghostInterface.popAux.Z_0[idxPopZ(tx    , typ1 ,   2, bx         , byAtNorth , top)];
-                pop[15] = ghostInterface.popAux.Z_0[idxPopZ(txm1  , ty   ,   3, bxAtWest   , by        , top)];
-                pop[17] = ghostInterface.popAux.Z_0[idxPopZ(tx    , tym1 ,   4, bx         , byAtSouth , top)];
+                pop[ 6] = ghostInterface.popAux.Z_0[idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
+                pop[10] = ghostInterface.popAux.Z_0[idxPopZ(txp1  , ty   ,   1, bxAtEast   , by        , 0)];
+                pop[12] = ghostInterface.popAux.Z_0[idxPopZ(tx    , typ1 ,   2, bx         , byAtNorth , 0)];
+                pop[15] = ghostInterface.popAux.Z_0[idxPopZ(txm1  , ty   ,   3, bxAtWest   , by        , 0)];
+                pop[17] = ghostInterface.popAux.Z_0[idxPopZ(tx    , tym1 ,   4, bx         , byAtSouth , 0)];
                 #ifdef D3Q27
-                pop[20] = ghostInterface.popAux.Z_0[idxPopZ(txp1  , typ1 ,   5, bxAtEast   , byAtNorth , top)];
-                pop[21] = ghostInterface.popAux.Z_0[idxPopZ(txm1  , tym1 ,   6, bxAtWest   , byAtSouth , top)];
-                pop[24] = ghostInterface.popAux.Z_0[idxPopZ(txp1  , tym1 ,   7, bxAtEast   , byAtSouth , top)];
-                pop[26] = ghostInterface.popAux.Z_0[idxPopZ(txm1  , typ1 ,   8, bxAtWest   , byAtNorth , top)];
+                pop[20] = ghostInterface.popAux.Z_0[idxPopZ(txp1  , typ1 ,   5, bxAtEast   , byAtNorth , 0)];
+                pop[21] = ghostInterface.popAux.Z_0[idxPopZ(txm1  , tym1 ,   6, bxAtWest   , byAtSouth , 0)];
+                pop[24] = ghostInterface.popAux.Z_0[idxPopZ(txp1  , tym1 ,   7, bxAtEast   , byAtSouth , 0)];
+                pop[26] = ghostInterface.popAux.Z_0[idxPopZ(txm1  , typ1 ,   8, bxAtWest   , byAtNorth , 0)];
                 #endif //D3Q27
             }else{
                 pop[ 6] = loadGhostZFront[idxPopZ(tx    , ty   ,   0, bx         , by        , loadBzFront)];
@@ -254,59 +254,3 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
            
         }
     }
-
-    // if (tz == 0) {
-    //     if (bz == 0) {
-    //         pop[ 5] = ghostInterface.popAux.Z_1[idxPopZ(tx  , ty  , 0, bx                             , by                          , 0)];
-    //         pop[ 9] = ghostInterface.popAux.Z_1[idxPopZ(txm1, ty  , 1, ((tx==0)?bxm1:bx)              , by                          , 0)];
-    //         pop[11] = ghostInterface.popAux.Z_1[idxPopZ(tx  , tym1, 2, bx                             , ((ty==0)?bym1:by)           , 0)];
-    //         pop[16] = ghostInterface.popAux.Z_1[idxPopZ(txp1, ty  , 3, ((tx==BLOCK_NX-1)?bxp1:bx)     , by                          , 0)];
-    //         pop[18] = ghostInterface.popAux.Z_1[idxPopZ(tx  , typ1, 4, bx                             , ((ty==BLOCK_NY-1)?byp1:by)  , 0)];
-    //         #ifdef D3Q27
-    //         pop[19] = ghostInterface.popAux.Z_1[idxPopZ(txm1, tym1, 5, ((tx==0)?bxm1:bx)              , ((ty==0)?bym1:by)           , 0)];
-    //         pop[22] = ghostInterface.popAux.Z_1[idxPopZ(txp1, typ1, 6, ((tx==BLOCK_NX-1)?bxp1:bx)     , ((ty==BLOCK_NY-1)?byp1:by) , 0)];
-    //         pop[23] = ghostInterface.popAux.Z_1[idxPopZ(txm1, typ1, 7, ((tx==0)?bxm1:bx)              , ((ty==BLOCK_NY-1)?byp1:by) , 0)];
-    //         pop[25] = ghostInterface.popAux.Z_1[idxPopZ(txp1, tym1, 8, ((tx==BLOCK_NX-1)?bxp1:bx)     , ((ty==0)?bym1:by)          , 0)];
-    //         #endif
-    //     } else {
-    //         pop[ 5] = ghostInterface.pop.Z_1[idxPopZ(tx  , ty  , 0, bx                             , by                          , bzm1)];
-    //         pop[ 9] = ghostInterface.pop.Z_1[idxPopZ(txm1, ty  , 1, ((tx==0)?bxm1:bx)              , by                          , bzm1)];
-    //         pop[11] = ghostInterface.pop.Z_1[idxPopZ(tx  , tym1, 2, bx                             , ((ty==0)?bym1:by)           , bzm1)];
-    //         pop[16] = ghostInterface.pop.Z_1[idxPopZ(txp1, ty  , 3, ((tx==BLOCK_NX-1)?bxp1:bx)     , by                          , bzm1)];
-    //         pop[18] = ghostInterface.pop.Z_1[idxPopZ(tx  , typ1, 4, bx                             , ((ty==BLOCK_NY-1)?byp1:by)  , bzm1)];
-    //         #ifdef D3Q27
-    //         pop[19] = ghostInterface.pop.Z_1[idxPopZ(txm1, tym1, 5, ((tx==0)?bxm1:bx)              , ((ty==0)?bym1:by)           , bzm1)];
-    //         pop[22] = ghostInterface.pop.Z_1[idxPopZ(txp1, typ1, 6, ((tx==BLOCK_NX-1)?bxp1:bx)     , ((ty==BLOCK_NY-1)?byp1:by) , bzm1)];
-    //         pop[23] = ghostInterface.pop.Z_1[idxPopZ(txm1, typ1, 7, ((tx==0)?bxm1:bx)              , ((ty==BLOCK_NY-1)?byp1:by) , bzm1)];
-    //         pop[25] = ghostInterface.pop.Z_1[idxPopZ(txp1, tym1, 8, ((tx==BLOCK_NX-1)?bxp1:bx)     , ((ty==0)?bym1:by)          , bzm1)];
-    //         #endif
-    //     }
-    // } else if (tz == BLOCK_NZ-1) {
-    //     if (bz == top) {
-    //         pop[ 6] = ghostInterface.popAux.Z_0[idxPopZ(tx  , ty  , 0, bx                             , by                          , top)];
-    //         pop[10] = ghostInterface.popAux.Z_0[idxPopZ(txp1, ty  , 1, ((tx==BLOCK_NX-1)?bxp1:bx)     , by                          , top)];
-    //         pop[12] = ghostInterface.popAux.Z_0[idxPopZ(tx  , typ1, 2, bx                             , ((ty==BLOCK_NY-1)?byp1:by)  , top)];
-    //         pop[15] = ghostInterface.popAux.Z_0[idxPopZ(txm1, ty  , 3, ((tx==0)?bxm1:bx)              , by                          , top)];
-    //         pop[17] = ghostInterface.popAux.Z_0[idxPopZ(tx  , tym1, 4, bx                             , ((ty==0)?bym1:by)           , top)];
-    //         #ifdef D3Q27
-    //         pop[20] = ghostInterface.popAux.Z_0[idxPopZ(txp1, typ1, 5, ((tx==BLOCK_NX-1)?bxp1:bx)     , ((ty==BLOCK_NY-1)?byp1:by) , top)];
-    //         pop[21] = ghostInterface.popAux.Z_0[idxPopZ(txm1, tym1, 6, ((tx==0)?bxm1:bx)              , ((ty==0)?bym1:by)          , top)];
-    //         pop[24] = ghostInterface.popAux.Z_0[idxPopZ(txp1, tym1, 7, ((tx==BLOCK_NX-1)?bxp1:bx)     , ((ty==0)?bym1:by)          , top)];
-    //         pop[26] = ghostInterface.popAux.Z_0[idxPopZ(txm1, typ1, 8, ((tx==0)?bxm1:bx)              , ((ty==BLOCK_NY-1)?byp1:by) , top)];
-    //         #endif
-    //     } else {
-    //         pop[ 6] = ghostInterface.pop.Z_0[idxPopZ(tx  , ty  , 0, bx                             , by                          , bzp1)];
-    //         pop[10] = ghostInterface.pop.Z_0[idxPopZ(txp1, ty  , 1, ((tx==BLOCK_NX-1)?bxp1:bx)     , by                          , bzp1)];
-    //         pop[12] = ghostInterface.pop.Z_0[idxPopZ(tx  , typ1, 2, bx                             , ((ty==BLOCK_NY-1)?byp1:by)  , bzp1)];
-    //         pop[15] = ghostInterface.pop.Z_0[idxPopZ(txm1, ty  , 3, ((tx==0)?bxm1:bx)              , by                          , bzp1)];
-    //         pop[17] = ghostInterface.pop.Z_0[idxPopZ(tx  , tym1, 4, bx                             , ((ty==0)?bym1:by)           , bzp1)];
-    //         #ifdef D3Q27
-    //         pop[20] = ghostInterface.pop.Z_0[idxPopZ(txp1, typ1, 5, ((tx==BLOCK_NX-1)?bxp1:bx)     , ((ty==BLOCK_NY-1)?byp1:by) , bzp1)];
-    //         pop[21] = ghostInterface.pop.Z_0[idxPopZ(txm1, tym1, 6, ((tx==0)?bxm1:bx)              , ((ty==0)?bym1:by)          , bzp1)];
-    //         pop[24] = ghostInterface.pop.Z_0[idxPopZ(txp1, tym1, 7, ((tx==BLOCK_NX-1)?bxp1:bx)     , ((ty==0)?bym1:by)          , bzp1)];
-    //         pop[26] = ghostInterface.pop.Z_0[idxPopZ(txm1, typ1, 8, ((tx==0)?bxm1:bx)              , ((ty==BLOCK_NY-1)?byp1:by) , bzp1)];
-    //         #endif
-    //     }
-    // }
-
-

@@ -330,8 +330,8 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.pop.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF);
     cudaMalloc((void **)&(ghostInterface.pop.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF);
     cudaMalloc((void **)&(ghostInterface.pop.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF);
-    cudaMalloc((void **)&(ghostInterface.popAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF);
-    cudaMalloc((void **)&(ghostInterface.popAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF);
+    cudaMalloc((void **)&(ghostInterface.popAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_AUX * QF);
+    cudaMalloc((void **)&(ghostInterface.popAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_AUX * QF);
 
     memAllocated = QF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);  // AA: ghost only
 

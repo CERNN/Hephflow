@@ -111,6 +111,10 @@ const size_t NUMBER_GHOST_FACE_XY_LOCAL = BLOCK_NX*BLOCK_NY*NUM_BLOCK_X*NUM_BLOC
 const size_t NUMBER_GHOST_FACE_XZ_LOCAL = BLOCK_NX*BLOCK_NZ*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z_LOCAL;
 const size_t NUMBER_GHOST_FACE_YZ_LOCAL = BLOCK_NY*BLOCK_NZ*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z_LOCAL;
 
+// Single-plane size for P2P inbox buffers (Aux). Only 1 plane is ever received
+// from a neighbor GPU; allocating NUM_BLOCK_Z_LOCAL planes is wasteful.
+const size_t NUMBER_GHOST_FACE_XY_AUX = BLOCK_NX*BLOCK_NY*NUM_BLOCK_X*NUM_BLOCK_Y;
+
 /* ======================== MEMORY ALLOCATION SIZES ======================== */
 
 const size_t MEM_SIZE_BLOCK_LBM = sizeof(dfloat) * BLOCK_LBM_SIZE * NUMBER_MOMENTS;
