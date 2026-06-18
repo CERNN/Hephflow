@@ -1394,10 +1394,10 @@ __host__ void hostInitialization_nodeType(
                 idxScalarBlock(
                 x % BLOCK_NX,
                 y % BLOCK_NY,
-                (zLocal - 1) % BLOCK_NZ,
+                zLocal % BLOCK_NZ,
                 x / BLOCK_NX,
                 y / BLOCK_NY,
-                (zLocal - 1) / BLOCK_NZ
+                zLocal / BLOCK_NZ
                 );
                 
                 
