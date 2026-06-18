@@ -5,7 +5,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     // Unpack parameters from struct (passed by value - CUDA optimized!)
     dfloat *fMom = params.fMom;
     unsigned int *dNodeType = params.dNodeType;
-    ghostInterfaceData ghostInterface = params.ghostInterface;
+    const ghostFacePtrs ghostInterface = params.pop;  // 8 ptrs (64B) - fits registers
     unsigned int step = params.step;
     bool save = params.save;
     size_t localNZ = params.localNZ;

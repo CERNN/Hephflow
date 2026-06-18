@@ -509,6 +509,24 @@ struct ParticleWallForces {
 // ============================================================================
 
 /**
+ * @struct ghostFacePtrs
+ * @brief Minimal device-side ghost face pointers
+ * @details Extracted from ghostInterfaceData to avoid local memory spills.
+ *          The full ghostInterfaceData is never needed on device;
+ *          only these 8 face pointers are read/written by the kernel.
+ */
+struct ghostFacePtrs {
+    dfloat* X_0;    ///< Own west face (pop store / neighbor east face load)
+    dfloat* X_1;    ///< Own east face
+    dfloat* Y_0;    ///< Own south face
+    dfloat* Y_1;    ///< Own north face
+    dfloat* Z_0;    ///< Own back face (Z-direction, intra-GPU)
+    dfloat* Z_1;    ///< Own front face (Z-direction, intra-GPU)
+    dfloat* auxZ_0; ///< Received halo from next GPU (top)
+    dfloat* auxZ_1; ///< Received halo from prev GPU (bottom)
+};
+
+/**
  * @struct DeviceKernelParams
  * @brief Parameters for gpuMomCollisionStream kernel
  * @details Consolidates all parameters previously passed via scattered macros
@@ -518,7 +536,7 @@ struct DeviceKernelParams {
     // Core parameters
     dfloat *fMom;                           ///< Device array of macroscopic moments
     unsigned int *dNodeType;                ///< Device array of node type information
-    ghostInterfaceData ghostInterface;      ///< Ghost interface block transfer data
+    ghostFacePtrs pop;                      ///< Ghost face pointers (8 ptrs, no host data)
     unsigned int step;                      ///< Current time step
     bool save;                              ///< Whether to save data
     size_t localNZ; 

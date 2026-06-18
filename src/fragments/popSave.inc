@@ -1,9 +1,9 @@
-dfloat* storeGhostXWest  = ghostInterface.pop.X_0; // Write own west face
-dfloat* storeGhostXEast  = ghostInterface.pop.X_1; // Write own east face
-dfloat* storeGhostYSouth = ghostInterface.pop.Y_0; // Write own south face
-dfloat* storeGhostYNorth = ghostInterface.pop.Y_1; // Write own north face
-dfloat* storeGhostZBack  = ghostInterface.pop.Z_0; // Write own back face
-dfloat* storeGhostZFront = ghostInterface.pop.Z_1; // Write own front face
+dfloat* storeGhostXWest  = ghostInterface.X_0; // Write own west face
+dfloat* storeGhostXEast  = ghostInterface.X_1; // Write own east face
+dfloat* storeGhostYSouth = ghostInterface.Y_0; // Write own south face
+dfloat* storeGhostYNorth = ghostInterface.Y_1; // Write own north face
+dfloat* storeGhostZBack  = ghostInterface.Z_0; // Write own back face
+dfloat* storeGhostZFront = ghostInterface.Z_1; // Write own front face
 
 // Parity-aware block indices for ghost writes (AA scheme)
 const int storeBxWest  =  (stepParity ? bx : bxm1);
@@ -151,9 +151,9 @@ const int storeBzFront =  (stepParity ? bz : bzp1);
         // In stepParity=false the AA scheme would normally write these to
         // pop.Z_1[-1] and pop.Z_0[top+1] which are wrong for the transfer and
         // out of bounds.  Clamp them to the fixed locations the transfer expects.
-        dfloat* storeZBack_edge  = (bz == 0)  ? ghostInterface.pop.Z_0 : storeGhostZFront;
+        dfloat* storeZBack_edge  = (bz == 0)  ? ghostInterface.Z_0 : storeGhostZFront;
         const int     storeBzBack_edge  = (bz == 0)  ? 0   : storeBzBack;
-        dfloat* storeZFront_edge = (bz == top) ? ghostInterface.pop.Z_1 : storeGhostZBack;
+        dfloat* storeZFront_edge = (bz == top) ? ghostInterface.Z_1 : storeGhostZBack;
         const int     storeBzFront_edge = (bz == top) ? top : storeBzFront;
         
         if (INTERFACE_BC_BACK){ //b

@@ -292,7 +292,14 @@ typedef struct deviceField{
 
         params.fMom = d_fMom[g];
         params.dNodeType = dNodeType[g];
-        params.ghostInterface = ghostInterface[g];
+        params.pop.X_0    = ghostInterface[g].pop.X_0;
+        params.pop.X_1    = ghostInterface[g].pop.X_1;
+        params.pop.Y_0    = ghostInterface[g].pop.Y_0;
+        params.pop.Y_1    = ghostInterface[g].pop.Y_1;
+        params.pop.Z_0    = ghostInterface[g].pop.Z_0;
+        params.pop.Z_1    = ghostInterface[g].pop.Z_1;
+        params.pop.auxZ_0 = ghostInterface[g].popAux.Z_0;
+        params.pop.auxZ_1 = ghostInterface[g].popAux.Z_1;
         params.step = step;
         params.save = save;
         params.zStart = zStart;
