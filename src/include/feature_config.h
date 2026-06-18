@@ -10,11 +10,11 @@
 
 /* ============================== MODEL MACROS ============================= */
 
-#if defined(POWERLAW) || defined(BINGHAM) || defined(BI_VISCOSITY)
+#if defined(POWERLAW) || defined(BINGHAM) || defined(BI_VISCOSITY) || defined(HERSCHEL_BULKLEY) || defined(KEE_TURCOTEE)
     #define OMEGA_FIELD
     #define NON_NEWTONIAN_FLUID
     #define COMPUTE_SHEAR
-#endif  //POWERLAW || BINGHAM || BI_VISCOSITY
+#endif  //POWERLAW || BINGHAM || BI_VISCOSITY || HERSCHEL_BULKLEY || KEE_TURCOTEE
 
 #if defined(LAMBDA_MODEL)
     #define OMEGA_FIELD
