@@ -12,7 +12,7 @@ constexpr dfloat BETA = 0.1;                // Viscosity ratio (R_v)
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- GRID DIMENSIONS --------------------- */
-constexpr int N = 256 * SCALE;              // Base grid size
+constexpr int N = 128 * SCALE;              // Base grid size
 constexpr int NX = N;                       // Grid size in X
 constexpr int NY = N;                       // Grid size in Y
 constexpr int NZ = N;                       // Grid size in Z
@@ -30,7 +30,7 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int CONFORMATION_SWITCH = 0;      // Step to switch on conformation
-constexpr int N_STEPS = 100;//(int)(20.0/Ct)+1;   // Total simulation steps
+constexpr int N_STEPS = (int)(20.0/Ct)+1;   // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- BODY FORCES --------------------- */
@@ -65,16 +65,16 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 /* ========== FENE-P VISCOELASTIC MODEL CONFIGURATION ========== */
 #ifdef FENE_P
 #define OLDROYD_B
-// #define CONVECTION_DIFFUSION_TRANSPORT
+#define CONVECTION_DIFFUSION_TRANSPORT
 #define D3G19
 
-// #define CONFORMATION_TENSOR    
-// #define A_XX_DIST
-// #define A_XY_DIST
-// #define A_XZ_DIST
-// #define A_YY_DIST
-// #define A_YZ_DIST
-// #define A_ZZ_DIST
+#define CONFORMATION_TENSOR    
+#define A_XX_DIST
+#define A_XY_DIST
+#define A_XZ_DIST
+#define A_YY_DIST
+#define A_YZ_DIST
+#define A_ZZ_DIST
 
 #define COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
 #define COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
