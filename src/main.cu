@@ -179,16 +179,20 @@ int main() {
         }
 
         //------------------------- Main LBM Kernels -------------------------
-        for(int g = 0; g < N_GPUS; g++){
-            threads.emplace_back([&, g, slice]() {
-                checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-                devices[g].gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save, g, slice, streamsLBM[g]);
-            });
+        if (N_GPUS == 1) {
+            // Direct call — zero thread overhead for single-GPU builds
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[0]));
+            devices[0].gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save, 0, slice, streamsLBM[0]);
+        } else {
+            for(int g = 0; g < N_GPUS; g++){
+                threads.emplace_back([&, g, slice]() {
+                    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+                    devices[g].gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step, saveField.save, g, slice, streamsLBM[g]);
+                });
+            }
+            for (auto &t : threads) { t.join(); }
+            threads.clear();
         }
-        for (auto &t : threads) {
-            t.join();
-        }                  
-        threads.clear();
 
        
         for (int g = 0; g < N_GPUS; g++) {
@@ -203,19 +207,23 @@ int main() {
         CHECK_KERNEL_ERR("Stream Collision kernel");
 
         //------------------------- Auxiliary Kernels -------------------------
-        for(int g = 0; g < N_GPUS; g++){
-            threads.emplace_back([&, g, slice]() {
-                devices[g].halfStepKernels(gridBlock, threadBlock, step, streamsLBM[g]);
-                #ifdef PARTICLE_MODEL
-                    particleField.simulationStep(deviceField.d_fMom, step);
-                #endif //PARTICLE_MODEL
-            });
+        if (N_GPUS == 1) {
+            devices[0].halfStepKernels(gridBlock, threadBlock, step, streamsLBM[0]);
+            #ifdef PARTICLE_MODEL
+                particleField.simulationStep(deviceField.d_fMom, step);
+            #endif //PARTICLE_MODEL
+        } else {
+            for(int g = 0; g < N_GPUS; g++){
+                threads.emplace_back([&, g, slice]() {
+                    devices[g].halfStepKernels(gridBlock, threadBlock, step, streamsLBM[g]);
+                    #ifdef PARTICLE_MODEL
+                        particleField.simulationStep(deviceField.d_fMom, step);
+                    #endif //PARTICLE_MODEL
+                });
+            }
+            for (auto &t : threads) { t.join(); }
+            threads.clear();
         }
-
-        for (auto &t : threads) {
-            t.join();
-        }                  
-        threads.clear();
 
         //------------------------- Saving Data -------------------------
         // Saving checkpoint     
