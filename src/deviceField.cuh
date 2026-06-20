@@ -27,6 +27,41 @@ typedef struct deviceField{
         dfloat* d_BC_Fz;
     #endif //_BC_FORCES
 
+    #ifdef SAVE_LOCAL_FORCES
+        dfloat* d_Local_Fx;
+        dfloat* d_Local_Fy;
+        dfloat* d_Local_Fz;
+        #ifdef SECOND_DIST
+        dfloat* d_Source_C;
+        #endif
+        #ifdef PHI_DIST
+        dfloat* d_Source_Phi;
+        #endif
+        #ifdef LAMBDA_DIST
+        dfloat* d_Source_Lambda;
+        #endif
+        #ifdef CONFORMATION_TENSOR
+            #ifdef A_XX_DIST
+        dfloat* d_Source_Gxx;
+            #endif
+            #ifdef A_XY_DIST
+        dfloat* d_Source_Gxy;
+            #endif
+            #ifdef A_XZ_DIST
+        dfloat* d_Source_Gxz;
+            #endif
+            #ifdef A_YY_DIST
+        dfloat* d_Source_Gyy;
+            #endif
+            #ifdef A_YZ_DIST
+        dfloat* d_Source_Gyz;
+            #endif
+            #ifdef A_ZZ_DIST
+        dfloat* d_Source_Gzz;
+            #endif
+        #endif //CONFORMATION_TENSOR
+    #endif //SAVE_LOCAL_FORCES
+
     #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
     fluidPhaseProps phasePropsA;             ///< Phase-1 fluid properties (viscous + viscoelastic)
     #ifdef PHI_DIST
@@ -49,6 +84,51 @@ typedef struct deviceField{
         cudaMalloc((void**)&d_BC_Fz, MEM_SIZE_SCALAR);
         memAllocated += 3 * MEM_SIZE_SCALAR;
         #endif //BC_FORCES
+
+        #ifdef SAVE_LOCAL_FORCES
+        cudaMalloc((void**)&d_Local_Fx, MEM_SIZE_SCALAR);
+        cudaMalloc((void**)&d_Local_Fy, MEM_SIZE_SCALAR);
+        cudaMalloc((void**)&d_Local_Fz, MEM_SIZE_SCALAR);
+        memAllocated += 3 * MEM_SIZE_SCALAR;
+            #ifdef SECOND_DIST
+        cudaMalloc((void**)&d_Source_C, MEM_SIZE_SCALAR);
+        memAllocated += MEM_SIZE_SCALAR;
+            #endif
+            #ifdef PHI_DIST
+        cudaMalloc((void**)&d_Source_Phi, MEM_SIZE_SCALAR);
+        memAllocated += MEM_SIZE_SCALAR;
+            #endif
+            #ifdef LAMBDA_DIST
+        cudaMalloc((void**)&d_Source_Lambda, MEM_SIZE_SCALAR);
+        memAllocated += MEM_SIZE_SCALAR;
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+        cudaMalloc((void**)&d_Source_Gxx, MEM_SIZE_SCALAR);
+        memAllocated += MEM_SIZE_SCALAR;
+                #endif
+                #ifdef A_XY_DIST
+        cudaMalloc((void**)&d_Source_Gxy, MEM_SIZE_SCALAR);
+        memAllocated += MEM_SIZE_SCALAR;
+                #endif
+                #ifdef A_XZ_DIST
+        cudaMalloc((void**)&d_Source_Gxz, MEM_SIZE_SCALAR);
+        memAllocated += MEM_SIZE_SCALAR;
+                #endif
+                #ifdef A_YY_DIST
+        cudaMalloc((void**)&d_Source_Gyy, MEM_SIZE_SCALAR);
+        memAllocated += MEM_SIZE_SCALAR;
+                #endif
+                #ifdef A_YZ_DIST
+        cudaMalloc((void**)&d_Source_Gyz, MEM_SIZE_SCALAR);
+        memAllocated += MEM_SIZE_SCALAR;
+                #endif
+                #ifdef A_ZZ_DIST
+        cudaMalloc((void**)&d_Source_Gzz, MEM_SIZE_SCALAR);
+        memAllocated += MEM_SIZE_SCALAR;
+                #endif
+            #endif //CONFORMATION_TENSOR
+        #endif //SAVE_LOCAL_FORCES
 
         printf("Device Memory Allocated for Bulk flow: %.2f MB \n", (float)memAllocated /(1024.0 * 1024.0));
     }
@@ -170,6 +250,39 @@ typedef struct deviceField{
             gpuInitialization_force<<<gridBlock, threadBlock>>>(d_BC_Fx, d_BC_Fy, d_BC_Fz);
         #endif //BC_FORCES
 
+        #ifdef SAVE_LOCAL_FORCES
+            gpuInitialization_force<<<gridBlock, threadBlock>>>(d_Local_Fx, d_Local_Fy, d_Local_Fz);
+            #ifdef SECOND_DIST
+            gpuInitialization_force<<<gridBlock, threadBlock>>>(d_Source_C, d_Source_C, d_Source_C);
+            #endif
+            #ifdef PHI_DIST
+            gpuInitialization_force<<<gridBlock, threadBlock>>>(d_Source_Phi, d_Source_Phi, d_Source_Phi);
+            #endif
+            #ifdef LAMBDA_DIST
+            gpuInitialization_force<<<gridBlock, threadBlock>>>(d_Source_Lambda, d_Source_Lambda, d_Source_Lambda);
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+            gpuInitialization_force<<<gridBlock, threadBlock>>>(d_Source_Gxx, d_Source_Gxx, d_Source_Gxx);
+                #endif
+                #ifdef A_XY_DIST
+            gpuInitialization_force<<<gridBlock, threadBlock>>>(d_Source_Gxy, d_Source_Gxy, d_Source_Gxy);
+                #endif
+                #ifdef A_XZ_DIST
+            gpuInitialization_force<<<gridBlock, threadBlock>>>(d_Source_Gxz, d_Source_Gxz, d_Source_Gxz);
+                #endif
+                #ifdef A_YY_DIST
+            gpuInitialization_force<<<gridBlock, threadBlock>>>(d_Source_Gyy, d_Source_Gyy, d_Source_Gyy);
+                #endif
+                #ifdef A_YZ_DIST
+            gpuInitialization_force<<<gridBlock, threadBlock>>>(d_Source_Gyz, d_Source_Gyz, d_Source_Gyz);
+                #endif
+                #ifdef A_ZZ_DIST
+            gpuInitialization_force<<<gridBlock, threadBlock>>>(d_Source_Gzz, d_Source_Gzz, d_Source_Gzz);
+                #endif
+            #endif //CONFORMATION_TENSOR
+        #endif //SAVE_LOCAL_FORCES
+
         #ifdef CURVED_BOUNDARY_CONDITION
             numberCurvedBoundaryNodes = initializeCurvedBoundaryDeviceField(
                 hostField.hNodeType,
@@ -255,6 +368,41 @@ typedef struct deviceField{
         params.d_BC_Fy = d_BC_Fy;
         params.d_BC_Fz = d_BC_Fz;
         #endif //BC_FORCES
+        
+        #ifdef SAVE_LOCAL_FORCES
+        params.d_Local_Fx = d_Local_Fx;
+        params.d_Local_Fy = d_Local_Fy;
+        params.d_Local_Fz = d_Local_Fz;
+            #ifdef SECOND_DIST
+        params.d_Source_C = d_Source_C;
+            #endif
+            #ifdef PHI_DIST
+        params.d_Source_Phi = d_Source_Phi;
+            #endif
+            #ifdef LAMBDA_DIST
+        params.d_Source_Lambda = d_Source_Lambda;
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+        params.d_Source_Gxx = d_Source_Gxx;
+                #endif
+                #ifdef A_XY_DIST
+        params.d_Source_Gxy = d_Source_Gxy;
+                #endif
+                #ifdef A_XZ_DIST
+        params.d_Source_Gxz = d_Source_Gxz;
+                #endif
+                #ifdef A_YY_DIST
+        params.d_Source_Gyy = d_Source_Gyy;
+                #endif
+                #ifdef A_YZ_DIST
+        params.d_Source_Gyz = d_Source_Gyz;
+                #endif
+                #ifdef A_ZZ_DIST
+        params.d_Source_Gzz = d_Source_Gzz;
+                #endif
+            #endif //CONFORMATION_TENSOR
+        #endif //SAVE_LOCAL_FORCES
         
         #ifdef CURVED_BOUNDARY_CONDITION
         params.d_curvedBC = d_curvedBC;
@@ -357,6 +505,42 @@ typedef struct deviceField{
         checkCudaErrors(cudaMemcpy(hostField.h_BC_Fy, d_BC_Fy, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
         checkCudaErrors(cudaMemcpy(hostField.h_BC_Fz, d_BC_Fz, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
         #endif //BC_FORCES && SAVE_BC_FORCES
+
+        // Copy local forces arrays if enabled
+        #ifdef SAVE_LOCAL_FORCES
+        checkCudaErrors(cudaMemcpy(hostField.h_Local_Fx, d_Local_Fx, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(hostField.h_Local_Fy, d_Local_Fy, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(hostField.h_Local_Fz, d_Local_Fz, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+            #ifdef SECOND_DIST
+        checkCudaErrors(cudaMemcpy(hostField.h_Source_C, d_Source_C, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+            #endif
+            #ifdef PHI_DIST
+        checkCudaErrors(cudaMemcpy(hostField.h_Source_Phi, d_Source_Phi, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+            #endif
+            #ifdef LAMBDA_DIST
+        checkCudaErrors(cudaMemcpy(hostField.h_Source_Lambda, d_Source_Lambda, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+        checkCudaErrors(cudaMemcpy(hostField.h_Source_Gxx, d_Source_Gxx, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+                #endif
+                #ifdef A_XY_DIST
+        checkCudaErrors(cudaMemcpy(hostField.h_Source_Gxy, d_Source_Gxy, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+                #endif
+                #ifdef A_XZ_DIST
+        checkCudaErrors(cudaMemcpy(hostField.h_Source_Gxz, d_Source_Gxz, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+                #endif
+                #ifdef A_YY_DIST
+        checkCudaErrors(cudaMemcpy(hostField.h_Source_Gyy, d_Source_Gyy, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+                #endif
+                #ifdef A_YZ_DIST
+        checkCudaErrors(cudaMemcpy(hostField.h_Source_Gyz, d_Source_Gyz, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+                #endif
+                #ifdef A_ZZ_DIST
+        checkCudaErrors(cudaMemcpy(hostField.h_Source_Gzz, d_Source_Gzz, MEM_SIZE_SCALAR, cudaMemcpyDeviceToHost));
+                #endif
+            #endif //CONFORMATION_TENSOR
+        #endif //SAVE_LOCAL_FORCES
     }
 
     void saveSimCheckpointHostDeviceField(hostField &hostField, int &step){
@@ -379,6 +563,40 @@ typedef struct deviceField{
         treatDataParams.d_BC_Fx = d_BC_Fx;
         treatDataParams.d_BC_Fy = d_BC_Fy;
         treatDataParams.d_BC_Fz = d_BC_Fz;
+        #endif
+        #ifdef SAVE_LOCAL_FORCES
+        treatDataParams.d_Local_Fx = d_Local_Fx;
+        treatDataParams.d_Local_Fy = d_Local_Fy;
+        treatDataParams.d_Local_Fz = d_Local_Fz;
+            #ifdef SECOND_DIST
+        treatDataParams.d_Source_C = d_Source_C;
+            #endif
+            #ifdef PHI_DIST
+        treatDataParams.d_Source_Phi = d_Source_Phi;
+            #endif
+            #ifdef LAMBDA_DIST
+        treatDataParams.d_Source_Lambda = d_Source_Lambda;
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+        treatDataParams.d_Source_Gxx = d_Source_Gxx;
+                #endif
+                #ifdef A_XY_DIST
+        treatDataParams.d_Source_Gxy = d_Source_Gxy;
+                #endif
+                #ifdef A_XZ_DIST
+        treatDataParams.d_Source_Gxz = d_Source_Gxz;
+                #endif
+                #ifdef A_YY_DIST
+        treatDataParams.d_Source_Gyy = d_Source_Gyy;
+                #endif
+                #ifdef A_YZ_DIST
+        treatDataParams.d_Source_Gyz = d_Source_Gyz;
+                #endif
+                #ifdef A_ZZ_DIST
+        treatDataParams.d_Source_Gzz = d_Source_Gzz;
+                #endif
+            #endif //CONFORMATION_TENSOR
         #endif
         treatDataParams.step = step;
         treatData(&treatDataParams);
@@ -408,6 +626,41 @@ typedef struct deviceField{
         cudaFree(d_BC_Fy);
         cudaFree(d_BC_Fz);
         #endif //_BC_FORCES
+
+        #ifdef SAVE_LOCAL_FORCES
+        cudaFree(d_Local_Fx);
+        cudaFree(d_Local_Fy);
+        cudaFree(d_Local_Fz);
+            #ifdef SECOND_DIST
+        cudaFree(d_Source_C);
+            #endif
+            #ifdef PHI_DIST
+        cudaFree(d_Source_Phi);
+            #endif
+            #ifdef LAMBDA_DIST
+        cudaFree(d_Source_Lambda);
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+        cudaFree(d_Source_Gxx);
+                #endif
+                #ifdef A_XY_DIST
+        cudaFree(d_Source_Gxy);
+                #endif
+                #ifdef A_XZ_DIST
+        cudaFree(d_Source_Gxz);
+                #endif
+                #ifdef A_YY_DIST
+        cudaFree(d_Source_Gyy);
+                #endif
+                #ifdef A_YZ_DIST
+        cudaFree(d_Source_Gyz);
+                #endif
+                #ifdef A_ZZ_DIST
+        cudaFree(d_Source_Gzz);
+                #endif
+            #endif //CONFORMATION_TENSOR
+        #endif //SAVE_LOCAL_FORCES
     }
 } DeviceField;
 

@@ -539,6 +539,41 @@ struct DeviceKernelParams {
     dfloat* d_BC_Fz;                        ///< Boundary condition force Z component
     #endif //BC_FORCES
     
+    #ifdef SAVE_LOCAL_FORCES
+    dfloat* d_Local_Fx;                     ///< Local body force X component (for export)
+    dfloat* d_Local_Fy;                     ///< Local body force Y component (for export)
+    dfloat* d_Local_Fz;                     ///< Local body force Z component (for export)
+        #ifdef SECOND_DIST
+    dfloat* d_Source_C;                     ///< Temperature source term T_Q_INTERNAL_D_Cp
+        #endif
+        #ifdef PHI_DIST
+    dfloat* d_Source_Phi;                   ///< Phase-field source term
+        #endif
+        #ifdef LAMBDA_DIST
+    dfloat* d_Source_Lambda;                ///< Structure-parameter source term
+        #endif
+        #ifdef CONFORMATION_TENSOR
+            #ifdef A_XX_DIST
+    dfloat* d_Source_Gxx;                   ///< Conformation source Gxx
+            #endif
+            #ifdef A_XY_DIST
+    dfloat* d_Source_Gxy;                   ///< Conformation source Gxy
+            #endif
+            #ifdef A_XZ_DIST
+    dfloat* d_Source_Gxz;                   ///< Conformation source Gxz
+            #endif
+            #ifdef A_YY_DIST
+    dfloat* d_Source_Gyy;                   ///< Conformation source Gyy
+            #endif
+            #ifdef A_YZ_DIST
+    dfloat* d_Source_Gyz;                   ///< Conformation source Gyz
+            #endif
+            #ifdef A_ZZ_DIST
+    dfloat* d_Source_Gzz;                   ///< Conformation source Gzz
+            #endif
+        #endif //CONFORMATION_TENSOR
+    #endif //SAVE_LOCAL_FORCES
+    
     #ifdef CURVED_BOUNDARY_CONDITION
     CurvedBoundary** d_curvedBC;            ///< Curved boundary condition data
     CurvedBoundary* d_curvedBC_array;       ///< Curved boundary condition array
@@ -613,6 +648,41 @@ struct SaveDataParams {
     dfloat* h_BC_Fz;
     #endif
     
+    #ifdef SAVE_LOCAL_FORCES
+    dfloat* h_Local_Fx;
+    dfloat* h_Local_Fy;
+    dfloat* h_Local_Fz;
+        #ifdef SECOND_DIST
+    dfloat* h_Source_C;
+        #endif
+        #ifdef PHI_DIST
+    dfloat* h_Source_Phi;
+        #endif
+        #ifdef LAMBDA_DIST
+    dfloat* h_Source_Lambda;
+        #endif
+        #ifdef CONFORMATION_TENSOR
+            #ifdef A_XX_DIST
+    dfloat* h_Source_Gxx;
+            #endif
+            #ifdef A_XY_DIST
+    dfloat* h_Source_Gxy;
+            #endif
+            #ifdef A_XZ_DIST
+    dfloat* h_Source_Gxz;
+            #endif
+            #ifdef A_YY_DIST
+    dfloat* h_Source_Gyy;
+            #endif
+            #ifdef A_YZ_DIST
+    dfloat* h_Source_Gyz;
+            #endif
+            #ifdef A_ZZ_DIST
+    dfloat* h_Source_Gzz;
+            #endif
+        #endif //CONFORMATION_TENSOR
+    #endif //SAVE_LOCAL_FORCES
+
     // Metadata
     unsigned int nSteps;
     std::atomic<bool>* savingMacrVtk;
@@ -639,6 +709,41 @@ struct TreatDataParams {
     dfloat* d_BC_Fx;
     dfloat* d_BC_Fy;
     dfloat* d_BC_Fz;
+    #endif
+    
+    #ifdef SAVE_LOCAL_FORCES
+    dfloat* d_Local_Fx;
+    dfloat* d_Local_Fy;
+    dfloat* d_Local_Fz;
+        #ifdef SECOND_DIST
+    dfloat* d_Source_C;
+        #endif
+        #ifdef PHI_DIST
+    dfloat* d_Source_Phi;
+        #endif
+        #ifdef LAMBDA_DIST
+    dfloat* d_Source_Lambda;
+        #endif
+        #ifdef CONFORMATION_TENSOR
+            #ifdef A_XX_DIST
+    dfloat* d_Source_Gxx;
+            #endif
+            #ifdef A_XY_DIST
+    dfloat* d_Source_Gxy;
+            #endif
+            #ifdef A_XZ_DIST
+    dfloat* d_Source_Gxz;
+            #endif
+            #ifdef A_YY_DIST
+    dfloat* d_Source_Gyy;
+            #endif
+            #ifdef A_YZ_DIST
+    dfloat* d_Source_Gyz;
+            #endif
+            #ifdef A_ZZ_DIST
+    dfloat* d_Source_Gzz;
+            #endif
+        #endif //CONFORMATION_TENSOR
     #endif
     
     // Metadata

@@ -19,6 +19,41 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     dfloat* d_BC_Fz = params.d_BC_Fz;
     #endif //BC_FORCES
     
+    #ifdef SAVE_LOCAL_FORCES
+    dfloat* d_Local_Fx = params.d_Local_Fx;
+    dfloat* d_Local_Fy = params.d_Local_Fy;
+    dfloat* d_Local_Fz = params.d_Local_Fz;
+        #ifdef SECOND_DIST
+    dfloat* d_Source_C = params.d_Source_C;
+        #endif
+        #ifdef PHI_DIST
+    dfloat* d_Source_Phi = params.d_Source_Phi;
+        #endif
+        #ifdef LAMBDA_DIST
+    dfloat* d_Source_Lambda = params.d_Source_Lambda;
+        #endif
+        #ifdef CONFORMATION_TENSOR
+            #ifdef A_XX_DIST
+    dfloat* d_Source_Gxx = params.d_Source_Gxx;
+            #endif
+            #ifdef A_XY_DIST
+    dfloat* d_Source_Gxy = params.d_Source_Gxy;
+            #endif
+            #ifdef A_XZ_DIST
+    dfloat* d_Source_Gxz = params.d_Source_Gxz;
+            #endif
+            #ifdef A_YY_DIST
+    dfloat* d_Source_Gyy = params.d_Source_Gyy;
+            #endif
+            #ifdef A_YZ_DIST
+    dfloat* d_Source_Gyz = params.d_Source_Gyz;
+            #endif
+            #ifdef A_ZZ_DIST
+    dfloat* d_Source_Gzz = params.d_Source_Gzz;
+            #endif
+        #endif //CONFORMATION_TENSOR
+    #endif //SAVE_LOCAL_FORCES
+    
     #ifdef CURVED_BOUNDARY_CONDITION
     CurvedBoundary** d_curvedBC = params.d_curvedBC;
     CurvedBoundary* d_curvedBC_array = params.d_curvedBC_array;
@@ -250,6 +285,28 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
         #endif //COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
 
         #include "fragments/conformationTransport/conformation_evolution.inc"
+        #ifdef SAVE_LOCAL_FORCES
+        if(save){
+            #ifdef A_XX_DIST
+            d_Source_Gxx[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = Gxx;
+            #endif
+            #ifdef A_XY_DIST
+            d_Source_Gxy[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = Gxy;
+            #endif
+            #ifdef A_XZ_DIST
+            d_Source_Gxz[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = Gxz;
+            #endif
+            #ifdef A_YY_DIST
+            d_Source_Gyy[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = Gyy;
+            #endif
+            #ifdef A_YZ_DIST
+            d_Source_Gyz[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = Gyz;
+            #endif
+            #ifdef A_ZZ_DIST
+            d_Source_Gzz[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = Gzz;
+            #endif
+        }
+        #endif //SAVE_LOCAL_FORCES
     #endif //CONFORMATION_TENSOR
 
     #ifdef CONVECTION_DIFFUSION_TRANSPORT
@@ -311,6 +368,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             #else
                 dfloat phiSharpSource = 0.0_df;
             #endif //INTERFACE_SHARPENING
+            #ifdef SAVE_LOCAL_FORCES
+            if(save){ d_Source_Phi[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = phiSource; }
+            #endif
             dfloat phi_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat phi_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
             dfloat phi_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -392,6 +452,9 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 m_xy_t90, m_xz_t90, m_yz_t90,
                 omegaVar, lambdaVar
             );
+            #ifdef SAVE_LOCAL_FORCES
+            if(save){ d_Source_Lambda[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = lambdaSource; }
+            #endif
 
             dfloat invLambda = 1.0_df/(lambdaVar);
             dfloat lambda_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -882,11 +945,20 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
     if(save){
         #ifdef BC_FORCES
-        //update local forces
+        //update boundary forces
         d_BC_Fx[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = (L_BC_Fx);
         d_BC_Fy[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = (L_BC_Fy);
         d_BC_Fz[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = (L_BC_Fz);
         #endif //BC_FORCES
+        #ifdef SAVE_LOCAL_FORCES
+        //save total local body force (includes external + phase + thermal contributions)
+        d_Local_Fx[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = (L_Fx);
+        d_Local_Fy[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = (L_Fy);
+        d_Local_Fz[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = (L_Fz);
+            #ifdef SECOND_DIST
+        d_Source_C[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)] = T_Q_INTERNAL_D_Cp;
+            #endif
+        #endif //SAVE_LOCAL_FORCES
     }
     #ifdef CONVECTION_DIFFUSION_TRANSPORT
         #ifdef SECOND_DIST 
