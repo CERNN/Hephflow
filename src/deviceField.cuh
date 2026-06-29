@@ -90,7 +90,7 @@ typedef struct deviceField{
 
     void initializeDomainDeviceField(hostField &hostField, dfloat **&randomNumbers, int &step, dim3 gridBlock, dim3 threadBlock, int g, int slice){
         // ========== INITIALIZATION DOMAIN INLINED ==========
-        cudaSetDevice(GPUS_TO_USE[g]);
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
 
         int zStart = g * slice;
         int zEnd   = (g == N_GPUS - 1) ? NZ : zStart + slice;
@@ -121,9 +121,9 @@ typedef struct deviceField{
         int checkpoint_state = 0;
         // LBM Initialization
         if (LOAD_CHECKPOINT) {
-
+            
             printf("Loading checkpoint\n");
-            checkpoint_state = loadSimCheckpoint(hostField.h_fMom, ghostInterface[g], &step, g);
+            checkpoint_state = loadSimCheckpoint(hostField.h_fMom + zOffset, ghostInterface[g], &step, g);
 
             if (checkpoint_state != 0){
                 checkCudaErrors(cudaMemcpy(d_fMom[g], hostField.h_fMom + zOffset, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL * NUMBER_MOMENTS, cudaMemcpyHostToDevice));
@@ -461,14 +461,18 @@ typedef struct deviceField{
         #endif //BC_FORCES && SAVE_BC_FORCES
     }
 
-    void saveSimCheckpointHostDeviceField(hostField &hostField, int &step, int g){
-        saveSimCheckpoint(hostField.h_fMom, ghostInterface[g], &step, g);
+    void saveSimCheckpointHostDeviceField(hostField &hostField, int &step, int g, int slice){
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        int zStart = g * slice;
+        size_t zOffset = zStart * NX * NY * NUMBER_MOMENTS;
+        saveSimCheckpoint(hostField.h_fMom+zOffset, ghostInterface[g], &step, g);
     }
 
-    void saveSimCheckpointDeviceField( int &step, int g){
+    void saveSimCheckpointDeviceField( int &step, int g, int slice){
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         saveSimCheckpoint(d_fMom[g],ghostInterface[g],&step, g);
     }
-
+    
     void treatDataDeviceField(hostField &hostField, 
         int step, int g){
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));

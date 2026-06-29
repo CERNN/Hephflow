@@ -115,6 +115,7 @@ int main() {
     for(int g = 0; g < N_GPUS; g++){
 
         threads.emplace_back([&, g, slice]() {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
             devices[g].initializeDomainDeviceField(hostField, randomNumbers,  step, gridBlock, threadBlock, g, slice);
             cudaError_t err = cudaGetLastError();
             if (err != cudaSuccess) {
@@ -161,7 +162,7 @@ int main() {
     /* --------------------------------------------------------------------- */
     /* ---------------------------- BEGIN LOOP ----------------------------- */
     /* --------------------------------------------------------------------- */
-
+        
     for (;step<N_STEPS;step++){ // step is already initialized
 
         SaveField saveField;
@@ -233,17 +234,17 @@ int main() {
         //------------------------- Saving Data -------------------------
         // Saving checkpoint     
         if(saveField.checkpoint){
+            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
             for(int g = 0; g < N_GPUS; g++){
                 threads.emplace_back([&, g, slice]() {
                     checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-                    printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
                     devices[g].cudaMemcpyDeviceField(hostField, g, slice);
-                    devices[g].interfaceCudaMemcpyDeviceField(true, g);       
-                    devices[g].saveSimCheckpointHostDeviceField(hostField, step, g);
+                    devices[g].interfaceCudaMemcpyDeviceField(true, g);  
+                    devices[g].saveSimCheckpointHostDeviceField(hostField, step, g, slice);
                     #ifdef PARTICLE_MODEL
                         particleField.saveCheckpoint(step);
-                    #endif //PARTICLE_MODEL    
-                    if(console_flush){fflush(stdout);} 
+                    #endif //PARTICLE_MODEL  
+                    if(console_flush){fflush(stdout);}
                 });
             }
 
@@ -251,6 +252,7 @@ int main() {
                 t.join();
             }                  
             threads.clear();
+            fflush(stdout);
         }
        
         // Saving treat data  checks
@@ -340,21 +342,23 @@ int main() {
     hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
 
     if(CHECKPOINT_SAVE){
+        printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
         for(int g = 0; g < N_GPUS; g++){
             threads.emplace_back([&, g, slice]() {
-            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
-            devices[g].cudaMemcpyDeviceField(hostField, g, slice);
-            devices[g].interfaceCudaMemcpyDeviceField(false, g); 
-            devices[g].saveSimCheckpointDeviceField(step, g);
-            if(console_flush){fflush(stdout);}
-        });
-    }
+                checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+                devices[g].cudaMemcpyDeviceField(hostField, g, slice);
+                devices[g].interfaceCudaMemcpyDeviceField(false, g); 
+                devices[g].saveSimCheckpointDeviceField(step, g, slice);
+                if(console_flush){fflush(stdout);}
+            });
+        }
 
-    for (auto &t : threads) {
-        t.join();
-    }                  
-    threads.clear();
+        for (auto &t : threads) {
+            t.join();
+        }                  
+        threads.clear();
+
+        
     }
 
     for(int g = 0; g < N_GPUS; g++){

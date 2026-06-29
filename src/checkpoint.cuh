@@ -118,11 +118,13 @@ void writeFilesIntoDfloat3SoA(
 /**
  *  @brief Get the checkpoint filename to read from 
  *  @param name Field name (such as "rho", "u", etc.)
+ *  @param gpu_index Index for reading the files of the GPU being initialized.
  *  @return std::string string checkpoint filename
  */
 __host__
 std::string getCheckpointFilenameRead(
-    std::string name
+    std::string name,
+    int gpu_index
 );
 
 /**
@@ -143,13 +145,14 @@ void readFilesIntoDfloat3SoA(
 /**
  *  @brief Get the checkpoint filename to write to
  *  @param name Field name (such as "rho", "u", etc.)
+ *  @param gpu_index GPU index to obtain the checkpoint filename for writing.
  *  @return std::string string checkpoint filename
  */
 __host__
 std::string getCheckpointFilenameWrite(
-    std::string name
+    std::string name,
+    int gpu_index
 );
-
 
 /**
  *  @brief Operation over checkpoint, save or load  
@@ -157,6 +160,7 @@ std::string getCheckpointFilenameWrite(
  *  @param fMom Populations array
  *  @param ghostInterface interface block transfer information
  *  @param step Pointer to current step value in main
+ *  @param gpu_index GPU index for save and load operations
  */
 __host__
 void operateSimCheckpoint( 
@@ -164,7 +168,7 @@ void operateSimCheckpoint(
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
     int* step,
-    int g
+    int gpu_index
 );
 
 #ifdef PARTICLE_MODEL
@@ -182,6 +186,7 @@ void operateSimCheckpointParticle(
  *  @param fMom Populations array
  *  @param ghostInterface interface block transfer information
  *  @param step Pointer to current step value in main
+ *  @param gpu_index GPU index for checkpoint loading operations
  *  @return 0 = fail to load checkpoint, 1 = load success;
  */
 __host__
@@ -189,7 +194,7 @@ int loadSimCheckpoint(
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
     int *step,
-    int g
+    int gpu_index
 );
 #ifdef PARTICLE_MODEL
 /**
@@ -210,6 +215,7 @@ int loadSimCheckpointParticle(
  *  @brief Save simulation checkpoint
  *  @param fMom Populations array
  *  @param ghostInterface interface block transfer information
+ *  @param gpu_index GPU index for checkpoint save operations
  *  @param step Pointer to current step value in main
  */
 __host__
@@ -217,7 +223,7 @@ void saveSimCheckpoint(
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
     int *step,
-    int g
+    int gpu_index
 );
 
 #ifdef PARTICLE_MODEL

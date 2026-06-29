@@ -262,10 +262,10 @@ void interfaceCudaMemcpy(GhostInterfaceData& ghostInterface, ghostData& dst, con
     };
 
     MemcpyPair memcpyPairs[] = {
-        { dst.X_0, src.X_0, sizeof(dfloat) * NUMBER_GHOST_FACE_YZ_LOCAL * Q},
-        { dst.X_1, src.X_1, sizeof(dfloat) * NUMBER_GHOST_FACE_YZ_LOCAL * Q},
-        { dst.Y_0, src.Y_0, sizeof(dfloat) * NUMBER_GHOST_FACE_XZ_LOCAL * Q},
-        { dst.Y_1, src.Y_1, sizeof(dfloat) * NUMBER_GHOST_FACE_XZ_LOCAL * Q},
+        { dst.X_0, src.X_0, sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * Q},
+        { dst.X_1, src.X_1, sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * Q},
+        { dst.Y_0, src.Y_0, sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * Q},
+        { dst.Y_1, src.Y_1, sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * Q},
         { dst.Z_0, src.Z_0, sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * Q},
         { dst.Z_1, src.Z_1, sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * Q}
     };
