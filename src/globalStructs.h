@@ -664,6 +664,7 @@ struct TreatDataParams {
     
     // Metadata
     unsigned int step;
+    size_t zOffset;
 };
 
 #endif //__GLOBAL_STRUCTS_H

@@ -1,6 +1,6 @@
 //copy full macroscopic field
 checkCudaErrors(cudaDeviceSynchronize());
-checkCudaErrors(cudaMemcpy(h_fMom, fMom, sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
+checkCudaErrors(cudaMemcpy(h_fMom+zOffset, fMom, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
 checkCudaErrors(cudaDeviceSynchronize());
 
 int y_wall;

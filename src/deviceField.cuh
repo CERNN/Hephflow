@@ -173,7 +173,7 @@ typedef struct deviceField{
         // Mean flow initialization
         #if MEAN_FLOW
             // Copy mean baseline from device to host so mean flow accumulation starts from the initial state
-            checkCudaErrors(cudaMemcpy(hostField.m_fMom, d_fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
+            checkCudaErrors(cudaMemcpy(hostField.m_fMom + zOffset, d_fMom[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL * NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
         #endif //MEAN_FLOW
 
         // Node type initialization - hNodeType is allocated once globally in allocateHostMemoryHostField().
@@ -474,7 +474,7 @@ typedef struct deviceField{
     }
     
     void treatDataDeviceField(hostField &hostField, 
-        int step, int g){
+        int step, int g, int slice){
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         TreatDataParams treatDataParams;
         treatDataParams.h_fMom = hostField.h_fMom;
@@ -488,6 +488,9 @@ typedef struct deviceField{
         treatDataParams.d_BC_Fz = d_BC_Fz[g];
         #endif
         treatDataParams.step = step;
+        int zStart = g * slice;
+        size_t zOffset = zStart * NX * NY * NUMBER_MOMENTS;
+        treatDataParams.zOffset = zOffset;
         treatData(&treatDataParams);
     }
 

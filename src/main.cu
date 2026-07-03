@@ -132,6 +132,10 @@ int main() {
     threads.clear();
 
     #ifdef RANDOM_NUMBERS
+        for (int g = 0; g < N_GPUS; g++) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            cudaFree(randomNumbers[g]);
+        }
         free(randomNumbers);
         randomNumbers = nullptr;
     #endif
@@ -257,11 +261,11 @@ int main() {
        
         // Saving treat data  checks
         if(saveField.reportSave){
+            printf("\n--------------------------- Saving report %06d ---------------------------\n", step);
             for(int g = 0; g < N_GPUS; g++){
                 threads.emplace_back([&, g, slice]() {
                     checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-                    printf("\n--------------------------- Saving report %06d ---------------------------\n", step);
-                    devices[g].treatDataDeviceField(hostField, step, g);
+                    devices[g].treatDataDeviceField(hostField, step, g, slice);
                     #ifdef PARTICLE_MODEL
                     particleField.exportWallForces(step);
                     #endif

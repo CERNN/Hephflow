@@ -19,11 +19,11 @@ void initializationRandomNumbers(
     // Generate NX*NY*NZ floats on device, using normal distribution
     // with mean=0 and std_dev=NORMAL_STD_DEV
     #ifdef SINGLE_PRECISION 
-    checkCurandStatus(curandGenerateNormal(gen, randomNumbers, NUMBER_LBM_NODES,
+    checkCurandStatus(curandGenerateNormal(gen, randomNumbers, NUMBER_LBM_NODES_LOCAL,
         0, CURAND_STD_DEV));
     #endif //SINGLE_PRECISION
     #ifdef DOUBLE_PRECISION
-    checkCurandStatus(curandGenerateNormalDouble (gen, randomNumbers, NUMBER_LBM_NODES,
+    checkCurandStatus(curandGenerateNormalDouble (gen, randomNumbers, NUMBER_LBM_NODES_LOCAL,
         0, CURAND_STD_DEV));
     #endif
 
