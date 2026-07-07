@@ -32,5 +32,7 @@
 
 #define TREAT_DATA_INCLUDE     // Include data treatment routines
 
+#define TURBULENT_TREAT_DATA   // Include copy macroscopic field
+
 
 

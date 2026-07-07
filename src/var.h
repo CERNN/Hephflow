@@ -35,7 +35,7 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0,1,2,3};       // Which GPUs to u
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 002_viscoplasticParellelPlates_Turbulent
+#define BC_PROBLEM 004_lambdaTransport
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 

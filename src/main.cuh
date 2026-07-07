@@ -78,6 +78,8 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
     cudaFree(ghostInterface.pop.Y_1);
     cudaFree(ghostInterface.pop.Z_0);
     cudaFree(ghostInterface.pop.Z_1);
+    cudaFree(ghostInterface.popAux.Z_0);
+    cudaFree(ghostInterface.popAux.Z_1);
 
     #ifdef SECOND_DIST
         cudaFree(ghostInterface.g.X_0);
@@ -104,6 +106,8 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.lambda.Y_1);
         cudaFree(ghostInterface.lambda.Z_0);
         cudaFree(ghostInterface.lambda.Z_1);
+        cudaFree(ghostInterface.lambdaAux.Z_0);
+        cudaFree(ghostInterface.lambdaAux.Z_1);
 
     #endif //LAMBDA_DIST
     #ifdef A_XX_DIST
@@ -364,6 +368,8 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.lambda.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
     cudaMalloc((void **)&(ghostInterface.lambda.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.lambda.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.lambdaAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.lambdaAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //LAMBDA_DIST

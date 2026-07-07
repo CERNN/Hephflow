@@ -19,7 +19,9 @@ void treatData(const TreatDataParams* params)
 
     #ifdef TREAT_DATA_INCLUDE
     // #include CASE_TREAT_DATA
+    #ifdef TURBULENT_TREAT_DATA
     copyMacroscopic(h_fMom, fMom, step, zOffset);
+    #endif
     #endif //TREAT_DATA_INCLUDE
 
     //totalKineticEnergy(fMom,step);         
@@ -993,6 +995,7 @@ void computeTurbulentEnergies(
     saveTreatData("_turbulentData",strDataInfo.str(),step);
 }
 
+#ifdef TURBULENT_TREAT_DATA
 __host__
 void copyMacroscopic(
     dfloat* h_fMom,
@@ -1567,3 +1570,4 @@ void copyMacroscopic(
 
     */
 }
+#endif

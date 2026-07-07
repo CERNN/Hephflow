@@ -305,6 +305,18 @@ typedef struct deviceField{
         params.save = save;
         params.zStart = zStart;
         params.localNZ = localNZ;
+
+        #ifdef LAMBDA_DIST
+        params.lambda.X_0    = ghostInterface[g].lambda.X_0;
+        params.lambda.X_1    = ghostInterface[g].lambda.X_1;
+        params.lambda.Y_0    = ghostInterface[g].lambda.Y_0;
+        params.lambda.Y_1    = ghostInterface[g].lambda.Y_1;
+        params.lambda.Z_0    = ghostInterface[g].lambda.Z_0;
+        params.lambda.Z_1    = ghostInterface[g].lambda.Z_1;
+        params.lambda.auxZ_0 = ghostInterface[g].lambdaAux.Z_0;
+        params.lambda.auxZ_1 = ghostInterface[g].lambdaAux.Z_1;
+        #endif //LAMBDA_DIST
+
         
         #ifdef DENSITY_CORRECTION
         params.d_mean_rho = d_mean_rho[g];
@@ -352,6 +364,16 @@ typedef struct deviceField{
             GPUS_TO_USE[g],
             haloSize, streamLBM
         ));
+
+        #ifdef LAMBDA_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].ghostInterface[gNext].lambdaAux.Z_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].ghostInterface[g].lambda.Z_1 + topOffset,
+            GPUS_TO_USE[g],
+            haloSize, streamLBM
+        ));
+        #endif //LAMBDA_DIST
     }
 
     /* -------------- Receives the Z_0 base of the next GPU and adds it to the Z_0 top of the current GPU  ------------- */
@@ -370,6 +392,16 @@ typedef struct deviceField{
             GPUS_TO_USE[gNext],
             haloSize, streamLBM
         ));
+
+        #ifdef LAMBDA_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].ghostInterface[g].lambdaAux.Z_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].ghostInterface[gNext].lambda.Z_0,
+            GPUS_TO_USE[gNext],
+            haloSize, streamLBM
+        ));
+        #endif //LAMBDA_DIST
     }
 
     #ifdef PHI_DIST

@@ -456,6 +456,7 @@ typedef struct ghostInterfaceData  {
     #endif //A_ZZ_DIST
     #ifdef LAMBDA_DIST
         ghostData lambda;
+        ghostData lambdaAux;
         ghostData h_lambda;
     #endif //LAMBDA_DIST
 
@@ -541,6 +542,10 @@ struct DeviceKernelParams {
     bool save;                              ///< Whether to save data
     size_t localNZ; 
     int zStart;
+
+    #ifdef LAMBDA_DIST
+    ghostFacePtrs lambda;
+    #endif //LAMBDA_DIST
 
     #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
     fluidPhaseProps phasePropsA;            ///< Phase-1 fluid properties (viscous + viscoelastic)

@@ -10,6 +10,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     bool save = params.save;
     size_t localNZ = params.localNZ;
     int zStart = params.zStart;
+
+    #ifdef LAMBDA_DIST
+    const ghostFacePtrs ghostInterfaceLambda = params.lambda;
+    #endif //LAMBDA_DIST
     
     #ifdef DENSITY_CORRECTION
     dfloat* d_mean_rho = params.d_mean_rho;
