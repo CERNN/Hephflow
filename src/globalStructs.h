@@ -424,6 +424,7 @@ typedef struct ghostInterfaceData  {
 
     #ifdef SECOND_DIST
         ghostData g;
+        ghostData gAux;
         ghostData h_g;
     #endif //SECOND_DIST
     #ifdef PHI_DIST
@@ -542,6 +543,10 @@ struct DeviceKernelParams {
     bool save;                              ///< Whether to save data
     size_t localNZ; 
     int zStart;
+
+    #ifdef SECOND_DIST
+    ghostFacePtrs g;
+    #endif //SECOND_DIST
 
     #ifdef LAMBDA_DIST
     ghostFacePtrs lambda;

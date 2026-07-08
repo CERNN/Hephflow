@@ -306,6 +306,17 @@ typedef struct deviceField{
         params.zStart = zStart;
         params.localNZ = localNZ;
 
+        #ifdef SECOND_DIST
+        params.g.X_0    = ghostInterface[g].g.X_0;
+        params.g.X_1    = ghostInterface[g].g.X_1;
+        params.g.Y_0    = ghostInterface[g].g.Y_0;
+        params.g.Y_1    = ghostInterface[g].g.Y_1;
+        params.g.Z_0    = ghostInterface[g].g.Z_0;
+        params.g.Z_1    = ghostInterface[g].g.Z_1;
+        params.g.auxZ_0 = ghostInterface[g].gAux.Z_0;
+        params.g.auxZ_1 = ghostInterface[g].gAux.Z_1;
+        #endif //SECOND_DIST
+
         #ifdef LAMBDA_DIST
         params.lambda.X_0    = ghostInterface[g].lambda.X_0;
         params.lambda.X_1    = ghostInterface[g].lambda.X_1;
@@ -316,7 +327,6 @@ typedef struct deviceField{
         params.lambda.auxZ_0 = ghostInterface[g].lambdaAux.Z_0;
         params.lambda.auxZ_1 = ghostInterface[g].lambdaAux.Z_1;
         #endif //LAMBDA_DIST
-
         
         #ifdef DENSITY_CORRECTION
         params.d_mean_rho = d_mean_rho[g];
@@ -365,6 +375,16 @@ typedef struct deviceField{
             haloSize, streamLBM
         ));
 
+        #ifdef SECOND_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].ghostInterface[gNext].gAux.Z_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].ghostInterface[g].g.Z_1 + topOffset,
+            GPUS_TO_USE[g],
+            haloSize, streamLBM
+        ));
+        #endif //SECOND_DIST
+
         #ifdef LAMBDA_DIST
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[gNext].ghostInterface[gNext].lambdaAux.Z_1,
@@ -392,6 +412,16 @@ typedef struct deviceField{
             GPUS_TO_USE[gNext],
             haloSize, streamLBM
         ));
+
+        #ifdef SECOND_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].ghostInterface[g].gAux.Z_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].ghostInterface[gNext].g.Z_0,
+            GPUS_TO_USE[gNext],
+            haloSize, streamLBM
+        ));
+        #endif //SECOND_DIST
 
         #ifdef LAMBDA_DIST
         checkCudaErrors(cudaMemcpyPeerAsync(

@@ -11,6 +11,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     size_t localNZ = params.localNZ;
     int zStart = params.zStart;
 
+    #ifdef SECOND_DIST
+    const ghostFacePtrs ghostInterfaceG = params.g;
+    #endif //SECOND_DIST
+
     #ifdef LAMBDA_DIST
     const ghostFacePtrs ghostInterfaceLambda = params.lambda;
     #endif //LAMBDA_DIST

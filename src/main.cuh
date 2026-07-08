@@ -88,6 +88,8 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.g.Y_1);
         cudaFree(ghostInterface.g.Z_0);
         cudaFree(ghostInterface.g.Z_1);
+        cudaFree(ghostInterface.gAux.Z_0);
+        cudaFree(ghostInterface.gAux.Z_1);
 
     #endif //SECOND_DIST
     #ifdef PHI_DIST
@@ -346,6 +348,8 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.g.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
     cudaMalloc((void **)&(ghostInterface.g.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.g.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.gAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.gAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //SECOND_DIST
