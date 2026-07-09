@@ -18,10 +18,10 @@ void treatData(const TreatDataParams* params)
     size_t zOffset = params->zOffset;
 
     #ifdef TREAT_DATA_INCLUDE
-    // #include CASE_TREAT_DATA
-    #ifdef TURBULENT_TREAT_DATA
-    copyMacroscopic(h_fMom, fMom, step, zOffset);
-    #endif
+    #include CASE_TREAT_DATA
+    // #ifdef TURBULENT_TREAT_DATA
+    // copyMacroscopic(h_fMom, fMom, step, zOffset);
+    // #endif
     #endif //TREAT_DATA_INCLUDE
 
     //totalKineticEnergy(fMom,step);         

@@ -433,26 +433,32 @@ typedef struct ghostInterfaceData  {
     #endif //PHI_DIST
     #ifdef A_XX_DIST
         ghostData Axx;
+        ghostData AxxAux;
         ghostData h_Axx;
     #endif //A_XX_DIST
     #ifdef A_XY_DIST
         ghostData Axy;
+        ghostData AxyAux;
         ghostData h_Axy;
     #endif //A_XY_DIST
     #ifdef A_XZ_DIST
         ghostData Axz;
+        ghostData AxzAux;
         ghostData h_Axz;
     #endif //A_XZ_DIST
     #ifdef A_YY_DIST
         ghostData Ayy;
+        ghostData AyyAux;
         ghostData h_Ayy;
     #endif //A_YY_DIST
     #ifdef A_YZ_DIST
         ghostData Ayz;
+        ghostData AyzAux;
         ghostData h_Ayz;
     #endif //A_YZ_DIST
     #ifdef A_ZZ_DIST
         ghostData Azz;
+        ghostData AzzAux;
         ghostData h_Azz;
     #endif //A_ZZ_DIST
     #ifdef LAMBDA_DIST
@@ -547,6 +553,25 @@ struct DeviceKernelParams {
     #ifdef SECOND_DIST
     ghostFacePtrs g;
     #endif //SECOND_DIST
+
+    #ifdef A_XX_DIST
+        ghostFacePtrs Axx;
+    #endif //A_XX_DIST
+    #ifdef A_XY_DIST
+        ghostFacePtrs Axy;
+    #endif //A_XY_DIST
+    #ifdef A_XZ_DIST
+        ghostFacePtrs Axz;
+    #endif //A_XZ_DIST
+    #ifdef A_YY_DIST
+        ghostFacePtrs Ayy;
+    #endif //A_YY_DIST
+    #ifdef A_YZ_DIST
+        ghostFacePtrs Ayz;
+    #endif //A_YZ_DIST
+    #ifdef A_ZZ_DIST
+        ghostFacePtrs Azz;
+    #endif //A_ZZ_DIST
 
     #ifdef LAMBDA_DIST
     ghostFacePtrs lambda;

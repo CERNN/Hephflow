@@ -14,7 +14,7 @@ constexpr int SCALE = 1;                    // Grid scaling factor
 constexpr int N = 128 * SCALE;              // Reference grid size
 constexpr int NX = 8;                       // Grid size in X
 constexpr int NY = N;                       // Grid size in Y
-constexpr int NZ = 8;                       // Grid size in Z
+constexpr int NZ = 8*N_GPUS;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */

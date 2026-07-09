@@ -15,6 +15,25 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     const ghostFacePtrs ghostInterfaceG = params.g;
     #endif //SECOND_DIST
 
+    #ifdef A_XX_DIST
+    const ghostFacePtrs ghostInterfaceAxx = params.Axx;
+    #endif //A_XX_DIST
+    #ifdef A_XY_DIST
+    const ghostFacePtrs ghostInterfaceAxy = params.Axy;
+    #endif //A_XY_DIST
+    #ifdef A_XZ_DIST
+    const ghostFacePtrs ghostInterfaceAxz = params.Axz;
+    #endif //A_XZ_DIST
+    #ifdef A_YY_DIST
+    const ghostFacePtrs ghostInterfaceAyy = params.Ayy;
+    #endif //A_YY_DIST
+    #ifdef A_YZ_DIST
+    const ghostFacePtrs ghostInterfaceAyz = params.Ayz;
+    #endif //A_YZ_DIST
+    #ifdef A_ZZ_DIST
+    const ghostFacePtrs ghostInterfaceAzz = params.Azz;
+    #endif //A_ZZ_DIST
+
     #ifdef LAMBDA_DIST
     const ghostFacePtrs ghostInterfaceLambda = params.lambda;
     #endif //LAMBDA_DIST
