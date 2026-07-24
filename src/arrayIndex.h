@@ -15,10 +15,10 @@
 //#include "definitions.h"
 
 
-constexpr int M_RHO_INDEX = 0;
-constexpr int M_UX_INDEX  = 1;
-constexpr int M_UY_INDEX  = 2;
-constexpr int M_UZ_INDEX  = 3;
+constexpr int M_RHO_INDEX = 0; // X
+constexpr int M_UX_INDEX  = 1; // X
+constexpr int M_UY_INDEX  = 2; // X
+constexpr int M_UZ_INDEX  = 3; // X
 constexpr int M_MXX_INDEX = 4;
 constexpr int M_MXY_INDEX = 5;
 constexpr int M_MXZ_INDEX = 6;
@@ -50,7 +50,7 @@ constexpr int M_MZZ_INDEX = 9;
 #endif
 
 #ifdef SECOND_DIST
-    constexpr int M2_C_INDEX   = (1+M_OFFSET);
+    constexpr int M2_C_INDEX   = (1+M_OFFSET); // X
     constexpr int M2_CX_INDEX  = (2+M_OFFSET);
     constexpr int M2_CY_INDEX  = (3+M_OFFSET);
     constexpr int M2_CZ_INDEX  = (4+M_OFFSET);
@@ -61,15 +61,15 @@ constexpr int M_MZZ_INDEX = 9;
 #endif
 
 #ifdef PHI_DIST
-    constexpr int M3_PHI_INDEX   = (1+M_OFFSET);
-    constexpr int M3_PX_INDEX  = (2+M_OFFSET);
+    constexpr int M3_PHI_INDEX   = (1+M_OFFSET); // X
+    constexpr int M3_PX_INDEX  = (2+M_OFFSET); 
     constexpr int M3_PY_INDEX  = (3+M_OFFSET);
     constexpr int M3_PZ_INDEX  = (4+M_OFFSET);
-    constexpr int M3_NX_INDEX  = (5+M_OFFSET);
-    constexpr int M3_NY_INDEX  = (6+M_OFFSET);
-    constexpr int M3_NZ_INDEX  = (7+M_OFFSET);
+    constexpr int M3_NX_INDEX  = (5+M_OFFSET); // X
+    constexpr int M3_NY_INDEX  = (6+M_OFFSET); // X
+    constexpr int M3_NZ_INDEX  = (7+M_OFFSET); // X
     constexpr int M3_LP_INDEX  = (8+M_OFFSET);
-    constexpr int M3_MU_INDEX  = (9+M_OFFSET);
+    constexpr int M3_MU_INDEX  = (9+M_OFFSET); // x
     constexpr int M3_LM_INDEX  = (10+M_OFFSET);
     #ifdef M_OFFSET
         #undef M_OFFSET
@@ -78,7 +78,7 @@ constexpr int M_MZZ_INDEX = 9;
 #endif
 
 #ifdef LAMBDA_DIST
-    constexpr int M4_LAMBDA_INDEX   = (1+M_OFFSET);
+    constexpr int M4_LAMBDA_INDEX   = (1+M_OFFSET); // X
     constexpr int M4_LX_INDEX  = (2+M_OFFSET);
     constexpr int M4_LY_INDEX  = (3+M_OFFSET);
     constexpr int M4_LZ_INDEX  = (4+M_OFFSET);
@@ -89,7 +89,7 @@ constexpr int M_MZZ_INDEX = 9;
 #endif
 
 #ifdef A_XX_DIST
-    constexpr int A_XX_C_INDEX   = (1+M_OFFSET);
+    constexpr int A_XX_C_INDEX   = (1+M_OFFSET); // X
     constexpr int A_XX_CX_INDEX  = (2+M_OFFSET);
     constexpr int A_XX_CY_INDEX  = (3+M_OFFSET);
     constexpr int A_XX_CZ_INDEX  = (4+M_OFFSET);
@@ -100,7 +100,7 @@ constexpr int M_MZZ_INDEX = 9;
 #endif
 
 #ifdef A_XY_DIST
-    constexpr int A_XY_C_INDEX   = (1+M_OFFSET);
+    constexpr int A_XY_C_INDEX   = (1+M_OFFSET); // X
     constexpr int A_XY_CX_INDEX  = (2+M_OFFSET);
     constexpr int A_XY_CY_INDEX  = (3+M_OFFSET);
     constexpr int A_XY_CZ_INDEX  = (4+M_OFFSET);
@@ -111,7 +111,7 @@ constexpr int M_MZZ_INDEX = 9;
 #endif
 
 #ifdef A_XZ_DIST
-    constexpr int A_XZ_C_INDEX   = (1+M_OFFSET);
+    constexpr int A_XZ_C_INDEX   = (1+M_OFFSET); // X
     constexpr int A_XZ_CX_INDEX  = (2+M_OFFSET);
     constexpr int A_XZ_CY_INDEX  = (3+M_OFFSET);
     constexpr int A_XZ_CZ_INDEX  = (4+M_OFFSET);
@@ -122,7 +122,7 @@ constexpr int M_MZZ_INDEX = 9;
 #endif
 
 #ifdef A_YY_DIST
-    constexpr int A_YY_C_INDEX   = (1+M_OFFSET);
+    constexpr int A_YY_C_INDEX   = (1+M_OFFSET); // X
     constexpr int A_YY_CX_INDEX  = (2+M_OFFSET);
     constexpr int A_YY_CY_INDEX  = (3+M_OFFSET);
     constexpr int A_YY_CZ_INDEX  = (4+M_OFFSET);
@@ -133,7 +133,7 @@ constexpr int M_MZZ_INDEX = 9;
 #endif
 
 #ifdef A_YZ_DIST
-    constexpr int A_YZ_C_INDEX   = (1+M_OFFSET);
+    constexpr int A_YZ_C_INDEX   = (1+M_OFFSET); // X
     constexpr int A_YZ_CX_INDEX  = (2+M_OFFSET);
     constexpr int A_YZ_CY_INDEX  = (3+M_OFFSET);
     constexpr int A_YZ_CZ_INDEX  = (4+M_OFFSET);
@@ -144,7 +144,7 @@ constexpr int M_MZZ_INDEX = 9;
 #endif
 
 #ifdef A_ZZ_DIST
-    constexpr int A_ZZ_C_INDEX   = (1+M_OFFSET);
+    constexpr int A_ZZ_C_INDEX   = (1+M_OFFSET); // X
     constexpr int A_ZZ_CX_INDEX  = (2+M_OFFSET);
     constexpr int A_ZZ_CY_INDEX  = (3+M_OFFSET);
     constexpr int A_ZZ_CZ_INDEX  = (4+M_OFFSET);

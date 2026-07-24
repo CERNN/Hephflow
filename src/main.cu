@@ -181,6 +181,8 @@ int main() {
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
             devices[g].sendTopToNext(g, devices.data(), streamsLBM[g]);
             devices[g].sendBottomToPrev(g, devices.data(), streamsLBM[g]);
+            devices[g].sendMacroTopToNext(g, devices.data(), streamsLBM[g]);
+            devices[g].sendMacroBottomToPrev(g, devices.data(), streamsLBM[g]);
         }
     
         for (int g = 0; g < N_GPUS; g++) {
@@ -210,7 +212,6 @@ int main() {
             checkCudaErrors(cudaDeviceSynchronize());
         }
         
-
         // swap interface pointers
         //deviceField.swapGhostInterfacesDeviceField();
             
@@ -218,14 +219,15 @@ int main() {
 
         //------------------------- Auxiliary Kernels -------------------------
         if (N_GPUS == 1) {
-            devices[0].halfStepKernels(gridBlock, threadBlock, step, 0, streamsLBM[0]);
+            devices[0].halfStepKernels(gridBlock, threadBlock, step, 0, slice, streamsLBM[0]);
             #ifdef PARTICLE_MODEL
                 particleField.simulationStep(deviceField.d_fMom, step);
             #endif //PARTICLE_MODEL
         } else {
             for(int g = 0; g < N_GPUS; g++){
                 threads.emplace_back([&, g, slice]() {
-                    devices[g].halfStepKernels(gridBlock, threadBlock, step, g, streamsLBM[g]);
+                    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+                    devices[g].halfStepKernels(gridBlock, threadBlock, step, g, slice, streamsLBM[g]);
                     #ifdef PARTICLE_MODEL
                         particleField.simulationStep(deviceField.d_fMom, step);
                     #endif //PARTICLE_MODEL
@@ -233,6 +235,11 @@ int main() {
             }
             for (auto &t : threads) { t.join(); }
             threads.clear();
+        }
+
+        for(int g = 0; g < N_GPUS; g++){
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            cudaDeviceSynchronize();
         }
 
         //------------------------- Saving Data -------------------------

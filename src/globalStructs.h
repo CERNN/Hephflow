@@ -408,6 +408,13 @@ typedef struct dfloat4SoA {
 
 } dfloat4SoA;
 
+typedef struct gpuDirection{
+    dfloat* Z_0;
+    dfloat* Z_1;
+    dfloat* auxZ_0;
+    dfloat* auxZ_1;
+} GpuDirection;
+
 typedef struct ghostData {
     dfloat* X_0;
     dfloat* X_1;
@@ -416,6 +423,47 @@ typedef struct ghostData {
     dfloat* Z_0;
     dfloat* Z_1;
 } GhostData;
+
+typedef struct macroInterfaceGPUData {
+    gpuDirection rho;
+    gpuDirection ux;
+    gpuDirection uy;
+    gpuDirection uz;
+
+    #ifdef SECOND_DIST
+        gpuDirection g;
+    #endif //SECOND_DIST
+
+    #ifdef PHI_DIST
+        gpuDirection phi;
+        gpuDirection nx;
+        gpuDirection ny;
+        gpuDirection nz;
+        gpuDirection mu;
+    #endif //PHI_DIST
+    #ifdef A_XX_DIST
+        gpuDirection Axx;
+    #endif //A_XX_DIST
+    #ifdef A_XY_DIST
+        gpuDirection Axy;
+    #endif //A_XY_DIST
+    #ifdef A_XZ_DIST
+        gpuDirection Axz;
+    #endif //A_XZ_DIST
+    #ifdef A_YY_DIST
+        gpuDirection Ayy;
+    #endif //A_YY_DIST
+    #ifdef A_YZ_DIST
+        gpuDirection Ayz;
+    #endif //A_YZ_DIST
+    #ifdef A_ZZ_DIST
+        gpuDirection Azz;
+    #endif //A_ZZ_DIST
+    #ifdef LAMBDA_DIST
+        gpuDirection lambda;
+    #endif //LAMBDA_DIST
+
+} macroInterfaceGPUData;
 
 typedef struct ghostInterfaceData  {
     ghostData pop;
@@ -429,6 +477,7 @@ typedef struct ghostInterfaceData  {
     #endif //SECOND_DIST
     #ifdef PHI_DIST
         ghostData phi;
+        ghostData phiAux;
         ghostData h_phi;
     #endif //PHI_DIST
     #ifdef A_XX_DIST
@@ -550,38 +599,57 @@ struct DeviceKernelParams {
     size_t localNZ; 
     int zStart;
 
+    gpuDirection rho_macro;
+    gpuDirection ux_macro;
+    gpuDirection uy_macro;
+    gpuDirection uz_macro;
+
     #ifdef SECOND_DIST
     ghostFacePtrs g;
+    gpuDirection g_macro
     #endif //SECOND_DIST
 
     #ifdef A_XX_DIST
         ghostFacePtrs Axx;
+        gpuDirection Axx_macro
     #endif //A_XX_DIST
     #ifdef A_XY_DIST
         ghostFacePtrs Axy;
+        gpuDirection Axy_macro
     #endif //A_XY_DIST
     #ifdef A_XZ_DIST
         ghostFacePtrs Axz;
+        gpuDirection Axz_macro
     #endif //A_XZ_DIST
     #ifdef A_YY_DIST
         ghostFacePtrs Ayy;
+        gpuDirection Ayy_macro
     #endif //A_YY_DIST
     #ifdef A_YZ_DIST
         ghostFacePtrs Ayz;
+        gpuDirection Ayz_macro
     #endif //A_YZ_DIST
     #ifdef A_ZZ_DIST
         ghostFacePtrs Azz;
+        gpuDirection Azz_macro
     #endif //A_ZZ_DIST
 
     #ifdef LAMBDA_DIST
     ghostFacePtrs lambda;
+    gpuDirection lambda_macro
     #endif //LAMBDA_DIST
 
     #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
     fluidPhaseProps phasePropsA;            ///< Phase-1 fluid properties (viscous + viscoelastic)
     #ifdef PHI_DIST
     fluidPhaseProps phasePropsB;            ///< Phase-2 fluid properties (viscous + viscoelastic)
-    #endif
+    ghostFacePtrs phi;
+    gpuDirection phi_macro;
+    gpuDirection nx_macro;
+    gpuDirection ny_macro;
+    gpuDirection nz_macro;
+    gpuDirection mu_macro;
+    #endif //PHI_DIST
     #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
 
     // Conditional parameters with #ifdef guards

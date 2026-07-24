@@ -70,7 +70,7 @@ void interfaceSwap(dfloat* &pt1, dfloat* &pt2) {
  *  @param ghostInterface: reference to the ghost interface data structure
  */
 __host__
-void interfaceFree(ghostInterfaceData &ghostInterface)
+void interfaceFree(ghostInterfaceData &ghostInterface, macroInterfaceGPUData &macroInterfaceGPU)
 {
     cudaFree(ghostInterface.pop.X_0);
     cudaFree(ghostInterface.pop.X_1);
@@ -81,6 +81,24 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
     cudaFree(ghostInterface.popAux.Z_0);
     cudaFree(ghostInterface.popAux.Z_1);
 
+    cudaFree(macroInterfaceGPU.rho.Z_0);
+    cudaFree(macroInterfaceGPU.rho.auxZ_0);
+    cudaFree(macroInterfaceGPU.rho.Z_1);
+    cudaFree(macroInterfaceGPU.rho.auxZ_1);
+    cudaFree(macroInterfaceGPU.ux.Z_0);
+    cudaFree(macroInterfaceGPU.ux.auxZ_0);
+    cudaFree(macroInterfaceGPU.ux.Z_1);
+    cudaFree(macroInterfaceGPU.ux.auxZ_1);
+    cudaFree(macroInterfaceGPU.uy.Z_0);
+    cudaFree(macroInterfaceGPU.uy.auxZ_0);
+    cudaFree(macroInterfaceGPU.uy.Z_1);
+    cudaFree(macroInterfaceGPU.uy.auxZ_1);
+    cudaFree(macroInterfaceGPU.uz.Z_0);
+    cudaFree(macroInterfaceGPU.uz.auxZ_0);
+    cudaFree(macroInterfaceGPU.uz.Z_1);
+    cudaFree(macroInterfaceGPU.uz.auxZ_1);
+
+
     #ifdef SECOND_DIST
         cudaFree(ghostInterface.g.X_0);
         cudaFree(ghostInterface.g.X_1);
@@ -90,6 +108,11 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.g.Z_1);
         cudaFree(ghostInterface.gAux.Z_0);
         cudaFree(ghostInterface.gAux.Z_1);
+        
+        cudaFree(macroInterfaceGPU.g.Z_0);
+        cudaFree(macroInterfaceGPU.g.auxZ_0);
+        cudaFree(macroInterfaceGPU.g.Z_1);
+        cudaFree(macroInterfaceGPU.g.auxZ_1);
 
     #endif //SECOND_DIST
     #ifdef PHI_DIST
@@ -99,6 +122,29 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.phi.Y_1);
         cudaFree(ghostInterface.phi.Z_0);
         cudaFree(ghostInterface.phi.Z_1);
+        cudaFree(ghostInterface.phiAux.Z_0);
+        cudaFree(ghostInterface.phiAux.Z_1);
+
+        cudaFree(macroInterfaceGPU.phi.Z_0);
+        cudaFree(macroInterfaceGPU.phi.auxZ_0);
+        cudaFree(macroInterfaceGPU.phi.Z_1);
+        cudaFree(macroInterfaceGPU.phi.auxZ_1);
+        cudaFree(macroInterfaceGPU.nx.Z_0);
+        cudaFree(macroInterfaceGPU.nx.auxZ_0);
+        cudaFree(macroInterfaceGPU.nx.Z_1);
+        cudaFree(macroInterfaceGPU.nx.auxZ_1);
+        cudaFree(macroInterfaceGPU.ny.Z_0);
+        cudaFree(macroInterfaceGPU.ny.auxZ_0);
+        cudaFree(macroInterfaceGPU.ny.Z_1);
+        cudaFree(macroInterfaceGPU.ny.auxZ_1);
+        cudaFree(macroInterfaceGPU.nz.Z_0);
+        cudaFree(macroInterfaceGPU.nz.auxZ_0);
+        cudaFree(macroInterfaceGPU.nz.Z_1);
+        cudaFree(macroInterfaceGPU.nz.auxZ_1);
+        cudaFree(macroInterfaceGPU.mu.Z_0);
+        cudaFree(macroInterfaceGPU.mu.auxZ_0);
+        cudaFree(macroInterfaceGPU.mu.Z_1);
+        cudaFree(macroInterfaceGPU.mu.auxZ_1);
 
     #endif //PHI_DIST
     #ifdef LAMBDA_DIST
@@ -111,6 +157,11 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.lambdaAux.Z_0);
         cudaFree(ghostInterface.lambdaAux.Z_1);
 
+        cudaFree(macroInterfaceGPU.lambda.Z_0);
+        cudaFree(macroInterfaceGPU.lambda.auxZ_0);
+        cudaFree(macroInterfaceGPU.lambda.Z_1);
+        cudaFree(macroInterfaceGPU.lambda.auxZ_1);
+
     #endif //LAMBDA_DIST
     #ifdef A_XX_DIST
         cudaFree(ghostInterface.Axx.X_0);
@@ -121,6 +172,11 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.Axx.Z_1);
         cudaFree(ghostInterface.AxxAux.Z_0);
         cudaFree(ghostInterface.AxxAux.Z_1);
+
+        cudaFree(macroInterfaceGPU.xx.Z_0);
+        cudaFree(macroInterfaceGPU.xx.auxZ_0);
+        cudaFree(macroInterfaceGPU.xx.Z_1);
+        cudaFree(macroInterfaceGPU.xx.auxZ_1);
 
     #endif //A_XX_DIST
     #ifdef A_XY_DIST
@@ -133,6 +189,11 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.AxyAux.Z_0);
         cudaFree(ghostInterface.AxyAux.Z_1);
 
+        cudaFree(macroInterfaceGPU.xy.Z_0);
+        cudaFree(macroInterfaceGPU.xy.auxZ_0);
+        cudaFree(macroInterfaceGPU.xy.Z_1);
+        cudaFree(macroInterfaceGPU.xy.auxZ_1);
+
     #endif //A_XY_DIST
     #ifdef A_XZ_DIST
         cudaFree(ghostInterface.Axz.X_0);
@@ -143,6 +204,11 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.Axz.Z_1);
         cudaFree(ghostInterface.AxzAux.Z_0);
         cudaFree(ghostInterface.AxzAux.Z_1);
+
+        cudaFree(macroInterfaceGPU.xz.Z_0);
+        cudaFree(macroInterfaceGPU.xz.auxZ_0);
+        cudaFree(macroInterfaceGPU.xz.Z_1);
+        cudaFree(macroInterfaceGPU.xz.auxZ_1);
 
     #endif //A_XZ_DIST
     #ifdef A_YY_DIST
@@ -155,6 +221,11 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.AyyAux.Z_0);
         cudaFree(ghostInterface.AyyAux.Z_1);
 
+        cudaFree(macroInterfaceGPU.yy.Z_0);
+        cudaFree(macroInterfaceGPU.yy.auxZ_0);
+        cudaFree(macroInterfaceGPU.yy.Z_1);
+        cudaFree(macroInterfaceGPU.yy.auxZ_1);
+
     #endif //A_YY_DIST
     #ifdef A_YZ_DIST
         cudaFree(ghostInterface.Ayz.X_0);
@@ -166,6 +237,11 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.AyzAux.Z_0);
         cudaFree(ghostInterface.AyzAux.Z_1);
 
+        cudaFree(macroInterfaceGPU.yz.Z_0);
+        cudaFree(macroInterfaceGPU.yz.auxZ_0);
+        cudaFree(macroInterfaceGPU.yz.Z_1);
+        cudaFree(macroInterfaceGPU.yz.auxZ_1);
+
     #endif //A_YZ_DIST
     #ifdef A_ZZ_DIST
         cudaFree(ghostInterface.Azz.X_0);
@@ -176,6 +252,11 @@ void interfaceFree(ghostInterfaceData &ghostInterface)
         cudaFree(ghostInterface.Azz.Z_1);
         cudaFree(ghostInterface.AzzAux.Z_0);
         cudaFree(ghostInterface.AzzAux.Z_1);
+
+        cudaFree(macroInterfaceGPU.zz.Z_0);
+        cudaFree(macroInterfaceGPU.zz.auxZ_0);
+        cudaFree(macroInterfaceGPU.zz.Z_1);
+        cudaFree(macroInterfaceGPU.zz.auxZ_1);
 
     #endif //A_ZZ_DIST
 
@@ -338,9 +419,11 @@ void swapGhostInterfaces(GhostInterfaceData& ghostInterface) {
  *  @param ghostInterface: reference to the ghost interface data structure
  */
 __host__
-void interfaceMalloc(ghostInterfaceData &ghostInterface)
+void interfaceMalloc(ghostInterfaceData &ghostInterface, macroInterfaceGPUData &macroInterfaceGPU)
 {
     unsigned int memAllocated = 0;
+
+    size_t MacroBoundarySize = NX * NY * sizeof(dfloat);
 
     cudaMalloc((void **)&(ghostInterface.pop.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * QF);
     cudaMalloc((void **)&(ghostInterface.pop.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * QF);
@@ -350,6 +433,23 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.pop.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF);
     cudaMalloc((void **)&(ghostInterface.popAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_AUX * QF);
     cudaMalloc((void **)&(ghostInterface.popAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_AUX * QF);
+
+    cudaMalloc((void **)&(macroInterfaceGPU.rho.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.rho.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.rho.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.rho.auxZ_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.ux.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.ux.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.ux.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.ux.auxZ_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.uy.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.uy.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.uy.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.uy.auxZ_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.uz.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.uz.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.uz.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.uz.auxZ_1), MacroBoundarySize);
 
     memAllocated = QF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);  // AA: ghost only
 
@@ -363,6 +463,11 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.gAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.gAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
+    cudaMalloc((void **)&(macroInterfaceGPU.g.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.g.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.g.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.g.auxZ_1), MacroBoundarySize);
+
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //SECOND_DIST
 
@@ -373,6 +478,30 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.phi.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF);
     cudaMalloc((void **)&(ghostInterface.phi.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.phi.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.phiAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+    cudaMalloc((void **)&(ghostInterface.phiAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+
+    cudaMalloc((void **)&(macroInterfaceGPU.phi.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.phi.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.phi.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.phi.auxZ_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.nx.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.nx.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.nx.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.nx.auxZ_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.ny.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.ny.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.ny.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.ny.auxZ_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.nz.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.nz.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.nz.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.nz.auxZ_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.mu.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.mu.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.mu.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.mu.auxZ_1), MacroBoundarySize);
+
 
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //PHI_DIST
@@ -387,6 +516,11 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.lambdaAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.lambdaAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
+    cudaMalloc((void **)&(macroInterfaceGPU.lambda.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.lambda.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.lambda.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.lambda.auxZ_1), MacroBoundarySize);
+
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //LAMBDA_DIST
 
@@ -399,6 +533,11 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.Axx.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.AxxAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.AxxAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+
+    cudaMalloc((void **)&(macroInterfaceGPU.Axx.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Axx.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Axx.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Axx.auxZ_1), MacroBoundarySize);
 
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //A_XX_DIST
@@ -413,6 +552,11 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.AxyAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.AxyAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
+    cudaMalloc((void **)&(macroInterfaceGPU.Axy.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Axy.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Axy.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Axy.auxZ_1), MacroBoundarySize);
+
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //A_XY_DIST
 
@@ -425,6 +569,11 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.Axz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.AxzAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.AxzAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+
+    cudaMalloc((void **)&(macroInterfaceGPU.Axz.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Axz.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Axz.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Axz.auxZ_1), MacroBoundarySize);
 
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //A_XZ_DIST
@@ -439,6 +588,11 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.AyyAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.AyyAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
+    cudaMalloc((void **)&(macroInterfaceGPU.Ayy.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Ayy.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Ayy.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Ayy.auxZ_1), MacroBoundarySize);
+
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //A_YY_DIST
 
@@ -452,6 +606,11 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.AyzAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.AyzAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
 
+    cudaMalloc((void **)&(macroInterfaceGPU.Ayz.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Ayz.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Ayz.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Ayz.auxZ_1), MacroBoundarySize);
+
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //A_YZ_DIST
 
@@ -464,6 +623,11 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface)
     cudaMalloc((void **)&(ghostInterface.Azz.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.AzzAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
     cudaMalloc((void **)&(ghostInterface.AzzAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF);
+
+    cudaMalloc((void **)&(macroInterfaceGPU.Azz.Z_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Azz.Z_1), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Azz.auxZ_0), MacroBoundarySize);
+    cudaMalloc((void **)&(macroInterfaceGPU.Azz.auxZ_1), MacroBoundarySize);
 
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
 #endif //A_ZZ_DIST

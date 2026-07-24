@@ -7,6 +7,7 @@
 
 typedef struct deviceField{
     ghostInterfaceData ghostInterface[N_GPUS];
+    macroInterfaceGPUData macroInterfaceGPU[N_GPUS];
 
     dfloat* d_fMom[N_GPUS];
     unsigned int* dNodeType[N_GPUS];
@@ -68,7 +69,7 @@ typedef struct deviceField{
 
         cudaMalloc((void**)&d_fMom[g], MEM_SIZE_MOM_LOCAL);
         cudaMalloc((void**)&dNodeType[g], sizeof(int) * NUMBER_LBM_NODES_LOCAL);
-        interfaceMalloc(ghostInterface[g]);
+        interfaceMalloc(ghostInterface[g], macroInterfaceGPU[g]);
 
         memAllocated += MEM_SIZE_MOM_LOCAL + sizeof(int) * NUMBER_LBM_NODES_LOCAL;
 
@@ -306,6 +307,26 @@ typedef struct deviceField{
         params.zStart = zStart;
         params.localNZ = localNZ;
 
+        params.rho_macro.Z_0 = macroInterfaceGPU[g].rho.Z_0;
+        params.rho_macro.Z_1 = macroInterfaceGPU[g].rho.Z_1;
+        params.rho_macro.auxZ_0 = macroInterfaceGPU[g].rho.auxZ_0;
+        params.rho_macro.auxZ_1 = macroInterfaceGPU[g].rho.auxZ_1;
+
+        params.ux_macro.Z_0 = macroInterfaceGPU[g].ux.Z_0;
+        params.ux_macro.Z_1 = macroInterfaceGPU[g].ux.Z_1;
+        params.ux_macro.auxZ_0 = macroInterfaceGPU[g].ux.auxZ_0;
+        params.ux_macro.auxZ_1 = macroInterfaceGPU[g].ux.auxZ_1;
+
+        params.uy_macro.Z_0 = macroInterfaceGPU[g].uy.Z_0;
+        params.uy_macro.Z_1 = macroInterfaceGPU[g].uy.Z_1;
+        params.uy_macro.auxZ_0 = macroInterfaceGPU[g].uy.auxZ_0;
+        params.uy_macro.auxZ_1 = macroInterfaceGPU[g].uy.auxZ_1;
+
+        params.uz_macro.Z_0 = macroInterfaceGPU[g].uz.Z_0;
+        params.uz_macro.Z_1 = macroInterfaceGPU[g].uz.Z_1;
+        params.uz_macro.auxZ_0 = macroInterfaceGPU[g].uz.auxZ_0;
+        params.uz_macro.auxZ_1 = macroInterfaceGPU[g].uz.auxZ_1;
+
         #ifdef SECOND_DIST
         params.g.X_0    = ghostInterface[g].g.X_0;
         params.g.X_1    = ghostInterface[g].g.X_1;
@@ -315,6 +336,11 @@ typedef struct deviceField{
         params.g.Z_1    = ghostInterface[g].g.Z_1;
         params.g.auxZ_0 = ghostInterface[g].gAux.Z_0;
         params.g.auxZ_1 = ghostInterface[g].gAux.Z_1;
+
+        params.g_macro.Z_0 = macroInterfaceGPU[g].g.Z_0;
+        params.g_macro.Z_1 = macroInterfaceGPU[g].g.Z_1;
+        params.g_macro.auxZ_0 = macroInterfaceGPU[g].g.auxZ_0;
+        params.g_macro.auxZ_1 = macroInterfaceGPU[g].g.auxZ_1;
         #endif //SECOND_DIST
 
         #ifdef LAMBDA_DIST
@@ -326,6 +352,11 @@ typedef struct deviceField{
         params.lambda.Z_1    = ghostInterface[g].lambda.Z_1;
         params.lambda.auxZ_0 = ghostInterface[g].lambdaAux.Z_0;
         params.lambda.auxZ_1 = ghostInterface[g].lambdaAux.Z_1;
+
+        params.lambda_macro.Z_0 = macroInterfaceGPU[g].lambda.Z_0;
+        params.lambda_macro.Z_1 = macroInterfaceGPU[g].lambda.Z_1;
+        params.lambda_macro.auxZ_0 = macroInterfaceGPU[g].lambda.auxZ_0;
+        params.lambda_macro.auxZ_1 = macroInterfaceGPU[g].lambda.auxZ_1;
         #endif //LAMBDA_DIST
 
         #ifdef A_XX_DIST
@@ -337,6 +368,11 @@ typedef struct deviceField{
         params.Axx.Z_1    = ghostInterface[g].Axx.Z_1;
         params.Axx.auxZ_0 = ghostInterface[g].AxxAux.Z_0;
         params.Axx.auxZ_1 = ghostInterface[g].AxxAux.Z_1;
+
+        params.Axx_macro.Z_0 = macroInterfaceGPU[g].xx.Z_0;
+        params.Axx_macro.Z_1 = macroInterfaceGPU[g].xx.Z_1;
+        params.Axx_macro.auxZ_0 = macroInterfaceGPU[g].xx.auxZ_0;
+        params.Axx_macro.auxZ_1 = macroInterfaceGPU[g].xx.auxZ_1;
         #endif //A_XX_DIST
         #ifdef A_XY_DIST
         params.Axy.X_0    = ghostInterface[g].Axy.X_0;
@@ -347,6 +383,11 @@ typedef struct deviceField{
         params.Axy.Z_1    = ghostInterface[g].Axy.Z_1;
         params.Axy.auxZ_0 = ghostInterface[g].AxyAux.Z_0;
         params.Axy.auxZ_1 = ghostInterface[g].AxyAux.Z_1;
+
+        params.Axy_macro.Z_0 = macroInterfaceGPU[g].Axy.Z_0;
+        params.Axy_macro.Z_1 = macroInterfaceGPU[g].Axy.Z_1;
+        params.Axy_macro.auxZ_0 = macroInterfaceGPU[g].Axy.auxZ_0;
+        params.Axy_macro.auxZ_1 = macroInterfaceGPU[g].Axy.auxZ_1;
         #endif //A_XY_DIST
         #ifdef A_XZ_DIST
         params.Axz.X_0    = ghostInterface[g].Axz.X_0;
@@ -357,6 +398,11 @@ typedef struct deviceField{
         params.Axz.Z_1    = ghostInterface[g].Axz.Z_1;
         params.Axz.auxZ_0 = ghostInterface[g].AxzAux.Z_0;
         params.Axz.auxZ_1 = ghostInterface[g].AxzAux.Z_1;
+
+        params.Axz_macro.Z_0 = macroInterfaceGPU[g].Axz.Z_0;
+        params.Axz_macro.Z_1 = macroInterfaceGPU[g].Axz.Z_1;
+        params.Axz_macro.auxZ_0 = macroInterfaceGPU[g].Axz.auxZ_0;
+        params.Axz_macro.auxZ_1 = macroInterfaceGPU[g].Axz.auxZ_1;
         #endif //A_XZ_DIST
         #ifdef A_YY_DIST
         params.Ayy.X_0    = ghostInterface[g].Ayy.X_0;
@@ -367,6 +413,11 @@ typedef struct deviceField{
         params.Ayy.Z_1    = ghostInterface[g].Ayy.Z_1;
         params.Ayy.auxZ_0 = ghostInterface[g].AyyAux.Z_0;
         params.Ayy.auxZ_1 = ghostInterface[g].AyyAux.Z_1;
+
+        params.Ayy_macro.Z_0 = macroInterfaceGPU[g].Ayy.Z_0;
+        params.Ayy_macro.Z_1 = macroInterfaceGPU[g].Ayy.Z_1;
+        params.Ayy_macro.auxZ_0 = macroInterfaceGPU[g].Ayy.auxZ_0;
+        params.Ayy_macro.auxZ_1 = macroInterfaceGPU[g].Ayy.auxZ_1;
         #endif //A_YY_DIST
         #ifdef A_YZ_DIST
         params.Ayz.X_0    = ghostInterface[g].Ayz.X_0;
@@ -377,6 +428,11 @@ typedef struct deviceField{
         params.Ayz.Z_1    = ghostInterface[g].Ayz.Z_1;
         params.Ayz.auxZ_0 = ghostInterface[g].AyzAux.Z_0;
         params.Ayz.auxZ_1 = ghostInterface[g].AyzAux.Z_1;
+
+        params.Ayz_macro.Z_0 = macroInterfaceGPU[g].Ayz.Z_0;
+        params.Ayz_macro.Z_1 = macroInterfaceGPU[g].Ayz.Z_1;
+        params.Ayz_macro.auxZ_0 = macroInterfaceGPU[g].Ayz.auxZ_0;
+        params.Ayz_macro.auxZ_1 = macroInterfaceGPU[g].Ayz.auxZ_1;
         #endif //A_YZ_DIST
         #ifdef A_ZZ_DIST
         params.Azz.X_0    = ghostInterface[g].Azz.X_0;
@@ -387,6 +443,11 @@ typedef struct deviceField{
         params.Azz.Z_1    = ghostInterface[g].Azz.Z_1;
         params.Azz.auxZ_0 = ghostInterface[g].AzzAux.Z_0;
         params.Azz.auxZ_1 = ghostInterface[g].AzzAux.Z_1;
+
+        params.Azz_macro.Z_0 = macroInterfaceGPU[g].Azz.Z_0;
+        params.Azz_macro.Z_1 = macroInterfaceGPU[g].Azz.Z_1;
+        params.Azz_macro.auxZ_0 = macroInterfaceGPU[g].Azz.auxZ_0;
+        params.Azz_macro.auxZ_1 = macroInterfaceGPU[g].Azz.auxZ_1;
         #endif //A_ZZ_DIST
         
         #ifdef DENSITY_CORRECTION
@@ -408,15 +469,362 @@ typedef struct deviceField{
         params.phasePropsA = phasePropsA;
         #ifdef PHI_DIST
         params.phasePropsB = phasePropsB;
-        #endif
+        params.phi.X_0    = ghostInterface[g].phi.X_0;
+        params.phi.X_1    = ghostInterface[g].phi.X_1;
+        params.phi.Y_0    = ghostInterface[g].phi.Y_0;
+        params.phi.Y_1    = ghostInterface[g].phi.Y_1;
+        params.phi.Z_0    = ghostInterface[g].phi.Z_0;
+        params.phi.Z_1    = ghostInterface[g].phi.Z_1;
+        params.phi.auxZ_0 = ghostInterface[g].phiAux.Z_0;
+        params.phi.auxZ_1 = ghostInterface[g].phiAux.Z_1;
+
+        params.phi_macro.Z_0 = macroInterfaceGPU[g].phi.Z_0;
+        params.phi_macro.Z_1 = macroInterfaceGPU[g].phi.Z_1;
+        params.phi_macro.auxZ_0 = macroInterfaceGPU[g].phi.auxZ_0;
+        params.phi_macro.auxZ_1 = macroInterfaceGPU[g].phi.auxZ_1;
+        params.nx_macro.Z_0 = macroInterfaceGPU[g].nx.Z_0;
+        params.nx_macro.Z_1 = macroInterfaceGPU[g].nx.Z_1;
+        params.nx_macro.auxZ_0 = macroInterfaceGPU[g].nx.auxZ_0;
+        params.nx_macro.auxZ_1 = macroInterfaceGPU[g].nx.auxZ_1;
+        params.ny_macro.Z_0 = macroInterfaceGPU[g].ny.Z_0;
+        params.ny_macro.Z_1 = macroInterfaceGPU[g].ny.Z_1;
+        params.ny_macro.auxZ_0 = macroInterfaceGPU[g].ny.auxZ_0;
+        params.ny_macro.auxZ_1 = macroInterfaceGPU[g].ny.auxZ_1;
+        params.nz_macro.Z_0 = macroInterfaceGPU[g].nz.Z_0;
+        params.nz_macro.Z_1 = macroInterfaceGPU[g].nz.Z_1;
+        params.nz_macro.auxZ_0 = macroInterfaceGPU[g].nz.auxZ_0;
+        params.nz_macro.auxZ_1 = macroInterfaceGPU[g].nz.auxZ_1;
+
+        params.mu_macro.Z_0 = macroInterfaceGPU[g].mu.Z_0;
+        params.mu_macro.Z_1 = macroInterfaceGPU[g].mu.Z_1;
+        params.mu_macro.auxZ_0 = macroInterfaceGPU[g].mu.auxZ_0;
+        params.mu_macro.auxZ_1 = macroInterfaceGPU[g].mu.auxZ_1;
+
+        #endif //PHI_DIST
         #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
         
         // Pass struct by value - CUDA handles this efficiently
         #ifdef DYNAMIC_SHARED_MEMORY
         gpuMomCollisionStream<<<gridBlock, threadBlock, MAX_SHARED_MEMORY_SIZE, stream>>>(params);
         #else
+
         gpuMomCollisionStream<<<gridBlock, threadBlock, 0, stream>>>(params);
+
         #endif
+    }
+
+    void sendMacroTopToNext(int g, deviceField* allDevices, cudaStream_t streamLBM)
+    {
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        #ifdef BC_Z_WALL
+        if (g == N_GPUS - 1) return;
+        #endif
+
+        const int gNext = (g + 1) % N_GPUS;
+        const size_t MacroHaloSize = NX * NY * sizeof(dfloat);
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].rho.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].rho.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].ux.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].ux.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].uy.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].uy.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].uz.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].uz.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+
+        #ifdef SECOND_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].g.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].g.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //SECOND_DIST
+        #ifdef LAMBDA_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].lambda.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].lambda.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //LAMBDA_DIST
+        #ifdef A_XX_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].Axx.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].Axx.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //A_XX_DIST
+        #ifdef A_XY_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].Axy.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].Axy.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //A_XY_DIST
+        #ifdef A_XZ_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].Axz.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].Axz.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //A_XZ_DIST
+        #ifdef A_YY_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].Ayy.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].Ayy.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //A_YY_DIST
+        #ifdef A_YZ_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].Ayz.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].Ayz.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //A_YZ_DIST
+        #ifdef A_ZZ_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].Azz.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].Azz.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //A_ZZ_DIST
+
+        #ifdef PHI_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].phi.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].phi.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].nx.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].nx.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].ny.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].ny.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].nz.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].nz.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].macroInterfaceGPU[gNext].mu.auxZ_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].macroInterfaceGPU[g].mu.Z_1,
+            GPUS_TO_USE[g],
+            MacroHaloSize, streamLBM
+        ));
+
+        #endif //PHI_DIST
+    }
+
+    void sendMacroBottomToPrev(int g, deviceField* allDevices, cudaStream_t streamLBM)
+    {
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        const int gNext = (g + 1) % N_GPUS;
+        const size_t MacroHaloSize = NX * NY * sizeof(dfloat);
+
+        #ifdef BC_Z_WALL
+        if (g == 0) return;
+        #endif
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].rho.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].rho.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].ux.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].ux.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].uy.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].uy.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].uz.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].uz.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+
+        #ifdef SECOND_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].g.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].g.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //SECOND_DIST
+        #ifdef LAMBDA_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].lambda.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].lambda.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //LAMBDA_DIST
+        #ifdef A_XX_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].Axx.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].Axx.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //A_XX_DIST
+        #ifdef A_XY_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].Axy.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].Axy.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //A_XY_DIST
+        #ifdef A_XZ_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].Axz.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].Axz.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //A_XZ_DIST
+        #ifdef A_YY_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].Ayy.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].Ayy.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //A_YY_DIST
+        #ifdef A_YZ_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].Ayz.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].Ayz.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //A_YZ_DIST
+        #ifdef A_ZZ_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].Azz.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].Azz.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //A_ZZ_DIST
+
+        #ifdef PHI_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].phi.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].phi.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].nx.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].nx.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].ny.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].ny.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].nz.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].nz.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].macroInterfaceGPU[g].mu.auxZ_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].macroInterfaceGPU[gNext].mu.Z_0,
+            GPUS_TO_USE[gNext],
+            MacroHaloSize, streamLBM
+        ));
+        #endif //PHI_DIST
+
     }
 
     /* -------------- Send the current GPU's Z_1 top to the nearest GPU's Z_1 base   ------------- */
@@ -427,6 +835,8 @@ typedef struct deviceField{
         const size_t planeSize = (size_t)BLOCK_NX * BLOCK_NY * NUM_BLOCK_X * NUM_BLOCK_Y * QF;
         const size_t haloSize  = planeSize * sizeof(dfloat);
         const size_t topOffset = (size_t)(NUM_BLOCK_Z_LOCAL - 1) * planeSize;
+
+        
 
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[gNext].ghostInterface[gNext].popAux.Z_1,
@@ -445,6 +855,16 @@ typedef struct deviceField{
             haloSize, streamLBM
         ));
         #endif //SECOND_DIST
+
+        #ifdef PHI_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[gNext].ghostInterface[gNext].phiAux.Z_1,
+            GPUS_TO_USE[gNext],
+            allDevices[g].ghostInterface[g].phi.Z_1 + topOffset,
+            GPUS_TO_USE[g],
+            haloSize, streamLBM
+        ));
+        #endif //PHI_DIST
 
         #ifdef LAMBDA_DIST
         checkCudaErrors(cudaMemcpyPeerAsync(
@@ -526,6 +946,8 @@ typedef struct deviceField{
         const size_t haloSize  = planeSize * sizeof(dfloat);
         const size_t topOffset = (size_t)(NUM_BLOCK_Z_LOCAL - 1) * planeSize;
 
+        const size_t MacroHaloSize = NX * NY * sizeof(dfloat);
+
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[g].ghostInterface[g].popAux.Z_0,
             GPUS_TO_USE[g],
@@ -543,6 +965,16 @@ typedef struct deviceField{
             haloSize, streamLBM
         ));
         #endif //SECOND_DIST
+
+        #ifdef PHI_DIST
+        checkCudaErrors(cudaMemcpyPeerAsync(
+            allDevices[g].ghostInterface[g].phiAux.Z_0,
+            GPUS_TO_USE[g],
+            allDevices[gNext].ghostInterface[gNext].phi.Z_0,
+            GPUS_TO_USE[gNext],
+            haloSize, streamLBM
+        ));
+        #endif //PHI_DIST
 
         #ifdef LAMBDA_DIST
         checkCudaErrors(cudaMemcpyPeerAsync(
@@ -611,18 +1043,32 @@ typedef struct deviceField{
     }
 
     #ifdef PHI_DIST
-    void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock, int g, cudaStream_t stream){
-        gpuComputePhaseNormals<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g]);
-        gpuComputeChemicalPotential<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g]);
-        gpuComputeLaplacianMu<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g]);
+    void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock, int g, int slice, cudaStream_t stream){
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        int zStart = g * slice;
+        int zEnd   = (g == N_GPUS - 1) ? NZ : zStart + slice;
+        size_t localNZ = zEnd - zStart;
+        gpuComputePhaseNormals<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], macroInterfaceGPU[g], localNZ, zStart);
+        gpuComputeChemicalPotential<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], localNZ, zStart);
+        gpuComputeLaplacianMu<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], macroInterfaceGPU[g], localNZ, zStart);
     }
+
+    void gpuComputeLaplacianMuDeviceField(dim3 gridBlock, dim3 threadBlock, int g, int slice, cudaStream_t stream){
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        int zStart = g * slice;
+        int zEnd   = (g == N_GPUS - 1) ? NZ : zStart + slice;
+        size_t localNZ = zEnd - zStart;
+        gpuComputeLaplacianMu<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], macroInterfaceGPU[g], localNZ, zStart);
+    }
+    
     #endif //PHI_DIST
 
     void swapGhostInterfacesDeviceField(int g){
         swapGhostInterfaces(ghostInterface[g]);
     }
 
-    void halfStepKernels(dim3 gridBlock, dim3 threadBlock, size_t step, int g, cudaStream_t stream){
+    void halfStepKernels(dim3 gridBlock, dim3 threadBlock, size_t step, int g, int slice, cudaStream_t stream){
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         #ifdef LOCAL_FORCES
             gpuResetMacroForcesDeviceField(gridBlock, threadBlock, g, stream);
             CHECK_KERNEL_ERR("Force Reset kernel");
@@ -632,7 +1078,7 @@ typedef struct deviceField{
             CHECK_KERNEL_ERR("Curved BC kernel");
         #endif //CURVED_BOUNDARY_CONDITION
         #ifdef PHI_DIST
-            computePhaseNormalsDeviceField(gridBlock, threadBlock, g, stream);
+            computePhaseNormalsDeviceField(gridBlock, threadBlock, g, slice, stream);
             CHECK_KERNEL_ERR("Phi gradients kernel");
         #endif //PHI_DIST
         #ifdef DENSITY_CORRECTION
@@ -742,7 +1188,7 @@ typedef struct deviceField{
     #endif //BC_FORCES && SAVE_BC_FORCES
 
     void freeDeviceField(int g) {
-        interfaceFree(ghostInterface[g]);
+        interfaceFree(ghostInterface[g], macroInterfaceGPU[g]);
 
         cudaFree(d_fMom[g]);
         cudaFree(dNodeType[g]);
