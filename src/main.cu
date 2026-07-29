@@ -237,11 +237,6 @@ int main() {
             threads.clear();
         }
 
-        for(int g = 0; g < N_GPUS; g++){
-            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-            cudaDeviceSynchronize();
-        }
-
         //------------------------- Saving Data -------------------------
         // Saving checkpoint     
         if(saveField.checkpoint){
@@ -269,21 +264,14 @@ int main() {
         // Saving treat data  checks
         if(saveField.reportSave){
             printf("\n--------------------------- Saving report %06d ---------------------------\n", step);
-            for(int g = 0; g < N_GPUS; g++){
-                threads.emplace_back([&, g, slice]() {
-                    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-                    devices[g].treatDataDeviceField(hostField, step, g, slice);
-                    #ifdef PARTICLE_MODEL
-                    particleField.exportWallForces(step);
-                    #endif
-                    if(console_flush){fflush(stdout);}
-                });
-            }
-
-            for (auto &t : threads) {
-                t.join();
-            }                  
-            threads.clear();
+            #ifdef TREAT_DATA_INCLUDE
+            deviceField.copyMacroscopicDeviceField(hostField, devices.data(), slice); 
+            #endif //TREAT_DATA_INCLUDE
+            deviceField.treatDataDeviceField(hostField, step, slice);
+            #ifdef PARTICLE_MODEL
+            particleField.exportWallForces(step);
+            #endif
+            if(console_flush){fflush(stdout);}
         }
 
         #ifdef TESTS

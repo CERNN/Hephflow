@@ -1,8 +1,4 @@
 //copy full macroscopic field
-checkCudaErrors(cudaDeviceSynchronize());
-checkCudaErrors(cudaMemcpy(h_fMom+zOffset, fMom, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
-checkCudaErrors(cudaDeviceSynchronize());
-
 int y_wall;
 dfloat t_ux0, t_uy0,t_uz0;
 dfloat t_rho0;
@@ -418,49 +414,49 @@ int x0, y0, z0;
 x0 = NX/2;
 z0 = NZ_TOTAL/2;
 //x direction
-velocityProfile(fMom,4,x0,(2*del)/96,z0,step); //ux
-velocityProfile(fMom,5,x0,(2*del)/96,z0,step); //uy
-velocityProfile(fMom,6,x0,(2*del)/96,z0,step); //uz
+velocityProfile(h_fMom,4,x0,(2*del)/96,z0,step); //ux
+velocityProfile(h_fMom,5,x0,(2*del)/96,z0,step); //uy
+velocityProfile(h_fMom,6,x0,(2*del)/96,z0,step); //uz
 
-velocityProfile(fMom,4,x0,(6*del)/96,z0,step); //ux
-velocityProfile(fMom,5,x0,(6*del)/96,z0,step); //uy
-velocityProfile(fMom,6,x0,(6*del)/96,z0,step); //uz
+velocityProfile(h_fMom,4,x0,(6*del)/96,z0,step); //ux
+velocityProfile(h_fMom,5,x0,(6*del)/96,z0,step); //uy
+velocityProfile(h_fMom,6,x0,(6*del)/96,z0,step); //uz
 
-velocityProfile(fMom,4,x0,(52*del)/96,z0,step); //ux
-velocityProfile(fMom,5,x0,(52*del)/96,z0,step); //uy
-velocityProfile(fMom,6,x0,(52*del)/96,z0,step); //uz
+velocityProfile(h_fMom,4,x0,(52*del)/96,z0,step); //ux
+velocityProfile(h_fMom,5,x0,(52*del)/96,z0,step); //uy
+velocityProfile(h_fMom,6,x0,(52*del)/96,z0,step); //uz
 
-velocityProfile(fMom,4,x0,(96*del)/96,z0,step); //ux
-velocityProfile(fMom,5,x0,(96*del)/96,z0,step); //uy
-velocityProfile(fMom,6,x0,(96*del)/96,z0,step); //uz
+velocityProfile(h_fMom,4,x0,(96*del)/96,z0,step); //ux
+velocityProfile(h_fMom,5,x0,(96*del)/96,z0,step); //uy
+velocityProfile(h_fMom,6,x0,(96*del)/96,z0,step); //uz
 
 //Z DIRECITON
-velocityProfile(fMom,7,x0,(2*del)/96,z0,step); //ux
-velocityProfile(fMom,8,x0,(2*del)/96,z0,step); //uy
-velocityProfile(fMom,9,x0,(2*del)/96,z0,step); //uz
+velocityProfile(h_fMom,7,x0,(2*del)/96,z0,step); //ux
+velocityProfile(h_fMom,8,x0,(2*del)/96,z0,step); //uy
+velocityProfile(h_fMom,9,x0,(2*del)/96,z0,step); //uz
 
-velocityProfile(fMom,7,x0,(6*del)/96,z0,step); //ux
-velocityProfile(fMom,8,x0,(6*del)/96,z0,step); //uy
-velocityProfile(fMom,9,x0,(6*del)/96,z0,step); //uz
+velocityProfile(h_fMom,7,x0,(6*del)/96,z0,step); //ux
+velocityProfile(h_fMom,8,x0,(6*del)/96,z0,step); //uy
+velocityProfile(h_fMom,9,x0,(6*del)/96,z0,step); //uz
 
-velocityProfile(fMom,7,x0,(52*del)/96,z0,step); //ux
-velocityProfile(fMom,8,x0,(52*del)/96,z0,step); //uy
-velocityProfile(fMom,9,x0,(52*del)/96,z0,step); //uz
+velocityProfile(h_fMom,7,x0,(52*del)/96,z0,step); //ux
+velocityProfile(h_fMom,8,x0,(52*del)/96,z0,step); //uy
+velocityProfile(h_fMom,9,x0,(52*del)/96,z0,step); //uz
 
-velocityProfile(fMom,7,x0,(96*del)/96,z0,step); //ux
-velocityProfile(fMom,8,x0,(96*del)/96,z0,step); //uy
-velocityProfile(fMom,9,x0,(96*del)/96,z0,step); //uz
+velocityProfile(h_fMom,7,x0,(96*del)/96,z0,step); //ux
+velocityProfile(h_fMom,8,x0,(96*del)/96,z0,step); //uy
+velocityProfile(h_fMom,9,x0,(96*del)/96,z0,step); //uz
 
 
-rhoProfile(fMom,3,x0,(2*del)/96,z0,step);  //rho
-rhoProfile(fMom,3,x0,(6*del)/96,z0,step);  //rho
-rhoProfile(fMom,3,x0,(52*del)/96,z0,step); //rho
-rhoProfile(fMom,3,x0,(96*del)/96,z0,step); //rho
+rhoProfile(h_fMom,3,x0,(2*del)/96,z0,step);  //rho
+rhoProfile(h_fMom,3,x0,(6*del)/96,z0,step);  //rho
+rhoProfile(h_fMom,3,x0,(52*del)/96,z0,step); //rho
+rhoProfile(h_fMom,3,x0,(96*del)/96,z0,step); //rho
 
-omegaProfile(fMom,3,x0,(2*del)/96,z0,step);  //omega
-omegaProfile(fMom,3,x0,(6*del)/96,z0,step);  //omega
-omegaProfile(fMom,3,x0,(52*del)/96,z0,step); //omega
-omegaProfile(fMom,3,x0,(96*del)/96,z0,step); //omega
+omegaProfile(h_fMom,3,x0,(2*del)/96,z0,step);  //omega
+omegaProfile(h_fMom,3,x0,(6*del)/96,z0,step);  //omega
+omegaProfile(h_fMom,3,x0,(52*del)/96,z0,step); //omega
+omegaProfile(h_fMom,3,x0,(96*del)/96,z0,step); //omega
 
 
 

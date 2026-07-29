@@ -1156,13 +1156,24 @@ typedef struct deviceField{
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         saveSimCheckpoint(d_fMom[g],ghostInterface[g],&step, g);
     }
-    
+
+    #ifdef TREAT_DATA_INCLUDE
+    void copyMacroscopicDeviceField(hostField &hostField, deviceField* allDevices, int slice){
+        for(int g = 0; g < N_GPUS; g++){
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            checkCudaErrors(cudaDeviceSynchronize());
+            int zStart = g * slice;
+            size_t zOffset = zStart * NX * NY * NUMBER_MOMENTS;
+            checkCudaErrors(cudaMemcpy(hostField.h_fMom+zOffset, allDevices[g].d_fMom[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
+            checkCudaErrors(cudaDeviceSynchronize());
+        }
+    }
+    #endif //TREAT_DATA_INCLUDE
+
     void treatDataDeviceField(hostField &hostField, 
-        int step, int g, int slice){
-        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        int step, int slice){
         TreatDataParams treatDataParams;
         treatDataParams.h_fMom = hostField.h_fMom;
-        treatDataParams.d_fMom = d_fMom[g];
         #if MEAN_FLOW
         treatDataParams.d_fMom_mean = hostField.m_fMom;
         #endif
@@ -1172,9 +1183,6 @@ typedef struct deviceField{
         treatDataParams.d_BC_Fz = d_BC_Fz[g];
         #endif
         treatDataParams.step = step;
-        int zStart = g * slice;
-        size_t zOffset = zStart * NX * NY * NUMBER_MOMENTS;
-        treatDataParams.zOffset = zOffset;
         treatData(&treatDataParams);
     }
 
