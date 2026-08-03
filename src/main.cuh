@@ -173,10 +173,10 @@ void interfaceFree(ghostInterfaceData &ghostInterface, macroInterfaceGPUData &ma
         cudaFree(ghostInterface.AxxAux.Z_0);
         cudaFree(ghostInterface.AxxAux.Z_1);
 
-        cudaFree(macroInterfaceGPU.xx.Z_0);
-        cudaFree(macroInterfaceGPU.xx.auxZ_0);
-        cudaFree(macroInterfaceGPU.xx.Z_1);
-        cudaFree(macroInterfaceGPU.xx.auxZ_1);
+        cudaFree(macroInterfaceGPU.Axx.Z_0);
+        cudaFree(macroInterfaceGPU.Axx.auxZ_0);
+        cudaFree(macroInterfaceGPU.Axx.Z_1);
+        cudaFree(macroInterfaceGPU.Axx.auxZ_1);
 
     #endif //A_XX_DIST
     #ifdef A_XY_DIST
@@ -189,10 +189,10 @@ void interfaceFree(ghostInterfaceData &ghostInterface, macroInterfaceGPUData &ma
         cudaFree(ghostInterface.AxyAux.Z_0);
         cudaFree(ghostInterface.AxyAux.Z_1);
 
-        cudaFree(macroInterfaceGPU.xy.Z_0);
-        cudaFree(macroInterfaceGPU.xy.auxZ_0);
-        cudaFree(macroInterfaceGPU.xy.Z_1);
-        cudaFree(macroInterfaceGPU.xy.auxZ_1);
+        cudaFree(macroInterfaceGPU.Axy.Z_0);
+        cudaFree(macroInterfaceGPU.Axy.auxZ_0);
+        cudaFree(macroInterfaceGPU.Axy.Z_1);
+        cudaFree(macroInterfaceGPU.Axy.auxZ_1);
 
     #endif //A_XY_DIST
     #ifdef A_XZ_DIST
@@ -205,10 +205,10 @@ void interfaceFree(ghostInterfaceData &ghostInterface, macroInterfaceGPUData &ma
         cudaFree(ghostInterface.AxzAux.Z_0);
         cudaFree(ghostInterface.AxzAux.Z_1);
 
-        cudaFree(macroInterfaceGPU.xz.Z_0);
-        cudaFree(macroInterfaceGPU.xz.auxZ_0);
-        cudaFree(macroInterfaceGPU.xz.Z_1);
-        cudaFree(macroInterfaceGPU.xz.auxZ_1);
+        cudaFree(macroInterfaceGPU.Axz.Z_0);
+        cudaFree(macroInterfaceGPU.Axz.auxZ_0);
+        cudaFree(macroInterfaceGPU.Axz.Z_1);
+        cudaFree(macroInterfaceGPU.Axz.auxZ_1);
 
     #endif //A_XZ_DIST
     #ifdef A_YY_DIST
@@ -221,10 +221,10 @@ void interfaceFree(ghostInterfaceData &ghostInterface, macroInterfaceGPUData &ma
         cudaFree(ghostInterface.AyyAux.Z_0);
         cudaFree(ghostInterface.AyyAux.Z_1);
 
-        cudaFree(macroInterfaceGPU.yy.Z_0);
-        cudaFree(macroInterfaceGPU.yy.auxZ_0);
-        cudaFree(macroInterfaceGPU.yy.Z_1);
-        cudaFree(macroInterfaceGPU.yy.auxZ_1);
+        cudaFree(macroInterfaceGPU.Ayy.Z_0);
+        cudaFree(macroInterfaceGPU.Ayy.auxZ_0);
+        cudaFree(macroInterfaceGPU.Ayy.Z_1);
+        cudaFree(macroInterfaceGPU.Ayy.auxZ_1);
 
     #endif //A_YY_DIST
     #ifdef A_YZ_DIST
@@ -237,10 +237,10 @@ void interfaceFree(ghostInterfaceData &ghostInterface, macroInterfaceGPUData &ma
         cudaFree(ghostInterface.AyzAux.Z_0);
         cudaFree(ghostInterface.AyzAux.Z_1);
 
-        cudaFree(macroInterfaceGPU.yz.Z_0);
-        cudaFree(macroInterfaceGPU.yz.auxZ_0);
-        cudaFree(macroInterfaceGPU.yz.Z_1);
-        cudaFree(macroInterfaceGPU.yz.auxZ_1);
+        cudaFree(macroInterfaceGPU.Ayz.Z_0);
+        cudaFree(macroInterfaceGPU.Ayz.auxZ_0);
+        cudaFree(macroInterfaceGPU.Ayz.Z_1);
+        cudaFree(macroInterfaceGPU.Ayz.auxZ_1);
 
     #endif //A_YZ_DIST
     #ifdef A_ZZ_DIST
@@ -253,10 +253,10 @@ void interfaceFree(ghostInterfaceData &ghostInterface, macroInterfaceGPUData &ma
         cudaFree(ghostInterface.AzzAux.Z_0);
         cudaFree(ghostInterface.AzzAux.Z_1);
 
-        cudaFree(macroInterfaceGPU.zz.Z_0);
-        cudaFree(macroInterfaceGPU.zz.auxZ_0);
-        cudaFree(macroInterfaceGPU.zz.Z_1);
-        cudaFree(macroInterfaceGPU.zz.auxZ_1);
+        cudaFree(macroInterfaceGPU.Azz.Z_0);
+        cudaFree(macroInterfaceGPU.Azz.auxZ_0);
+        cudaFree(macroInterfaceGPU.Azz.Z_1);
+        cudaFree(macroInterfaceGPU.Azz.auxZ_1);
 
     #endif //A_ZZ_DIST
 

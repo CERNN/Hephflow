@@ -369,10 +369,10 @@ typedef struct deviceField{
         params.Axx.auxZ_0 = ghostInterface[g].AxxAux.Z_0;
         params.Axx.auxZ_1 = ghostInterface[g].AxxAux.Z_1;
 
-        params.Axx_macro.Z_0 = macroInterfaceGPU[g].xx.Z_0;
-        params.Axx_macro.Z_1 = macroInterfaceGPU[g].xx.Z_1;
-        params.Axx_macro.auxZ_0 = macroInterfaceGPU[g].xx.auxZ_0;
-        params.Axx_macro.auxZ_1 = macroInterfaceGPU[g].xx.auxZ_1;
+        params.Axx_macro.Z_0 = macroInterfaceGPU[g].Axx.Z_0;
+        params.Axx_macro.Z_1 = macroInterfaceGPU[g].Axx.Z_1;
+        params.Axx_macro.auxZ_0 = macroInterfaceGPU[g].Axx.auxZ_0;
+        params.Axx_macro.auxZ_1 = macroInterfaceGPU[g].Axx.auxZ_1;
         #endif //A_XX_DIST
         #ifdef A_XY_DIST
         params.Axy.X_0    = ghostInterface[g].Axy.X_0;

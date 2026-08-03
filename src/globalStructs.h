@@ -611,27 +611,27 @@ struct DeviceKernelParams {
 
     #ifdef A_XX_DIST
         ghostFacePtrs Axx;
-        gpuDirection Axx_macro
+        gpuDirection Axx_macro;
     #endif //A_XX_DIST
     #ifdef A_XY_DIST
         ghostFacePtrs Axy;
-        gpuDirection Axy_macro
+        gpuDirection Axy_macro;
     #endif //A_XY_DIST
     #ifdef A_XZ_DIST
         ghostFacePtrs Axz;
-        gpuDirection Axz_macro
+        gpuDirection Axz_macro;
     #endif //A_XZ_DIST
     #ifdef A_YY_DIST
         ghostFacePtrs Ayy;
-        gpuDirection Ayy_macro
+        gpuDirection Ayy_macro;
     #endif //A_YY_DIST
     #ifdef A_YZ_DIST
         ghostFacePtrs Ayz;
-        gpuDirection Ayz_macro
+        gpuDirection Ayz_macro;
     #endif //A_YZ_DIST
     #ifdef A_ZZ_DIST
         ghostFacePtrs Azz;
-        gpuDirection Azz_macro
+        gpuDirection Azz_macro;
     #endif //A_ZZ_DIST
 
     #ifdef LAMBDA_DIST
