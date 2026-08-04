@@ -101,28 +101,70 @@ dfloat __forceinline__ calcOmegaBingham(dfloat omega_p, dfloat s_y, dfloat auxSt
 }
 
 __host__ __device__ 
-dfloat __forceinline__ calcOmegaHerschelBulkley(dfloat k_consistency, dfloat n_index, dfloat s_y, dfloat omegaOld, dfloat const auxStressMag){
-float omega = omegaOld; //initial guess
+dfloat __forceinline__ calcOmegaHerschelBulkley(
+    dfloat k_consistency, dfloat n_index, dfloat s_y, 
+    dfloat omegaOld, dfloat const auxStressMag)
+{
+    const dfloat cs2   = 1.0_df / 3.0_df;
+    const dfloat rho0  = RHO_0;
 
-    dfloat fx, fx_dx;
-    const dfloat cs2 = 1.0_df / 3.0_df;
-    const dfloat a = k_consistency * POW_FUNCTION(auxStressMag / (RHO_0 * cs2), n_index);
-    const dfloat b = 0.5_df * auxStressMag;
-    const dfloat c = s_y -auxStressMag;
-
-    if(auxStressMag * (1.0_df - auxStressMag * 0.5_df)  < s_y)
+    if(auxStressMag * (1.0_df - omegaOld * 0.5_df)  < s_y)
         return 0.0_df;
 
-    for (int i = 0; i < 7; i++){
-        fx = a * POW_FUNCTION(omega, n_index) + b * omega + c;
-        fx_dx = a * n_index * POW_FUNCTION(omega, n_index - 1.0_df) + b;
+    const dfloat rhoCs2_n = POW_FUNCTION(rho0 * cs2, n_index);
+    const dfloat Pi_n     = POW_FUNCTION(auxStressMag, n_index);
 
-        if (fabs(fx / fx_dx) < 1e-6_df){
-            break;
+    const dfloat A = (2.0_df * k_consistency / rhoCs2_n) * Pi_n;
+    const dfloat B = auxStressMag;
+    const dfloat C = 2.0_df * (auxStressMag - s_y);
+
+    // Guard: C must be > 0 after yield check, but clamp for safety
+    if (C <= 0.0_df) return 0.0_df;
+
+    // Initial guess: use Newtonian limit (n=1) as warm start
+    dfloat omega = (omegaOld > 1e-8_df && omegaOld < 2.0_df) 
+                    ? omegaOld 
+                    : C / (A + B);
+
+    const dfloat OMEGA_MIN  = 1e-7_df;   // prevent omega -> 0 blowup when n < 1
+    const dfloat OMEGA_MAX  = 2.0_df;    // physical upper bound (stability)
+    const dfloat TOL        = 1e-5_df;
+    const dfloat MAX_ITER   = 20;        // more iterations for n < 1
+
+    for (int i = 0; i < MAX_ITER; i++)
+    {
+        // Clamp omega before pow to avoid NaN from negative base or zero^negative
+        dfloat omegaSafe = fmaxf(omega, OMEGA_MIN);
+
+        dfloat omn   = POW_FUNCTION(omegaSafe, n_index);           // omega^n
+        dfloat omn1  = POW_FUNCTION(omegaSafe, n_index - 1.0_df); // omega^(n-1)
+
+        dfloat fx    = A * omn + B * omegaSafe - C;
+        dfloat fx_dx = A * n_index * omn1 + B;
+
+        // Guard against degenerate derivative
+        if (fabs(fx_dx) < 1e-12_df) break;
+
+        dfloat delta = fx / fx_dx;
+
+        // Residual tolerance check BEFORE update
+        if (fabs(delta) < TOL * (1.0_df + fabs(omega))) break;
+
+        // --- Damped Newton step (critical for n < 1) ---
+        // Backtracking: halve step if it pushes omega out of bounds or increases |f|
+        dfloat omegaNew = omega - delta;
+        dfloat alpha    = 1.0_df;
+
+        for (int ls = 0; ls < 8; ls++)   // line search
+        {
+            omegaNew = omega - alpha * delta;
+            if (omegaNew >= OMEGA_MIN && omegaNew <= OMEGA_MAX) break;
+            alpha *= 0.5_df;
         }
-            
-        omega = omega - fx / fx_dx;
+
+        omega = fmaxf(fminf(omegaNew, OMEGA_MAX), OMEGA_MIN);
     }
+
     return omega;
 }
 

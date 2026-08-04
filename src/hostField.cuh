@@ -102,6 +102,41 @@ typedef struct hostField{
         #endif //SAVE_BC_FORCES
     #endif //_BC_FORCES
 
+    #ifdef SAVE_LOCAL_FORCES
+        dfloat* h_Local_Fx;
+        dfloat* h_Local_Fy;
+        dfloat* h_Local_Fz;
+        #ifdef SECOND_DIST
+        dfloat* h_Source_C;
+        #endif
+        #ifdef PHI_DIST
+        dfloat* h_Source_Phi;
+        #endif
+        #ifdef LAMBDA_DIST
+        dfloat* h_Source_Lambda;
+        #endif
+        #ifdef CONFORMATION_TENSOR
+            #ifdef A_XX_DIST
+        dfloat* h_Source_Gxx;
+            #endif
+            #ifdef A_XY_DIST
+        dfloat* h_Source_Gxy;
+            #endif
+            #ifdef A_XZ_DIST
+        dfloat* h_Source_Gxz;
+            #endif
+            #ifdef A_YY_DIST
+        dfloat* h_Source_Gyy;
+            #endif
+            #ifdef A_YZ_DIST
+        dfloat* h_Source_Gyz;
+            #endif
+            #ifdef A_ZZ_DIST
+        dfloat* h_Source_Gzz;
+            #endif
+        #endif //CONFORMATION_TENSOR
+    #endif //SAVE_LOCAL_FORCES
+
     // Constructor: initialize pointers and compute NThread based on compile-time flags
     hostField()
         : h_fMom(nullptr), rho(nullptr), ux(nullptr), uy(nullptr), uz(nullptr),
@@ -156,6 +191,38 @@ typedef struct hostField{
             , h_BC_Fx(nullptr), h_BC_Fy(nullptr), h_BC_Fz(nullptr)
             #endif
         #endif
+        #ifdef SAVE_LOCAL_FORCES
+            , h_Local_Fx(nullptr), h_Local_Fy(nullptr), h_Local_Fz(nullptr)
+            #ifdef SECOND_DIST
+            , h_Source_C(nullptr)
+            #endif
+            #ifdef PHI_DIST
+            , h_Source_Phi(nullptr)
+            #endif
+            #ifdef LAMBDA_DIST
+            , h_Source_Lambda(nullptr)
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+            , h_Source_Gxx(nullptr)
+                #endif
+                #ifdef A_XY_DIST
+            , h_Source_Gxy(nullptr)
+                #endif
+                #ifdef A_XZ_DIST
+            , h_Source_Gxz(nullptr)
+                #endif
+                #ifdef A_YY_DIST
+            , h_Source_Gyy(nullptr)
+                #endif
+                #ifdef A_YZ_DIST
+            , h_Source_Gyz(nullptr)
+                #endif
+                #ifdef A_ZZ_DIST
+            , h_Source_Gzz(nullptr)
+                #endif
+            #endif
+        #endif
     {
         NThread = 4;
         #if NODE_TYPE_SAVE
@@ -194,6 +261,38 @@ typedef struct hostField{
         #ifdef BC_FORCES
             #ifdef SAVE_BC_FORCES
             NThread += 3;
+            #endif
+        #endif
+        #ifdef SAVE_LOCAL_FORCES
+            NThread += 3;
+            #ifdef SECOND_DIST
+            NThread++;
+            #endif
+            #ifdef PHI_DIST
+            NThread++;
+            #endif
+            #ifdef LAMBDA_DIST
+            NThread++;
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+            NThread++;
+                #endif
+                #ifdef A_XY_DIST
+            NThread++;
+                #endif
+                #ifdef A_XZ_DIST
+            NThread++;
+                #endif
+                #ifdef A_YY_DIST
+            NThread++;
+                #endif
+                #ifdef A_YZ_DIST
+            NThread++;
+                #endif
+                #ifdef A_ZZ_DIST
+            NThread++;
+                #endif
             #endif
         #endif
     }
@@ -284,6 +383,51 @@ typedef struct hostField{
         #endif //SAVE_BC_FORCES
         #endif //BC_FORCES
 
+        #ifdef SAVE_LOCAL_FORCES
+        checkCudaErrors(cudaMallocHost((void**)&h_Local_Fx, MEM_SIZE_SCALAR));
+        checkCudaErrors(cudaMallocHost((void**)&h_Local_Fy, MEM_SIZE_SCALAR));
+        checkCudaErrors(cudaMallocHost((void**)&h_Local_Fz, MEM_SIZE_SCALAR));
+        memAllocated += 3 * MEM_SIZE_SCALAR;
+            #ifdef SECOND_DIST
+        checkCudaErrors(cudaMallocHost((void**)&h_Source_C, MEM_SIZE_SCALAR));
+        memAllocated += MEM_SIZE_SCALAR;
+            #endif
+            #ifdef PHI_DIST
+        checkCudaErrors(cudaMallocHost((void**)&h_Source_Phi, MEM_SIZE_SCALAR));
+        memAllocated += MEM_SIZE_SCALAR;
+            #endif
+            #ifdef LAMBDA_DIST
+        checkCudaErrors(cudaMallocHost((void**)&h_Source_Lambda, MEM_SIZE_SCALAR));
+        memAllocated += MEM_SIZE_SCALAR;
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+        checkCudaErrors(cudaMallocHost((void**)&h_Source_Gxx, MEM_SIZE_SCALAR));
+        memAllocated += MEM_SIZE_SCALAR;
+                #endif
+                #ifdef A_XY_DIST
+        checkCudaErrors(cudaMallocHost((void**)&h_Source_Gxy, MEM_SIZE_SCALAR));
+        memAllocated += MEM_SIZE_SCALAR;
+                #endif
+                #ifdef A_XZ_DIST
+        checkCudaErrors(cudaMallocHost((void**)&h_Source_Gxz, MEM_SIZE_SCALAR));
+        memAllocated += MEM_SIZE_SCALAR;
+                #endif
+                #ifdef A_YY_DIST
+        checkCudaErrors(cudaMallocHost((void**)&h_Source_Gyy, MEM_SIZE_SCALAR));
+        memAllocated += MEM_SIZE_SCALAR;
+                #endif
+                #ifdef A_YZ_DIST
+        checkCudaErrors(cudaMallocHost((void**)&h_Source_Gyz, MEM_SIZE_SCALAR));
+        memAllocated += MEM_SIZE_SCALAR;
+                #endif
+                #ifdef A_ZZ_DIST
+        checkCudaErrors(cudaMallocHost((void**)&h_Source_Gzz, MEM_SIZE_SCALAR));
+        memAllocated += MEM_SIZE_SCALAR;
+                #endif
+            #endif
+        #endif //SAVE_LOCAL_FORCES
+
         
         #if NODE_TYPE_SAVE
         checkCudaErrors(cudaMallocHost((void**)&nodeTypeSave, sizeof(unsigned int) * NUMBER_LBM_NODES));
@@ -339,6 +483,40 @@ typedef struct hostField{
                 saveMacrParams.h_BC_Fy = h_BC_Fy;
                 saveMacrParams.h_BC_Fz = h_BC_Fz;
                 #endif
+                #ifdef SAVE_LOCAL_FORCES
+                saveMacrParams.h_Local_Fx = h_Local_Fx;
+                saveMacrParams.h_Local_Fy = h_Local_Fy;
+                saveMacrParams.h_Local_Fz = h_Local_Fz;
+                    #ifdef SECOND_DIST
+                saveMacrParams.h_Source_C = h_Source_C;
+                    #endif
+                    #ifdef PHI_DIST
+                saveMacrParams.h_Source_Phi = h_Source_Phi;
+                    #endif
+                    #ifdef LAMBDA_DIST
+                saveMacrParams.h_Source_Lambda = h_Source_Lambda;
+                    #endif
+                    #ifdef CONFORMATION_TENSOR
+                        #ifdef A_XX_DIST
+                saveMacrParams.h_Source_Gxx = h_Source_Gxx;
+                        #endif
+                        #ifdef A_XY_DIST
+                saveMacrParams.h_Source_Gxy = h_Source_Gxy;
+                        #endif
+                        #ifdef A_XZ_DIST
+                saveMacrParams.h_Source_Gxz = h_Source_Gxz;
+                        #endif
+                        #ifdef A_YY_DIST
+                saveMacrParams.h_Source_Gyy = h_Source_Gyy;
+                        #endif
+                        #ifdef A_YZ_DIST
+                saveMacrParams.h_Source_Gyz = h_Source_Gyz;
+                        #endif
+                        #ifdef A_ZZ_DIST
+                saveMacrParams.h_Source_Gzz = h_Source_Gzz;
+                        #endif
+                    #endif
+                #endif
                 saveMacr(&saveMacrParams);
             #endif //MEAN_FLOW
         } else {
@@ -385,6 +563,40 @@ typedef struct hostField{
             saveMacrParams.h_BC_Fx = h_BC_Fx;
             saveMacrParams.h_BC_Fy = h_BC_Fy;
             saveMacrParams.h_BC_Fz = h_BC_Fz;
+            #endif
+            #ifdef SAVE_LOCAL_FORCES
+            saveMacrParams.h_Local_Fx = h_Local_Fx;
+            saveMacrParams.h_Local_Fy = h_Local_Fy;
+            saveMacrParams.h_Local_Fz = h_Local_Fz;
+                #ifdef SECOND_DIST
+            saveMacrParams.h_Source_C = h_Source_C;
+                #endif
+                #ifdef PHI_DIST
+            saveMacrParams.h_Source_Phi = h_Source_Phi;
+                #endif
+                #ifdef LAMBDA_DIST
+            saveMacrParams.h_Source_Lambda = h_Source_Lambda;
+                #endif
+                #ifdef CONFORMATION_TENSOR
+                    #ifdef A_XX_DIST
+            saveMacrParams.h_Source_Gxx = h_Source_Gxx;
+                    #endif
+                    #ifdef A_XY_DIST
+            saveMacrParams.h_Source_Gxy = h_Source_Gxy;
+                    #endif
+                    #ifdef A_XZ_DIST
+            saveMacrParams.h_Source_Gxz = h_Source_Gxz;
+                    #endif
+                    #ifdef A_YY_DIST
+            saveMacrParams.h_Source_Gyy = h_Source_Gyy;
+                    #endif
+                    #ifdef A_YZ_DIST
+            saveMacrParams.h_Source_Gyz = h_Source_Gyz;
+                    #endif
+                    #ifdef A_ZZ_DIST
+            saveMacrParams.h_Source_Gzz = h_Source_Gzz;
+                    #endif
+                #endif
             #endif
             saveMacr(&saveMacrParams);
         }
@@ -450,6 +662,41 @@ typedef struct hostField{
             if (h_BC_Fz) cudaFreeHost(h_BC_Fz);
             #endif //SAVE_BC_FORCES
         #endif //_BC_FORCES
+
+        #ifdef SAVE_LOCAL_FORCES
+            if (h_Local_Fx) cudaFreeHost(h_Local_Fx);
+            if (h_Local_Fy) cudaFreeHost(h_Local_Fy);
+            if (h_Local_Fz) cudaFreeHost(h_Local_Fz);
+            #ifdef SECOND_DIST
+            if (h_Source_C) cudaFreeHost(h_Source_C);
+            #endif
+            #ifdef PHI_DIST
+            if (h_Source_Phi) cudaFreeHost(h_Source_Phi);
+            #endif
+            #ifdef LAMBDA_DIST
+            if (h_Source_Lambda) cudaFreeHost(h_Source_Lambda);
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+            if (h_Source_Gxx) cudaFreeHost(h_Source_Gxx);
+                #endif
+                #ifdef A_XY_DIST
+            if (h_Source_Gxy) cudaFreeHost(h_Source_Gxy);
+                #endif
+                #ifdef A_XZ_DIST
+            if (h_Source_Gxz) cudaFreeHost(h_Source_Gxz);
+                #endif
+                #ifdef A_YY_DIST
+            if (h_Source_Gyy) cudaFreeHost(h_Source_Gyy);
+                #endif
+                #ifdef A_YZ_DIST
+            if (h_Source_Gyz) cudaFreeHost(h_Source_Gyz);
+                #endif
+                #ifdef A_ZZ_DIST
+            if (h_Source_Gzz) cudaFreeHost(h_Source_Gzz);
+                #endif
+            #endif
+        #endif //SAVE_LOCAL_FORCES
     
         #ifdef DENSITY_CORRECTION
             if (h_mean_rho) cudaFreeHost(h_mean_rho);

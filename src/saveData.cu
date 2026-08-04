@@ -209,6 +209,40 @@ void saveMacr(const SaveDataParams* params)
     dfloat* h_BC_Fy = params->h_BC_Fy;
     dfloat* h_BC_Fz = params->h_BC_Fz;
     #endif
+    #ifdef SAVE_LOCAL_FORCES
+    dfloat* h_Local_Fx = params->h_Local_Fx;
+    dfloat* h_Local_Fy = params->h_Local_Fy;
+    dfloat* h_Local_Fz = params->h_Local_Fz;
+        #ifdef SECOND_DIST
+    dfloat* h_Source_C = params->h_Source_C;
+        #endif
+        #ifdef PHI_DIST
+    dfloat* h_Source_Phi = params->h_Source_Phi;
+        #endif
+        #ifdef LAMBDA_DIST
+    dfloat* h_Source_Lambda = params->h_Source_Lambda;
+        #endif
+        #ifdef CONFORMATION_TENSOR
+            #ifdef A_XX_DIST
+    dfloat* h_Source_Gxx = params->h_Source_Gxx;
+            #endif
+            #ifdef A_XY_DIST
+    dfloat* h_Source_Gxy = params->h_Source_Gxy;
+            #endif
+            #ifdef A_XZ_DIST
+    dfloat* h_Source_Gxz = params->h_Source_Gxz;
+            #endif
+            #ifdef A_YY_DIST
+    dfloat* h_Source_Gyy = params->h_Source_Gyy;
+            #endif
+            #ifdef A_YZ_DIST
+    dfloat* h_Source_Gyz = params->h_Source_Gyz;
+            #endif
+            #ifdef A_ZZ_DIST
+    dfloat* h_Source_Gzz = params->h_Source_Gzz;
+            #endif
+        #endif //CONFORMATION_TENSOR
+    #endif
     unsigned int nSteps = params->nSteps;
     std::atomic<bool>& savingMacrVtk = *params->savingMacrVtk;
     std::vector<std::atomic<bool>>& savingMacrBin = *params->savingMacrBin;
@@ -308,6 +342,90 @@ void saveMacr(const SaveDataParams* params)
     #endif // BC_FORCES && SAVE_BC_FORCES
 
 
+    #ifdef SAVE_LOCAL_FORCES
+        dfloat* temp_lx; 
+        dfloat* temp_ly;
+        dfloat* temp_lz;
+        checkCudaErrors(cudaMallocHost((void**)&(temp_lx), MEM_SIZE_SCALAR));
+        checkCudaErrors(cudaMallocHost((void**)&(temp_ly), MEM_SIZE_SCALAR));
+        checkCudaErrors(cudaMallocHost((void**)&(temp_lz), MEM_SIZE_SCALAR));
+
+
+        for(int z = 0; z< NZ;z++){
+            for(int y = 0; y< NY;y++){
+                for(int x = 0; x< NX;x++){
+                    indexMacr = idxScalarGlobal(x,y,z);
+                    temp_lx[indexMacr] = h_Local_Fx[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
+                    temp_ly[indexMacr] = h_Local_Fy[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
+                    temp_lz[indexMacr] = h_Local_Fz[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
+                }
+            }
+        }
+
+        checkCudaErrors(cudaMemcpy(h_Local_Fx, temp_lx, MEM_SIZE_SCALAR, cudaMemcpyHostToHost));
+        checkCudaErrors(cudaMemcpy(h_Local_Fy, temp_ly, MEM_SIZE_SCALAR, cudaMemcpyHostToHost));
+        checkCudaErrors(cudaMemcpy(h_Local_Fz, temp_lz, MEM_SIZE_SCALAR, cudaMemcpyHostToHost));
+
+
+        cudaFreeHost(temp_lx);
+        cudaFreeHost(temp_ly);
+        cudaFreeHost(temp_lz);
+    #endif // SAVE_LOCAL_FORCES
+
+
+    // Linearize source term arrays (same block→global pattern)
+    #ifdef SAVE_LOCAL_FORCES
+        // Helper macro to avoid repeating the triple-nested loop for each scalar source
+        #define LINEARIZE_SOURCE_SCALAR(hSrc, tempName) \
+        do { \
+            dfloat* tempName; \
+            checkCudaErrors(cudaMallocHost((void**)&(tempName), MEM_SIZE_SCALAR)); \
+            for(int z = 0; z< NZ;z++){ \
+                for(int y = 0; y< NY;y++){ \
+                    for(int x = 0; x< NX;x++){ \
+                        indexMacr = idxScalarGlobal(x,y,z); \
+                        tempName[indexMacr] = hSrc[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]; \
+                    } \
+                } \
+            } \
+            checkCudaErrors(cudaMemcpy(hSrc, tempName, MEM_SIZE_SCALAR, cudaMemcpyHostToHost)); \
+            cudaFreeHost(tempName); \
+        } while(0)
+
+        #ifdef SECOND_DIST
+        LINEARIZE_SOURCE_SCALAR(h_Source_C, temp_sc);
+        #endif
+        #ifdef PHI_DIST
+        LINEARIZE_SOURCE_SCALAR(h_Source_Phi, temp_sp);
+        #endif
+        #ifdef LAMBDA_DIST
+        LINEARIZE_SOURCE_SCALAR(h_Source_Lambda, temp_sl);
+        #endif
+        #ifdef CONFORMATION_TENSOR
+            #ifdef A_XX_DIST
+        LINEARIZE_SOURCE_SCALAR(h_Source_Gxx, temp_sgxx);
+            #endif
+            #ifdef A_XY_DIST
+        LINEARIZE_SOURCE_SCALAR(h_Source_Gxy, temp_sgxy);
+            #endif
+            #ifdef A_XZ_DIST
+        LINEARIZE_SOURCE_SCALAR(h_Source_Gxz, temp_sgxz);
+            #endif
+            #ifdef A_YY_DIST
+        LINEARIZE_SOURCE_SCALAR(h_Source_Gyy, temp_sgyy);
+            #endif
+            #ifdef A_YZ_DIST
+        LINEARIZE_SOURCE_SCALAR(h_Source_Gyz, temp_sgyz);
+            #endif
+            #ifdef A_ZZ_DIST
+        LINEARIZE_SOURCE_SCALAR(h_Source_Gzz, temp_sgzz);
+            #endif
+        #endif //CONFORMATION_TENSOR
+
+        #undef LINEARIZE_SOURCE_SCALAR
+    #endif //SAVE_LOCAL_FORCES
+
+
     // Names of files
     std::string strFileRho, strFileUx, strFileUy, strFileUz; 
     std::string strFileOmega;
@@ -316,6 +434,9 @@ void saveMacr(const SaveDataParams* params)
     std::string strFileLambda;
     std::string strFileBc; 
     std::string strFileFx, strFileFy, strFileFz;
+    std::string strFileLocalFx, strFileLocalFy, strFileLocalFz;
+    std::string strFileSourceC, strFileSourcePhi, strFileSourceLambda;
+    std::string strFileSourceGxx, strFileSourceGxy, strFileSourceGxz, strFileSourceGyy, strFileSourceGyz, strFileSourceGzz;
     std::string strFileAxx, strFileAxy, strFileAxz, strFileAyy, strFileAyz, strFileAzz;
 
 
@@ -369,6 +490,40 @@ void saveMacr(const SaveDataParams* params)
         saveVarVtkParams.h_BC_Fy = h_BC_Fy;
         saveVarVtkParams.h_BC_Fz = h_BC_Fz;
         #endif
+        #ifdef SAVE_LOCAL_FORCES
+        saveVarVtkParams.h_Local_Fx = h_Local_Fx;
+        saveVarVtkParams.h_Local_Fy = h_Local_Fy;
+        saveVarVtkParams.h_Local_Fz = h_Local_Fz;
+            #ifdef SECOND_DIST
+        saveVarVtkParams.h_Source_C = h_Source_C;
+            #endif
+            #ifdef PHI_DIST
+        saveVarVtkParams.h_Source_Phi = h_Source_Phi;
+            #endif
+            #ifdef LAMBDA_DIST
+        saveVarVtkParams.h_Source_Lambda = h_Source_Lambda;
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+        saveVarVtkParams.h_Source_Gxx = h_Source_Gxx;
+                #endif
+                #ifdef A_XY_DIST
+        saveVarVtkParams.h_Source_Gxy = h_Source_Gxy;
+                #endif
+                #ifdef A_XZ_DIST
+        saveVarVtkParams.h_Source_Gxz = h_Source_Gxz;
+                #endif
+                #ifdef A_YY_DIST
+        saveVarVtkParams.h_Source_Gyy = h_Source_Gyy;
+                #endif
+                #ifdef A_YZ_DIST
+        saveVarVtkParams.h_Source_Gyz = h_Source_Gyz;
+                #endif
+                #ifdef A_ZZ_DIST
+        saveVarVtkParams.h_Source_Gzz = h_Source_Gzz;
+                #endif
+            #endif //CONFORMATION_TENSOR
+        #endif
         saveVarVtkParams.nSteps = nSteps;
         saveVarVtkParams.savingMacrVtk = &savingMacrVtk;
         
@@ -418,6 +573,40 @@ void saveMacr(const SaveDataParams* params)
         strFileFy = getVarFilename("fy", nSteps, ".bin");
         strFileFz = getVarFilename("fz", nSteps, ".bin");
         #endif //BC_FORCES &&  SAVE_BC_FORCES
+        #ifdef SAVE_LOCAL_FORCES
+        strFileLocalFx = getVarFilename("local_fx", nSteps, ".bin");
+        strFileLocalFy = getVarFilename("local_fy", nSteps, ".bin");
+        strFileLocalFz = getVarFilename("local_fz", nSteps, ".bin");
+            #ifdef SECOND_DIST
+        strFileSourceC = getVarFilename("source_C", nSteps, ".bin");
+            #endif
+            #ifdef PHI_DIST
+        strFileSourcePhi = getVarFilename("source_Phi", nSteps, ".bin");
+            #endif
+            #ifdef LAMBDA_DIST
+        strFileSourceLambda = getVarFilename("source_Lambda", nSteps, ".bin");
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+        strFileSourceGxx = getVarFilename("source_Gxx", nSteps, ".bin");
+                #endif
+                #ifdef A_XY_DIST
+        strFileSourceGxy = getVarFilename("source_Gxy", nSteps, ".bin");
+                #endif
+                #ifdef A_XZ_DIST
+        strFileSourceGxz = getVarFilename("source_Gxz", nSteps, ".bin");
+                #endif
+                #ifdef A_YY_DIST
+        strFileSourceGyy = getVarFilename("source_Gyy", nSteps, ".bin");
+                #endif
+                #ifdef A_YZ_DIST
+        strFileSourceGyz = getVarFilename("source_Gyz", nSteps, ".bin");
+                #endif
+                #ifdef A_ZZ_DIST
+        strFileSourceGzz = getVarFilename("source_Gzz", nSteps, ".bin");
+                #endif
+            #endif //CONFORMATION_TENSOR
+        #endif //SAVE_LOCAL_FORCES
         // saving files
         std::vector<dfloat*> varArray;
         std::vector<std::string> fileArray;
@@ -464,6 +653,40 @@ void saveMacr(const SaveDataParams* params)
         varArray.push_back(h_BC_Fx);  fileArray.push_back(strFileFx);
         varArray.push_back(h_BC_Fy);  fileArray.push_back(strFileFy);
         varArray.push_back(h_BC_Fz);  fileArray.push_back(strFileFz);
+        #endif
+        #ifdef SAVE_LOCAL_FORCES
+        varArray.push_back(h_Local_Fx);  fileArray.push_back(strFileLocalFx);
+        varArray.push_back(h_Local_Fy);  fileArray.push_back(strFileLocalFy);
+        varArray.push_back(h_Local_Fz);  fileArray.push_back(strFileLocalFz);
+            #ifdef SECOND_DIST
+        varArray.push_back(h_Source_C);  fileArray.push_back(strFileSourceC);
+            #endif
+            #ifdef PHI_DIST
+        varArray.push_back(h_Source_Phi);  fileArray.push_back(strFileSourcePhi);
+            #endif
+            #ifdef LAMBDA_DIST
+        varArray.push_back(h_Source_Lambda);  fileArray.push_back(strFileSourceLambda);
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+        varArray.push_back(h_Source_Gxx);  fileArray.push_back(strFileSourceGxx);
+                #endif
+                #ifdef A_XY_DIST
+        varArray.push_back(h_Source_Gxy);  fileArray.push_back(strFileSourceGxy);
+                #endif
+                #ifdef A_XZ_DIST
+        varArray.push_back(h_Source_Gxz);  fileArray.push_back(strFileSourceGxz);
+                #endif
+                #ifdef A_YY_DIST
+        varArray.push_back(h_Source_Gyy);  fileArray.push_back(strFileSourceGyy);
+                #endif
+                #ifdef A_YZ_DIST
+        varArray.push_back(h_Source_Gyz);  fileArray.push_back(strFileSourceGyz);
+                #endif
+                #ifdef A_ZZ_DIST
+        varArray.push_back(h_Source_Gzz);  fileArray.push_back(strFileSourceGzz);
+                #endif
+            #endif //CONFORMATION_TENSOR
         #endif
         for(size_t i = 0; i < varArray.size(); ++i){
             while (savingMacrBin[i]) std::this_thread::yield();
@@ -640,6 +863,40 @@ void saveVarVTK(const SaveDataParams* params)
     dfloat* h_BC_Fy = params->h_BC_Fy;
     dfloat* h_BC_Fz = params->h_BC_Fz;
     #endif
+    #ifdef SAVE_LOCAL_FORCES
+    dfloat* h_Local_Fx = params->h_Local_Fx;
+    dfloat* h_Local_Fy = params->h_Local_Fy;
+    dfloat* h_Local_Fz = params->h_Local_Fz;
+        #ifdef SECOND_DIST
+    dfloat* h_Source_C = params->h_Source_C;
+        #endif
+        #ifdef PHI_DIST
+    dfloat* h_Source_Phi = params->h_Source_Phi;
+        #endif
+        #ifdef LAMBDA_DIST
+    dfloat* h_Source_Lambda = params->h_Source_Lambda;
+        #endif
+        #ifdef CONFORMATION_TENSOR
+            #ifdef A_XX_DIST
+    dfloat* h_Source_Gxx = params->h_Source_Gxx;
+            #endif
+            #ifdef A_XY_DIST
+    dfloat* h_Source_Gxy = params->h_Source_Gxy;
+            #endif
+            #ifdef A_XZ_DIST
+    dfloat* h_Source_Gxz = params->h_Source_Gxz;
+            #endif
+            #ifdef A_YY_DIST
+    dfloat* h_Source_Gyy = params->h_Source_Gyy;
+            #endif
+            #ifdef A_YZ_DIST
+    dfloat* h_Source_Gyz = params->h_Source_Gyz;
+            #endif
+            #ifdef A_ZZ_DIST
+    dfloat* h_Source_Gzz = params->h_Source_Gzz;
+            #endif
+        #endif //CONFORMATION_TENSOR
+    #endif
     unsigned int nSteps = params->nSteps;
     std::atomic<bool>& savingMacrVtk = *params->savingMacrVtk;
 
@@ -721,6 +978,72 @@ void saveVarVTK(const SaveDataParams* params)
                     writeBigEndian(ofs, f, 3);
                 }
             #endif //SAVE_BC_FORCES
+
+            #ifdef SAVE_LOCAL_FORCES
+                ofs << "VECTORS local_forces " << VTK_TYPE << "\n";
+                for (size_t i = 0; i < N; ++i) {
+                    dfloat f[3] = { h_Local_Fx[i], h_Local_Fy[i], h_Local_Fz[i] };
+                    writeBigEndian(ofs, f, 3);
+                }
+                #ifdef SECOND_DIST
+                ofs << "SCALARS source_C " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, h_Source_C, N);
+                #endif
+                #ifdef PHI_DIST
+                ofs << "SCALARS source_Phi " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, h_Source_Phi, N);
+                #endif
+                #ifdef LAMBDA_DIST
+                ofs << "SCALARS source_Lambda " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, h_Source_Lambda, N);
+                #endif
+                #ifdef CONFORMATION_TENSOR
+                    #if defined(A_XX_DIST) && defined(A_YY_DIST) && defined(A_ZZ_DIST) && defined(A_XY_DIST) && defined(A_XZ_DIST) && defined(A_YZ_DIST)
+                ofs << "TENSORS6 source_Gij " << VTK_TYPE << "\n";
+                for (size_t i = 0; i < N; ++i) {
+                    dfloat tensor[6] = {
+                        h_Source_Gxx[i], h_Source_Gyy[i], h_Source_Gzz[i],
+                        h_Source_Gxy[i], h_Source_Gxz[i], h_Source_Gyz[i]
+                    };
+                    writeBigEndian(ofs, tensor, 6);
+                }
+                    #else
+                        #ifdef A_XX_DIST
+                ofs << "SCALARS source_Gxx " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, h_Source_Gxx, N);
+                        #endif
+                        #ifdef A_XY_DIST
+                ofs << "SCALARS source_Gxy " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, h_Source_Gxy, N);
+                        #endif
+                        #ifdef A_XZ_DIST
+                ofs << "SCALARS source_Gxz " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, h_Source_Gxz, N);
+                        #endif
+                        #ifdef A_YY_DIST
+                ofs << "SCALARS source_Gyy " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, h_Source_Gyy, N);
+                        #endif
+                        #ifdef A_YZ_DIST
+                ofs << "SCALARS source_Gyz " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, h_Source_Gyz, N);
+                        #endif
+                        #ifdef A_ZZ_DIST
+                ofs << "SCALARS source_Gzz " << VTK_TYPE << " 1\n"
+                    << "LOOKUP_TABLE default\n";
+                writeBigEndian(ofs, h_Source_Gzz, N);
+                        #endif
+                    #endif //all six components
+                #endif //CONFORMATION_TENSOR
+            #endif //SAVE_LOCAL_FORCES
 
             #if NODE_TYPE_SAVE
                 ofs << "SCALARS bc int 1\n"
@@ -807,6 +1130,104 @@ void saveVarVTK(const SaveDataParams* params)
                     writeBigEndian(ofs, f, 3);
                 }
             #endif //SAVE_BC_FORCES
+
+            #ifdef SAVE_LOCAL_FORCES
+                auto local_f_cell = convertPointToCellVector(h_Local_Fx, h_Local_Fy, h_Local_Fz, NX, NY, NZ);
+                ofs << "VECTORS local_forces  " << VTK_TYPE << "\n";
+                for (size_t i = 0; i < Ncells; ++i) {
+                    dfloat f[3] = { local_f_cell[i].x, local_f_cell[i].y, local_f_cell[i].z };
+                    writeBigEndian(ofs, f, 3);
+                }
+                #ifdef SECOND_DIST
+                {
+                    auto src_cell = convertPointToCellScalar(h_Source_C, NX, NY, NZ);
+                    ofs << "SCALARS source_C  " << VTK_TYPE << " 1\n"
+                        << "LOOKUP_TABLE default\n";
+                    writeBigEndian(ofs, src_cell.data(), Ncells);
+                }
+                #endif
+                #ifdef PHI_DIST
+                {
+                    auto src_cell = convertPointToCellScalar(h_Source_Phi, NX, NY, NZ);
+                    ofs << "SCALARS source_Phi  " << VTK_TYPE << " 1\n"
+                        << "LOOKUP_TABLE default\n";
+                    writeBigEndian(ofs, src_cell.data(), Ncells);
+                }
+                #endif
+                #ifdef LAMBDA_DIST
+                {
+                    auto src_cell = convertPointToCellScalar(h_Source_Lambda, NX, NY, NZ);
+                    ofs << "SCALARS source_Lambda  " << VTK_TYPE << " 1\n"
+                        << "LOOKUP_TABLE default\n";
+                    writeBigEndian(ofs, src_cell.data(), Ncells);
+                }
+                #endif
+                #ifdef CONFORMATION_TENSOR
+                    #if defined(A_XX_DIST) && defined(A_YY_DIST) && defined(A_ZZ_DIST) && defined(A_XY_DIST) && defined(A_XZ_DIST) && defined(A_YZ_DIST)
+                {
+                    auto G_cell = convertPointToCellTensor6(h_Source_Gxx, h_Source_Gyy, h_Source_Gzz,
+                                                             h_Source_Gxy, h_Source_Gxz, h_Source_Gyz, NX, NY, NZ);
+                    ofs << "TENSORS6 source_Gij  " << VTK_TYPE << "\n";
+                    for (size_t i = 0; i < Ncells; ++i) {
+                        dfloat tensor[6] = {
+                            G_cell[i].xx, G_cell[i].yy, G_cell[i].zz,
+                            G_cell[i].xy, G_cell[i].xz, G_cell[i].yz
+                        };
+                        writeBigEndian(ofs, tensor, 6);
+                    }
+                }
+                    #else
+                        #ifdef A_XX_DIST
+                {
+                    auto src_cell = convertPointToCellScalar(h_Source_Gxx, NX, NY, NZ);
+                    ofs << "SCALARS source_Gxx  " << VTK_TYPE << " 1\n"
+                        << "LOOKUP_TABLE default\n";
+                    writeBigEndian(ofs, src_cell.data(), Ncells);
+                }
+                        #endif
+                        #ifdef A_XY_DIST
+                {
+                    auto src_cell = convertPointToCellScalar(h_Source_Gxy, NX, NY, NZ);
+                    ofs << "SCALARS source_Gxy  " << VTK_TYPE << " 1\n"
+                        << "LOOKUP_TABLE default\n";
+                    writeBigEndian(ofs, src_cell.data(), Ncells);
+                }
+                        #endif
+                        #ifdef A_XZ_DIST
+                {
+                    auto src_cell = convertPointToCellScalar(h_Source_Gxz, NX, NY, NZ);
+                    ofs << "SCALARS source_Gxz  " << VTK_TYPE << " 1\n"
+                        << "LOOKUP_TABLE default\n";
+                    writeBigEndian(ofs, src_cell.data(), Ncells);
+                }
+                        #endif
+                        #ifdef A_YY_DIST
+                {
+                    auto src_cell = convertPointToCellScalar(h_Source_Gyy, NX, NY, NZ);
+                    ofs << "SCALARS source_Gyy  " << VTK_TYPE << " 1\n"
+                        << "LOOKUP_TABLE default\n";
+                    writeBigEndian(ofs, src_cell.data(), Ncells);
+                }
+                        #endif
+                        #ifdef A_YZ_DIST
+                {
+                    auto src_cell = convertPointToCellScalar(h_Source_Gyz, NX, NY, NZ);
+                    ofs << "SCALARS source_Gyz  " << VTK_TYPE << " 1\n"
+                        << "LOOKUP_TABLE default\n";
+                    writeBigEndian(ofs, src_cell.data(), Ncells);
+                }
+                        #endif
+                        #ifdef A_ZZ_DIST
+                {
+                    auto src_cell = convertPointToCellScalar(h_Source_Gzz, NX, NY, NZ);
+                    ofs << "SCALARS source_Gzz  " << VTK_TYPE << " 1\n"
+                        << "LOOKUP_TABLE default\n";
+                    writeBigEndian(ofs, src_cell.data(), Ncells);
+                }
+                        #endif
+                    #endif //all six
+                #endif //CONFORMATION_TENSOR
+            #endif //SAVE_LOCAL_FORCES
 
             #if NODE_TYPE_SAVE
                 auto bc_cell = convertPointToCellIntMode(nodeTypeSave,NX,NY,NZ);
@@ -1206,7 +1627,8 @@ void saveTreatData(std::string fileName, std::string dataString, int step, bool 
     #if SAVEDATA
     std::filesystem::path baseDir = folderSetup();;
 
-    std::filesystem::path strInf = baseDir / (fileName + ".txt");
+    std::string baseName = std::string(ID_SIM) + fileName;
+    std::filesystem::path strInf = baseDir / (baseName + ".txt");
 
     // On Windows, prepend the extended-path prefix to bypass the 260-char MAX_PATH limit.
     #if defined(_WIN32)
@@ -1247,7 +1669,8 @@ void saveTreatDataHeader(std::string fileName, std::string headerString)
 {
     #if SAVEDATA
     std::filesystem::path baseDir = folderSetup();
-    std::filesystem::path strInf = baseDir / (fileName + ".txt");
+    std::string baseName = std::string(ID_SIM) + fileName;
+    std::filesystem::path strInf = baseDir / (baseName + ".txt");
 
     #if defined(_WIN32)
     std::string pathStr = "\\\\?\\" + strInf.string();

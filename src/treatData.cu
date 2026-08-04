@@ -13,6 +13,40 @@ void treatData(const TreatDataParams* params)
     dfloat* d_BC_Fy = params->d_BC_Fy;
     dfloat* d_BC_Fz = params->d_BC_Fz;
     #endif
+    #ifdef SAVE_LOCAL_FORCES
+    dfloat* d_Local_Fx = params->d_Local_Fx;
+    dfloat* d_Local_Fy = params->d_Local_Fy;
+    dfloat* d_Local_Fz = params->d_Local_Fz;
+        #ifdef SECOND_DIST
+    dfloat* d_Source_C = params->d_Source_C;
+        #endif
+        #ifdef PHI_DIST
+    dfloat* d_Source_Phi = params->d_Source_Phi;
+        #endif
+        #ifdef LAMBDA_DIST
+    dfloat* d_Source_Lambda = params->d_Source_Lambda;
+        #endif
+        #ifdef CONFORMATION_TENSOR
+            #ifdef A_XX_DIST
+    dfloat* d_Source_Gxx = params->d_Source_Gxx;
+            #endif
+            #ifdef A_XY_DIST
+    dfloat* d_Source_Gxy = params->d_Source_Gxy;
+            #endif
+            #ifdef A_XZ_DIST
+    dfloat* d_Source_Gxz = params->d_Source_Gxz;
+            #endif
+            #ifdef A_YY_DIST
+    dfloat* d_Source_Gyy = params->d_Source_Gyy;
+            #endif
+            #ifdef A_YZ_DIST
+    dfloat* d_Source_Gyz = params->d_Source_Gyz;
+            #endif
+            #ifdef A_ZZ_DIST
+    dfloat* d_Source_Gzz = params->d_Source_Gzz;
+            #endif
+        #endif //CONFORMATION_TENSOR
+    #endif
     unsigned int step = params->step;
     size_t zOffset = params->zOffset;
 
@@ -283,6 +317,213 @@ void turbulentKineticEnergy(
     cudaFree(sumTKE);
 
 }
+
+
+#ifdef SAVE_LOCAL_FORCES
+void forceProfile(
+    dfloat* d_Local_Fx,
+    dfloat* d_Local_Fy,
+    dfloat* d_Local_Fz,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
+){
+    std::ostringstream strDataInfo;
+    strDataInfo << std::scientific;
+    strDataInfo << std::setprecision(6);
+    strDataInfo << "step " << step;
+
+    int x_loc, y_loc, z_loc;
+    dfloat hostVal;
+    std::stringstream name;
+
+    switch (dir_index)
+    {
+    case 1: // force along y-direction at fixed x0, z0
+        x_loc = x0;
+        z_loc = z0;
+        strDataInfo << " step " << step;
+        for (y_loc = 0; y_loc < NY; ++y_loc) {
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            // Save Fx component
+            checkCudaErrors(cudaMemcpy(&hostVal, d_Local_Fx + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        name << "forceProfile_dy_x" << x0 << "_z" << z0;
+        saveTreatData(name.str() + "_Fx", strDataInfo.str(), step);
+
+        // Fy component
+        strDataInfo.str(""); strDataInfo.clear();
+        strDataInfo << std::scientific << std::setprecision(6);
+        strDataInfo << "step " << step;
+        for (y_loc = 0; y_loc < NY; ++y_loc) {
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, d_Local_Fy + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        saveTreatData(name.str() + "_Fy", strDataInfo.str(), step);
+
+        // Fz component
+        strDataInfo.str(""); strDataInfo.clear();
+        strDataInfo << std::scientific << std::setprecision(6);
+        strDataInfo << "step " << step;
+        for (y_loc = 0; y_loc < NY; ++y_loc) {
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, d_Local_Fz + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        saveTreatData(name.str() + "_Fz", strDataInfo.str(), step);
+        break;
+
+    case 2: // force along x-direction at fixed y0, z0
+        y_loc = y0;
+        z_loc = z0;
+        strDataInfo.str(""); strDataInfo.clear();
+        strDataInfo << std::scientific << std::setprecision(6);
+        strDataInfo << "step " << step;
+        for (x_loc = 0; x_loc < NX; ++x_loc) {
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, d_Local_Fx + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        name << "forceProfile_dx_y" << y0 << "_z" << z0;
+        saveTreatData(name.str() + "_Fx", strDataInfo.str(), step);
+
+        strDataInfo.str(""); strDataInfo.clear();
+        strDataInfo << std::scientific << std::setprecision(6);
+        strDataInfo << "step " << step;
+        for (x_loc = 0; x_loc < NX; ++x_loc) {
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, d_Local_Fy + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        saveTreatData(name.str() + "_Fy", strDataInfo.str(), step);
+
+        strDataInfo.str(""); strDataInfo.clear();
+        strDataInfo << std::scientific << std::setprecision(6);
+        strDataInfo << "step " << step;
+        for (x_loc = 0; x_loc < NX; ++x_loc) {
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, d_Local_Fz + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        saveTreatData(name.str() + "_Fz", strDataInfo.str(), step);
+        break;
+
+    case 3: // force along z-direction at fixed x0, y0
+        y_loc = y0;
+        x_loc = x0;
+        strDataInfo.str(""); strDataInfo.clear();
+        strDataInfo << std::scientific << std::setprecision(6);
+        strDataInfo << "step " << step;
+        for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, d_Local_Fx + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        name << "forceProfile_dz_x" << x0 << "_y" << y0;
+        saveTreatData(name.str() + "_Fx", strDataInfo.str(), step);
+
+        strDataInfo.str(""); strDataInfo.clear();
+        strDataInfo << std::scientific << std::setprecision(6);
+        strDataInfo << "step " << step;
+        for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, d_Local_Fy + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        saveTreatData(name.str() + "_Fy", strDataInfo.str(), step);
+
+        strDataInfo.str(""); strDataInfo.clear();
+        strDataInfo << std::scientific << std::setprecision(6);
+        strDataInfo << "step " << step;
+        for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, d_Local_Fz + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        saveTreatData(name.str() + "_Fz", strDataInfo.str(), step);
+        break;
+
+    default:
+        std::cerr << "forceProfile: unknown dir_index " << dir_index << std::endl;
+        break;
+    }
+}
+
+void sourceProfile(
+    dfloat* dArray,
+    const char* baseName,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
+){
+    std::ostringstream strDataInfo;
+    strDataInfo << std::scientific;
+    strDataInfo << std::setprecision(6);
+    strDataInfo << "step " << step;
+
+    int x_loc, y_loc, z_loc;
+    dfloat hostVal;
+    std::stringstream name;
+    name << baseName;
+
+    switch (dir_index)
+    {
+    case 1: // along y-direction at fixed x0, z0
+        x_loc = x0;
+        z_loc = z0;
+        for (y_loc = 0; y_loc < NY; ++y_loc) {
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, dArray + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        name << "_dy_x" << x0 << "_z" << z0;
+        saveTreatData(name.str(), strDataInfo.str(), step);
+        break;
+
+    case 2: // along x-direction at fixed y0, z0
+        y_loc = y0;
+        z_loc = z0;
+        for (x_loc = 0; x_loc < NX; ++x_loc) {
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, dArray + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        name << "_dx_y" << y0 << "_z" << z0;
+        saveTreatData(name.str(), strDataInfo.str(), step);
+        break;
+
+    case 3: // along z-direction at fixed x0, y0
+        y_loc = y0;
+        x_loc = x0;
+        for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
+                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            checkCudaErrors(cudaMemcpy(&hostVal, dArray + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+            strDataInfo << "\t" << hostVal;
+        }
+        name << "_dz_x" << x0 << "_y" << y0;
+        saveTreatData(name.str(), strDataInfo.str(), step);
+        break;
+
+    default:
+        std::cerr << "sourceProfile: unknown dir_index " << dir_index << std::endl;
+        break;
+    }
+}
+#endif //SAVE_LOCAL_FORCES
 
 
 void totalBcDrag(

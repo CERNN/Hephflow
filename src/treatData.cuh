@@ -29,6 +29,7 @@
 #include <sstream>
 #include <iostream>     // std::cout, std::fixed
 #include <iomanip>      // std::setprecision
+#include <filesystem>
 
 /**
  *  @brief Handles the functions which will do post processing opeations during simulation for faster execution
@@ -92,9 +93,45 @@ void turbulentKineticEnergy(
  *  @param d_BC_Fz: device boundary condition force field
  *  @param step: Current time step
  */
-__host__ 
+__host__
 void totalBcDrag(dfloat *d_BC_Fx, dfloat* d_BC_Fy, dfloat* d_BC_Fz, size_t step);
  
+/**
+ *  @brief Save the local body force profile along a line (total effective body force)
+ *  @param d_Local_Fx: device local force X component
+ *  @param d_Local_Fy: device local force Y component
+ *  @param d_Local_Fz: device local force Z component
+ *  @param dir_index: Which direction to traverse (1=y-dir, 2=x-dir, 3=z-dir)
+ *  @param x0, y0, z0: Coordinates where the profile will be extracted
+ *  @param step: Current time step
+ */
+__host__
+void forceProfile(
+    dfloat* d_Local_Fx,
+    dfloat* d_Local_Fy,
+    dfloat* d_Local_Fz,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
+);
+
+/**
+ *  @brief Save a scalar source term profile along a line
+ *  @param dArray: device array holding the scalar source field
+ *  @param baseName: base name for the output file (suffix _dy/_dx/_dz appended automatically)
+ *  @param dir_index: Which direction to traverse (1=y-dir, 2=x-dir, 3=z-dir)
+ *  @param x0, y0, z0: Coordinates where the profile will be extracted
+ *  @param step: Current time step
+ */
+__host__
+void sourceProfile(
+    dfloat* dArray,
+    const char* baseName,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
+);
+
 /**
  *  @brief Save the rho profile in the middle of the domian
  *  @param fMom: Pointer to the device array containing the current macroscopic moments.

@@ -19,7 +19,8 @@ constexpr int NZ = 4;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total Z grid size
 
 /* --------------------- REFERENCE VALUES --------------------- */
-constexpr dfloat K_const = 2.0*M_PI/(dfloat)N; // Wave number constant
+constexpr int N_VORTICES = 1;
+constexpr dfloat K_const = 2.0*M_PI*(dfloat)N_VORTICES/(dfloat)N; // Wave number constant
 constexpr dfloat U_MAX = 0.004908875;       // Maximum velocity
 constexpr dfloat SUM_VISC = U_MAX/(RE*K_const); // Total viscosity
 constexpr dfloat VISC = BETA * SUM_VISC;    // Solvent viscosity
@@ -31,7 +32,7 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int CONFORMATION_SWITCH = 0*(int)t_c; // Step to switch on conformation
-constexpr int N_STEPS = CONFORMATION_SWITCH + 200*(int)t_c; // Total simulation steps
+constexpr int N_STEPS = CONFORMATION_SWITCH + 400*(int)t_c; // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- BODY FORCES --------------------- */
@@ -81,21 +82,32 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
     #define COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
 
-    constexpr dfloat CONF_ZERO = (dfloat)(10.0);
+    constexpr dfloat CONF_ZERO = (dfloat)(1.0);
 
     constexpr dfloat nu_p = (VISC/BETA) - VISC;
-
-
     constexpr dfloat Weissenberg_number = 5.0;
-
-
 
     constexpr dfloat LAMBDA = Weissenberg_number*t_c;
     constexpr dfloat inv_lambda = 1.0/LAMBDA;
     constexpr dfloat fenep_re = 10.0;
 
+    static inline fluidPhaseProps makeCasePhaseProps(){
+        fluidPhaseProps pp{};
+        pp.nnf.type = FLUID_BINGHAM;
+        pp.nnf.hasLambda = false;
+        pp.nnf.u.bingham.s_y = 0.0_df;
+        pp.nnf.u.bingham.omega_p = 1.0_df / TAU;
+        pp.ve.type = VE_OLDROYD_B;
+        pp.ve.eta_p = nu_p;
+        pp.ve.lambda = LAMBDA;
+        return pp;
+    }
+
+    #define CASE_PHASE_PROPS makeCasePhaseProps()
+
+
     //ADVECTION-DIFFUSIONS CONSTANTS
-    constexpr dfloat CONF_DIFFUSIVITY_RATIO = 100; //OR Pr in malaspinas
+    constexpr dfloat CONF_DIFFUSIVITY_RATIO = 1000; //OR Pr in malaspinas
     constexpr dfloat CONF_DIFFUSIVITY = VISC/CONF_DIFFUSIVITY_RATIO; // alpha
 
     constexpr dfloat CONF_DIFF_REF = (1.0/600);
