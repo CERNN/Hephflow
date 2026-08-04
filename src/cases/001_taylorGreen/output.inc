@@ -24,9 +24,9 @@
 #define MEAN_FLOW (false)               // Store mean flow for turbulence statistics
 
 /* --------------------- CHECKPOINT CONFIGURATION --------------------- */
-#define LOAD_CHECKPOINT false           // Load simulation from checkpoint
-#define SIMULATION_FOLDER_LOAD_CHECKPOINT "TEST" // Folder to load checkpoint from
-#define CHECKPOINT_SAVE false           // Save simulation checkpoints
+#define LOAD_CHECKPOINT true           // Load simulation from checkpoint
+#define SIMULATION_FOLDER_LOAD_CHECKPOINT "TaylorGreen" // Folder to load checkpoint from
+#define CHECKPOINT_SAVE true           // Save simulation checkpoints
 #define LOAD_FIELD false                // Load field data
 #define LOAD_FIELD_STEP 0               // Step to load field from
 

@@ -1,10 +1,10 @@
     /* write to global pop - AA scheme */
-    dfloat* storeGhostXWest  = ghostInterface.Axy.X_0;
-    dfloat* storeGhostXEast  = ghostInterface.Axy.X_1;
-    dfloat* storeGhostYSouth = ghostInterface.Axy.Y_0;
-    dfloat* storeGhostYNorth = ghostInterface.Axy.Y_1;
-    dfloat* storeGhostZBack  = ghostInterface.Axy.Z_0;
-    dfloat* storeGhostZFront = ghostInterface.Axy.Z_1;
+    dfloat* storeGhostXWest  = ghostInterfaceAxy.X_0;
+    dfloat* storeGhostXEast  = ghostInterfaceAxy.X_1;
+    dfloat* storeGhostYSouth = ghostInterfaceAxy.Y_0;
+    dfloat* storeGhostYNorth = ghostInterfaceAxy.Y_1;
+    dfloat* storeGhostZBack  = ghostInterfaceAxy.Z_0;
+    dfloat* storeGhostZFront = ghostInterfaceAxy.Z_1;
 
     const int storeBxWest  = (stepParity ? bx : bxm1);
     const int storeBxEast  = (stepParity ? bx : bxp1);
@@ -110,22 +110,27 @@
 #endif
         }
 
+        dfloat* storeZBack_edge  = (bz == 0)  ? ghostInterfaceAxy.Z_0 : storeGhostZFront;
+        const int     storeBzBack_edge  = (bz == 0)  ? 0   : storeBzBack;
+        dfloat* storeZFront_edge = (bz == top) ? ghostInterfaceAxy.Z_1 : storeGhostZBack;
+        const int     storeBzFront_edge = (bz == top) ? top : storeBzFront;
+
         if (INTERFACE_BC_BACK){//b
-             storeGhostZFront[g_idxPopZ(tx, ty, 0, bx, by, storeBzBack)] = gNode[ 6]; 
+             storeZBack_edge[g_idxPopZ(tx, ty, 0, bx, by, storeBzBack_edge)] = gNode[ 6]; 
 #ifdef D3G19
-             storeGhostZFront[g_idxPopZ(txm1, ty, 1, bxAtWest, by, storeBzBack)] = gNode[10];
-             storeGhostZFront[g_idxPopZ(tx, tym1, 2, bx, byAtSouth, storeBzBack)] = gNode[12];
-             storeGhostZFront[g_idxPopZ(txp1, ty, 3, bxAtEast, by, storeBzBack)] = gNode[15];
-             storeGhostZFront[g_idxPopZ(tx, typ1, 4, bx, byAtNorth, storeBzBack)] = gNode[17];
+             storeZBack_edge[g_idxPopZ(txm1, ty, 1, bxAtWest, by, storeBzBack_edge)] = gNode[10];
+             storeZBack_edge[g_idxPopZ(tx, tym1, 2, bx, byAtSouth, storeBzBack_edge)] = gNode[12];
+             storeZBack_edge[g_idxPopZ(txp1, ty, 3, bxAtEast, by, storeBzBack_edge)] = gNode[15];
+             storeZBack_edge[g_idxPopZ(tx, typ1, 4, bx, byAtNorth, storeBzBack_edge)] = gNode[17];
 #endif
         }
         if (INTERFACE_BC_FRONT){//f
-             storeGhostZBack[g_idxPopZ(tx, ty, 0, bx, by, storeBzFront)] = gNode[ 5]; 
+             storeZFront_edge[g_idxPopZ(tx, ty, 0, bx, by, storeBzFront_edge)] = gNode[ 5]; 
 #ifdef D3G19
-             storeGhostZBack[g_idxPopZ(txp1, ty, 1, bxAtEast, by, storeBzFront)] = gNode[ 9];
-             storeGhostZBack[g_idxPopZ(tx, typ1, 2, bx, byAtNorth, storeBzFront)] = gNode[11];
-             storeGhostZBack[g_idxPopZ(txm1, ty, 3, bxAtWest, by, storeBzFront)] = gNode[16];
-             storeGhostZBack[g_idxPopZ(tx, tym1, 4, bx, byAtSouth, storeBzFront)] = gNode[18];
+             storeZFront_edge[g_idxPopZ(txp1, ty, 1, bxAtEast, by, storeBzFront_edge)] = gNode[ 9];
+             storeZFront_edge[g_idxPopZ(tx, typ1, 2, bx, byAtNorth, storeBzFront_edge)] = gNode[11];
+             storeZFront_edge[g_idxPopZ(txm1, ty, 3, bxAtWest, by, storeBzFront_edge)] = gNode[16];
+             storeZFront_edge[g_idxPopZ(tx, tym1, 4, bx, byAtSouth, storeBzFront_edge)] = gNode[18];
 #endif
         }
     }

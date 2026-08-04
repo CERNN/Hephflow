@@ -217,12 +217,14 @@ void conformationProfile(
  *  @param h_fMom: Pointer to the host array containing the current macroscopic moments.
  *  @param fMom: Pointer to the device array containing the current macroscopic moments.
  *  @param step: Current time step
+ *  @param zOffset: Offset within a global vector
  */
 __host__
 void computeNusseltNumber(
     dfloat* h_fMom,
     dfloat* fMom,
-    unsigned int step
+    unsigned int step,
+    size_t zOffset
 );
 
 /**
@@ -238,6 +240,21 @@ void computeTurbulentEnergies(
     dfloat* fMom,
     dfloat* fMom_mean,
     unsigned int step
+);
+
+/**
+ *  @brief //copy full macroscopic field
+ *  @param h_fMom: Pointer to the host array containing the current macroscopic moments.
+ *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param step: Current time step
+ *  @param zOffset: Offset within a global vector
+ */
+__host__
+void copyMacroscopic(
+    dfloat* h_fMom,
+    dfloat* fMom,
+    unsigned int step,
+    size_t zOffset
 );
 
 #endif // !__TREAT_DATA_CUH

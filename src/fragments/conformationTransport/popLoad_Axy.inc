@@ -1,10 +1,10 @@
 // AA scheme: read from ghost, parity-aware block indices
-const dfloat* loadGhostXWest  = ghostInterface.Axy.X_1;
-const dfloat* loadGhostXEast  = ghostInterface.Axy.X_0;
-const dfloat* loadGhostYSouth = ghostInterface.Axy.Y_1;
-const dfloat* loadGhostYNorth = ghostInterface.Axy.Y_0;
-const dfloat* loadGhostZBack  = ghostInterface.Axy.Z_1;
-const dfloat* loadGhostZFront = ghostInterface.Axy.Z_0;
+const dfloat* loadGhostXWest  = ghostInterfaceAxy.X_1;
+const dfloat* loadGhostXEast  = ghostInterfaceAxy.X_0;
+const dfloat* loadGhostYSouth = ghostInterfaceAxy.Y_1;
+const dfloat* loadGhostYNorth = ghostInterfaceAxy.Y_0;
+const dfloat* loadGhostZBack  = ghostInterfaceAxy.Z_1;
+const dfloat* loadGhostZFront = ghostInterfaceAxy.Z_0;
 
 const int loadBxWest  = (stepParity ? bx : bxm1);
 const int loadBxEast  = (stepParity ? bx : bxp1);
@@ -12,6 +12,8 @@ const int loadBySouth = (stepParity ? by : bym1);
 const int loadByNorth = (stepParity ? by : byp1);
 const int loadBzBack  = (stepParity ? bz : bzm1);
 const int loadBzFront = (stepParity ? bz : bzp1);
+
+const int top = NUM_BLOCK_Z_LOCAL - 1;
 
 const int bxAtWest  = (tx == 0)              ? bxm1 : bx;
 const int bxAtEast  = (tx == (BLOCK_NX - 1)) ? bxp1 : bx;
@@ -57,19 +59,35 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
 
         if (tz == 0)
         { //b
-            gNode[ 5] = loadGhostZFront[g_idxPopZ(tx, ty, 0, bx, by, loadBzBack)];
-            gNode[ 9] = loadGhostZFront[g_idxPopZ(tx, ty, 1, bx, by, loadBzBack)];
-            gNode[11] = loadGhostZFront[g_idxPopZ(tx, ty, 2, bx, by, loadBzBack)];
-            gNode[16] = loadGhostZFront[g_idxPopZ(tx, ty, 3, bx, by, loadBzBack)];
-            gNode[18] = loadGhostZFront[g_idxPopZ(tx, ty, 4, bx, by, loadBzBack)];
+            if(bz == 0){
+                gNode[ 5] = ghostInterfaceAxy.auxZ_1[g_idxPopZ(tx, ty, 0, bx, by, 0)];
+                gNode[ 9] = ghostInterfaceAxy.auxZ_1[g_idxPopZ(tx, ty, 1, bx, by, 0)];
+                gNode[11] = ghostInterfaceAxy.auxZ_1[g_idxPopZ(tx, ty, 2, bx, by, 0)];
+                gNode[16] = ghostInterfaceAxy.auxZ_1[g_idxPopZ(tx, ty, 3, bx, by, 0)];
+                gNode[18] = ghostInterfaceAxy.auxZ_1[g_idxPopZ(tx, ty, 4, bx, by, 0)];
+            }else{
+                gNode[ 5] = loadGhostZFront[g_idxPopZ(tx, ty, 0, bx, by, loadBzBack)];
+                gNode[ 9] = loadGhostZFront[g_idxPopZ(tx, ty, 1, bx, by, loadBzBack)];
+                gNode[11] = loadGhostZFront[g_idxPopZ(tx, ty, 2, bx, by, loadBzBack)];
+                gNode[16] = loadGhostZFront[g_idxPopZ(tx, ty, 3, bx, by, loadBzBack)];
+                gNode[18] = loadGhostZFront[g_idxPopZ(tx, ty, 4, bx, by, loadBzBack)];
+            }
         }
         else if (tz == (BLOCK_NZ - 1))
         { //f
-            gNode[ 6] = loadGhostZBack[g_idxPopZ(tx, ty, 0, bx, by, loadBzFront)];
-            gNode[10] = loadGhostZBack[g_idxPopZ(tx, ty, 1, bx, by, loadBzFront)];
-            gNode[12] = loadGhostZBack[g_idxPopZ(tx, ty, 2, bx, by, loadBzFront)];
-            gNode[15] = loadGhostZBack[g_idxPopZ(tx, ty, 3, bx, by, loadBzFront)];
-            gNode[17] = loadGhostZBack[g_idxPopZ(tx, ty, 4, bx, by, loadBzFront)];
+            if(bz == top){
+                gNode[ 6] = ghostInterfaceAxy.auxZ_0[g_idxPopZ(tx, ty, 0, bx, by, 0)];
+                gNode[10] = ghostInterfaceAxy.auxZ_0[g_idxPopZ(tx, ty, 1, bx, by, 0)];
+                gNode[12] = ghostInterfaceAxy.auxZ_0[g_idxPopZ(tx, ty, 2, bx, by, 0)];
+                gNode[15] = ghostInterfaceAxy.auxZ_0[g_idxPopZ(tx, ty, 3, bx, by, 0)];
+                gNode[17] = ghostInterfaceAxy.auxZ_0[g_idxPopZ(tx, ty, 4, bx, by, 0)];
+            }else{
+                gNode[ 6] = loadGhostZBack[g_idxPopZ(tx, ty, 0, bx, by, loadBzFront)];
+                gNode[10] = loadGhostZBack[g_idxPopZ(tx, ty, 1, bx, by, loadBzFront)];
+                gNode[12] = loadGhostZBack[g_idxPopZ(tx, ty, 2, bx, by, loadBzFront)];
+                gNode[15] = loadGhostZBack[g_idxPopZ(tx, ty, 3, bx, by, loadBzFront)];
+                gNode[17] = loadGhostZBack[g_idxPopZ(tx, ty, 4, bx, by, loadBzFront)];
+            }
         }
 
     }else{
@@ -102,17 +120,33 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
         }
 
         if (tz == 0){ //b
-            gNode[ 5] = loadGhostZBack[g_idxPopZ(tx    , ty   ,   0, bx         , by        , loadBzBack)];
-            gNode[ 9] = loadGhostZBack[g_idxPopZ(txm1  , ty   ,   1, bxAtWest   , by        , loadBzBack)];
-            gNode[11] = loadGhostZBack[g_idxPopZ(tx    , tym1 ,   2, bx         , byAtSouth , loadBzBack)];
-            gNode[16] = loadGhostZBack[g_idxPopZ(txp1  , ty   ,   3, bxAtEast   , by        , loadBzBack)];
-            gNode[18] = loadGhostZBack[g_idxPopZ(tx    , typ1 ,   4, bx         , byAtNorth , loadBzBack)];
+            if(bz == 0){
+                gNode[ 5] = ghostInterfaceAxy.auxZ_1[g_idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
+                gNode[ 9] = ghostInterfaceAxy.auxZ_1[g_idxPopZ(txm1  , ty   ,   1, bxAtWest   , by        , 0)];
+                gNode[11] = ghostInterfaceAxy.auxZ_1[g_idxPopZ(tx    , tym1 ,   2, bx         , byAtSouth , 0)];
+                gNode[16] = ghostInterfaceAxy.auxZ_1[g_idxPopZ(txp1  , ty   ,   3, bxAtEast   , by        , 0)];
+                gNode[18] = ghostInterfaceAxy.auxZ_1[g_idxPopZ(tx    , typ1 ,   4, bx         , byAtNorth , 0)];
+            }else{
+                gNode[ 5] = loadGhostZBack[g_idxPopZ(tx    , ty   ,   0, bx         , by        , loadBzBack)];
+                gNode[ 9] = loadGhostZBack[g_idxPopZ(txm1  , ty   ,   1, bxAtWest   , by        , loadBzBack)];
+                gNode[11] = loadGhostZBack[g_idxPopZ(tx    , tym1 ,   2, bx         , byAtSouth , loadBzBack)];
+                gNode[16] = loadGhostZBack[g_idxPopZ(txp1  , ty   ,   3, bxAtEast   , by        , loadBzBack)];
+                gNode[18] = loadGhostZBack[g_idxPopZ(tx    , typ1 ,   4, bx         , byAtNorth , loadBzBack)];
+            }
         }else if (tz == (BLOCK_NZ - 1)){ //f
-            gNode[ 6] = loadGhostZFront[g_idxPopZ(tx    , ty   ,   0, bx         , by        , loadBzFront)];
-            gNode[10] = loadGhostZFront[g_idxPopZ(txp1  , ty   ,   1, bxAtEast   , by        , loadBzFront)];
-            gNode[12] = loadGhostZFront[g_idxPopZ(tx    , typ1 ,   2, bx         , byAtNorth , loadBzFront)];
-            gNode[15] = loadGhostZFront[g_idxPopZ(txm1  , ty   ,   3, bxAtWest   , by        , loadBzFront)];
-            gNode[17] = loadGhostZFront[g_idxPopZ(tx    , tym1 ,   4, bx         , byAtSouth , loadBzFront)];
+            if(bz == top){
+                gNode[ 6] = ghostInterfaceAxy.auxZ_0[g_idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
+                gNode[10] = ghostInterfaceAxy.auxZ_0[g_idxPopZ(txp1  , ty   ,   1, bxAtEast   , by        , 0)];
+                gNode[12] = ghostInterfaceAxy.auxZ_0[g_idxPopZ(tx    , typ1 ,   2, bx         , byAtNorth , 0)];
+                gNode[15] = ghostInterfaceAxy.auxZ_0[g_idxPopZ(txm1  , ty   ,   3, bxAtWest   , by        , 0)];
+                gNode[17] = ghostInterfaceAxy.auxZ_0[g_idxPopZ(tx    , tym1 ,   4, bx         , byAtSouth , 0)];
+            }else{
+                gNode[ 6] = loadGhostZFront[g_idxPopZ(tx    , ty   ,   0, bx         , by        , loadBzFront)];
+                gNode[10] = loadGhostZFront[g_idxPopZ(txp1  , ty   ,   1, bxAtEast   , by        , loadBzFront)];
+                gNode[12] = loadGhostZFront[g_idxPopZ(tx    , typ1 ,   2, bx         , byAtNorth , loadBzFront)];
+                gNode[15] = loadGhostZFront[g_idxPopZ(txm1  , ty   ,   3, bxAtWest   , by        , loadBzFront)];
+                gNode[17] = loadGhostZFront[g_idxPopZ(tx    , tym1 ,   4, bx         , byAtSouth , loadBzFront)];
+            }
         }
 
     }

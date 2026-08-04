@@ -56,19 +56,26 @@ void gpuResetMacroForces(dfloat *fMom);
  */
 __global__ void gpuComputePhaseNormals(
     dfloat *fMom, 
-    unsigned int *dNodeType
+    unsigned int *dNodeType, 
+    macroInterfaceGPUData macroInterfaceGPU,
+    size_t localNZ, 
+    int zStart
 );
 
 __global__ void gpuComputeChemicalPotential(
     dfloat *fMom, 
-    unsigned int *dNodeType
+    unsigned int *dNodeType, 
+    size_t localNZ, 
+    int zStart
 );
 
 
 __global__ void gpuComputeLaplacianMu(
     dfloat *fMom, 
-    unsigned int *dNodeType
+    unsigned int *dNodeType, 
+    macroInterfaceGPUData macroInterfaceGPU,
+    size_t localNZ, 
+    int zStart
 );
-
 
 #endif //__MLBM_H

@@ -17,7 +17,7 @@ constexpr int N_STEPS = 10000;              // Total simulation steps
 constexpr int N = 256 * SCALE;              // Reference grid size
 constexpr int NX = N;                       // Grid size in X
 constexpr int NY = N;                       // Grid size in Y
-constexpr int NZ = 8;                       // Grid size in Z
+constexpr int NZ = 8*N_GPUS;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */
