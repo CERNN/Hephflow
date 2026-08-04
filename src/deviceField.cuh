@@ -66,6 +66,7 @@ typedef struct deviceField{
 
     #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
     fluidPhaseProps phasePropsA;             ///< Phase-1 fluid properties (viscous + viscoelastic)
+    #endif 
 
     #ifdef PHI_DIST
     fluidPhaseProps phasePropsB;             ///< Phase-2 fluid properties (viscous + viscoelastic)
