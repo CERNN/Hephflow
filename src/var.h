@@ -59,4 +59,10 @@ static_assert(NX >= BLOCK_NX, "NX must be >= BLOCK_NX, Update block size in memo
 static_assert(NY >= BLOCK_NY, "NY must be >= BLOCK_NY, Update block size in memory_layout.h or increase domain in constants.inc");
 static_assert(NZ >= BLOCK_NZ, "NZ must be >= BLOCK_NZ, Update block size in memory_layout.h or increase domain in constants.inc");
 
+
+constexpr auto err = constexprPow(2.0_df, 0.5_df) - sqrtt(2.0_df);
+constexpr dfloat tol = 100 * std::numeric_limits<dfloat>::epsilon();
+static_assert(err < tol && err > -tol);
+
+
 #endif //__VAR_H

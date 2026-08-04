@@ -30,7 +30,7 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int CONFORMATION_SWITCH = 0;      // Step to switch on conformation
-constexpr int N_STEPS = (int)(20.0/Ct)+1;   // Total simulation steps
+constexpr int N_STEPS = 10000;//(int)(20.0/Ct)+1;   // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- BODY FORCES --------------------- */
@@ -80,17 +80,17 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 #define COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
 
-    constexpr dfloat CONF_ZERO = (dfloat)(10.0);
+    constexpr dfloat CONF_ZERO = (dfloat)(1.0);
 
     constexpr dfloat nu_p = SUM_VISC - VISC;
-    constexpr dfloat Weissenberg_number = 10.0;
+    constexpr dfloat Weissenberg_number = 1.0;
 
     constexpr dfloat LAMBDA = Weissenberg_number*t_c;
     constexpr dfloat inv_lambda = 1.0/LAMBDA;
     constexpr dfloat fenep_re = 10.0;
 
     //ADVECTION-DIFFUSIONS CONSTANTS
-    constexpr dfloat CONF_DIFFUSIVITY_RATIO = 100; //OR Pr in malaspinas
+    constexpr dfloat CONF_DIFFUSIVITY_RATIO = 1000; //OR Pr in malaspinas
     constexpr dfloat CONF_DIFFUSIVITY = VISC/CONF_DIFFUSIVITY_RATIO; // alpha
 
     constexpr dfloat CONF_DIFF_REF = (1.0/6);

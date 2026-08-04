@@ -4,40 +4,44 @@
  * Description: Viscoelastic flow between parallel plates (FENE-P model)
  * ========================================================================== */
 
-/* --------------------- DIMENSIONLESS NUMBERS --------------------- */
-constexpr dfloat RE = 1;                    // Reynolds number
-
 /* --------------------- SIMULATION SCALE --------------------- */
-constexpr int SCALE = 1;                    // Grid scaling factor
+constexpr int SCALE = 1;
 
 /* --------------------- GRID DIMENSIONS --------------------- */
-constexpr int N = 128 * SCALE;              // Reference grid size
-constexpr int NX = 8;                       // Grid size in X
-constexpr int NY = N;                       // Grid size in Y
-constexpr int NZ = 8;                       // Grid size in Z
-constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
+constexpr int N = 256;
+constexpr int NX = 4;
+constexpr int NY = N;
+constexpr int NZ = 4;
+constexpr int NZ_TOTAL = NZ;
 
 /* --------------------- REFERENCE VALUES --------------------- */
-constexpr dfloat U_MAX = 0.0;               // Maximum/reference velocity
-constexpr dfloat L = N;                     // Reference length
+constexpr dfloat U_MAX = 0.0;
+constexpr dfloat L = N-1;
 
 /* --------------------- VISCOELASTIC PARAMETERS --------------------- */
-constexpr dfloat U_C = 0.01;                // Characteristic velocity
-constexpr dfloat SUM_VISC = (U_C*L)/RE;     // Total viscosity
-constexpr dfloat BETA = 0.1;                // Viscosity ratio (R_v)
-constexpr dfloat VISC = BETA * SUM_VISC;    // Solvent kinematic viscosity
-constexpr dfloat TAU = 0.5 + 3.0*VISC;      // Relaxation time
-constexpr dfloat t_c = L/U_C;               // Characteristic time
+constexpr dfloat TAU = 0.8;                // Fixed relaxation time
+constexpr dfloat BETA = 0.1;               // Viscosity ratio
+
+constexpr dfloat VISC = (TAU - 0.5)/3.0;   // Solvent viscosity
+constexpr dfloat SUM_VISC = VISC/BETA;     // Total viscosity
+
+/* Reynolds number — fixed target, independent of grid size */
+constexpr dfloat RE = 1;
+
+/* Centerline velocity derived from Re (adapts to N and tau automatically) */
+constexpr dfloat U_C = RE*SUM_VISC/L;
+
+constexpr dfloat t_c = L/U_C;
 
 /* --------------------- TIME STEPPING --------------------- */
-constexpr int CONFORMATION_SWITCH = 0;      // Step to switch on conformation
-constexpr int N_STEPS = 5000;             // Total simulation steps (viscoelastic comparison)
-constexpr int INI_STEP = 0;                 // Initial step (for restarts)
+constexpr int CONFORMATION_SWITCH = 0;
+constexpr int N_STEPS = 20*t_c;
+constexpr int INI_STEP = 0;
 
 /* --------------------- BODY FORCES --------------------- */
-constexpr dfloat FX = 8.0*SUM_VISC*U_C/NY/NY; // Force in X direction (flow driving)
-constexpr dfloat FY = 0.0;                  // Force in Y direction
-constexpr dfloat FZ = 0.0;                  // Force in Z direction
+constexpr dfloat FX = 8.0*SUM_VISC*U_C/(L*L);
+constexpr dfloat FY = 0.0;
+constexpr dfloat FZ = 0.0;
 
 /* --------------------- INITIAL CONDITIONS --------------------- */
 constexpr dfloat U_0_X = 0.0;               // Initial velocity X
@@ -86,7 +90,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
     #define COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
 
-    constexpr dfloat CONF_ZERO = (dfloat)(10.0);
+    constexpr dfloat CONF_ZERO = (dfloat)(1.0);
 
     constexpr dfloat nu_p = SUM_VISC - VISC;
     constexpr dfloat Weissenberg_number = 1.0;
@@ -110,11 +114,11 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
     #define CASE_PHASE_PROPS makeCasePhaseProps()
 
     //ADVECTION-DIFFUSIONS CONSTANTS
-    constexpr dfloat CONF_DIFFUSIVITY_RATIO = 100; //OR Pr in malaspinas
+    constexpr dfloat CONF_DIFFUSIVITY_RATIO = 2000; //OR Pr in malaspinas
     constexpr dfloat CONF_DIFFUSIVITY = VISC/CONF_DIFFUSIVITY_RATIO; // alpha
 
     constexpr dfloat CONF_DIFF_REF = (1.0/6);
-    constexpr dfloat CONF_TAU = CONF_DIFF_REF*3+0.5;
+    constexpr dfloat CONF_TAU = CONF_DIFFUSIVITY*3+0.5;
     constexpr dfloat CONF_OMEGA  = 1.0/CONF_TAU;
     constexpr dfloat CONF_TT_OMEGA = 1.0-0.5*CONF_OMEGA;
 
