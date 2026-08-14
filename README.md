@@ -1,5 +1,7 @@
 # Hephflow
 
+<img src="Images/utfpr.jpg" alt="UTFPR" width="300">
+
 [![License: GPL v2](https://img.shields.io/badge/License-GPLv2-blue.svg)](./LICENSE.txt)
 
 This repository contains **Hephflow**, a moment-based implementation of the Lattice Boltzmann Method (LBM) for GPU acceleration using CUDA. Hephflow is the successor to the previous project **MR-LBM**, and builds upon its concepts and codebase, introducing new features and improvements for efficient computational fluid dynamics simulations on GPU hardware.
