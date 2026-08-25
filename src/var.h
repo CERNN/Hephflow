@@ -30,8 +30,8 @@
 #define GPU_INDEX 0
 
 constexpr bool console_flush = false;
-constexpr unsigned int N_GPUS = 1;                      // Number of GPUS to use
-constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
+constexpr unsigned int N_GPUS = 2;                      // Number of GPUS to use
+constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0,0};       // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
