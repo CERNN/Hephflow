@@ -28,7 +28,6 @@ typedef struct deviceField{
         dfloat* d_BC_Fz[N_GPUS];
     #endif //_BC_FORCES
 
-
     #ifdef SAVE_LOCAL_FORCES
         dfloat* d_Local_Fx;
         dfloat* d_Local_Fy;
@@ -1370,6 +1369,40 @@ typedef struct deviceField{
         treatDataParams.d_BC_Fx = d_BC_Fx[g];
         treatDataParams.d_BC_Fy = d_BC_Fy[g];
         treatDataParams.d_BC_Fz = d_BC_Fz[g];
+        #endif
+        #ifdef SAVE_LOCAL_FORCES
+        treatDataParams.d_Local_Fx = d_Local_Fx;
+        treatDataParams.d_Local_Fy = d_Local_Fy;
+        treatDataParams.d_Local_Fz = d_Local_Fz;
+            #ifdef SECOND_DIST
+        treatDataParams.d_Source_C = d_Source_C;
+            #endif
+            #ifdef PHI_DIST
+        treatDataParams.d_Source_Phi = d_Source_Phi;
+            #endif
+            #ifdef LAMBDA_DIST
+        treatDataParams.d_Source_Lambda = d_Source_Lambda;
+            #endif
+            #ifdef CONFORMATION_TENSOR
+                #ifdef A_XX_DIST
+        treatDataParams.d_Source_Gxx = d_Source_Gxx;
+                #endif
+                #ifdef A_XY_DIST
+        treatDataParams.d_Source_Gxy = d_Source_Gxy;
+                #endif
+                #ifdef A_XZ_DIST
+        treatDataParams.d_Source_Gxz = d_Source_Gxz;
+                #endif
+                #ifdef A_YY_DIST
+        treatDataParams.d_Source_Gyy = d_Source_Gyy;
+                #endif
+                #ifdef A_YZ_DIST
+        treatDataParams.d_Source_Gyz = d_Source_Gyz;
+                #endif
+                #ifdef A_ZZ_DIST
+        treatDataParams.d_Source_Gzz = d_Source_Gzz;
+                #endif
+            #endif //CONFORMATION_TENSOR
         #endif
         #ifdef SAVE_LOCAL_FORCES
         treatDataParams.d_Local_Fx = d_Local_Fx;
