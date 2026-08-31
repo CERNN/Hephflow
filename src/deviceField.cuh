@@ -276,7 +276,7 @@ typedef struct deviceField{
             checkCudaErrors(cudaMemcpy(dNodeType[g], hNodeType_slice, sizeof(unsigned int) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyHostToDevice));  
             checkCudaErrors(cudaDeviceSynchronize());
             #ifdef FORCE_VOXEL_BC_BUILDING
-                define_voxel_bc<<<gridBlock, threadBlock>>>(dNodeType); 
+                define_voxel_bc<<<gridBlock, threadBlock>>>(dNodeType[g]); 
                 checkCudaErrors(cudaMemcpy(hNodeType_slice, dNodeType[g], sizeof(unsigned int) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost)); 
             #endif
         #else
