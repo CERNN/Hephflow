@@ -370,10 +370,14 @@ int main() {
     #endif //MEAN_FLOW
     
     //Save info file (always saved, regardless of fluid model)
-    #ifdef PHI_DIST
-    saveSimInfo(step, MLUPS, deviceField.phasePropsA, deviceField.phasePropsB, true);
+    #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
+        #ifdef PHI_DIST
+        saveSimInfo(step, MLUPS, deviceField.phasePropsA, deviceField.phasePropsB, true);
+        #else
+        saveSimInfo(step, MLUPS, deviceField.phasePropsA);
+        #endif
     #else
-    saveSimInfo(step, MLUPS, deviceField.phasePropsA);
+        saveSimInfo(step, MLUPS, fluidPhaseProps{});
     #endif
 
     while (savingMacrVtk) std::this_thread::sleep_for(std::chrono::milliseconds(1));
