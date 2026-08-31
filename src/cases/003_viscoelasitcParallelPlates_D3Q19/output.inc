@@ -24,11 +24,15 @@
 
 /* --------------------- OUTPUT CONTROL --------------------- */
 #define ONLY_FINAL_MACRO (false)            // Save only final timestep macroscopic
-#define MACR_SAVE (64000)                   // Macroscopic save frequency (steps)
-#define REPORT_SAVE (100)                 // Console report frequency (steps)
+#define MACR_SAVE ((int)t_c*4)                      // Macroscopic save frequency (steps)
+#define REPORT_SAVE ((int)t_c/20)           // Console report frequency (steps)
 #define VTK_SAVE (true)                     // Enable VTK output for visualization
 #define BIN_SAVE (false)                    // Enable binary output
 
 /* --------------------- BOUNDARY FORCES --------------------- */
 //#define BC_FORCES                         // Compute boundary forces
 //#define SAVE_BC_FORCES                    // Save boundary forces to file
+
+
+/* --------------------- FORCE OUTPUT --------------------- */
+#define SAVE_LOCAL_FORCES                 // Export local body force field

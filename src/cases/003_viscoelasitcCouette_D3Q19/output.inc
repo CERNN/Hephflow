@@ -5,7 +5,7 @@
  * ========================================================================== */
 
 /* --------------------- FILE IDENTIFICATION --------------------- */
-#define ID_SIM "000"                        // Simulation identifier
+#define ID_SIM "pertubation_0p1__Weissenberg_number_2"                        // Simulation identifier
 #define PATH_FILES "ViscoelasticCouette"    // Output folder name
 
 /* --------------------- DATA TREATMENT --------------------- */
@@ -23,9 +23,9 @@
 #define NODE_TYPE_SAVE (false)              // Save boundary condition node types
 
 /* --------------------- OUTPUT CONTROL --------------------- */
-#define ONLY_FINAL_MACRO (false)            // Save only final timestep macroscopic
+#define ONLY_FINAL_MACRO (true)            // Save only final timestep macroscopic
 #define MACR_SAVE (50000)                   // Macroscopic save frequency (steps)
-#define REPORT_SAVE (100)                   // Console report frequency (steps)
+#define REPORT_SAVE ((int)(LAMBDA/20))                              // Console report frequency (steps)
 #define VTK_SAVE (true)                     // Enable VTK output for visualization
 #define BIN_SAVE (false)                    // Enable binary output
 
