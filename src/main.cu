@@ -11,6 +11,17 @@
 using namespace std;
 
 int main() {
+
+    std::cout << "==============================================================\n";
+    std::cout << " UNIVERSIDADE TECNOLOGICA FEDERAL DO PARANA - UTFPR\n";
+    std::cout << " Sistema vinculado institucionalmente a UTFPR\n";
+    std::cout << "==============================================================\n\n";
+    std::cout << "==============================================================\n";
+    std::cout << " FEDERAL UNIVERSITY OF TECHNOLOGY - PARANA\n";
+    std::cout << " System institutionally linked to UTFPR\n";
+    std::cout << "==============================================================\n\n";
+    std::cout << "Initializing the Hephflow version 1.0 ...\n";
+
     // Setup saving folder
     folderSetup();
 
