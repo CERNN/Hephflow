@@ -1,3 +1,6 @@
+#!/bin/bash
+set -o pipefail
+
 # CC=86
 
 # Prevent runtime cudaErrorInsufficientDriver by validating CUDA compatibility
