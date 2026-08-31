@@ -161,7 +161,9 @@ void readFilesIntoDfloat3SoA(dfloat3SoA arr, const std::string foldername, const
 
 __host__
 std::string getCheckpointFilenameWrite(std::string name, int gpu_index){
-    std::filesystem::path p = std::filesystem::path(PATH_FILES) / ID_SIM / "checkpoint" / (std::to_string(gpu_index) + "_" + name);
+    std::filesystem::path exePath = getExecutablePathCheckpoint();
+    std::filesystem::path binDir = exePath.parent_path();
+    std::filesystem::path p = binDir / PATH_FILES / ID_SIM / "checkpoint" / (std::to_string(gpu_index) + "_" + name);
     return p.string();
 } 
 
