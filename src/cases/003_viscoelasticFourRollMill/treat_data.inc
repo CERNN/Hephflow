@@ -167,3 +167,54 @@ strDataInfo << std::setprecision(6);
                         //step           // epsilon                         /Wi_eff                                // Axx     //Axy          //Ayy;
 strDataInfo <<"step,"<< step/t_c << "," << duxdx_t30/epsi_c << "," << Weissenberg_number*duxdx_t30/epsi_c << "," << Axx << "," << Axy  << "," << Ayy;
 saveTreatData("_data_000",strDataInfo.str(),step);
+
+
+{
+    constexpr int N_PROBE   = 16;          // probes per direction (must divide 32)
+    const     int stride_x  = NX / N_PROBE;
+    const     int stride_y  = NY / N_PROBE;
+    const     int iz_probe  = NZ / 2;
+
+    // Build one CSV string per probe point and write as a single file.
+    // Format: step_norm, ix, iy, x_star, y_star, ux, uy, Axx, Axy, Ayy
+    std::ostringstream ssProbe;
+    ssProbe << std::scientific << std::setprecision(8);
+
+    // Header (written every snapshot; easy to strip in post-processing)
+    ssProbe << "step_norm,ix,iy,x_star,y_star,ux,uy,Axx,Axy,Ayy\n";
+
+    const dfloat step_norm = static_cast<dfloat>(step) / t_c;
+
+    for (int pi = 0; pi < N_PROBE; ++pi) {
+        const int probe_x = pi * stride_x;          // lattice index, exact on all grids
+        for (int pj = 0; pj < N_PROBE; ++pj) {
+            const int probe_y = pj * stride_y;
+
+            // Physical coordinates in [0,1)
+            const dfloat x_star = static_cast<dfloat>(probe_x) / NX;
+            const dfloat y_star = static_cast<dfloat>(probe_y) / NY;
+
+            // Velocity moments
+            const dfloat ux_p = getMom(probe_x, probe_y, iz_probe, M_UX_INDEX);
+            const dfloat uy_p = getMom(probe_x, probe_y, iz_probe, M_UY_INDEX);
+
+            // Conformation tensor (CONF_ZERO subtracted via getConf)
+            const dfloat Axx_p = getConf(probe_x, probe_y, iz_probe, A_XX_C_INDEX);
+            const dfloat Axy_p = getConf(probe_x, probe_y, iz_probe, A_XY_C_INDEX);
+            const dfloat Ayy_p = getConf(probe_x, probe_y, iz_probe, A_YY_C_INDEX);
+
+            ssProbe << step_norm   << ","
+                    << probe_x     << ","
+                    << probe_y     << ","
+                    << x_star      << ","
+                    << y_star      << ","
+                    << ux_p        << ","
+                    << uy_p        << ","
+                    << Axx_p       << ","
+                    << Axy_p       << ","
+                    << Ayy_p       << "\n";
+        }
+    }
+
+saveTreatData("_probes", ssProbe.str(), step);
+}

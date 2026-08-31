@@ -1,5 +1,6 @@
 #include "particle.cuh"
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 
 #ifdef PARTICLE_MODEL
@@ -1131,6 +1132,10 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
 
     //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+    dfloat a_orig = a;
+    dfloat b_orig = b;
+    dfloat c_orig = c;
+
     dfloat scaling = myMin(myMin(a, b), c);
     
     a /= scaling;
@@ -1148,94 +1153,122 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
 
     //#############################################################################
 
-    // Allocate memory for positions and forces
-    dfloat *phi = (dfloat *)malloc(numberNodes * sizeof(dfloat));
-    dfloat *theta = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+    // --- Static cache for identical ellipsoids ---
+    static dfloat cache_a = -1, cache_b = -1, cache_c = -1;
+    static int    cache_numNodes = 0;
+    static dfloat *cache_posx = nullptr;
+    static dfloat *cache_posy = nullptr;
+    static dfloat *cache_posz = nullptr;
+
+    bool sameShape = (a_orig == cache_a && b_orig == cache_b && c_orig == cache_c && cache_numNodes > 0);
+
+    // posx/posy/posz always needed (freed at end)
     dfloat* posx = (dfloat *)malloc(numberNodes * sizeof(dfloat));
-    dfloat* posy = (dfloat *)malloc(numberNodes* sizeof(dfloat));
+    dfloat* posy = (dfloat *)malloc(numberNodes * sizeof(dfloat));
     dfloat* posz = (dfloat *)malloc(numberNodes * sizeof(dfloat));
-    dfloat* fx = (dfloat *)malloc(numberNodes* sizeof(dfloat));
-    dfloat* fy = (dfloat *)malloc(numberNodes* sizeof(dfloat));
-    dfloat* fz = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+
+    dfloat *phi   = nullptr;
+    dfloat *theta = nullptr;
+    dfloat *fx    = nullptr;
+    dfloat *fy    = nullptr;
+    dfloat *fz    = nullptr;
+
+    if (!sameShape)
+    {
+        // Allocate Coulomb working arrays
+        phi   = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+        theta = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+        fx    = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+        fy    = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+        fz    = (dfloat *)malloc(numberNodes * sizeof(dfloat));
     
-    // Initialize random positions of charges on the ellipsoid surface
-    for (int i = 0; i < numberNodes; i++) {
-        phi[i] = 2 * M_PI * ((dfloat)rand() / (dfloat)RAND_MAX);   // Angle in XY plane
-        theta[i] = M_PI * ((dfloat)rand() / (dfloat)RAND_MAX);     // Angle from Z axis
-
-        posx[i] = 1 * sin(theta[i]) * cos(phi[i]); // x coordinate
-        posy[i] = 1 * sin(theta[i]) * sin(phi[i]); // y coordinate
-        posz[i] = 1 * cos(theta[i]);               // z coordinate
-    }
-
-    // Constants
-    dfloat base_k = 1.0_df; // Base Coulomb's constant (assuming unit charge)
-    dfloat rij[3];
-    dfloat r;
-    dfloat F;
-    dfloat unit_rij[3];
-    dfloat force_scale_factor;
-
-    for (int iter = 0; iter < 300; iter++) {
-        // Initialize force accumulator
+        // Initialize random positions of charges on the unit sphere
         for (int i = 0; i < numberNodes; i++) {
-            fx[i] = 0.0_df;
-            fy[i] = 0.0_df;
-            fz[i] = 0.0_df;
+            phi[i]   = 2 * M_PI * ((dfloat)rand() / (dfloat)RAND_MAX);
+            theta[i] =       M_PI * ((dfloat)rand() / (dfloat)RAND_MAX);
+            posx[i]  = sin(theta[i]) * cos(phi[i]);
+            posy[i]  = sin(theta[i]) * sin(phi[i]);
+            posz[i]  = cos(theta[i]);
         }
 
-        // Compute pairwise forces and update positions
-        for (int i = 0; i < numberNodes; i++) {
-            for (int j = 0; j < numberNodes; j++) {
-                if (i != j) { // not the same node
-                    // Vector from node j to node i
+        printf("  Ellipsoid at (%.1f,%.1f,%.1f): %d nodes, Coulomb 300 iters...\n",
+               particleCenter->getPosX(), particleCenter->getPosY(), particleCenter->getPosZ(), numberNodes);
+        fflush(stdout);
 
+        // --- Coulomb optimisation ---
+        dfloat base_k = 1.0_df;
+        dfloat rij[3], r, F, unit_rij[3], force_scale_factor;
+
+        for (int iter = 0; iter < 300; iter++) {
+            for (int i = 0; i < numberNodes; i++) {
+                fx[i] = 0.0_df; fy[i] = 0.0_df; fz[i] = 0.0_df;
+            }
+            for (int i = 0; i < numberNodes; i++) {
+                for (int j = 0; j < numberNodes; j++) {
+                    if (i == j) continue;
                     rij[0] = posx[i] - posx[j];
                     rij[1] = posy[i] - posy[j];
                     rij[2] = posz[i] - posz[j];
-
-                    // Distance between node i and node j
-                    r = sqrt(rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2]);
-
-                    // Coulomb's force magnitude
+                    r = sqrt(rij[0]*rij[0] + rij[1]*rij[1] + rij[2]*rij[2]);
                     F = base_k / (r * r);
-
-                    // Direction of force
                     unit_rij[0] = rij[0] / r;
                     unit_rij[1] = rij[1] / r;
                     unit_rij[2] = rij[2] / r;
-
-                    // Accumulate force on nodes i
                     fx[i] += F * unit_rij[0];
                     fy[i] += F * unit_rij[1];
                     fz[i] += F * unit_rij[2];
                 }
             }
+            for (int i = 0; i < numberNodes; i++) {
+                posx[i] += 10 * fx[i] / (numberNodes * numberNodes);
+                posy[i] += 10 * fy[i] / (numberNodes * numberNodes);
+                posz[i] += 10 * fz[i] / (numberNodes * numberNodes);
+            }
+            // Project back onto unit sphere
+            for (int i = 0; i < numberNodes; i++) {
+                force_scale_factor = sqrt(posx[i]*posx[i] + posy[i]*posy[i] + posz[i]*posz[i]);
+                posx[i] /= force_scale_factor;
+                posy[i] /= force_scale_factor;
+                posz[i] /= force_scale_factor;
+            }
+            if (iter % 50 == 0) {
+                printf("    Coulomb iter %d/300\n", iter);
+                fflush(stdout);
+            }
         }
-        // Update positions of nodes
+        printf("    Coulomb done\n");
+        fflush(stdout);
+
+        // Scale unit sphere → ellipsoid
         for (int i = 0; i < numberNodes; i++) {
-            posx[i] += 10 * fx[i] / (numberNodes * numberNodes);
-            posy[i] += 10 * fy[i] / (numberNodes * numberNodes);
-            posz[i] += 10 * fz[i] / (numberNodes * numberNodes);
+            posx[i] *= a*scaling;
+            posy[i] *= b*scaling;
+            posz[i] *= c*scaling;
         }
 
-        // Project updated positions back onto the ellipsoid surface
-        for (int i = 0; i < numberNodes; i++) {
-            // Calculate the current point's distance to the center along each axis
-            force_scale_factor = sqrt(posx[i]*posx[i] +
-                                posy[i]*posy[i] +
-                                posz[i]*posz[i]);
-            // Rescale to ensure it lies on the ellipsoid surface
-            posx[i] /= force_scale_factor;
-            posy[i] /= force_scale_factor;
-            posz[i] /= force_scale_factor;
-        }
+        // Update cache
+        if (cache_posx) { free(cache_posx); free(cache_posy); free(cache_posz); }
+        cache_a = a_orig; cache_b = b_orig; cache_c = c_orig;
+        cache_numNodes = numberNodes;
+        cache_posx = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+        cache_posy = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+        cache_posz = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+        memcpy(cache_posx, posx, numberNodes * sizeof(dfloat));
+        memcpy(cache_posy, posy, numberNodes * sizeof(dfloat));
+        memcpy(cache_posz, posz, numberNodes * sizeof(dfloat));
+
+        free(phi); free(theta); free(fx); free(fy); free(fz);
+        phi = nullptr; theta = nullptr; fx = nullptr; fy = nullptr; fz = nullptr;
     }
-    //convert into elipsoid 
-    for (int i = 0; i < numberNodes; i++) {
-    posx[i] *= a*scaling;
-    posy[i] *= b*scaling;
-    posz[i] *= c*scaling;
+    else
+    {
+        // Reuse cached node positions from previous identical ellipsoid
+        printf("  Ellipsoid at (%.1f,%.1f,%.1f): %d nodes (reusing cached layout)\n",
+               particleCenter->getPosX(), particleCenter->getPosY(), particleCenter->getPosZ(), numberNodes);
+        fflush(stdout);
+        memcpy(posx, cache_posx, numberNodes * sizeof(dfloat));
+        memcpy(posy, cache_posy, numberNodes * sizeof(dfloat));
+        memcpy(posz, cache_posz, numberNodes * sizeof(dfloat));
     }
       
 

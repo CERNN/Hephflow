@@ -5,7 +5,6 @@ void treatData(const TreatDataParams* params)
 {
     // Unpack parameters from struct
     dfloat* h_fMom = params->h_fMom;
-    dfloat* fMom = params->d_fMom;
     #if MEAN_FLOW
     dfloat* fMom_mean = params->d_fMom_mean;
     #endif
@@ -49,6 +48,7 @@ void treatData(const TreatDataParams* params)
         #endif //CONFORMATION_TENSOR
     #endif
     unsigned int step = params->step;
+    size_t zOffset = params->zOffset;
 
     #ifdef TREAT_DATA_INCLUDE
     #include CASE_TREAT_DATA
@@ -61,20 +61,20 @@ __host__
 void mean_moment(dfloat *fMom, dfloat *meanMom, int m_index, size_t step, int target){
 
     dfloat* sum;
-    cudaMalloc((void**)&sum, NUM_BLOCK * sizeof(dfloat));
+    cudaMalloc((void**)&sum, NUM_BLOCK_LOCAL * sizeof(dfloat));
 
     int nt_x = BLOCK_NX;
     int nt_y = BLOCK_NY;
     int nt_z = BLOCK_NZ;
     int nb_x = NX / nt_x;
     int nb_y = NY / nt_y;
-    int nb_z = NZ / nt_z;
+    int nb_z = (NZ/N_GPUS) / nt_z;
 
-    sumReductionThread << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom, sum,m_index);
+    sumReductionThread << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom, sum,m_index);
 
     nb_x = NUM_BLOCK_X;
     nb_y = NUM_BLOCK_Y;
-    nb_z = NUM_BLOCK_Z;
+    nb_z = NUM_BLOCK_Z_LOCAL;
 
     int current_block_size = nb_x * nb_y * nb_z;
    
@@ -106,9 +106,9 @@ void mean_moment(dfloat *fMom, dfloat *meanMom, int m_index, size_t step, int ta
     checkCudaErrors(cudaMemcpy(&temp, sum, sizeof(dfloat), cudaMemcpyDeviceToHost)); 
 
     if (m_index == M_RHO_INDEX){
-        temp = (temp/(dfloat)NUMBER_LBM_NODES); 
+        temp = (temp/(dfloat)NUMBER_LBM_NODES_LOCAL); 
     }else{
-        temp = (temp/(dfloat)NUMBER_LBM_NODES);
+        temp = (temp/(dfloat)NUMBER_LBM_NODES_LOCAL);
     }
                 
     if (target == 0){
@@ -131,20 +131,20 @@ void totalKineticEnergy(
     size_t step
 ){
     dfloat* sumKE;
-    cudaMalloc((void**)&sumKE, NUM_BLOCK * sizeof(dfloat));
+    cudaMalloc((void**)&sumKE, NUM_BLOCK_LOCAL * sizeof(dfloat));
 
     int nt_x = BLOCK_NX;
     int nt_y = BLOCK_NY;
     int nt_z = BLOCK_NZ;
     int nb_x = NX / nt_x;
     int nb_y = NY / nt_y;
-    int nb_z = NZ / nt_z;
+    int nb_z = (NZ/N_GPUS) / nt_z;
 
-    sumReductionThread_KE << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom, sumKE);
+    sumReductionThread_KE << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom, sumKE);
 
     nb_x = NUM_BLOCK_X;
     nb_y = NUM_BLOCK_Y;
-    nb_z = NUM_BLOCK_Z;
+    nb_z = NUM_BLOCK_Z_LOCAL;
 
     int current_block_size = nb_x * nb_y * nb_z;
 
@@ -174,7 +174,7 @@ void totalKineticEnergy(
     dfloat temp;
     
     checkCudaErrors(cudaMemcpy(&temp, sumKE, sizeof(dfloat), cudaMemcpyDeviceToHost)); 
-    temp = (temp)/(NUMBER_LBM_NODES);
+    temp = (temp)/(NUMBER_LBM_NODES_LOCAL);
 
     std::ostringstream strDataInfo("");
     strDataInfo << std::scientific;
@@ -196,20 +196,20 @@ void totalSpringEnergy(
     size_t step
 ){
     dfloat* sumKE;
-    cudaMalloc((void**)&sumKE, NUM_BLOCK * sizeof(dfloat));
+    cudaMalloc((void**)&sumKE, NUM_BLOCK_LOCAL * sizeof(dfloat));
 
     int nt_x = BLOCK_NX;
     int nt_y = BLOCK_NY;
     int nt_z = BLOCK_NZ;
     int nb_x = NX / nt_x;
     int nb_y = NY / nt_y;
-    int nb_z = NZ / nt_z;
+    int nb_z = (NZ/N_GPUS) / nt_z;
 
-    sumReductionThread_SE << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom, sumKE);
+    sumReductionThread_SE << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom, sumKE);
 
     nb_x = NUM_BLOCK_X;
     nb_y = NUM_BLOCK_Y;
-    nb_z = NUM_BLOCK_Z;
+    nb_z = NUM_BLOCK_Z_LOCAL;
 
     int current_block_size = nb_x * nb_y * nb_z;
 
@@ -240,7 +240,7 @@ void totalSpringEnergy(
     
     checkCudaErrors(cudaMemcpy(&temp, sumKE, sizeof(dfloat), cudaMemcpyDeviceToHost)); 
     temp = (temp/2.0_df) * nu_p * inv_lambda;
-    temp = (temp)/(NUMBER_LBM_NODES);
+    temp = (temp)/(NUMBER_LBM_NODES_LOCAL);
 
     std::ostringstream strDataInfo("");
     strDataInfo << std::scientific;
@@ -264,16 +264,16 @@ void turbulentKineticEnergy(
 ){
 
     dfloat* sumTKE;
-    cudaMalloc((void**)&sumTKE, NUM_BLOCK * sizeof(dfloat));
+    cudaMalloc((void**)&sumTKE, NUM_BLOCK_LOCAL * sizeof(dfloat));
 
     int nt_x = BLOCK_NX;
     int nt_y = BLOCK_NY;
     int nt_z = BLOCK_NZ;
     int nb_x = NX / nt_x;
     int nb_y = NY / nt_y;
-    int nb_z = NZ / nt_z;
+    int nb_z = (NZ/N_GPUS) / nt_z;
 
-    sumReductionThread_TKE << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom,m_fMom,sumTKE);
+    sumReductionThread_TKE << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom,m_fMom,sumTKE);
 
     int current_block_size = nb_x * nb_y * nb_z;
 
@@ -303,7 +303,7 @@ void turbulentKineticEnergy(
     dfloat temp;
     
     checkCudaErrors(cudaMemcpy(&temp, sumTKE, sizeof(dfloat), cudaMemcpyDeviceToHost)); 
-    temp = (temp)/(U_MAX*U_MAX*NUMBER_LBM_NODES);
+    temp = (temp)/(U_MAX*U_MAX*NUMBER_LBM_NODES_LOCAL);
 
     std::ostringstream strDataInfo("");
     strDataInfo << std::scientific;
@@ -536,24 +536,24 @@ void totalBcDrag(
     dfloat* sum_BC_Fy;
     dfloat* sum_BC_Fz;
 
-    cudaMalloc((void**)&sum_BC_Fx, NUM_BLOCK * sizeof(dfloat));
-    cudaMalloc((void**)&sum_BC_Fy, NUM_BLOCK * sizeof(dfloat));
-    cudaMalloc((void**)&sum_BC_Fz, NUM_BLOCK * sizeof(dfloat));
+    cudaMalloc((void**)&sum_BC_Fx, NUM_BLOCK_LOCAL * sizeof(dfloat));
+    cudaMalloc((void**)&sum_BC_Fy, NUM_BLOCK_LOCAL * sizeof(dfloat));
+    cudaMalloc((void**)&sum_BC_Fz, NUM_BLOCK_LOCAL * sizeof(dfloat));
 
     int nt_x = BLOCK_NX;
     int nt_y = BLOCK_NY;
     int nt_z = BLOCK_NZ;
     int nb_x = NX / nt_x;
     int nb_y = NY / nt_y;
-    int nb_z = NZ / nt_z;
+    int nb_z = (NZ/N_GPUS) / nt_z;
 
-    sumReductionScalar << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (d_BC_Fx, sum_BC_Fx);
-    sumReductionScalar << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (d_BC_Fy, sum_BC_Fy);
-    sumReductionScalar << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (d_BC_Fz, sum_BC_Fz);
+    sumReductionScalar << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (d_BC_Fx, sum_BC_Fx);
+    sumReductionScalar << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (d_BC_Fy, sum_BC_Fy);
+    sumReductionScalar << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (d_BC_Fz, sum_BC_Fz);
 
     nb_x = NUM_BLOCK_X;
     nb_y = NUM_BLOCK_Y;
-    nb_z = NUM_BLOCK_Z;
+    nb_z = NUM_BLOCK_Z_LOCAL;
 
     int current_block_size = nb_x * nb_y * nb_z;
 
@@ -1045,11 +1045,12 @@ __host__
 void computeNusseltNumber(
     dfloat* h_fMom,
     dfloat* fMom,
-    unsigned int step
+    unsigned int step,
+    size_t zOffset
 ){
     //copy full macroscopic field
     checkCudaErrors(cudaDeviceSynchronize());
-    checkCudaErrors(cudaMemcpy(h_fMom, fMom, sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
+    checkCudaErrors(cudaMemcpy(h_fMom+zOffset, fMom, sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
     checkCudaErrors(cudaDeviceSynchronize());
 
     std::ostringstream strDataInfo("");

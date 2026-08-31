@@ -1627,7 +1627,8 @@ void saveTreatData(std::string fileName, std::string dataString, int step, bool 
     #if SAVEDATA
     std::filesystem::path baseDir = folderSetup();;
 
-    std::filesystem::path strInf = baseDir / (fileName + ".txt");
+    std::string baseName = std::string(ID_SIM) + fileName;
+    std::filesystem::path strInf = baseDir / (baseName + ".txt");
 
     // On Windows, prepend the extended-path prefix to bypass the 260-char MAX_PATH limit.
     #if defined(_WIN32)
@@ -1668,7 +1669,8 @@ void saveTreatDataHeader(std::string fileName, std::string headerString)
 {
     #if SAVEDATA
     std::filesystem::path baseDir = folderSetup();
-    std::filesystem::path strInf = baseDir / (fileName + ".txt");
+    std::string baseName = std::string(ID_SIM) + fileName;
+    std::filesystem::path strInf = baseDir / (baseName + ".txt");
 
     #if defined(_WIN32)
     std::string pathStr = "\\\\?\\" + strInf.string();

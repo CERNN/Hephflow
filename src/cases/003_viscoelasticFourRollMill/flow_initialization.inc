@@ -45,7 +45,6 @@ Azz_qy_t30 = 3.0*(uy + 0.0);
 Azz_qz_t30 = 3.0*(uz + 0.0);
 #endif
 
-
 #ifdef NON_NEWTONIAN_FLUID
 omega = OMEGA;
 #endif

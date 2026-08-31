@@ -65,11 +65,11 @@
 	};
 
 	const int bubbleX = NX / 2;
-	const int bubbleZ = NZ / 2;
+	const int bubbleZ = (NZ/N_GPUS) / 2;
 	const int spikeX = 0;
 	const int spikeZ = 0;
 	const int saddleX = 0;
-	const int saddleZ = NZ / 2;
+	const int saddleZ = (NZ/N_GPUS) / 2;
 
 	// Bubble uses a top-down scan; spike/saddle keep bottom-up scans.
 	const dfloat bubbleY_idx = findInterfaceYAtXZ(bubbleX, bubbleZ, interfacePhiIso, true);

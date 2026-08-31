@@ -30,12 +30,12 @@
 #define GPU_INDEX 0
 
 constexpr bool console_flush = false;
-constexpr unsigned int N_GPUS = 1;                      // Number of GPUS to use
-constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
+constexpr unsigned int N_GPUS = 2;                      // Number of GPUS to use
+constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0,0};       // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 007_twoLayerChannel
+#define BC_PROBLEM 003_viscoelasticTaylorGreen
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 
@@ -58,5 +58,11 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 static_assert(NX >= BLOCK_NX, "NX must be >= BLOCK_NX, Update block size in memory_layout.h or increase domain in constants.inc");
 static_assert(NY >= BLOCK_NY, "NY must be >= BLOCK_NY, Update block size in memory_layout.h or increase domain in constants.inc");
 static_assert(NZ >= BLOCK_NZ, "NZ must be >= BLOCK_NZ, Update block size in memory_layout.h or increase domain in constants.inc");
+
+
+constexpr auto err = constexprPow(2.0_df, 0.5_df) - sqrtt(2.0_df);
+constexpr dfloat tol = 100 * std::numeric_limits<dfloat>::epsilon();
+static_assert(err < tol && err > -tol);
+
 
 #endif //__VAR_H

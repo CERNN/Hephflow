@@ -5,6 +5,8 @@
  * ========================================================================== */
 
 /* --------------------- DIMENSIONLESS NUMBERS --------------------- */
+#define TREAT_DATA_INCLUDE     
+
 constexpr dfloat RE = 1;                    // Reynolds number
 
 /* --------------------- SIMULATION SCALE --------------------- */
@@ -19,7 +21,7 @@ constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */
 constexpr dfloat U_MAX = 0.0125;            // Maximum/reference velocity
-constexpr dfloat L = N;                     // Reference length
+constexpr dfloat L = N-1;                     // Reference length
 
 /* --------------------- VISCOELASTIC PARAMETERS --------------------- */
 constexpr dfloat U_C = 2*U_MAX;             // Characteristic velocity
@@ -29,9 +31,11 @@ constexpr dfloat VISC = BETA * SUM_VISC;    // Solvent kinematic viscosity
 constexpr dfloat TAU = 0.5 + 3.0*VISC;      // Relaxation time
 constexpr dfloat t_c = L/U_C;               // Characteristic time
 
+constexpr dfloat pertubation = 0.001; 
+
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int CONFORMATION_SWITCH = 0;      // Step to switch on conformation
-constexpr int N_STEPS = 8*20*t_c;           // Total simulation steps
+
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- BODY FORCES --------------------- */
@@ -87,10 +91,10 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
     #define COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
 
-    constexpr dfloat CONF_ZERO = (dfloat)(2.0);
+    constexpr dfloat CONF_ZERO = (dfloat)(1.0);
 
     constexpr dfloat nu_p = SUM_VISC - VISC;
-    constexpr dfloat Weissenberg_number = 8.0;
+    constexpr dfloat Weissenberg_number = 8;
 
     constexpr dfloat LAMBDA = Weissenberg_number*t_c;
     constexpr dfloat inv_lambda = 1.0/LAMBDA;
@@ -109,3 +113,6 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
     constexpr dfloat CONF_AAA = (3*CONF_DIFF_FLUC*CONF_OMEGA);
     constexpr dfloat CONF_DIFF_FLUC_COEF = CONF_AAA/(1.0+CONF_AAA);
 #endif
+
+
+constexpr int N_STEPS = 25*LAMBDA;           // Total simulation steps
