@@ -1,43 +1,60 @@
-#define THERMAL_MODEL 
+/* ============================================================================
+ * CONSTANTS CONFIGURATION
+ * Case: 001_closeCavity
+ * Description: 2D closed cavity with thermal effects
+ * 
+ * Note: Physics model flags (THERMAL_MODEL, etc.) are defined in model.inc
+ * ========================================================================== */
 
-constexpr int SCALE = 1;
-constexpr int N_STEPS = 10000;
-constexpr int N = 256 * SCALE;
-constexpr int NX = N;        // size x of the grid 
-constexpr int NY = N;        // size y of the grid
-constexpr int NZ = 2;        // size z of the grid in one GPU
-constexpr int NZ_TOTAL = NZ;       // size z of the grid
+/* --------------------- SIMULATION SCALE --------------------- */
+constexpr int SCALE = 1;                    // Grid scaling factor
 
-constexpr dfloat U_MAX = 0.0;  
-constexpr dfloat L = N;
+/* --------------------- TIME STEPPING --------------------- */
+constexpr int N_STEPS = 10000;              // Total simulation steps
+constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
-constexpr dfloat FX = 0.0;        // force in x
-constexpr dfloat FY = 0.0;        // force in y
-constexpr dfloat FZ = 0.0;        // force in z (flow direction in most cases)
+/* --------------------- GRID DIMENSIONS --------------------- */
+constexpr int N = 256 * SCALE;              // Reference grid size
+constexpr int NX = N;                       // Grid size in X
+constexpr int NY = N;                       // Grid size in Y
+constexpr int NZ = 2;                       // Grid size in Z (2D simulation)
+constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
-// value for the velocity initial condition in the domain
-constexpr dfloat U_0_X = 0.0;
-constexpr dfloat U_0_Y = 0.0;
-constexpr dfloat U_0_Z = 0.0;
-constexpr dfloat RHO_0 = 1.0;
+/* --------------------- REFERENCE VALUES --------------------- */
+constexpr dfloat U_MAX = 0.0;               // Maximum/reference velocity
+constexpr dfloat L = N;                     // Reference length
 
-// values options for boundary conditions //not used yet
-__device__ const dfloat UX_BC[4] =  {0, 0, 0, 0};
-__device__ const dfloat UY_BC[4] =  {0, 0, 0, 0};
-__device__ const dfloat UZ_BC[4] =  {0, 0, 0, 0};
+/* --------------------- BODY FORCES --------------------- */
+constexpr dfloat FX = 0.0;                  // Force in X direction
+constexpr dfloat FY = 0.0;                  // Force in Y direction
+constexpr dfloat FZ = 0.0;                  // Force in Z direction
+
+/* --------------------- INITIAL CONDITIONS --------------------- */
+constexpr dfloat RHO_0 = 1.0;               // Initial density
+constexpr dfloat U_0_X = 0.0;               // Initial velocity X
+constexpr dfloat U_0_Y = 0.0;               // Initial velocity Y
+constexpr dfloat U_0_Z = 0.0;               // Initial velocity Z
+
+/* --------------------- BOUNDARY CONDITION VALUES --------------------- */
+__device__ const dfloat UX_BC[4] = {0, 0, 0, 0};
+__device__ const dfloat UY_BC[4] = {0, 0, 0, 0};
+__device__ const dfloat UZ_BC[4] = {0, 0, 0, 0};
 __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
-    #define BC_X_WALL
-    #define BC_Y_WALL
-    #define BC_Z_WALL
+/* --------------------- BOUNDARY CONDITION TYPES --------------------- */
+#define BC_X_WALL
+#define BC_Y_WALL
+#define BC_Z_WALL
 
-constexpr dfloat TAU = 0.53;//0.5 + 3.0*VISC;     // relaxation time
-constexpr dfloat VISC = (TAU-0.5)/3;
-constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
+/* --------------------- FLUID PROPERTIES --------------------- */
+constexpr dfloat TAU = 0.53;                // Relaxation time
+constexpr dfloat VISC = (TAU-0.5)/3.0;      // Kinematic viscosity
+constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 
 
 #ifdef THERMAL_MODEL
     #define SECOND_DIST
+    #define CONVECTION_DIFFUSION_TRANSPORT
 
     #define D3G19
 
@@ -58,6 +75,7 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
     constexpr dfloat Ra_conf = T_gravity_t_beta * T_DELTA_T*L*L*L*T_PR_NUMBER/(VISC*VISC);
     constexpr dfloat T_Q_INTERNAL_D_Cp = 0.0;
 
+    __device__ const dfloat gravity_vector[3] = {1.0, 0.0, 0.0};
 
     constexpr dfloat T_DIFF_REF = (1.0/6);
     constexpr dfloat G_TAU = T_DIFF_REF*3+0.5;
@@ -69,17 +87,5 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
     constexpr dfloat G_DIFF_FLUC_COEF = G_AAA/(1.0+G_AAA);
 #endif //THERMAL_MODEL
 
-/* --------------------- INITIALIZATION LOADING DEFINES -------------------- */
-constexpr int INI_STEP = 0; // initial simulation step (0 default)
-#define LOAD_CHECKPOINT false   // loads simulation checkpoint from folder 
-                                // (folder name defined below)
-
-
-// Folder with simulation to load data from last checkpoint. 
-// WITHOUT ID_SIM (change it in ID_SIM) AND "/" AT THE END
-#define SIMULATION_FOLDER_LOAD_CHECKPOINT "TEST"
-// Interval to make checkpoint to save all simulation data and restart from it.
-// It must not be very frequent (10000 or more), because it takes a long time
-#define CHECKPOINT_SAVE false // the frequency on which the simulation checkpoint is saved
-#define LOAD_FIELD false
-#define LOAD_FIELD_STEP 0
+/* --------------------- THERMAL MODEL PARAMETERS --------------------- */
+// Note: These are only used if THERMAL_MODEL is defined in model.inc

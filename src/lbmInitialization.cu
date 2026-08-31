@@ -54,48 +54,54 @@ __global__ void gpuInitialization_mom(
     dfloat qz_t30 = 3.0_df*(uz - 0.0_df);
     #endif //SECOND_DIST
     #ifdef PHI_DIST 
-    dfloat phiVar = 1.0_df;
+    dfloat phiVar = 1.0_df + PHI_ZERO;
     dfloat phi_qx_t30 = 3.0_df*(ux - 0.0_df);
     dfloat phi_qy_t30 = 3.0_df*(uy - 0.0_df);
     dfloat phi_qz_t30 = 3.0_df*(uz - 0.0_df);
     #endif //PHI_DIST
+    #ifdef LAMBDA_DIST 
+    dfloat lambdaVar = 0.0_df + LAMBDA_ZERO;
+    dfloat lambda_qx_t30 = 3.0_df*lambdaVar*(ux - 0.0_df);
+    dfloat lambda_qy_t30 = 3.0_df*lambdaVar*(uy - 0.0_df);
+    dfloat lambda_qz_t30 = 3.0_df*lambdaVar*(uz - 0.0_df);
+    #endif //LAMBDA_DIST
     #ifdef CONFORMATION_TENSOR
         //assuming that velocity has grad = 0 
         #ifdef A_XX_DIST 
         dfloat AxxVar = 1.0_df + CONF_ZERO; 
-        dfloat Axx_qx_t30 = 3.0_df*AxxVar*(ux + 0.0_df);
-        dfloat Axx_qy_t30 = 3.0_df*AxxVar*(uy + 0.0_df);
-        dfloat Axx_qz_t30 = 3.0_df*AxxVar*(uz + 0.0_df);
+        dfloat Axx_qx_t30 = 3.0_df*(ux + 0.0_df);
+        dfloat Axx_qy_t30 = 3.0_df*(uy + 0.0_df);
+        dfloat Axx_qz_t30 = 3.0_df*(uz + 0.0_df);
         #endif
         #ifdef A_XY_DIST 
         dfloat AxyVar = 1.0_df + CONF_ZERO;
-        dfloat Axy_qx_t30 = 3.0_df*AxyVar*(ux + 0.0_df);
-        dfloat Axy_qy_t30 = 3.0_df*AxyVar*(uy + 0.0_df);
-        dfloat Axy_qz_t30 = 3.0_df*AxyVar*(uz + 0.0_df);
+        dfloat Axy_qx_t30 = 3.0_df*(ux + 0.0_df);
+        dfloat Axy_qy_t30 = 3.0_df*(uy + 0.0_df);
+        dfloat Axy_qz_t30 = 3.0_df*(uz + 0.0_df);
         #endif
         #ifdef A_XZ_DIST 
         dfloat AxzVar = 1.0_df + CONF_ZERO;
-        dfloat Axz_qx_t30 = 3.0_df*AxzVar*(ux + 0.0_df);
-        dfloat Axz_qy_t30 = 3.0_df*AxzVar*(uy + 0.0_df);
-        dfloat Axz_qz_t30 = 3.0_df*AxzVar*(uz + 0.0_df);
+        dfloat Axz_qx_t30 = 3.0_df*(ux + 0.0_df);
+        dfloat Axz_qy_t30 = 3.0_df*(uy + 0.0_df);
+        dfloat Axz_qz_t30 = 3.0_df*(uz + 0.0_df);
         #endif
         #ifdef A_YY_DIST 
         dfloat AyyVar = 1.0_df + CONF_ZERO;
-        dfloat Ayy_qx_t30 = 3.0_df*AyyVar*(ux + 0.0_df);
-        dfloat Ayy_qy_t30 = 3.0_df*AyyVar*(uy + 0.0_df);
-        dfloat Ayy_qz_t30 = 3.0_df*AyyVar*(uz + 0.0_df);
+        dfloat Ayy_qx_t30 = 3.0_df*(ux + 0.0_df);
+        dfloat Ayy_qy_t30 = 3.0_df*(uy + 0.0_df);
+        dfloat Ayy_qz_t30 = 3.0_df*(uz + 0.0_df);
         #endif
         #ifdef A_YZ_DIST 
         dfloat AyzVar = 1.0_df + CONF_ZERO;
-        dfloat Ayz_qx_t30 = 3.0_df*AyzVar*(ux + 0.0_df);
-        dfloat Ayz_qy_t30 = 3.0_df*AyzVar*(uy + 0.0_df);
-        dfloat Ayz_qz_t30 = 3.0_df*AyzVar*(uz + 0.0_df);
+        dfloat Ayz_qx_t30 = 3.0_df*(ux + 0.0_df);
+        dfloat Ayz_qy_t30 = 3.0_df*(uy + 0.0_df);
+        dfloat Ayz_qz_t30 = 3.0_df*(uz + 0.0_df);
         #endif
         #ifdef A_ZZ_DIST 
         dfloat AzzVar = 1.0_df + CONF_ZERO;
-        dfloat Azz_qx_t30 = 3.0_df*AzzVar*(ux + 0.0_df);
-        dfloat Azz_qy_t30 = 3.0_df*AzzVar*(uy + 0.0_df);
-        dfloat Azz_qz_t30 = 3.0_df*AzzVar*(uz + 0.0_df);
+        dfloat Azz_qx_t30 = 3.0_df*(ux + 0.0_df);
+        dfloat Azz_qy_t30 = 3.0_df*(uy + 0.0_df);
+        dfloat Azz_qz_t30 = 3.0_df*(uz + 0.0_df);
         #endif
     #endif
 
@@ -163,49 +169,59 @@ __global__ void gpuInitialization_mom(
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_LP_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_MU_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_LM_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
     #endif //PHI_DIST
+
+    #ifdef LAMBDA_DIST 
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LAMBDA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambdaVar;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qx_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qy_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M4_LZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = lambda_qz_t30;
+    #endif //LAMBDA_DIST
 
     #ifdef A_XX_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AxxVar;
     //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qy_t30;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qz_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XX_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axx_qz_t30;
     #endif 
     #ifdef A_XY_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AxyVar;
     //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qy_t30;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qz_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XY_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axy_qz_t30;
     #endif 
     #ifdef A_XZ_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AxzVar;
     //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_XZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qy_t30;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qz_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_XZ_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Axz_qz_t30;
     #endif
     #ifdef A_YY_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AyyVar;
     //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qy_t30;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qz_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YY_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayy_qz_t30;
     #endif
     #ifdef A_YZ_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AyzVar;
     //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_YZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qy_t30;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qz_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Ayz_qz_t30;
     #endif
     #ifdef A_ZZ_DIST 
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  AzzVar;
     //fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, G_ZZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] =  0.0_df;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qx_t30;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qy_t30;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qz_t30;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = Azz_qz_t30;
     #endif
 
     #ifdef LOCAL_FORCES
@@ -346,10 +362,6 @@ __global__ void gpuInitialization_pop(
         dfloat qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
-        dfloat udx_t30 = G_DIFF_FLUC_COEF * (qx_t30*invC - ux_t30);
-        dfloat udy_t30 = G_DIFF_FLUC_COEF * (qy_t30*invC - uy_t30);
-        dfloat udz_t30 = G_DIFF_FLUC_COEF * (qz_t30*invC - uz_t30);
-
         #include COLREC_G_RECONSTRUCTION
 
         if (threadIdx.x == 0) { //w
@@ -359,7 +371,17 @@ __global__ void gpuInitialization_pop(
             ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
             ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
             ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
-            #endif            
+            #endif //D3Q19
+            #ifdef D3Q27
+            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 5, bx, by, bz)] = gNode[20];
+            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 6, bx, by, bz)] = gNode[22];
+            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 7, bx, by, bz)] = gNode[24];
+            ghostInterface.g_fGhost.X_0[g_idxPopX(ty, tz, 8, bx, by, bz)] = gNode[25];
+            #endif         
         }else if (threadIdx.x == (BLOCK_NX - 1)){                    
             ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
             #ifdef D3G19
@@ -367,7 +389,17 @@ __global__ void gpuInitialization_pop(
             ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
             ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
             ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
-            #endif    
+            #endif //D3Q19
+            #ifdef D3Q27
+            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];
+            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 5, bx, by, bz)] = gNode[19];
+            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 6, bx, by, bz)] = gNode[21];
+            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 7, bx, by, bz)] = gNode[23];
+            ghostInterface.g_fGhost.X_1[g_idxPopX(ty, tz, 8, bx, by, bz)] = gNode[26];
+            #endif //D3Q27   
         }
 
         if (threadIdx.y == 0)  { //s                             
@@ -377,7 +409,17 @@ __global__ void gpuInitialization_pop(
             ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
             ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
             ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
-            #endif           
+            #endif //D3Q19
+            #ifdef D3Q27
+            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18]; 
+            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 5, bx, by, bz)] = gNode[20];
+            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 6, bx, by, bz)] = gNode[22];
+            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 7, bx, by, bz)] = gNode[23];
+            ghostInterface.g_fGhost.Y_0[g_idxPopY(tx, tz, 8, bx, by, bz)] = gNode[26];
+            #endif //D3Q27          
         }else if (threadIdx.y == (BLOCK_NY - 1)){             
             ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
             #ifdef D3G19
@@ -385,7 +427,17 @@ __global__ void gpuInitialization_pop(
             ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
             ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
             ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
-            #endif        
+            #endif //D3Q19
+            #ifdef D3Q27
+            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];
+            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 5, bx, by, bz)] = gNode[19];
+            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 6, bx, by, bz)] = gNode[21];
+            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 7, bx, by, bz)] = gNode[24];
+            ghostInterface.g_fGhost.Y_1[g_idxPopY(tx, tz, 8, bx, by, bz)] = gNode[25];
+            #endif //D3Q27        
         }
         
         if (threadIdx.z == 0){ //b                          
@@ -395,7 +447,17 @@ __global__ void gpuInitialization_pop(
             ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
             ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
             ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
-            #endif    
+            #endif //D3Q19
+            #ifdef D3Q27
+            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17];
+            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 5, bx, by, bz)] = gNode[20];
+            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 6, bx, by, bz)] = gNode[21];
+            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 7, bx, by, bz)] = gNode[24];
+            ghostInterface.g_fGhost.Z_0[g_idxPopZ(tx, ty, 8, bx, by, bz)] = gNode[26];
+            #endif //D3Q27   
         }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
             ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
             #ifdef D3G19
@@ -403,7 +465,17 @@ __global__ void gpuInitialization_pop(
             ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
             ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
             ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
-            #endif                    
+            #endif //D3Q19
+            #ifdef D3Q27
+            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];
+            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 5, bx, by, bz)] = gNode[19];
+            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 6, bx, by, bz)] = gNode[22];
+            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 7, bx, by, bz)] = gNode[23];
+            ghostInterface.g_fGhost.Z_1[g_idxPopZ(tx, ty, 8, bx, by, bz)] = gNode[25];
+            #endif //D3Q27                    
         }
     #endif //SECOND_DIST
     #ifdef PHI_DIST 
@@ -414,9 +486,9 @@ __global__ void gpuInitialization_pop(
         dfloat phi_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat phi_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_PZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
 
-        dfloat phi_udx_t30 = PHI_DIFF_FLUC_COEF * (phi_qx_t30*invPhi - ux_t30);
-        dfloat phi_udy_t30 = PHI_DIFF_FLUC_COEF * (phi_qy_t30*invPhi - uy_t30);
-        dfloat phi_udz_t30 = PHI_DIFF_FLUC_COEF * (phi_qz_t30*invPhi - uz_t30);
+        dfloat dphidx = 0.0;
+        dfloat dphidy = 0.0;
+        dfloat dphidz = 0.0;
 
         #include COLREC_PHI_RECONSTRUCTION
 
@@ -427,7 +499,17 @@ __global__ void gpuInitialization_pop(
             ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
             ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
             ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
-            #endif            
+            #endif //D3Q19
+            #ifdef D3Q27
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[10];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[16];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 5, bx, by, bz)] = gNode[20];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 6, bx, by, bz)] = gNode[22];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 7, bx, by, bz)] = gNode[24];
+            ghostInterface.phi_fGhost.X_0[g_idxPopX(ty, tz, 8, bx, by, bz)] = gNode[25];
+            #endif //D3Q27         
         }else if (threadIdx.x == (BLOCK_NX - 1)){                    
             ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 0, bx, by, bz)] = gNode[ 1];
             #ifdef D3G19
@@ -435,7 +517,17 @@ __global__ void gpuInitialization_pop(
             ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
             ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
             ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];     
-            #endif    
+            #endif //D3Q19
+            #ifdef D3Q27
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 2, bx, by, bz)] = gNode[ 9];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 4, bx, by, bz)] = gNode[15];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 5, bx, by, bz)] = gNode[19];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 6, bx, by, bz)] = gNode[21];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 7, bx, by, bz)] = gNode[23];
+            ghostInterface.phi_fGhost.X_1[g_idxPopX(ty, tz, 8, bx, by, bz)] = gNode[26];
+            #endif //D3Q27     
         }
 
         if (threadIdx.y == 0)  { //s                             
@@ -445,7 +537,17 @@ __global__ void gpuInitialization_pop(
             ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
             ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
             ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];           
-            #endif           
+            #endif //D3Q19
+            #ifdef D3Q27
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 8];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[13];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[18];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 5, bx, by, bz)] = gNode[20];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 6, bx, by, bz)] = gNode[22];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 7, bx, by, bz)] = gNode[23];
+            ghostInterface.phi_fGhost.Y_0[g_idxPopY(tx, tz, 8, bx, by, bz)] = gNode[26];
+            #endif //D3Q27            
         }else if (threadIdx.y == (BLOCK_NY - 1)){             
             ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 0, bx, by, bz)] = gNode[ 3];
             #ifdef D3G19
@@ -453,7 +555,17 @@ __global__ void gpuInitialization_pop(
             ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
             ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
             ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];         
-            #endif        
+            #endif //D3Q19
+            #ifdef D3Q27
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 1, bx, by, bz)] = gNode[ 7];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 3, bx, by, bz)] = gNode[14];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 4, bx, by, bz)] = gNode[17];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 5, bx, by, bz)] = gNode[19];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 6, bx, by, bz)] = gNode[21];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 7, bx, by, bz)] = gNode[24];
+            ghostInterface.phi_fGhost.Y_1[g_idxPopY(tx, tz, 8, bx, by, bz)] = gNode[25];
+            #endif //D3Q27         
         }
         
         if (threadIdx.z == 0){ //b                          
@@ -463,7 +575,17 @@ __global__ void gpuInitialization_pop(
             ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
             ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
             ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17]; 
-            #endif    
+            #endif //D3Q19
+            #ifdef D3Q27
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[10];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[12];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[15];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[17];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 5, bx, by, bz)] = gNode[20];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 6, bx, by, bz)] = gNode[21];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 7, bx, by, bz)] = gNode[24];
+            ghostInterface.phi_fGhost.Z_0[g_idxPopZ(tx, ty, 8, bx, by, bz)] = gNode[26];
+            #endif //D3Q27     
         }else if (threadIdx.z == (BLOCK_NZ - 1)){                  
             ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 0, bx, by, bz)] = gNode[ 5];
             #ifdef D3G19
@@ -471,7 +593,17 @@ __global__ void gpuInitialization_pop(
             ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
             ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
             ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];    
-            #endif                    
+            #endif //D3Q19
+            #ifdef D3Q27
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 1, bx, by, bz)] = gNode[ 9];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 2, bx, by, bz)] = gNode[11];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 3, bx, by, bz)] = gNode[16];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 4, bx, by, bz)] = gNode[18];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 5, bx, by, bz)] = gNode[19];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 6, bx, by, bz)] = gNode[22];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 7, bx, by, bz)] = gNode[23];
+            ghostInterface.phi_fGhost.Z_1[g_idxPopZ(tx, ty, 8, bx, by, bz)] = gNode[25];
+            #endif //D3Q27                    
         }
     #endif //PHI_DIST
     #ifdef A_XX_DIST 
@@ -737,7 +869,6 @@ __global__ void gpuInitialization_pop(
         dfloat Ayz_qx_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat Ayz_qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         dfloat Ayz_qz_t30   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_YZ_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-
 
         #include COLREC_AYZ_RECONSTRUCTION
 
@@ -1299,6 +1430,7 @@ unsigned int bc_id(unsigned int *dNodeType, int x, int y, int z){
                     numberCurvedBoundaryNodes++;
             }
         }
+        printf("Found %u curved boundary nodes\n", numberCurvedBoundaryNodes);
         return numberCurvedBoundaryNodes;
     }
 
@@ -1355,9 +1487,10 @@ unsigned int bc_id(unsigned int *dNodeType, int x, int y, int z){
         free(h_curvedBC_array);
     }
 
-    void initializeCurvedBoundaryDeviceField(unsigned int *&hNodeType, unsigned int *&dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array){
+    unsigned int initializeCurvedBoundaryDeviceField(unsigned int *&hNodeType, unsigned int *&dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array){
         unsigned int numberCurvedBoundaryNodes = getNumberCurvedBoundaryNodes(hNodeType);
         allocateDeviceMemoryCurvedBoundary(d_curvedBC, d_curvedBC_array, numberCurvedBoundaryNodes);
         initializeCurvedBoundaryArray(hNodeType, dNodeType, d_curvedBC, d_curvedBC_array,numberCurvedBoundaryNodes);
+        return numberCurvedBoundaryNodes;
     }
 #endif //CURVED_BOUNDARY_CONDITION

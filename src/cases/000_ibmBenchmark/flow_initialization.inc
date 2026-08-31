@@ -1,8 +1,16 @@
+/* ============================================================================
+ * FLOW INITIALIZATION
+ * Case: 000_ibmBenchmark
+ * 
+ * Initializes the flow field with small random perturbations for turbulence.
+ * ========================================================================== */
+
 rho = RHO_0;
 ux = U_0_X;
 uy = U_0_Y;
 uz = U_0_Z;
 
+// Add random perturbations
 dfloat pert = 0.01;
 int l = idxScalarGlobal(x, y, z);
 int Nt = NUMBER_LBM_NODES;
@@ -14,7 +22,6 @@ dfloat distY = (y-yc)/(NY-1);
 
 dfloat velX = distY * pert;
 dfloat velY = distY * pert;
-
 
 ux += pert*randomNumbers[l + x - Nt*((l + x) / Nt)];
 uy += pert*randomNumbers[l + y - Nt*((l + y) / Nt)];

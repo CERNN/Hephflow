@@ -19,7 +19,7 @@
 #include <cuda_runtime.h>
 #include <builtin_types.h>
 #include "globalFunctions.h"
-#include "errorDef.h"
+#include "include/errorDef.h"
 #include "var.h"
 #include "nodeTypeMap.h"
 #include "reduction.cuh"
@@ -38,14 +38,7 @@
  *  @param nSteps: number of steps of the simulation
  */
 __host__
-void treatData(
-    dfloat* h_fMom,
-    dfloat* fMom,
-    #if MEAN_FLOW
-    dfloat* fMom_mean,
-    #endif//MEAN_FLOW
-    unsigned int step
-);
+void treatData(const TreatDataParams* params);
 
 
 
@@ -149,17 +142,6 @@ void omegaProfile(
     unsigned int step
 );
 
-
-/**
- *  @brief Change field vector order to be used saved in binary
- *  @param h_fMom: Pointer to the host array containing the current macroscopic moments.
- *  @param omega: host omega field if non-Newtonian
- *  @param step: Current time step
- */
-__host__
-void probeExport(
-    dfloat* fMom, OMEGA_FIELD_PARAMS_DECLARATION unsigned int step
-);
 
 /**
  *  @brief Calculate the Nusselt number based on the temperature field

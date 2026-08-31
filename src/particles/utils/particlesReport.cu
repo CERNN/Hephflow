@@ -89,7 +89,7 @@ void saveParticlesInfo(ParticlesSoA *particles, unsigned int step, std::atomic<b
 
                 std::ostringstream strValuesMesh("");
                 strValuesMesh << std::scientific;
-                // TODO: fix it
+
                 for(int n_gpu = 0; n_gpu < N_GPUS; n_gpu++){
                     checkCudaErrors(cudaSetDevice(GPUS_TO_USE[n_gpu]));
                     IbmNodesSoA pnSoA = particles->getNodesSoA()[n_gpu];

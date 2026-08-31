@@ -1,23 +1,28 @@
-//velocity set
+/* ============================================================================
+ * MODEL CONFIGURATION
+ * Case: Couette Flow with Spherical Particle
+ * Description: Particle simulation in spherical couette flow
+ * ========================================================================== */
+
+/* --------------------- VELOCITY SET --------------------- */
 #define D3Q19
 
-/* --------------------------- COLLISION METHOD  ------------------------- */
+/* --------------------- COLLISION METHOD --------------------- */
 #define COLLISION_TYPE MR_LBM_2ND_ORDER
 //#define COLLISION_TYPE HO_RR //http://dx.doi.org/10.1063/1.4981227
 //#define COLLISION_TYPE HOME_LBM //https://inria.hal.science/hal-04223237/
 
-/* --------------------------- LES DEFINITIONS TYPE ------------------------- */
+/* --------------------- LES MODELS --------------------- */
 // Uncomment the one to use. Comment all to simulate newtonian fluid
 //#define LES_MODEL
 //#define MODEL_CONST_SMAGORINSKY //https://doi.org/10.1016/j.jcp.2005.03.022
 
-/* --------------------------- OTHER DEFINITIONS ------------------------- */
+/* --------------------- OTHER DEFINITIONS --------------------- */
 //#define DENSITY_CORRECTION
-
-//#define RANDOM_NUMBERS true    // to generate random numbers 
+#define RANDOM_NUMBERS true    // to generate random numbers 
                                // (useful for turbulence)
 
-                               
+/* --------------------- IBM PARAMETERS --------------------- */
 // Change to location of nodes http://dx.doi.org/10.1016/j.jcp.2012.02.026
 #define BREUGEM_PARAMETER (0.0)
 // Mesh scale for IBM, minimum distance between nodes (lower, more nodes in particle)
@@ -29,11 +34,12 @@
 #define IBM_THICKNESS 1.0
 #define STENCIL_4 // Peskin Stencil
 
-
-// ---------------- Long-range interaction toggles ----------------
+/* --------------------- LONG-RANGE INTERACTIONS --------------------- */
 //#define ENABLE_LUBRICATION
 //#define ENABLE_REPULSIVE_FORCE
 //#define ENABLE_ATTRACTIVE_FORCE
+
+/* ----- END MODEL CONFIGURATION ----- */
 
 
 

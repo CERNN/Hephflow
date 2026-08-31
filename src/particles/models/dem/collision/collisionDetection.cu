@@ -103,7 +103,7 @@ void checkCollisionWalls(ParticleShape *shape, ParticleCenter* pc_i, ParticleWal
                 dist = vector_length(pc_i->getPos() - ductCenter);
                 if(EXTERNAL_DUCT_BC_RADIUS - dist < pc_i->getRadius()){
                     wallData = determineCircularWall(pc_i->getPos(),EXTERNAL_DUCT_BC_RADIUS,-1);
-                    sphereWallCollision({pc_i, wallData, (dfloat)EXTERNAL_DUCT_BC_RADIUS - (pc_i->getRadius() + dist), step});
+                    sphereWallCollision({pc_i, wallData, (dfloat)EXTERNAL_DUCT_BC_RADIUS - (pc_i->getRadius() + dist), step},d_pwForces);
                 }
                 break;
             case CAPSULE:
@@ -486,7 +486,7 @@ dfloat sphereSphereGap(ParticleCenter* pc_i, ParticleCenter* pc_j) {
     return dist - (r1 + r2);
 }
 
-#ifdef CURVED_BOUNDARY_CONDITION
+#if defined(CURVED_BOUNDARY_CONDITION) || defined(EXTERNAL_DUCT_BC)
 __device__
 Wall determineCircularWall(dfloat3 pos_i, dfloat R, dfloat dir){
     Wall tempWall;

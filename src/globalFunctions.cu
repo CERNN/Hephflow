@@ -592,6 +592,171 @@ dfloat6 rotate_inertia_by_quart(dfloat4 q, dfloat6 I6) {
 }
 
 __host__ __device__
+dfloat mom_bilinear_interp_xy(
+    dfloat x, dfloat y, int z,
+    int mom,
+    dfloat *fMom)
+{
+    int i = (int)floor(x);
+    int j = (int)floor(y);
+    int k = z;
+
+    dfloat fx = x - i;
+    dfloat fy = y - j;
+
+    int i1 = i + 1;
+    int j1 = j + 1;
+
+    #ifdef BC_X_PERIODIC
+        i  = (i  % NX + NX) % NX;
+        i1 = (i1 % NX + NX) % NX;
+    #elif defined(BC_X_WALL)
+        if (i  < 0)    i  = 0;
+        if (i1 < 0)    i1 = 0;
+        if (i  >= NX)  i  = NX-1;
+        if (i1 >= NX)  i1 = NX-1;
+    #endif
+
+    #ifdef BC_Y_PERIODIC
+        j  = (j  % NY + NY) % NY;
+        j1 = (j1 % NY + NY) % NY;
+    #elif defined(BC_Y_WALL)
+        if (j  < 0)    j  = 0;
+        if (j1 < 0)    j1 = 0;
+        if (j  >= NY)  j  = NY-1;
+        if (j1 >= NY)  j1 = NY-1;
+    #endif
+
+    #ifdef BC_Z_PERIODIC
+        k = (k % NZ + NZ) % NZ;
+    #elif defined(BC_Z_WALL)
+        if (k < 0)   k = 0;
+        if (k >= NZ) k = NZ-1;
+    #endif
+
+    dfloat c00 = getMom(i,  j,  k, mom, fMom);
+    dfloat c10 = getMom(i1, j,  k, mom, fMom);
+    dfloat c01 = getMom(i,  j1, k, mom, fMom);
+    dfloat c11 = getMom(i1, j1, k, mom, fMom);
+
+    // bilinear interpolation in xy plane
+    dfloat c0 = c00 * (1 - fx) + c10 * fx;
+    dfloat c1 = c01 * (1 - fx) + c11 * fx;
+
+    return c0 * (1 - fy) + c1 * fy;
+}
+
+__host__ __device__
+dfloat mom_bilinear_interp_xz(
+    dfloat x, int y, dfloat z,
+    int mom,
+    dfloat *fMom)
+{
+    int i = (int)floor(x);
+    int j = y;
+    int k = (int)floor(z);
+
+    dfloat fx = x - i;
+    dfloat fz = z - k;
+
+    int i1 = i + 1;
+    int k1 = k + 1;
+
+    #ifdef BC_X_PERIODIC
+        i  = (i  % NX + NX) % NX;
+        i1 = (i1 % NX + NX) % NX;
+    #elif defined(BC_X_WALL)
+        if (i  < 0)    i  = 0;
+        if (i1 < 0)    i1 = 0;
+        if (i  >= NX)  i  = NX-1;
+        if (i1 >= NX)  i1 = NX-1;
+    #endif
+
+    #ifdef BC_Y_PERIODIC
+        j = (j % NY + NY) % NY;
+    #elif defined(BC_Y_WALL)
+        if (j < 0)   j = 0;
+        if (j >= NY) j = NY-1;
+    #endif
+
+    #ifdef BC_Z_PERIODIC
+        k  = (k  % NZ + NZ) % NZ;
+        k1 = (k1 % NZ + NZ) % NZ;
+    #elif defined(BC_Z_WALL)
+        if (k  < 0)    k  = 0;
+        if (k1 < 0)    k1 = 0;
+        if (k  >= NZ)  k  = NZ-1;
+        if (k1 >= NZ)  k1 = NZ-1;
+    #endif
+
+    dfloat c00 = getMom(i,  j, k,  mom, fMom);
+    dfloat c10 = getMom(i1, j, k,  mom, fMom);
+    dfloat c01 = getMom(i,  j, k1, mom, fMom);
+    dfloat c11 = getMom(i1, j, k1, mom, fMom);
+
+    // bilinear interpolation in xz plane
+    dfloat c0 = c00 * (1 - fx) + c10 * fx;
+    dfloat c1 = c01 * (1 - fx) + c11 * fx;
+
+    return c0 * (1 - fz) + c1 * fz;
+}
+
+__host__ __device__
+dfloat mom_bilinear_interp_yz(
+    int x, dfloat y, dfloat z,
+    int mom,
+    dfloat *fMom)
+{
+    int i = x;
+    int j = (int)floor(y);
+    int k = (int)floor(z);
+
+    dfloat fy = y - j;
+    dfloat fz = z - k;
+
+    int j1 = j + 1;
+    int k1 = k + 1;
+
+    #ifdef BC_X_PERIODIC
+        i = (i % NX + NX) % NX;
+    #elif defined(BC_X_WALL)
+        if (i < 0)   i = 0;
+        if (i >= NX) i = NX-1;
+    #endif
+
+    #ifdef BC_Y_PERIODIC
+        j  = (j  % NY + NY) % NY;
+        j1 = (j1 % NY + NY) % NY;
+    #elif defined(BC_Y_WALL)
+        if (j  < 0)    j  = 0;
+        if (j1 < 0)    j1 = 0;
+        if (j  >= NY)  j  = NY-1;
+        if (j1 >= NY)  j1 = NY-1;
+    #endif
+
+    #ifdef BC_Z_PERIODIC
+        k  = (k  % NZ + NZ) % NZ;
+        k1 = (k1 % NZ + NZ) % NZ;
+    #elif defined(BC_Z_WALL)
+        if (k  < 0)    k  = 0;
+        if (k1 < 0)    k1 = 0;
+        if (k  >= NZ)  k  = NZ-1;
+        if (k1 >= NZ)  k1 = NZ-1;
+    #endif
+
+    dfloat c00 = getMom(i, j,  k,  mom, fMom);
+    dfloat c10 = getMom(i, j1, k,  mom, fMom);
+    dfloat c01 = getMom(i, j,  k1, mom, fMom);
+    dfloat c11 = getMom(i, j1, k1, mom, fMom);
+
+    // bilinear interpolation in yz plane
+    dfloat c0 = c00 * (1 - fy) + c10 * fy;
+    dfloat c1 = c01 * (1 - fy) + c11 * fy;
+
+    return c0 * (1 - fz) + c1 * fz;
+}
+
+__host__ __device__
 dfloat mom_trilinear_interp(
     dfloat x, dfloat y, dfloat z,
     int mom,

@@ -19,7 +19,7 @@
 #include <cuda_runtime.h>
 #include <builtin_types.h>
 #include "globalFunctions.h"
-#include "errorDef.h"
+#include "include/errorDef.h"
 #include "var.h"
 #include "nodeTypeMap.h"
 
@@ -148,7 +148,7 @@ unsigned int bc_id(unsigned int *dNodeType, int x,int y,int z);
      * @param d_curvedBC: device pointer to array of pointers to CurvedBoundary structures
      * @param d_curvedBC_array: device pointer to contiguous array of CurvedBoundary structures
      */
-    void initializeCurvedBoundaryDeviceField(unsigned int *&hNodeType, unsigned int *&dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array);
+    unsigned int initializeCurvedBoundaryDeviceField(unsigned int *&hNodeType, unsigned int *&dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array);
 #endif //CURVED_BOUNDARY_CONDITION
 
 #endif // !__LBM_INITIALIZATION_CUH

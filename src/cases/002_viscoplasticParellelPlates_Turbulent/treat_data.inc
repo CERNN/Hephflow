@@ -8,46 +8,52 @@ dfloat t_ux0, t_uy0,t_uz0;
 dfloat t_rho0;
 dfloat t_Mxx, t_Mxy, t_Mxz, t_Myy, t_Myz, t_Mzz;
 dfloat t_omega0, t_eta0;
-dfloat inv_eta, count_prob, count_visc;
+dfloat inv_eta;
 
 
-dfloat rho_0[NY/2];
+dfloat rho_0[NY];
 
-dfloat ux_1[NY/2];
-dfloat uy_1[NY/2];
-dfloat uz_1[NY/2];
+dfloat ux_1[NY];
+dfloat uy_1[NY];
+dfloat uz_1[NY];
 
-dfloat ux_ux[NY/2];
-dfloat uy_uy[NY/2];
-dfloat uz_uz[NY/2];
-dfloat ux_uy[NY/2];
-dfloat ux_uz[NY/2];
-dfloat uy_uz[NY/2];
+dfloat ux_ux[NY];
+dfloat uy_uy[NY];
+dfloat uz_uz[NY];
+dfloat ux_uy[NY];
+dfloat ux_uz[NY];
+dfloat uy_uz[NY];
 
-dfloat ux_3[NY/2];
-dfloat uy_3[NY/2];
-dfloat uz_3[NY/2];
+dfloat ux_3[NY];
+dfloat uy_3[NY];
+dfloat uz_3[NY];
 
-dfloat ux_4[NY/2];
-dfloat uy_4[NY/2];
-dfloat uz_4[NY/2];
+dfloat ux_4[NY];
+dfloat uy_4[NY];
+dfloat uz_4[NY];
 
-dfloat SGxx[NY/2];
-dfloat SGyy[NY/2];
-dfloat SGzz[NY/2];
-dfloat SGxy[NY/2];
-dfloat SGxz[NY/2];
-dfloat SGyz[NY/2];
+dfloat Sxx[NY];
+dfloat Sxy[NY];
+dfloat Sxz[NY];
+dfloat Syy[NY];
+dfloat Syz[NY];
+dfloat Szz[NY];
 
-dfloat yield_prob[NY/2];
-dfloat inv_omega[NY/2];
+dfloat SGxx[NY];
+dfloat SGxy[NY];
+dfloat SGxz[NY];
+dfloat SGyy[NY];
+dfloat SGyz[NY];
+dfloat SGzz[NY];
 
+dfloat yield_prob[NY];
+dfloat inv_omega[NY];
+dfloat inv_omega_2[NY];
 
+int count_prob[NY];
+int count_visc[NY];
 
-for(int y = 0; y< NY;y++){
-    //distance to any wall
-    y_wall = (y <= (NY-1)/2) ? y : (NY-1 - y);
-
+for (int y_wall = 0; y_wall <NY;y_wall++){
     rho_0[y_wall] = 0;
 
     ux_1[y_wall] = 0;
@@ -69,17 +75,35 @@ for(int y = 0; y< NY;y++){
     uy_4[y_wall] = 0;
     uz_4[y_wall] = 0;
 
+    Sxx[y_wall] = 0;
+    Sxy[y_wall] = 0;
+    Sxz[y_wall] = 0;
+    Syy[y_wall] = 0;
+    Syz[y_wall] = 0;
+    Szz[y_wall] = 0;
+
     SGxx[y_wall] = 0;
-    SGyy[y_wall] = 0;
-    SGzz[y_wall] = 0;
     SGxy[y_wall] = 0;
     SGxz[y_wall] = 0;
+    SGyy[y_wall] = 0;
     SGyz[y_wall] = 0;
+    SGzz[y_wall] = 0;
 
     yield_prob[y_wall] = 0;
     inv_omega[y_wall] = 0;
-    count_prob = 0;
-    count_visc = 0;
+    inv_omega_2[y_wall] = 0;
+
+    count_prob[y_wall]  = 0;
+    count_visc[y_wall]  = 0;
+
+}
+
+
+for(int y = 0; y< NY;y++){
+
+        y_wall = y;
+
+
 
     for (int z = 0 ; z <NZ_TOTAL; z++){
         for(int x = 0; x< NX;x++){
@@ -119,11 +143,19 @@ for(int y = 0; y< NY;y++){
             t_Mzz = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MZZ_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]/F_M_II_SCALE;
 
             #ifdef OMEGA_FIELD
-                t_omega0 = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_OMEGA_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
+                 t_omega0 = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_OMEGA_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
             #else
                 t_omega0 = OMEGA;
             #endif //OMEGA_FIELD
+            //correction for pre-collsion values  
+            t_Mxx = (t_Mxx - t_omega0 * t_ux0 * t_ux0 - (1.0 - t_omega0/2)*0)/(1.0 - t_omega0);
+            t_Mxy = (t_Mxy - t_omega0 * t_ux0 * t_uy0 - (1.0 - t_omega0/2)*0)/(1.0 - t_omega0);
+            t_Mxz = (t_Mxz - t_omega0 * t_ux0 * t_uz0 - (1.0 - t_omega0/2)*(t_ux0*FZ))/(1.0 - t_omega0);
+            t_Myy = (t_Myy - t_omega0 * t_uy0 * t_uy0 - (1.0 - t_omega0/2)*0)/(1.0 - t_omega0);
+            t_Myz = (t_Myz - t_omega0 * t_uy0 * t_uz0 - (1.0 - t_omega0/2)*(t_uy0*FZ))/(1.0 - t_omega0);
+            t_Mzz = (t_Mzz - t_omega0 * t_uz0 * t_uz0 - (1.0 - t_omega0/2)*(t_uz0*FZ*2))/(1.0 - t_omega0);
 
+            //computing stress
             t_Mxx = t_Mxx - t_ux0 * t_ux0 + (FX * t_ux0 + t_ux0 * FX)/2;
             t_Mxy = t_Mxy - t_ux0 * t_uy0 + (FX * t_uy0 + t_ux0 * FY)/2;
             t_Mxz = t_Mxz - t_ux0 * t_uz0 + (FX * t_uz0 + t_ux0 * FZ)/2;
@@ -131,14 +163,21 @@ for(int y = 0; y< NY;y++){
             t_Myz = t_Myz - t_uy0 * t_uz0 + (FY * t_uz0 + t_uy0 * FZ)/2;
             t_Mzz = t_Mzz - t_uz0 * t_uz0 + (FZ * t_uz0 + t_uz0 * FZ)/2;
 
+            t_Mxx = (1.0-t_omega0/2)*t_Mxx;
+            t_Mxy = (1.0-t_omega0/2)*t_Mxy;
+            t_Mxz = (1.0-t_omega0/2)*t_Mxz;
+            t_Myy = (1.0-t_omega0/2)*t_Myy;
+            t_Myz = (1.0-t_omega0/2)*t_Myz;
+            t_Mzz = (1.0-t_omega0/2)*t_Mzz;
 
-            t_Mxx = (1-t_omega0/2)*t_Mxx;
-            t_Mxy = (1-t_omega0/2)*t_Mxy;
-            t_Mxz = (1-t_omega0/2)*t_Mxz;
-            t_Myy = (1-t_omega0/2)*t_Myy;
-            t_Myz = (1-t_omega0/2)*t_Myz;
-            t_Mzz = (1-t_omega0/2)*t_Mzz;
+            Sxx[y_wall] += t_Mxx;
+            Sxy[y_wall] += t_Mxy;
+            Sxz[y_wall] += t_Mxz;
+            Syy[y_wall] += t_Myy;
+            Syz[y_wall] += t_Myz;
+            Szz[y_wall] += t_Mzz;
 
+            //computing stress times gamma
             t_Mxx *= t_Mxx;
             t_Mxy *= t_Mxy;
             t_Mxz *= t_Mxz;
@@ -149,24 +188,27 @@ for(int y = 0; y< NY;y++){
             inv_eta = 6*t_omega0/(2-t_omega0);
 
             SGxx[y_wall] += t_Mxx * inv_eta;
-            SGyy[y_wall] += t_Mxy * inv_eta;
-            SGzz[y_wall] += t_Mxz * inv_eta;
-            SGxy[y_wall] += t_Myy * inv_eta;
-            SGxz[y_wall] += t_Myz * inv_eta;
-            SGyz[y_wall] += t_Mzz * inv_eta;
+            SGxy[y_wall] += t_Mxy * inv_eta;
+            SGxz[y_wall] += t_Mxz * inv_eta;
+            SGyy[y_wall] += t_Myy * inv_eta;
+            SGyz[y_wall] += t_Myz * inv_eta;
+            SGzz[y_wall] += t_Mzz * inv_eta;
 
 
             if(t_omega0 < OMEGA_CUTOFF){
                 yield_prob[y_wall] += 1.0;
-                count_prob++;
+                count_prob[y_wall] = count_prob[y_wall] + 1;
             }else{
                 inv_omega[y_wall] += 1.0/t_omega0;
-                count_visc++;
+                inv_omega_2[y_wall] += 1.0/(t_omega0*t_omega0);
+                count_visc[y_wall] = count_visc[y_wall] + 1;
             }
 
         }
     }
+}
 
+for (int y_wall = 0; y_wall <NY;y_wall++){
     rho_0[y_wall] /= (NX*NZ_TOTAL);
 
     ux_1[y_wall] /= (NX*NZ_TOTAL);
@@ -188,15 +230,24 @@ for(int y = 0; y< NY;y++){
     uy_4[y_wall] /= (NX*NZ_TOTAL);
     uz_4[y_wall] /= (NX*NZ_TOTAL);
 
+    Sxx[y_wall] /= (NX*NZ_TOTAL);
+    Sxy[y_wall] /= (NX*NZ_TOTAL);
+    Sxz[y_wall] /= (NX*NZ_TOTAL);
+    Syy[y_wall] /= (NX*NZ_TOTAL);
+    Syz[y_wall] /= (NX*NZ_TOTAL);
+    Szz[y_wall] /= (NX*NZ_TOTAL);
+
     SGxx[y_wall] /= (NX*NZ_TOTAL);
-    SGyy[y_wall] /= (NX*NZ_TOTAL);
-    SGzz[y_wall] /= (NX*NZ_TOTAL);
     SGxy[y_wall] /= (NX*NZ_TOTAL);
     SGxz[y_wall] /= (NX*NZ_TOTAL);
+    SGyy[y_wall] /= (NX*NZ_TOTAL);
     SGyz[y_wall] /= (NX*NZ_TOTAL);
+    SGzz[y_wall] /= (NX*NZ_TOTAL);
 
-    yield_prob[y_wall] /= count_prob;
-    inv_omega[y_wall] /= count_visc;
+    yield_prob[y_wall] /= (NX*NZ_TOTAL);
+    inv_omega[y_wall] /= count_visc[y_wall];
+    inv_omega_2[y_wall] /= count_visc[y_wall];
+
 }
 
 std::ostringstream strDataInfo_rho_0("");
@@ -220,15 +271,23 @@ std::ostringstream strDataInfo_ux_4("");
 std::ostringstream strDataInfo_uy_4("");
 std::ostringstream strDataInfo_uz_4("");
 
+std::ostringstream strDataInfo_Sxx("");
+std::ostringstream strDataInfo_Sxy("");
+std::ostringstream strDataInfo_Sxz("");
+std::ostringstream strDataInfo_Syy("");
+std::ostringstream strDataInfo_Syz("");
+std::ostringstream strDataInfo_Szz("");
+
 std::ostringstream strDataInfo_SGxx("");
-std::ostringstream strDataInfo_SGyy("");
-std::ostringstream strDataInfo_SGzz("");
 std::ostringstream strDataInfo_SGxy("");
 std::ostringstream strDataInfo_SGxz("");
+std::ostringstream strDataInfo_SGyy("");
 std::ostringstream strDataInfo_SGyz("");
+std::ostringstream strDataInfo_SGzz("");
 
 std::ostringstream strDataInfo_yield_prob("");
 std::ostringstream strDataInfo_inv_omega("");
+std::ostringstream strDataInfo_inv_omega_2("");
 
 strDataInfo_rho_0 <<"step,"<< step;
 
@@ -251,18 +310,25 @@ strDataInfo_ux_4 <<"step,"<< step;
 strDataInfo_uy_4 <<"step,"<< step;
 strDataInfo_uz_4 <<"step,"<< step;
 
+strDataInfo_Sxx <<"step,"<< step;
+strDataInfo_Sxy <<"step,"<< step;
+strDataInfo_Sxz <<"step,"<< step;
+strDataInfo_Syy <<"step,"<< step;
+strDataInfo_Syz <<"step,"<< step;
+strDataInfo_Szz <<"step,"<< step;
+
 strDataInfo_SGxx <<"step,"<< step;
-strDataInfo_SGyy <<"step,"<< step;
-strDataInfo_SGzz <<"step,"<< step;
 strDataInfo_SGxy <<"step,"<< step;
 strDataInfo_SGxz <<"step,"<< step;
+strDataInfo_SGyy <<"step,"<< step;
 strDataInfo_SGyz <<"step,"<< step;
+strDataInfo_SGzz <<"step,"<< step;
 
 strDataInfo_yield_prob <<"step,"<< step;
 strDataInfo_inv_omega <<"step,"<< step;
+strDataInfo_inv_omega_2 <<"step,"<< step;
 
-
-for(int y = 0; y< NY/2;y++){
+for(int y = 0; y< NY;y++){
 
     strDataInfo_rho_0 << "," << rho_0[y];
 
@@ -285,16 +351,23 @@ for(int y = 0; y< NY/2;y++){
     strDataInfo_uy_4  << "," << uy_4[y];
     strDataInfo_uz_4  << "," << uz_4[y];
 
+    strDataInfo_Sxx  << "," << Sxx[y];
+    strDataInfo_Sxy  << "," << Sxy[y];
+    strDataInfo_Sxz  << "," << Sxz[y];
+    strDataInfo_Syy  << "," << Syy[y];
+    strDataInfo_Syz  << "," << Syz[y];
+    strDataInfo_Szz  << "," << Szz[y];
+
     strDataInfo_SGxx  << "," << SGxx[y];
-    strDataInfo_SGyy  << "," << SGyy[y];
-    strDataInfo_SGzz  << "," << SGzz[y];
     strDataInfo_SGxy  << "," << SGxy[y];
     strDataInfo_SGxz  << "," << SGxz[y];
+    strDataInfo_SGyy  << "," << SGyy[y];
     strDataInfo_SGyz  << "," << SGyz[y];
+    strDataInfo_SGzz  << "," << SGzz[y];
 
-    strDataInfo_yield_prob << "," << yield_prob[y_wall];
-    strDataInfo_inv_omega  << "," << inv_omega[y_wall];
-
+    strDataInfo_yield_prob << "," << yield_prob[y];
+    strDataInfo_inv_omega  << "," << inv_omega[y];
+    strDataInfo_inv_omega_2  << "," << inv_omega_2[y];
 }
 
 saveTreatData("_turbulent_rho",strDataInfo_rho_0.str(),step);
@@ -318,6 +391,14 @@ saveTreatData("_turbulent_ux4",strDataInfo_ux_4.str(),step);
 saveTreatData("_turbulent_uy4",strDataInfo_uy_4.str(),step);
 saveTreatData("_turbulent_uz4",strDataInfo_uz_4.str(),step);
 
+saveTreatData("_turbulent_Sxx",strDataInfo_Sxx.str(),step);
+saveTreatData("_turbulent_Syy",strDataInfo_Syy.str(),step);
+saveTreatData("_turbulent_Szz",strDataInfo_Szz.str(),step);
+saveTreatData("_turbulent_Sxy",strDataInfo_Sxy.str(),step);
+saveTreatData("_turbulent_Sxz",strDataInfo_Sxz.str(),step);
+saveTreatData("_turbulent_Syz",strDataInfo_Syz.str(),step);
+
+
 saveTreatData("_turbulent_SGxx",strDataInfo_SGxx.str(),step);
 saveTreatData("_turbulent_SGyy",strDataInfo_SGyy.str(),step);
 saveTreatData("_turbulent_SGzz",strDataInfo_SGzz.str(),step);
@@ -327,19 +408,76 @@ saveTreatData("_turbulent_SGyz",strDataInfo_SGyz.str(),step);
 
 saveTreatData("_turbulent_yield_prob",strDataInfo_yield_prob.str(),step);
 saveTreatData("_turbulent_inv_omega",strDataInfo_inv_omega.str(),step);
-
+saveTreatData("_turbulent_inv_omega_2",strDataInfo_inv_omega_2.str(),step);
 
 
 // FOR CORRELATIONS
+
+int x0, y0, z0;
+
+x0 = NX/2;
+z0 = NZ_TOTAL/2;
 //x direction
-velocityProfile(fMom,4,step); //ux
-velocityProfile(fMom,5,step); //uy
-velocityProfile(fMom,6,step); //uz
+velocityProfile(fMom,4,x0,(2*del)/96,z0,step); //ux
+velocityProfile(fMom,5,x0,(2*del)/96,z0,step); //uy
+velocityProfile(fMom,6,x0,(2*del)/96,z0,step); //uz
+
+velocityProfile(fMom,4,x0,(6*del)/96,z0,step); //ux
+velocityProfile(fMom,5,x0,(6*del)/96,z0,step); //uy
+velocityProfile(fMom,6,x0,(6*del)/96,z0,step); //uz
+
+velocityProfile(fMom,4,x0,(52*del)/96,z0,step); //ux
+velocityProfile(fMom,5,x0,(52*del)/96,z0,step); //uy
+velocityProfile(fMom,6,x0,(52*del)/96,z0,step); //uz
+
+velocityProfile(fMom,4,x0,(96*del)/96,z0,step); //ux
+velocityProfile(fMom,5,x0,(96*del)/96,z0,step); //uy
+velocityProfile(fMom,6,x0,(96*del)/96,z0,step); //uz
 
 //Z DIRECITON
-velocityProfile(fMom,7,step); //ux
-velocityProfile(fMom,8,step); //uy
-velocityProfile(fMom,9,step); //uz
+velocityProfile(fMom,7,x0,(2*del)/96,z0,step); //ux
+velocityProfile(fMom,8,x0,(2*del)/96,z0,step); //uy
+velocityProfile(fMom,9,x0,(2*del)/96,z0,step); //uz
+
+velocityProfile(fMom,7,x0,(6*del)/96,z0,step); //ux
+velocityProfile(fMom,8,x0,(6*del)/96,z0,step); //uy
+velocityProfile(fMom,9,x0,(6*del)/96,z0,step); //uz
+
+velocityProfile(fMom,7,x0,(52*del)/96,z0,step); //ux
+velocityProfile(fMom,8,x0,(52*del)/96,z0,step); //uy
+velocityProfile(fMom,9,x0,(52*del)/96,z0,step); //uz
+
+velocityProfile(fMom,7,x0,(96*del)/96,z0,step); //ux
+velocityProfile(fMom,8,x0,(96*del)/96,z0,step); //uy
+velocityProfile(fMom,9,x0,(96*del)/96,z0,step); //uz
+
+
+rhoProfile(fMom,3,x0,(2*del)/96,z0,step);  //rho
+rhoProfile(fMom,3,x0,(6*del)/96,z0,step);  //rho
+rhoProfile(fMom,3,x0,(52*del)/96,z0,step); //rho
+rhoProfile(fMom,3,x0,(96*del)/96,z0,step); //rho
+
+omegaProfile(fMom,3,x0,(2*del)/96,z0,step);  //omega
+omegaProfile(fMom,3,x0,(6*del)/96,z0,step);  //omega
+omegaProfile(fMom,3,x0,(52*del)/96,z0,step); //omega
+omegaProfile(fMom,3,x0,(96*del)/96,z0,step); //omega
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /*
@@ -371,9 +509,9 @@ dfloat mean_counter = 1.0/((dfloat)(step/MACR_SAVE)+1.0);
 
 // mean velocity values
 
-ux_mean[y_wall] /= (NX*NZ_TOTAL);;
-uy_mean[y_wall] /= (NX*NZ_TOTAL);;
-uz_mean[y_wall] /= (NX*NZ_TOTAL);;
+ux_mean[y_wall] /= (2*NX*NZ_TOTAL);;
+uy_mean[y_wall] /= (2*NX*NZ_TOTAL);;
+uz_mean[y_wall] /= (2*NX*NZ_TOTAL);;
 
 
 for(int y = 0; y< NY;y++){

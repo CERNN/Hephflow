@@ -1,0 +1,82 @@
+#ifndef __ERROR_DEF_H
+#define __ERROR_DEF_H
+
+#include <cuda.h>
+#include <curand.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda_runtime.h>
+#include <builtin_types.h>
+
+// ------------------ CUDA kernel error check macro ------------------
+// Use `CHECK_KERNEL_ERR("label")` after a kernel launch to report launch/sync errors.
+// Generates a unique temporary variable per expansion using `__LINE__` to avoid name collisions.
+#ifndef QUIET_MAIN
+#define CUDA_CONCAT_INNER(a, b) a##b
+#define CUDA_CONCAT(a, b) CUDA_CONCAT_INNER(a, b)
+#define CHECK_KERNEL_ERR(label) do { \
+    cudaError_t CUDA_CONCAT(_err_, __LINE__) = cudaGetLastError(); \
+    if (CUDA_CONCAT(_err_, __LINE__) != cudaSuccess) { fprintf(stderr, "%s launch failed: %s\n", label, cudaGetErrorString(CUDA_CONCAT(_err_, __LINE__))); } \
+    CUDA_CONCAT(_err_, __LINE__) = cudaDeviceSynchronize(); \
+    if (CUDA_CONCAT(_err_, __LINE__) != cudaSuccess) { fprintf(stderr, "%s sync error: %s\n", label, cudaGetErrorString(CUDA_CONCAT(_err_, __LINE__))); } \
+} while(0)
+#else
+#define CUDA_CONCAT_INNER(a, b) a##b
+#define CUDA_CONCAT(a, b) CUDA_CONCAT_INNER(a, b)
+#define CHECK_KERNEL_ERR(label) do { (void)label; cudaGetLastError(); cudaDeviceSynchronize(); } while(0)
+#endif
+
+
+#define checkCudaErrors(err)  __checkCudaErrors(err,#err,__FILE__,__LINE__)
+#define getLastCudaError(msg)  __getLastCudaError(msg,__FILE__,__LINE__)
+#define checkCurandStatus(status) __checkCurandStatus(status, __FILE__, __LINE__)
+
+/**
+ * @brief Check the curand status and print error message if not successful
+ * @param status: curand status to check
+ * @param file: file name where the error occurred
+ * @param line: line number where the error occurred
+ */
+inline void __checkCurandStatus(curandStatus_t status, const char* const file, const int line)
+{
+    if (status != CURAND_STATUS_SUCCESS)
+    {
+        printf("Curand error at %s(%d)\n", __FILE__, __LINE__); fflush(stdout);
+        exit(-1);
+    }
+}
+
+/**
+ * @brief Check the cuda error and print error message if not successful
+ * @param err: cuda error to check
+ * @param func: function name where the error occurred
+ * @param file: file name where the error occurred
+ * @param line: line number where the error occurred
+ */
+inline void __checkCudaErrors(cudaError_t err, const char* const func, const char* const file, const int line)
+{
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "CUDA error at %s(%d)\"%s\": [%d] %s.\n",
+            file, line, func, (int)err, cudaGetErrorString(err)); fflush(stderr);
+        exit(-1);
+    }
+}
+
+/**
+ * @brief Get the last cuda error and print error message if not successful
+ * @param errorMessage: custom error message
+ * @param file: file name where the error occurred
+ * @param line: line number where the error occurred
+ */
+inline void __getLastCudaError(const char* const errorMessage, const char* const file, const int line)
+{
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA error at %s(%d): [%d] %s.\n",
+            file, line, (int)err, cudaGetErrorString(err));  fflush(stderr);
+        exit(-1);
+    }
+}
+
+#endif // !__ERROR_DEF_H

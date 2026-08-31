@@ -1,87 +1,134 @@
-#define PHASE_MODEL 
+/* ============================================================================
+ * CONSTANTS CONFIGURATION
+ * Case: Oscillating Droplet
+ * Description: Two-phase flow simulation of oscillating droplet
+ * ========================================================================== */
 
-constexpr int SCALE = 1;
-constexpr int N_STEPS = 400000;
-constexpr int N = 128 * SCALE;
-constexpr int NX = N;        // size x of the grid 
-constexpr int NY = N;        // size y of the grid
-constexpr int NZ = N;        // size z of the grid in one GPU
-constexpr int NZ_TOTAL = NZ;       // size z of the grid
+/* --------------------- SIMULATION SCALE --------------------- */
+constexpr int SCALE = 1;                    // Grid scaling factor
 
-constexpr dfloat U_MAX = 0.1;  
-constexpr dfloat L = N;
+/* --------------------- TIME STEPPING --------------------- */
+constexpr int N_STEPS = 100000;               // Total simulation steps
+constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
-constexpr dfloat FX = 0.0;        // force in x
-constexpr dfloat FY = 0.0;        // force in y
-constexpr dfloat FZ = 0.0;        // force in z (flow direction in most cases)
+/* --------------------- GRID DIMENSIONS --------------------- */
+constexpr int N = 128 * SCALE;              // Reference grid size
+constexpr int NX = 3*N;                       // Grid size in X
+constexpr int NY = N;                       // Grid size in Y
+constexpr int NZ = N;                       // Grid size in Z
+constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
-// value for the velocity initial condition in the domain
-constexpr dfloat U_0_X = 0.0;
-constexpr dfloat U_0_Y = 0.0;
-constexpr dfloat U_0_Z = 0.0;
-constexpr dfloat RHO_0 = 1.0;
+/* --------------------- REFERENCE VALUES --------------------- */
+constexpr dfloat U_MAX = 0.1;               // Maximum/reference velocity
+constexpr dfloat L = N;                     // Reference length
 
-// values options for boundary conditions //not used yet
-__device__ const dfloat UX_BC[4] =  {0, 0, 0, 0};
-__device__ const dfloat UY_BC[4] =  {0, 0, 0, 0};
-__device__ const dfloat UZ_BC[4] =  {0, 0, 0, 0};
+/* --------------------- BODY FORCES --------------------- */
+constexpr dfloat FX = 0.0;                  // Force in X direction
+constexpr dfloat FY = 0.0;                  // Force in Y direction
+constexpr dfloat FZ = 0.0;                  // Force in Z direction
+
+/* --------------------- INITIAL CONDITIONS --------------------- */
+constexpr dfloat RHO_0 = 1.0;               // Initial density
+constexpr dfloat U_0_X = 0.0;               // Initial velocity X
+constexpr dfloat U_0_Y = 0.0;               // Initial velocity Y
+constexpr dfloat U_0_Z = 0.0;               // Initial velocity Z
+
+/* --------------------- BOUNDARY CONDITION VALUES --------------------- */
+__device__ const dfloat UX_BC[4] = {0, 0, 0, 0};
+__device__ const dfloat UY_BC[4] = {0, 0, 0, 0};
+__device__ const dfloat UZ_BC[4] = {0, 0, 0, 0};
 __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
-#define BC_X_WALL
-#define BC_Y_WALL
-#define BC_Z_WALL
+/* --------------------- BOUNDARY CONDITION TYPES --------------------- */
+#define BC_X_PERIODIC
+#define BC_Y_PERIODIC
+#define BC_Z_PERIODIC
 
-constexpr dfloat TAU = 0.55;//0.5 + 3.0*VISC;     // relaxation time
-constexpr dfloat VISC = (TAU-0.5)/3;
-constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962;
+/* --------------------- FLUID PROPERTIES --------------------- */
+constexpr dfloat TAU = 0.55;                // Relaxation time
+constexpr dfloat VISC = (TAU - 0.5) / 3;    // Kinematic viscosity
+constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
+
+/* --------------------- CHECKPOINT AND INITIALIZATION --------------------- */
+#define LOAD_CHECKPOINT false               // Load simulation checkpoint
+#define CHECKPOINT_SAVE false               // Save checkpoint frequency
+#define LOAD_FIELD false                    // Load field data
+#define LOAD_FIELD_STEP 0                   // Field load step
+#define SIMULATION_FOLDER_LOAD_CHECKPOINT "TEST" // Checkpoint folder
+
+/* ============================================================================
+ * PHASE FIELD MODEL PARAMETERS
+ * Requires #define PHASE_MODEL in model.inc
+ * Uses second distribution for phase field tracking
+ * ========================================================================== */
+
+#define PHASE_MODEL                         // Enable phase field model
+//#define INTERFACE_SHARPENING               // Enable interface sharpening
+#define CONVECTION_DIFFUSION_TRANSPORT     // Transport equation method
+#define D3G19                             // 19-velocity phase field (D3Q19 weights, as2=3)
+//#define D3G7                              // 7-velocity phase field (D3Q7 weights, as2=4)
+
+/* --------------------- PHASE FIELD DISTRIBUTION --------------------- */
+#define PHI_DIST                           // Enable phase field distribution
+#define METHOD_CAHN_HILLIARD
+/* --------------------- PHASE FIELD REFERENCE VALUES --------------------- */
+constexpr dfloat PHI_REFERENCE = (dfloat)(0.0);   // Reference phase value
+constexpr dfloat PHI_DELTA_PHI = 2.0_df;                // Phase field range
+constexpr dfloat PHI_ONE = PHI_REFERENCE - PHI_DELTA_PHI/2.0;   // Phase 1 value
+constexpr dfloat PHI_TWO = PHI_REFERENCE + PHI_DELTA_PHI/2.0;   // Phase 2 value
+constexpr dfloat PHI_ZERO = (dfloat)(1.1);        // Initial phase value
+// Physical CH order parameter mapping
+constexpr dfloat PHI_SCALE = 2.0/PHI_DELTA_PHI;
+
+/* --------------------- SURFACE TENSION AND INTERFACE PARAMETERS --------------------- */
+
+// Physical surface tension
+constexpr dfloat phi_sigma = 0.0003;
+constexpr dfloat phi_del = 4.0;
+constexpr dfloat phi_xi = phi_del / 2.94;
+constexpr dfloat phi_beta  = 12.0 * phi_sigma / phi_del;
+constexpr dfloat phi_kappa = 1.5 * phi_sigma * phi_del;
+constexpr dfloat phi_gamma = 1.0 / (2.0 * 1.41421356237309 * phi_xi);
+
+/* --------------------- DENSITY COUPLING --------------------- */
+
+constexpr dfloat phi_rho_l = 1.0;
+constexpr dfloat phi_rho_g = 0.9;
+constexpr dfloat phi_drho = phi_rho_l - phi_rho_g;
+
+constexpr dfloat g_value = 1.0e-5_df; 
+__device__ const dfloat gravity_vector[3] = {1.0, 0.0, 0.0}; // Gravity direction
 
 
-#ifdef PHASE_MODEL
-    #define CONVECTION_DIFFUSION_TRANSPORT
-    #define D3G19
+constexpr dfloat tau_H = TAU;
+constexpr dfloat tau_L = TAU;
 
-    #define PHI_DIST
+/* --------------------- FORCE COUPLING CONTROL FLAGS --------------------- */
+#define PHI_FORCE_FS_ENABLED 1
+#define PHI_FORCE_FP_ENABLED 1
+#define PHI_FORCE_FN_ENABLED 1
+#define PHI_FORCE_FB_ENABLED 1
 
-    constexpr dfloat PHI_REFERENCE = (dfloat)(0.5);
-    constexpr dfloat PHI_DELTA_PHI = 1;
-    constexpr dfloat PHI_ONE = PHI_REFERENCE - PHI_DELTA_PHI/2.0;
-    constexpr dfloat PHI_TWO = PHI_REFERENCE + PHI_DELTA_PHI/2.0;
-    constexpr dfloat PHI_ALPHA = 0.05;
-    constexpr dfloat PHI_ZERO = (dfloat)(10.0);
-    
-    //model constanst
-    constexpr dfloat phi_sigma = 1e-4; //surface tension coeficiet
-    constexpr dfloat phi_del = 3; //interface width
-    constexpr dfloat phi_beta = 12.0*phi_sigma / phi_del;
-    constexpr dfloat phi_kappa = 3.0*phi_sigma*phi_del/2;
+/* --------------------- PHASE-FIELD TRANSPORT (LBM) --------------------- */
 
-    //ADVECTION-DIFFUSIONS CONSTANTS
-    constexpr dfloat PHI_DIFFUSIVITY_RATIO = 1000; //OR Pr in malaspinas
-    constexpr dfloat PHI_DIFFUSIVITY = VISC/PHI_DIFFUSIVITY_RATIO; // a0lpha
+// Reference diffusion (controls interface mobility)
+constexpr dfloat PHI_DIFFUSIVITY_RATIO = 1; // Diffusivity ratio (like Prandtl number) 
+constexpr dfloat PHI_DIFFUSIVITY = VISC/PHI_DIFFUSIVITY_RATIO; // Thermal diffusivity
+constexpr dfloat PHI_DIFF_REF = 0.0000033333;
 
-    constexpr dfloat PHI_DIFF_REF = (1.0/6);
-    constexpr dfloat PHI_TAU = PHI_DIFFUSIVITY*3+0.5;
-    constexpr dfloat PHI_OMEGA  = 1.0/PHI_TAU;
-    constexpr dfloat PHI_TT_OMEGA = 1.0-0.5*PHI_OMEGA;
+// LBM relaxation
+constexpr dfloat PHI_TAU   = 0.5 + 3.0 * PHI_DIFF_REF;
+constexpr dfloat PHI_OMEGA = 1.0 / PHI_TAU;
 
-    constexpr dfloat PHI_DIFF_FLUC = PHI_DIFFUSIVITY - PHI_DIFF_REF;
-    constexpr dfloat PHI_AAA = (3*PHI_DIFF_FLUC*PHI_OMEGA);
-    constexpr dfloat PHI_DIFF_FLUC_COEF = PHI_AAA/(1.0+PHI_AAA);
-#endif
+/* --------------------- INTERFACE SHARPENING --------------------- */
 
+// Dimensionless sharpening strength (0.3–0.6 recommended)
+constexpr dfloat SHARP_FACTOR = 30.0_df;
 
+// Sharpening coefficient (now scale-consistent)
+constexpr dfloat phi_sharp_c = SHARP_FACTOR * phi_gamma * PHI_DIFF_REF;
 
-/* --------------------- INITIALIZATION LOADING DEFINES -------------------- */
-constexpr int INI_STEP = 0; // initial simulation step (0 default)
-#define LOAD_CHECKPOINT false   // loads simulation checkpoint from folder 
-                                // (folder name defined below)
-
-
-// Folder with simulation to load data from last checkpoint. 
-// WITHOUT ID_SIM (change it in ID_SIM) AND "/" AT THE END
-#define SIMULATION_FOLDER_LOAD_CHECKPOINT "TEST"
-// Interval to make checkpoint to save all simulation data and restart from it.
-// It must not be very frequent (10000 or more), because it takes a long time
-#define CHECKPOINT_SAVE false // the frequency on which the simulation checkpoint is saved
-#define LOAD_FIELD false
-#define LOAD_FIELD_STEP 0
+constexpr dfloat M_CH = 0.005_df;
+constexpr dfloat kappa_CH = 0.75_df * phi_sigma * phi_del; 
+constexpr dfloat A_CH     = (6.0_df * phi_sigma) / phi_del;
+/* ----- END CONSTANTS CONFIGURATION ----- */

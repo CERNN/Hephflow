@@ -1,29 +1,31 @@
-/* ----------------------------- OUTPUT DEFINES ---------------------------- */
-#define ID_SIM "000"            // prefix for simulation's files
-#define PATH_FILES "CouetteEllipsoid"  // path to save simulation's files
-#define TREATFIELD (false) //treat data over the entire field
-#define TREATPOINT (false) //treat data in a single or several points
-#define TREATLINE (false) //save the macro in a line
-#define SAVEDATA (false) //save treat data
-#define CONSOLEPRINT (false) // print the console the data is being saved
-#define MEAN_FLOW (false) // store the mean flow of the domain (used to calculate turbulent statistics)
-#define NODE_TYPE_SAVE (false) //save the bc conditions, usefull for drawing the surface
-#define ONLY_FINAL_MACRO (false) //save only the last time step macroscopic
-#define MACR_SAVE (500)
-#define REPORT_SAVE (false)
-#define VTK_SAVE (true)
-#define BIN_SAVE (false)
+/* ============================================================================
+ * OUTPUT CONFIGURATION
+ * Case: Couette Flow with Ellipsoid Particle
+ * Description: Particle simulation in couette flow with ellipsoidal geometry
+ * ========================================================================== */
 
-//#define BC_FORCES //create scalar field to export the reaction forces from BC;
-//#define SAVE_BC_FORCES // define if it will export BC force field to bin
+/* --------------------- OUTPUT FILES --------------------- */
+#define ID_SIM "000"                      // Prefix for simulation's files
+#define PATH_FILES "CouetteEllipsoid"     // Path to save simulation's files
 
-/* ------------------------- TIME AND SAVE DEFINES ------------------------- */
+/* --------------------- OUTPUT FORMATS --------------------- */
+#define VTK_SAVE (true)                   // Save VTK format (ParaView)
+#define BIN_SAVE (false)                  // Save binary format
+#define ONLY_FINAL_MACRO (false)          // Save only last time step macroscopic
+#define MACR_SAVE (500)                   // Save macroscopic fields
+#define REPORT_SAVE (false)               // Console report frequency (steps)
 
-#define PARTICLES_SAVE (500)               // Save particles info every given steps (0 not report)
-#define PARTICLES_DATA_REPORT (false)                   // Report IBM treated data every given steps (0 not report)
+/* --------------------- DATA TREATMENT --------------------- */
+#define TREATFIELD (false)                // Treat data over entire field
+#define TREATPOINT (false)                // Treat data at specific points
+#define TREATLINE (false)                 // Save macro along a line
+#define SAVEDATA (false)                  // Save treated data
+#define CONSOLEPRINT (false)              // Print data saving to console
+#define MEAN_FLOW (false)                 // Store mean flow for turbulence statistics
+#define NODE_TYPE_SAVE (false)            // Save BC conditions for visualization
 
-
-#define IBM_PARTICLES_NODES_SAVE true      // Saves particles nodes data
-
-//#define PARTICLE_DEBUG
-/* ------------------------------------------------------------------------- */
+/* --------------------- PARTICLE OUTPUT --------------------- */
+#define PARTICLES_SAVE (500)              // Save particles every # steps
+#define PARTICLES_DATA_REPORT (false)     // Report IBM data
+#define IBM_PARTICLES_NODES_SAVE true     // Save particle node positions
+//#define PARTICLE_DEBUG                  // Enable particle debug output */

@@ -17,8 +17,8 @@
 #include "../../../globalStructs.h"
 #include "../../../globalFunctions.h"
 #include "../particleSharedFunctions.cuh"
-#include "../../../includeFiles/interface.h"
-#include "../../../errorDef.h"
+#include "../../../include/interface.h"
+#include "../../../include/errorDef.h"
 #include "../../../saveData.cuh"
 #include "../../class/Particle.cuh"
 

@@ -15,22 +15,6 @@ switch (nodeType){
         qy_t30   = 0;
         qz_t30   = 0;
         break;
-    case NORTH:
-            //free-slip bc for thermal IS NOT bounce back
-
-        cVar =  T_HOT - T_DELTA_T*((dfloat)x/(dfloat)NX);
-        qx_t30   = 0;
-        qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y-1, threadIdx.z, M2_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-        qz_t30   = 0;
-        break;
-    case SOUTH:
-            //free-slip bc for thermal IS NOT bounce back
-
-        cVar =  T_HOT - T_DELTA_T*((dfloat)x/(dfloat)NX);
-        qx_t30   = 0;
-        qy_t30   = fMom[idxMom(threadIdx.x, threadIdx.y+1, threadIdx.z, M2_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-        qz_t30   = 0;
-        break;
     case FRONT:
 
         cVar =  T_HOT - T_DELTA_T*((dfloat)x/(dfloat)NX);
