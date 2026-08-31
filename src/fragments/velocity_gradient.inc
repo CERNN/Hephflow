@@ -16,13 +16,13 @@ dfloat ux_yp1 = fMom[idxMom(tx, typ1, tz, M_UX_INDEX, bx, ((y + 1) % NY) / BLOCK
 dfloat uy_yp1 = fMom[idxMom(tx, typ1, tz, M_UY_INDEX, bx, ((y + 1) % NY) / BLOCK_NY, bz)];
 dfloat uz_yp1 = fMom[idxMom(tx, typ1, tz, M_UZ_INDEX, bx, ((y + 1) % NY) / BLOCK_NY, bz)];
 
-dfloat ux_zm1 = fMom[idxMom(tx, ty, tzm1, M_UX_INDEX, bx, by, ((z - 1 + NZ) % NZ) / BLOCK_NZ)];
-dfloat uy_zm1 = fMom[idxMom(tx, ty, tzm1, M_UY_INDEX, bx, by, ((z - 1 + NZ) % NZ) / BLOCK_NZ)];
-dfloat uz_zm1 = fMom[idxMom(tx, ty, tzm1, M_UZ_INDEX, bx, by, ((z - 1 + NZ) % NZ) / BLOCK_NZ)];
+dfloat ux_zm1 = fMom[idxMom(tx, ty, tzm1, M_UX_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
+dfloat uy_zm1 = fMom[idxMom(tx, ty, tzm1, M_UY_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
+dfloat uz_zm1 = fMom[idxMom(tx, ty, tzm1, M_UZ_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
 
-dfloat ux_zp1 = fMom[idxMom(tx, ty, tzp1, M_UX_INDEX, bx, by, ((z + 1) % NZ) / BLOCK_NZ)];
-dfloat uy_zp1 = fMom[idxMom(tx, ty, tzp1, M_UY_INDEX, bx, by, ((z + 1) % NZ) / BLOCK_NZ)];
-dfloat uz_zp1 = fMom[idxMom(tx, ty, tzp1, M_UZ_INDEX, bx, by, ((z + 1) % NZ) / BLOCK_NZ)];
+dfloat ux_zp1 = fMom[idxMom(tx, ty, tzp1, M_UX_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
+dfloat uy_zp1 = fMom[idxMom(tx, ty, tzp1, M_UY_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
+dfloat uz_zp1 = fMom[idxMom(tx, ty, tzp1, M_UZ_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
 
 
 dfloat duxdx_t30 = (ux_xp1 - ux_xm1) *0.5_df;

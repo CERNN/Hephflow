@@ -16,9 +16,9 @@ constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
 constexpr int N = 128 * SCALE;              // Reference grid size
-constexpr int NX = 8;                       // Grid size in X (thin channel)
+constexpr int NX = 32;                       // Grid size in X (thin channel)
 constexpr int NY = N;                       // Grid size in Y (channel height)
-constexpr int NZ = 8;                       // Grid size in Z (thin channel)
+constexpr int NZ = 32;                       // Grid size in Z (thin channel)
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */

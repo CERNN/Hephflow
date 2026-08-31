@@ -14,7 +14,7 @@ rho = RHO_0;
 // perturbation
 dfloat pert = 0.1;
 int l = idxScalarGlobal(x, y, z);
-int Nt = NUMBER_LBM_NODES;
+int Nt = NUMBER_LBM_NODES_LOCAL;
 uz += (ub_f*U_TAU)*pert*randomNumbers[l + z - Nt*((l + z) / Nt)];
 ux += (ub_f*U_TAU)*pert*randomNumbers[l + x - Nt*((l + x) / Nt)];
 uy += (ub_f*U_TAU)*pert*randomNumbers[l + y - Nt*((l + y) / Nt)];

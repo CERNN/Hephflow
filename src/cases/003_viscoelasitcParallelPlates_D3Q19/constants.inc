@@ -8,11 +8,13 @@
 constexpr int SCALE = 1;
 
 /* --------------------- GRID DIMENSIONS --------------------- */
+
 constexpr int N = 256;
 constexpr int NX = 4;
 constexpr int NY = N;
 constexpr int NZ = 4;
 constexpr int NZ_TOTAL = NZ;
+
 
 /* --------------------- REFERENCE VALUES --------------------- */
 constexpr dfloat U_MAX = 0.0;

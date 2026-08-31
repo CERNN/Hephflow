@@ -169,6 +169,7 @@ strDataInfo <<"step,"<< step/t_c << "," << duxdx_t30/epsi_c << "," << Weissenber
 saveTreatData("_data_000",strDataInfo.str(),step);
 
 
+{
     constexpr int N_PROBE   = 16;          // probes per direction (must divide 32)
     const     int stride_x  = NX / N_PROBE;
     const     int stride_y  = NY / N_PROBE;
@@ -215,5 +216,5 @@ saveTreatData("_data_000",strDataInfo.str(),step);
         }
     }
 
-    saveTreatData("_probes", ssProbe.str(), step);
+saveTreatData("_probes", ssProbe.str(), step);
 }

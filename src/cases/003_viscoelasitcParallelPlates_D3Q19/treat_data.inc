@@ -97,8 +97,3 @@ sourceProfile(d_Source_Gzz, "source_Gzz", 1, x_loc, 0, z_loc, step);
 #endif
 
 
-
-
-
-
-

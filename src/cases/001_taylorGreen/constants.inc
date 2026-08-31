@@ -13,7 +13,7 @@ constexpr int SCALE = 1;                    // Grid scaling factor
 constexpr dfloat RE = 1;                    // Reynolds number
 
 /* --------------------- GRID DIMENSIONS --------------------- */
-constexpr int N = 128 * SCALE;              // Reference grid size
+constexpr int N = 256 * SCALE;              // Reference grid size
 constexpr int NX = N;                       // Grid size in X
 constexpr int NY = N;                       // Grid size in Y
 constexpr int NZ = N;                       // Grid size in Z
@@ -30,7 +30,7 @@ constexpr dfloat Cx = 1.0/L;                // Length scaling
 constexpr dfloat Cp = 1.0/(Cx * Ct * Ct);   // Pressure scaling
 
 /* --------------------- TIME STEPPING --------------------- */
-constexpr int N_STEPS = (int)(20.0/Ct)+1;   // Full simulation steps (calculated)
+constexpr int N_STEPS = 5000;   // Full simulation steps (calculated)
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- BODY FORCES --------------------- */

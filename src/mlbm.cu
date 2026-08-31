@@ -5,9 +5,51 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     // Unpack parameters from struct (passed by value - CUDA optimized!)
     dfloat *fMom = params.fMom;
     unsigned int *dNodeType = params.dNodeType;
-    ghostInterfaceData ghostInterface = params.ghostInterface;
+    const ghostFacePtrs ghostInterface = params.pop;  // 8 ptrs (64B) - fits registers
+    const gpuDirection macroInterfaceGPUrho = params.rho_macro;
+    const gpuDirection macroInterfaceGPUux = params.ux_macro;
+    const gpuDirection macroInterfaceGPUuy = params.uy_macro;
+    const gpuDirection macroInterfaceGPUuz = params.uz_macro;
+
     unsigned int step = params.step;
     bool save = params.save;
+    size_t localNZ = params.localNZ;
+    int zStart = params.zStart;
+
+    #ifdef SECOND_DIST
+    const ghostFacePtrs ghostInterfaceG = params.g;
+    const gpuDirection macroInterfaceGPUg = params.g_macro;
+    #endif //SECOND_DIST
+
+    #ifdef A_XX_DIST
+    const ghostFacePtrs ghostInterfaceAxx = params.Axx;
+    const gpuDirection macroInterfaceGPUAxx = params.Axx_macro;
+    #endif //A_XX_DIST
+    #ifdef A_XY_DIST
+    const ghostFacePtrs ghostInterfaceAxy = params.Axy;
+    const gpuDirection macroInterfaceGPUAxy = params.Axy_macro;
+    #endif //A_XY_DIST
+    #ifdef A_XZ_DIST
+    const ghostFacePtrs ghostInterfaceAxz = params.Axz;
+    const gpuDirection macroInterfaceGPUAxz = params.Axz_macro;
+    #endif //A_XZ_DIST
+    #ifdef A_YY_DIST
+    const ghostFacePtrs ghostInterfaceAyy = params.Ayy;
+    const gpuDirection macroInterfaceGPUAyy = params.Ayy_macro;
+    #endif //A_YY_DIST
+    #ifdef A_YZ_DIST
+    const ghostFacePtrs ghostInterfaceAyz = params.Ayz;
+    const gpuDirection macroInterfaceGPUAyz = params.Ayz_macro;
+    #endif //A_YZ_DIST
+    #ifdef A_ZZ_DIST
+    const ghostFacePtrs ghostInterfaceAzz = params.Azz;
+    const gpuDirection macroInterfaceGPUAzz = params.Azz_macro;
+    #endif //A_ZZ_DIST
+
+    #ifdef LAMBDA_DIST
+    const ghostFacePtrs ghostInterfaceLambda = params.lambda;
+    const gpuDirection macroInterfaceGPUlambda = params.lambda_macro;
+    #endif //LAMBDA_DIST
     
     #ifdef DENSITY_CORRECTION
     dfloat* d_mean_rho = params.d_mean_rho;
@@ -63,14 +105,24 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     const fluidPhaseProps phasePropsA = params.phasePropsA;
     #ifdef PHI_DIST
     const fluidPhaseProps phasePropsB = params.phasePropsB;
+    const ghostFacePtrs ghostInterfacePhi = params.phi;
+    const gpuDirection macroInterfaceGPUphi = params.phi_macro;
+    const gpuDirection macroInterfaceGPUnx = params.nx_macro;
+    const gpuDirection macroInterfaceGPUny = params.ny_macro;
+    const gpuDirection macroInterfaceGPUnz = params.nz_macro;
+    const gpuDirection macroInterfaceGPUmu = params.mu_macro;
     #endif
     #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
 
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
-    const int z = threadIdx.z + blockDim.z * blockIdx.z;
-    if (x >= NX || y >= NY || z >= NZ)
+    const int z_local = threadIdx.z + blockDim.z * blockIdx.z;
+
+    if (x >= NX || y >= NY || z_local >= localNZ+1)
         return;
+    
+    const int z = zStart + z_local;
+
     dfloat pop[Q];
     #ifdef CONVECTION_DIFFUSION_TRANSPORT
     dfloat gNode[GQ];
@@ -203,8 +255,8 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     const int bym1 = (by-1+NUM_BLOCK_Y)%NUM_BLOCK_Y;
     const int byp1 = (by+1+NUM_BLOCK_Y)%NUM_BLOCK_Y;
 
-    const int bzm1 = (bz-1+NUM_BLOCK_Z)%NUM_BLOCK_Z;
-    const int bzp1 = (bz+1+NUM_BLOCK_Z)%NUM_BLOCK_Z;
+    const int bzm1 = (bz-1+NUM_BLOCK_Z_LOCAL)%NUM_BLOCK_Z_LOCAL;
+    const int bzp1 = (bz+1+NUM_BLOCK_Z_LOCAL)%NUM_BLOCK_Z_LOCAL;
 
     const bool stepParity = (step & 1u);
 
@@ -1285,6 +1337,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     #endif //CONVECTION_DIFFUSION_TRANSPORT
 
     #include "fragments/popSave.inc"
+    #include "fragments/macroSave.inc"
 
     //save velocities in the end in order to load next step to compute the gradient
     #ifdef COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
@@ -1663,14 +1716,19 @@ __global__ void gpuComputeLaplacianMu(
 */
 __global__ void gpuComputePhaseNormals(
     dfloat *fMom,
-    unsigned int *dNodeType
+    unsigned int *dNodeType, 
+    macroInterfaceGPUData macroInterfaceGPU,
+    size_t localNZ, 
+    int zStart
 )
 {
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;
-    if (x >= NX || y >= NY || z >= NZ) return;
-
+    
+    if (x >= NX || y >= NY || z >= localNZ)
+        return;
+    
     const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
     const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
 
@@ -1688,13 +1746,32 @@ __global__ void gpuComputePhaseNormals(
         #else
         int ny = (y + dy + NY) % NY;
         #endif
-        #ifdef BC_Z_WALL
-        int nz = min(NZ - 1, max(0, z + dz));
-        #else
-        int nz = (z + dz + NZ) % NZ;
-        #endif
+        // #ifdef BC_Z_WALL
+        // int nz = min((NZ/N_GPUS) - 1, max(0, z + dz));
+        // #else
+        // // int nz = (z + dz + (NZ/N_GPUS)) % (NZ/N_GPUS);
+        // #endif
+        int nz = z + dz;
+        const int planeIdx = nx + ny * NX;
+
+        if (nz < 0) { 
+                #ifdef BC_Z_WALL
+                if (zStart == 0) return phi_c;              
+                #endif
+                return  macroInterfaceGPU.phi.auxZ_1[planeIdx]; 
+            
+        }
+
+        if (nz >= (int)localNZ) {
+                #ifdef BC_Z_WALL
+                if (zStart + (int)localNZ >= NZ) return phi_c; 
+                #endif
+                return macroInterfaceGPU.phi.auxZ_0[planeIdx]; 
+        }
+
         int ntx = nx % BLOCK_NX, nty = ny % BLOCK_NY, ntz = nz % BLOCK_NZ;
         int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
+        
         return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)];
     };
 
@@ -1800,18 +1877,20 @@ __global__ void gpuComputePhaseNormals(
     fMom[idxMom(tx, ty, tz, M3_LP_INDEX, bx, by, bz)] = laplacian_phi;
 }
 
-
-
 __global__ void gpuComputeChemicalPotential(
     dfloat *fMom,
-    unsigned int *dNodeType
+    unsigned int *dNodeType, 
+    size_t localNZ, 
+    int zStart
 )
 {
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;
-    if (x >= NX || y >= NY || z >= NZ) return;
-
+    
+    if (x >= NX || y >= NY || z >= localNZ)
+        return;
+    
     const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
     const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
 
@@ -1924,13 +2003,18 @@ __global__ void gpuComputeChemicalPotential(
 
 __global__ void gpuComputeLaplacianMu(
     dfloat *fMom,
-    unsigned int *dNodeType
+    unsigned int *dNodeType,
+    macroInterfaceGPUData macroInterfaceGPU, 
+    size_t localNZ, 
+    int zStart
 )
 {
     const int x = threadIdx.x + blockDim.x * blockIdx.x;
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z = threadIdx.z + blockDim.z * blockIdx.z;
-    if (x >= NX || y >= NY || z >= NZ) return;
+    
+    if (x >= NX || y >= NY || z >= localNZ)
+        return;
 
     const int tx = threadIdx.x, ty = threadIdx.y, tz = threadIdx.z;
     const int bx = blockIdx.x,  by = blockIdx.y,  bz = blockIdx.z;
@@ -1953,11 +2037,28 @@ __global__ void gpuComputeLaplacianMu(
         #else
         int ny = (y + dy + NY) % NY;
         #endif
-        #ifdef BC_Z_WALL
-        int nz = min(NZ - 1, max(0, z + dz));
-        #else
-        int nz = (z + dz + NZ) % NZ;
-        #endif
+        // #ifdef BC_Z_WALL
+        // int nz = min((NZ/N_GPUS) - 1, max(0, z + dz));
+        // #else
+        // int nz = (z + dz + (NZ/N_GPUS)) % (NZ/N_GPUS);
+        // #endif
+        int nz = z + dz;
+        const int planeIdx = nx + nx * NX;
+        
+
+        if (nz < 0) {
+                #ifdef BC_Z_WALL
+                if (zStart == 0) return mu0;
+                #endif
+                return macroInterfaceGPU.mu.auxZ_1[planeIdx];
+        }
+        if (nz >= (int)localNZ) {
+                #ifdef BC_Z_WALL
+                if (zStart + (int)localNZ >= NZ) return mu0;
+                #endif
+                return macroInterfaceGPU.mu.auxZ_0[planeIdx];
+        }
+
         int ntx = nx % BLOCK_NX, nty = ny % BLOCK_NY, ntz = nz % BLOCK_NZ;
         int nbx = nx / BLOCK_NX, nby = ny / BLOCK_NY, nbz = nz / BLOCK_NZ;
         return fMom[idxMom(ntx, nty, ntz, M3_MU_INDEX, nbx, nby, nbz)];
