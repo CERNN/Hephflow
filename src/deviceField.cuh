@@ -68,6 +68,7 @@ typedef struct deviceField{
     fluidPhaseProps phasePropsA;             ///< Phase-1 fluid properties (viscous + viscoelastic)
     #endif 
 
+
     #ifdef PHI_DIST
     fluidPhaseProps phasePropsB;             ///< Phase-2 fluid properties (viscous + viscoelastic)
     #endif

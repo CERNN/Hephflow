@@ -169,13 +169,6 @@ strDataInfo <<"step,"<< step/t_c << "," << duxdx_t30/epsi_c << "," << Weissenber
 saveTreatData("_data_000",strDataInfo.str(),step);
 
 
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-// L2 CONVERGENCE PROBE EXPORT
-// 16x16 probe grid aligned to coarsest mesh (N=32), stride = N/16.
-// Probe physical coords: x* = i/NX, y* = j/NY  (periodic [0,1) domain).
-// All mesh sizes 32,64,128,256,512 divide evenly by 16 -> exact node hits,
-// no interpolation needed. Z fixed at midplane (NZ/2).
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 {
     constexpr int N_PROBE   = 16;          // probes per direction (must divide 32)
     const     int stride_x  = NX / N_PROBE;
@@ -223,5 +216,5 @@ saveTreatData("_data_000",strDataInfo.str(),step);
         }
     }
 
-    saveTreatData("_l2_probes", ssProbe.str(), step);
+saveTreatData("_probes", ssProbe.str(), step);
 }
