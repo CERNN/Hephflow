@@ -10,9 +10,9 @@ constexpr int SCALE = 1;
 /* --------------------- GRID DIMENSIONS --------------------- */
 
 constexpr int N = 256;
-constexpr int NX = 4;
+constexpr int NX = 8;
 constexpr int NY = N;
-constexpr int NZ = 4;
+constexpr int NZ = 8;
 constexpr int NZ_TOTAL = NZ;
 
 

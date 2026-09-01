@@ -1,8 +1,3 @@
-checkCudaErrors(cudaDeviceSynchronize());
-checkCudaErrors(cudaMemcpy(h_fMom, fMom, sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
-checkCudaErrors(cudaDeviceSynchronize());
-
-
 int ix = NX/2 - 1;   // lower x index (for midpoint between ix and ix+1)
 int iy = NY/2 - 1;   // lower y index
 int iz = NZ/2 - 1;   // lower z index

@@ -11,7 +11,7 @@
     // =========================================================
 
     // ---------------------------------------------------------
-    // 1. Per-node phi sampler (device -> host)
+    // 1. Per-node phi sampler (reads the host macroscopic field)
     // ---------------------------------------------------------
     auto samplePhiAt = [&](int x, int y, int z) -> dfloat {
         dfloat phi = 0.0_df;
@@ -20,8 +20,7 @@
             M3_PHI_INDEX,
             x / BLOCK_NX, y / BLOCK_NY, z / BLOCK_NZ
         );
-        checkCudaErrors(cudaMemcpy(&phi, fMom + idx,
-                                   sizeof(dfloat), cudaMemcpyDeviceToHost));
+        phi = h_fMom[idx];
         return phi;
     };
 

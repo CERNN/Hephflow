@@ -98,9 +98,9 @@ void totalBcDrag(dfloat *d_BC_Fx, dfloat* d_BC_Fy, dfloat* d_BC_Fz, size_t step)
  
 /**
  *  @brief Save the local body force profile along a line (total effective body force)
- *  @param d_Local_Fx: device local force X component
- *  @param d_Local_Fy: device local force Y component
- *  @param d_Local_Fz: device local force Z component
+ *  @param d_Local_Fx: host local force X component
+ *  @param d_Local_Fy: host local force Y component
+ *  @param d_Local_Fz: host local force Z component
  *  @param dir_index: Which direction to traverse (1=y-dir, 2=x-dir, 3=z-dir)
  *  @param x0, y0, z0: Coordinates where the profile will be extracted
  *  @param step: Current time step
@@ -117,7 +117,7 @@ void forceProfile(
 
 /**
  *  @brief Save a scalar source term profile along a line
- *  @param dArray: device array holding the scalar source field
+ *  @param dArray: host array holding the scalar source field
  *  @param baseName: base name for the output file (suffix _dy/_dx/_dz appended automatically)
  *  @param dir_index: Which direction to traverse (1=y-dir, 2=x-dir, 3=z-dir)
  *  @param x0, y0, z0: Coordinates where the profile will be extracted
@@ -134,7 +134,7 @@ void sourceProfile(
 
 /**
  *  @brief Save the rho profile in the middle of the domian
- *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param fMom: Pointer to the host array containing the current macroscopic moments.
  *  @param moment_index: Which direction will be saved
  *  @param x0, y0, z0: Coordinates where the profile will be extracted
  *  @param step: Current time step
@@ -151,7 +151,7 @@ void rhoProfile(
 
 /**
  *  @brief Save the velocity profile in the middle of the domian
- *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param fMom: Pointer to the host array containing the current macroscopic moments.
  *  @param moment_index: Which velocity and direction will be saved
  *  @param x0, y0, z0: Coordinates where the profile will be extracted
  *  @param step: Current time step
@@ -166,7 +166,7 @@ void velocityProfile(
 
 /**
  *  @brief Save the omega profile in the middle of the domian
- *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param fMom: Pointer to the host array containing the current macroscopic moments.
  *  @param moment_index: Which direction will be saved
  *  @param x0, y0, z0: Coordinates where the profile will be extracted
  *  @param step: Current time step
@@ -181,7 +181,7 @@ void omegaProfile(
 
 /**
  *  @brief Save the phi profile in the middle of the domian
- *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param fMom: Pointer to the host array containing the current macroscopic moments.
  *  @param moment_index: Which direction will be saved
  *  @param x0, y0, z0: Coordinates where the profile will be extracted
  *  @param step: Current time step
@@ -197,7 +197,7 @@ void phiProfile(
 #ifdef CONFORMATION_TENSOR
 /**
  *  @brief Save conformation-tensor component profiles in the middle of the domain.
- *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param fMom: Pointer to the host array containing the current macroscopic moments.
  *  @param dir_index: Which line direction will be saved.
  *  @param x0, y0, z0: Coordinates where the profile will be extracted.
  *  @param step: Current time step.

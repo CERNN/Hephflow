@@ -3,9 +3,6 @@
 //  Exports:
 //    _l2_error   :  step, t/t_c, L2(ux), L2(Axx), L2(Axy)
 // ---------------------------------------------------------------------------
-checkCudaErrors(cudaDeviceSynchronize());
-checkCudaErrors(cudaMemcpy(h_fMom, fMom, sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
-checkCudaErrors(cudaDeviceSynchronize());
 
 // ---- helpers ---------------------------------------------------------------
 auto getMom = [&](int x, int y, int z, int momIndex) {
@@ -71,8 +68,8 @@ strL2 << step << "," << (dfloat)step / t_c << ","
       << l2_ux << "," << l2_Axx << "," << l2_Axy;
 saveTreatData("_l2_error", strL2.str(), step);
 
-velocityProfile(fMom, 1, x_loc, 0, z_loc, step);
-conformationProfile(fMom, 1, x_loc, 0, z_loc, step);
+velocityProfile(h_fMom, 1, x_loc, 0, z_loc, step);
+conformationProfile(h_fMom, 1, x_loc, 0, z_loc, step);
 
 #ifdef SAVE_LOCAL_FORCES
 forceProfile(d_Local_Fx, d_Local_Fy, d_Local_Fz, 1, x_loc, 0, z_loc, step);

@@ -1352,7 +1352,45 @@ typedef struct deviceField{
             checkCudaErrors(cudaDeviceSynchronize());
             int zStart = g * slice;
             size_t zOffset = zStart * NX * NY * NUMBER_MOMENTS;
+            size_t zOffsetScalar = zStart * NX * NY;
             checkCudaErrors(cudaMemcpy(hostField.h_fMom+zOffset, allDevices[g].d_fMom[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
+
+            // Local forces / source terms (scalar fields, assembled on host)
+            #ifdef SAVE_LOCAL_FORCES
+            checkCudaErrors(cudaMemcpy(hostField.h_Local_Fx+zOffsetScalar, allDevices[g].d_Local_Fx, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+            checkCudaErrors(cudaMemcpy(hostField.h_Local_Fy+zOffsetScalar, allDevices[g].d_Local_Fy, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+            checkCudaErrors(cudaMemcpy(hostField.h_Local_Fz+zOffsetScalar, allDevices[g].d_Local_Fz, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                #ifdef SECOND_DIST
+            checkCudaErrors(cudaMemcpy(hostField.h_Source_C+zOffsetScalar, allDevices[g].d_Source_C, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                #endif
+                #ifdef PHI_DIST
+            checkCudaErrors(cudaMemcpy(hostField.h_Source_Phi+zOffsetScalar, allDevices[g].d_Source_Phi, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                #endif
+                #ifdef LAMBDA_DIST
+            checkCudaErrors(cudaMemcpy(hostField.h_Source_Lambda+zOffsetScalar, allDevices[g].d_Source_Lambda, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                #endif
+                #ifdef CONFORMATION_TENSOR
+                    #ifdef A_XX_DIST
+            checkCudaErrors(cudaMemcpy(hostField.h_Source_Gxx+zOffsetScalar, allDevices[g].d_Source_Gxx, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                    #endif
+                    #ifdef A_XY_DIST
+            checkCudaErrors(cudaMemcpy(hostField.h_Source_Gxy+zOffsetScalar, allDevices[g].d_Source_Gxy, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                    #endif
+                    #ifdef A_XZ_DIST
+            checkCudaErrors(cudaMemcpy(hostField.h_Source_Gxz+zOffsetScalar, allDevices[g].d_Source_Gxz, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                    #endif
+                    #ifdef A_YY_DIST
+            checkCudaErrors(cudaMemcpy(hostField.h_Source_Gyy+zOffsetScalar, allDevices[g].d_Source_Gyy, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                    #endif
+                    #ifdef A_YZ_DIST
+            checkCudaErrors(cudaMemcpy(hostField.h_Source_Gyz+zOffsetScalar, allDevices[g].d_Source_Gyz, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                    #endif
+                    #ifdef A_ZZ_DIST
+            checkCudaErrors(cudaMemcpy(hostField.h_Source_Gzz+zOffsetScalar, allDevices[g].d_Source_Gzz, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                    #endif
+                #endif //CONFORMATION_TENSOR
+            #endif //SAVE_LOCAL_FORCES
+
             checkCudaErrors(cudaDeviceSynchronize());
         }
     }
@@ -1366,78 +1404,44 @@ typedef struct deviceField{
         treatDataParams.d_fMom_mean = hostField.m_fMom;
         #endif
         #ifdef BC_FORCES
-        treatDataParams.d_BC_Fx = d_BC_Fx[g];
-        treatDataParams.d_BC_Fy = d_BC_Fy[g];
-        treatDataParams.d_BC_Fz = d_BC_Fz[g];
+        treatDataParams.d_BC_Fx = nullptr;
+        treatDataParams.d_BC_Fy = nullptr;
+        treatDataParams.d_BC_Fz = nullptr;
         #endif
         #ifdef SAVE_LOCAL_FORCES
-        treatDataParams.d_Local_Fx = d_Local_Fx;
-        treatDataParams.d_Local_Fy = d_Local_Fy;
-        treatDataParams.d_Local_Fz = d_Local_Fz;
+        treatDataParams.d_Local_Fx = hostField.h_Local_Fx;
+        treatDataParams.d_Local_Fy = hostField.h_Local_Fy;
+        treatDataParams.d_Local_Fz = hostField.h_Local_Fz;
             #ifdef SECOND_DIST
-        treatDataParams.d_Source_C = d_Source_C;
+        treatDataParams.d_Source_C = hostField.h_Source_C;
             #endif
             #ifdef PHI_DIST
-        treatDataParams.d_Source_Phi = d_Source_Phi;
+        treatDataParams.d_Source_Phi = hostField.h_Source_Phi;
             #endif
             #ifdef LAMBDA_DIST
-        treatDataParams.d_Source_Lambda = d_Source_Lambda;
+        treatDataParams.d_Source_Lambda = hostField.h_Source_Lambda;
             #endif
             #ifdef CONFORMATION_TENSOR
                 #ifdef A_XX_DIST
-        treatDataParams.d_Source_Gxx = d_Source_Gxx;
+        treatDataParams.d_Source_Gxx = hostField.h_Source_Gxx;
                 #endif
                 #ifdef A_XY_DIST
-        treatDataParams.d_Source_Gxy = d_Source_Gxy;
+        treatDataParams.d_Source_Gxy = hostField.h_Source_Gxy;
                 #endif
                 #ifdef A_XZ_DIST
-        treatDataParams.d_Source_Gxz = d_Source_Gxz;
+        treatDataParams.d_Source_Gxz = hostField.h_Source_Gxz;
                 #endif
                 #ifdef A_YY_DIST
-        treatDataParams.d_Source_Gyy = d_Source_Gyy;
+        treatDataParams.d_Source_Gyy = hostField.h_Source_Gyy;
                 #endif
                 #ifdef A_YZ_DIST
-        treatDataParams.d_Source_Gyz = d_Source_Gyz;
+        treatDataParams.d_Source_Gyz = hostField.h_Source_Gyz;
                 #endif
                 #ifdef A_ZZ_DIST
-        treatDataParams.d_Source_Gzz = d_Source_Gzz;
+        treatDataParams.d_Source_Gzz = hostField.h_Source_Gzz;
                 #endif
             #endif //CONFORMATION_TENSOR
-        #endif
-        #ifdef SAVE_LOCAL_FORCES
-        treatDataParams.d_Local_Fx = d_Local_Fx;
-        treatDataParams.d_Local_Fy = d_Local_Fy;
-        treatDataParams.d_Local_Fz = d_Local_Fz;
-            #ifdef SECOND_DIST
-        treatDataParams.d_Source_C = d_Source_C;
-            #endif
-            #ifdef PHI_DIST
-        treatDataParams.d_Source_Phi = d_Source_Phi;
-            #endif
-            #ifdef LAMBDA_DIST
-        treatDataParams.d_Source_Lambda = d_Source_Lambda;
-            #endif
-            #ifdef CONFORMATION_TENSOR
-                #ifdef A_XX_DIST
-        treatDataParams.d_Source_Gxx = d_Source_Gxx;
-                #endif
-                #ifdef A_XY_DIST
-        treatDataParams.d_Source_Gxy = d_Source_Gxy;
-                #endif
-                #ifdef A_XZ_DIST
-        treatDataParams.d_Source_Gxz = d_Source_Gxz;
-                #endif
-                #ifdef A_YY_DIST
-        treatDataParams.d_Source_Gyy = d_Source_Gyy;
-                #endif
-                #ifdef A_YZ_DIST
-        treatDataParams.d_Source_Gyz = d_Source_Gyz;
-                #endif
-                #ifdef A_ZZ_DIST
-        treatDataParams.d_Source_Gzz = d_Source_Gzz;
-                #endif
-            #endif //CONFORMATION_TENSOR
-        #endif
+        #endif //SAVE_LOCAL_FORCES
         treatDataParams.step = step;
         treatData(&treatDataParams);
     }

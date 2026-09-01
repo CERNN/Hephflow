@@ -1,10 +1,3 @@
-// Copy full moment field from device to host
-checkCudaErrors(cudaDeviceSynchronize());
-checkCudaErrors(cudaMemcpy(h_fMom, fMom,
-    sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS,
-    cudaMemcpyDeviceToHost));
-checkCudaErrors(cudaDeviceSynchronize());
-
 {
     // Sample at the channel mid-plane in X and Z
     const int cx = NX / 2;

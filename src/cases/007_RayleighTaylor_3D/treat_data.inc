@@ -16,7 +16,7 @@
 			y / BLOCK_NY,
 			z / BLOCK_NZ
 		);
-		checkCudaErrors(cudaMemcpy(&phi, fMom + idx, sizeof(dfloat), cudaMemcpyDeviceToHost));
+		phi = h_fMom[idx];
 		return phi;
 	};
 

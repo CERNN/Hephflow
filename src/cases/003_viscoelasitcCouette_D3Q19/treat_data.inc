@@ -1,7 +1,3 @@
-checkCudaErrors(cudaDeviceSynchronize());
-checkCudaErrors(cudaMemcpy(h_fMom, fMom, sizeof(dfloat) * NUMBER_LBM_NODES*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
-checkCudaErrors(cudaDeviceSynchronize());
-
 // --- analytic UCM/Oldroyd-B steady state (exact fixed point, no file needed)
 dfloat Axx_ref = 1.0 + 2.0*Weissenberg_number*Weissenberg_number;
 dfloat Axy_ref = Weissenberg_number;
