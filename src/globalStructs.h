@@ -606,7 +606,7 @@ struct DeviceKernelParams {
 
     #ifdef SECOND_DIST
     ghostFacePtrs g;
-    gpuDirection g_macro
+    gpuDirection g_macro;
     #endif //SECOND_DIST
 
     #ifdef A_XX_DIST
@@ -636,7 +636,7 @@ struct DeviceKernelParams {
 
     #ifdef LAMBDA_DIST
     ghostFacePtrs lambda;
-    gpuDirection lambda_macro
+    gpuDirection lambda_macro;
     #endif //LAMBDA_DIST
 
     #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
