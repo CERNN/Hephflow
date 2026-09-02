@@ -28,7 +28,7 @@
 // Forward declarations for calcOmega* functions
 __host__ __device__ dfloat __forceinline__ calcOmegaPowerLaw(dfloat k_consistency, dfloat n_index, dfloat omegaOld, dfloat const auxStressMag);
 __host__ __device__ dfloat __forceinline__ calcOmegaBingham(dfloat omega_p, dfloat s_y, dfloat auxStressMag);
-__host__ __device__ dfloat __forceinline__ calcOmegaHerschelBulkley(dfloat k_consistency, dfloat n_index, dfloat s_y, dfloat omegaOld, dfloat const auxStressMag);
+__host__ __device__ dfloat __forceinline__ calcOmegaHerschelBulkley(dfloat k_consistency, dfloat n_index, dfloat s_y, dfloat omegaOld, dfloat const auxStressMag, dfloat rhoVar);
 __host__ __device__ dfloat __forceinline__ calcOmegaBiViscosity(dfloat omega_y, dfloat omega_p, dfloat s_y, dfloat visc_ratio, dfloat auxStressMag);
 __host__ __device__ dfloat __forceinline__ calcOmegaKeeTurcotee(dfloat s_y, dfloat t1, dfloat eta_0, dfloat omegaOld, dfloat auxStressMag, int step);
 #ifdef LAMBDA_DIST
@@ -46,7 +46,7 @@ __host__ __device__ dfloat __forceinline__ calcOmega(const fluidProps& fp, dfloa
         newOmegaVar = calcOmegaBingham(fp.u.bingham.omega_p, fp.u.bingham.s_y, auxStressMag);
         break;
     case FLUID_HERSCHEL_BULKLEY:
-        newOmegaVar = calcOmegaHerschelBulkley(fp.u.hb.k_consistency, fp.u.hb.n_index, fp.u.hb.s_y, omegaOld, auxStressMag);
+        newOmegaVar = calcOmegaHerschelBulkley(fp.u.hb.k_consistency, fp.u.hb.n_index, fp.u.hb.s_y, omegaOld, auxStressMag, rhoVar);
         break;
     case FLUID_BI_VISCOSITY: 
         newOmegaVar = calcOmegaBiViscosity(fp.u.bi.omega_y, fp.u.bi.omega_p, fp.u.bi.s_y, fp.u.bi.visc_ratio, auxStressMag);
@@ -103,69 +103,119 @@ dfloat __forceinline__ calcOmegaBingham(dfloat omega_p, dfloat s_y, dfloat auxSt
 __host__ __device__ 
 dfloat __forceinline__ calcOmegaHerschelBulkley(
     dfloat k_consistency, dfloat n_index, dfloat s_y, 
-    dfloat omegaOld, dfloat const auxStressMag)
+    dfloat omegaOld, dfloat const auxStressMag, dfloat rhoVar)
 {
-    const dfloat cs2   = 1.0_df / 3.0_df;
-    const dfloat rho0  = RHO_0;
+    const dfloat cs2 = 1.0_df / 3.0_df;
+    const dfloat OMEGA_MIN = 1.0e-7_df;
+#ifdef SINGLE_PRECISION
+    const dfloat OMEGA_MAX = 2.0_df - 1.0e-6_df;
+    const dfloat RES_TOL   = 2.0e-6_df;
+    const dfloat STEP_TOL  = 2.0e-6_df;
+#else
+    const dfloat OMEGA_MAX = 2.0_df - 1.0e-12_df;
+    const dfloat RES_TOL   = 1.0e-12_df;
+    const dfloat STEP_TOL  = 1.0e-12_df;
+#endif
+    const int MAX_ITER = 50;
 
-    if(auxStressMag * (1.0_df - omegaOld * 0.5_df)  < s_y)
+    // Invalid material data must not be allowed to inject NaNs into collision.
+    // Keep a finite previous value as a conservative device-side fallback;
+    // material parameters should additionally be validated when a case is set up.
+    dfloat omegaFallback = OMEGA_MIN;
+    if (isfinite(omegaOld))
+        omegaFallback = fmax(0.0_df, fmin(omegaOld, OMEGA_MAX));
+
+    if (!isfinite(k_consistency) || !isfinite(n_index) ||
+        !isfinite(s_y) || !isfinite(auxStressMag) || !isfinite(rhoVar) ||
+        k_consistency < 0.0_df || n_index <= 0.0_df || s_y < 0.0_df ||
+        auxStressMag < 0.0_df || rhoVar <= 0.0_df)
+        return omegaFallback;
+
+    // auxStressMag is |Pi_neq|.  The exact unyielded branch has omega = 0;
+    // a yielded root exists if and only if |Pi_neq| > yield stress.
+    if (auxStressMag <= s_y)
         return 0.0_df;
 
-    const dfloat rhoCs2_n = POW_FUNCTION(rho0 * cs2, n_index);
-    const dfloat Pi_n     = POW_FUNCTION(auxStressMag, n_index);
-
-    const dfloat A = (2.0_df * k_consistency / rhoCs2_n) * Pi_n;
     const dfloat B = auxStressMag;
     const dfloat C = 2.0_df * (auxStressMag - s_y);
 
-    // Guard: C must be > 0 after yield check, but clamp for safety
-    if (C <= 0.0_df) return 0.0_df;
+    // Computing the ratio before pow avoids separate overflow/underflow in
+    // |Pi_neq|^n and (rho*c_s^2)^n.
+    const dfloat stressRatio = auxStressMag / (rhoVar * cs2);
+    const dfloat A = 2.0_df * k_consistency * POW_FUNCTION(stressRatio, n_index);
 
-    // Initial guess: use Newtonian limit (n=1) as warm start
-    dfloat omega = (omegaOld > 1e-8_df && omegaOld < 2.0_df) 
-                    ? omegaOld 
-                    : C / (A + B);
+    if (!isfinite(A))
+        return OMEGA_MIN; // an overflowing consistency term implies omega -> 0
 
-    const dfloat OMEGA_MIN  = 1e-7_df;   // prevent omega -> 0 blowup when n < 1
-    const dfloat OMEGA_MAX  = 2.0_df;    // physical upper bound (stability)
-    const dfloat TOL        = 1e-5_df;
-    const dfloat MAX_ITER   = 20;        // more iterations for n < 1
+    // K = 0 leaves a linear equation and avoids evaluating an unnecessary
+    // omega^(n-1) in the Newton derivative.
+    if (A == 0.0_df)
+        return fmax(OMEGA_MIN, fmin(C / B, OMEGA_MAX));
 
-    for (int i = 0; i < MAX_ITER; i++)
+    // For physical parameters f(omega)=A*omega^n+B*omega-C is strictly
+    // increasing.  Maintain a sign-changing bracket and accept a Newton step
+    // only when it remains inside that bracket; otherwise use bisection.
+    dfloat omegaLow  = OMEGA_MIN;
+    dfloat omegaHigh = OMEGA_MAX;
+
+    dfloat lowPow = POW_FUNCTION(omegaLow, n_index);
+    const dfloat fLow = A * lowPow + B * omegaLow - C;
+    if (!isfinite(fLow) || fLow >= 0.0_df)
+        return OMEGA_MIN; // the mathematical root is below the configured floor
+
+    dfloat highPow = POW_FUNCTION(omegaHigh, n_index);
+    const dfloat fHigh = A * highPow + B * omegaHigh - C;
+    if (!isfinite(fHigh) || fHigh <= 0.0_df)
+        return OMEGA_MAX; // the root is at/above the admissible LBM limit
+
+    dfloat omega = (omegaOld > omegaLow && omegaOld < omegaHigh && isfinite(omegaOld))
+                 ? omegaOld
+                 : 0.5_df * (omegaLow + omegaHigh);
+
+    for (int i = 0; i < MAX_ITER; ++i)
     {
-        // Clamp omega before pow to avoid NaN from negative base or zero^negative
-        dfloat omegaSafe = fmaxf(omega, OMEGA_MIN);
+        const dfloat omn = POW_FUNCTION(omega, n_index);
+        const dfloat fx  = A * omn + B * omega - C;
+        const dfloat residualScale = fabs(A * omn) + fabs(B * omega) + fabs(C);
 
-        dfloat omn   = POW_FUNCTION(omegaSafe, n_index);           // omega^n
-        dfloat omn1  = POW_FUNCTION(omegaSafe, n_index - 1.0_df); // omega^(n-1)
+        if (isfinite(fx) && fabs(fx) <= RES_TOL * residualScale)
+            return omega;
 
-        dfloat fx    = A * omn + B * omegaSafe - C;
-        dfloat fx_dx = A * n_index * omn1 + B;
-
-        // Guard against degenerate derivative
-        if (fabs(fx_dx) < 1e-12_df) break;
-
-        dfloat delta = fx / fx_dx;
-
-        // Residual tolerance check BEFORE update
-        if (fabs(delta) < TOL * (1.0_df + fabs(omega))) break;
-
-        // --- Damped Newton step (critical for n < 1) ---
-        // Backtracking: halve step if it pushes omega out of bounds or increases |f|
-        dfloat omegaNew = omega - delta;
-        dfloat alpha    = 1.0_df;
-
-        for (int ls = 0; ls < 8; ls++)   // line search
-        {
-            omegaNew = omega - alpha * delta;
-            if (omegaNew >= OMEGA_MIN && omegaNew <= OMEGA_MAX) break;
-            alpha *= 0.5_df;
+        if (!isfinite(fx)) {
+            omega = 0.5_df * (omegaLow + omegaHigh);
+            continue;
         }
 
-        omega = fmaxf(fminf(omegaNew, OMEGA_MAX), OMEGA_MIN);
+        if (fx < 0.0_df) {
+            omegaLow = omega;
+        } else {
+            omegaHigh = omega;
+        }
+
+        const dfloat midpoint = 0.5_df * (omegaLow + omegaHigh);
+        const dfloat omegaScale = fmax(fabs(midpoint), OMEGA_MIN);
+        if ((omegaHigh - omegaLow) <= STEP_TOL * omegaScale)
+            return midpoint;
+
+        const dfloat omn1 = POW_FUNCTION(omega, n_index - 1.0_df);
+        const dfloat derivative = A * n_index * omn1 + B;
+        dfloat candidate = midpoint;
+
+        if (isfinite(derivative) && derivative > 0.0_df) {
+            const dfloat newtonCandidate = omega - fx / derivative;
+            const dfloat bracketQuarter = 0.25_df * (omegaHigh - omegaLow);
+            if (isfinite(newtonCandidate) &&
+                newtonCandidate > omegaLow + bracketQuarter &&
+                newtonCandidate < omegaHigh - bracketQuarter)
+                candidate = newtonCandidate;
+        }
+
+        omega = candidate;
     }
 
-    return omega;
+    // Bisection guarantees this is bounded even if the residual tolerance was
+    // not reached because of floating-point resolution.
+    return 0.5_df * (omegaLow + omegaHigh);
 }
 
 
