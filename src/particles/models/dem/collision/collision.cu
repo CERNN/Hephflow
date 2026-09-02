@@ -31,10 +31,10 @@ __device__ dfloat3 computeTangentialForce(
     f_tang.z = - stiffness * tang_disp.z - damping * G_ct.z* POW_FUNCTION(abs(tang_disp.z) ,0.25);
     dfloat mag = vector_length(f_tang);
     if (mag > friction_coef * fabsf(f_n)) {
-        // CRITICAL: When slipping occurs, RESET displacement to zero, not subtract G_ct
-        // This prevents the accumulated elastic deformation from being applied
-        tang_disp = dfloat3{0.0, 0.0, 0.0};
-        updateTangentialDisplacement(pc_i->getCollision(), tang_index, tang_disp, step);
+        // Slipping: actually zero the stored elastic spring (previous call added
+        // a zero delta to the existing value, which left the old, possibly large,
+        // displacement in storage - the spring never actually released).
+        tang_disp = resetTangentialDisplacement(pc_i->getCollision(), tang_index, step);
         // Apply Coulomb (kinetic) friction
         f_tang = -friction_coef * f_n * t;
     }
@@ -110,10 +110,23 @@ int startCollision(CollisionData &collisionData, int partnerID, bool isWall, con
 }
 
 __device__ 
-dfloat3 updateTangentialDisplacement(CollisionData &collisionData, int index, const dfloat3 &displacement, int currentTimeStep) {
-    collisionData.setTangentialDisplacement(index, (collisionData.getTangentialDisplacement(index) + displacement));
+dfloat3 updateTangentialDisplacement(CollisionData &collisionData, int index, const dfloat3 &displacement, const dfloat3 &n, int currentTimeStep) {
+    dfloat3 new_disp = collisionData.getTangentialDisplacement(index) + displacement;
+    // Re-project onto the current tangent plane. The contact normal migrates
+    // step to step (especially for ellipsoids), so a pure running sum slowly
+    // acquires a spurious normal-direction component that leaks energy into
+    // the normal force. Strip it back out every update.
+    new_disp = new_disp - dot_product(new_disp, n) * n;
+    collisionData.setTangentialDisplacement(index, new_disp);
     collisionData.setLastCollisionStep(index, currentTimeStep);
-    return collisionData.getTangentialDisplacement(index);
+    return new_disp;
+}
+
+__device__
+dfloat3 resetTangentialDisplacement(CollisionData &collisionData, int index, int currentTimeStep) {
+    collisionData.setTangentialDisplacement(index, dfloat3{0.0, 0.0, 0.0});
+    collisionData.setLastCollisionStep(index, currentTimeStep);
+    return dfloat3{0.0, 0.0, 0.0};
 }
 
 __device__ 
@@ -136,13 +149,14 @@ void endCollision(CollisionData &collisionData, int index, int currentTimeStep) 
 __device__ 
 dfloat3 getOrUpdateTangentialDisplacement(
     ParticleCenter* pc_i,
-    int identifier, // wall index or partner ID
-    bool isWall, //true if wall, false if particle-particle collision
+    int identifier,          // wall index or partner ID
+    bool isWall,             // true if wall, false if particle-particle collision
     int step,
     const dfloat3& G_ct,
     const dfloat3& G_cn,
     int& tang_index_out,
-    const dfloat3& wallNormal // only used for wall
+    const dfloat3& wallNormal, // only used for wall index calc / hack encoding
+    const dfloat3& n           //actual contact normal, used for tangent-plane projection
 ) {
     dfloat3 tang_disp;
     int tang_index = -1;
@@ -168,8 +182,8 @@ dfloat3 getOrUpdateTangentialDisplacement(
             tang_index = startCollision(pc_i->getCollision(), identifier, isWall, wallNormal, step);
             tang_disp = dfloat3{0.0, 0.0, 0.0};
         } else {
-            // ONGOING COLLISION: Accumulate tangential displacement
-            tang_disp = updateTangentialDisplacement(pc_i->getCollision(), tang_index, G_ct, step);
+            // ONGOING COLLISION: Accumulate tangential displacement (with projection)
+            tang_disp = updateTangentialDisplacement(pc_i->getCollision(), tang_index, G_ct, n, step);
         }
     }
     //return the index by address
@@ -224,7 +238,7 @@ void sphereWallCollision(const CollisionContext& ctx, ParticleWallForces *d_pwFo
 
     //retrive and update tangential displacement
     int tang_index = calculateWallIndex(n); //wall can be directly computed
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, dot_product(G,n), tang_index, n);
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, dot_product(G,n), tang_index, n, n);
 
     // Compute tangential force
     dfloat3 f_tang = computeTangentialForce(
@@ -310,7 +324,7 @@ void capsuleWallCollisionCap(const CollisionContext& ctx) {
     // Tangential displacement tracking
     //retrive and update tangential displacement
     int tang_index = calculateWallIndex(n); //wall can be directly computed
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G_cn, tang_index, n);
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G_cn, tang_index, n, n);
 
 
     // Compute tangential force
@@ -343,7 +357,7 @@ void ellipsoidWallCollision(const CollisionContext& ctx, dfloat cr[1]) {
     const dfloat3 v_i = pc_i->getVel(); //VELOCITY OF THE CENTER OF MASS
     const dfloat3 w_i = pc_i->getW();
     // Wall info
-    dfloat3 wall_speed = dfloat3(0,0,0); // relative velocity vector
+    dfloat3 wall_speed = wallData.velocity;
     dfloat3 n = wallData.normal * -1.0f; //invert collision direction since is from sphere to wall
 
     //vector center-> contact 
@@ -369,7 +383,7 @@ void ellipsoidWallCollision(const CollisionContext& ctx, dfloat cr[1]) {
 
     //retrive and update tangential displacement
     int tang_index = calculateWallIndex(n); //wall can be directly computed
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G_cn, tang_index, n);
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G_cn, tang_index, n, n);
 
     // Compute tangential force
     dfloat3 f_tang = computeTangentialForce(
@@ -388,76 +402,70 @@ void ellipsoidWallCollision(const CollisionContext& ctx, dfloat cr[1]) {
 }
 
 __device__
-dfloat ellipsoidWallCollisionDistance( ParticleCenter* pc_i, Wall wallData,dfloat3 contactPoint2[1], dfloat radius[1], unsigned int step){
-    //contruct rotation matrix
-    dfloat R[3][3];
-    dfloat dist, error;
-    dfloat3 new_sphere_center1, new_sphere_center2;
-    dfloat3 closest_point1, closest_point2;
+EllipsoidWallContactResult ellipsoidWallCollisionDistance(
+    ParticleCenter* pc_i,
+    Wall wallData,
+    unsigned int step
+) {
+    (void)step;
+    EllipsoidWallContactResult result = {};
+    result.status = ELLIPSOID_INVALID_GEOMETRY;
+    result.signedDistance = 1.0e37f;
 
-    dfloat a = vector_length(pc_i->getSemiAxis1()-pc_i->getPos());
-    dfloat b = vector_length(pc_i->getSemiAxis2()-pc_i->getPos());
-    dfloat c = vector_length(pc_i->getSemiAxis3()-pc_i->getPos());
+    const dfloat3 center = pc_i->getPos();
+    const dfloat3 axisVector1 = pc_i->getSemiAxis1()-center;
+    const dfloat3 axisVector2 = pc_i->getSemiAxis2()-center;
+    const dfloat3 axisVector3 = pc_i->getSemiAxis3()-center;
+    const dfloat a = vector_length(axisVector1);
+    const dfloat b = vector_length(axisVector2);
+    const dfloat c = vector_length(axisVector3);
+    const dfloat normalLength = vector_length(wallData.normal);
+    if (!(a>1.0e-8f && b>1.0e-8f && c>1.0e-8f && normalLength>1.0e-8f)) return result;
 
-    rotationMatrixFromVectors((pc_i->getSemiAxis1() - pc_i->getPos())/a,(pc_i->getSemiAxis2() - pc_i->getPos())/b,(pc_i->getSemiAxis3() - pc_i->getPos())/c,R);
+    const dfloat3 u1=axisVector1/a;
+    const dfloat3 u2=axisVector2/b;
+    const dfloat3 u3=axisVector3/c;
+    if (fabsf(dot_product(u1,u2))>1.0e-3f ||
+        fabsf(dot_product(u1,u3))>1.0e-3f ||
+        fabsf(dot_product(u2,u3))>1.0e-3f) return result;
 
-
-    //projection of center into wall
-    dfloat3 proj = planeProjection(pc_i->getPos(),wallData.normal,wallData.distance);
-    dfloat3 dir = pc_i->getPos() - proj;
-    dfloat3 t = ellipsoid_intersection(pc_i,R,proj,dir,dfloat3(0,0,0));
-    dfloat3 inter1 = proj + t.x*dir;
-    dfloat3 inter2 = proj + t.y*dir;
-
-
-    if (dot_product(inter1,wallData.normal) < dot_product(inter2,wallData.normal)){
-        closest_point2 = inter1;
-    }else{
-        closest_point2 = inter2;
-    }    
-    
-    dfloat r = 3; //TODO: FIND A BETTER WAY TI DETERMINE IT
-
-    //compute normal vector at intersection
-    dfloat3 normal2 = ellipsoid_normal(pc_i,R,closest_point2,radius,dfloat3(0,0,0));
-
-    //Compute the centers of the spheres in the opposite direction of the normals
-    dfloat3 sphere_center2 = closest_point2 - r * normal2;
-
-    //Iteration loop
-    dfloat max_iters = 20;
-    dfloat tolerance = 1e-3;
-
-    for(int i = 0; i< max_iters;i++){
-        proj = planeProjection(sphere_center2,wallData.normal,wallData.distance);
-        dir = sphere_center2 - proj;
-        t = ellipsoid_intersection(pc_i,R,proj,dir,dfloat3(0,0,0));
-
-        inter1 = proj + t.x*dir;
-        inter2 = proj + t.y*dir;
-
-        if (dot_product(inter1,wallData.normal) < dot_product(inter2,wallData.normal)){
-            closest_point2 = inter1;
-        }else{
-            closest_point2 = inter2;
-        }    
-
-        normal2 = ellipsoid_normal(pc_i,R,closest_point2,radius,dfloat3(0,0,0));        
-        new_sphere_center2 = closest_point2 - r * normal2;
-
-        error = vector_length(new_sphere_center2 - sphere_center2);
-        if (error < tolerance ){
-            break;      
-        }else{
-            //update values
-            sphere_center2 = new_sphere_center2;
-        }
+    const dfloat3 n=wallData.normal/normalLength; // inward normal
+    const dfloat n1=dot_product(n,u1);
+    const dfloat n2=dot_product(n,u2);
+    const dfloat n3=dot_product(n,u3);
+    const dfloat supportDenom=sqrtf(a*a*n1*n1+b*b*n2*n2+c*c*n3*n3);
+    if (!(supportDenom>1.0e-8f) || !isfinite(supportDenom)) {
+        result.status=ELLIPSOID_NUMERICAL_FAILURE;
+        return result;
     }
 
-    contactPoint2[0] = closest_point2;
-    dist = vector_length(sphere_center2 - proj) - r;
-    return dist;
+    // Exact ellipsoid support point in the direction opposite the inward wall normal.
+    const dfloat3 supportNumerator=(a*a*n1)*u1+(b*b*n2)*u2+(c*c*n3)*u3;
+    const dfloat3 pointEllipsoid=center-supportNumerator/supportDenom;
 
+    // Existing Wall stores the positive coordinate of an axis-aligned plane.
+    // Construct a point on that plane, then use the normal form consistently.
+    const dfloat3 pointOnPlane=wallData.distance*dfloat3(fabsf(n.x),fabsf(n.y),fabsf(n.z));
+    const dfloat planeConstant=dot_product(n,pointOnPlane);
+    const dfloat signedDistance=dot_product(n,pointEllipsoid)-planeConstant;
+    const dfloat3 pointWall=pointEllipsoid-signedDistance*n;
+
+    dfloat R[3][3];
+    rotationMatrixFromVectors(u1,u2,u3,R);
+    dfloat curvature[1];
+    ellipsoid_normal(pc_i,R,pointEllipsoid,curvature,dfloat3(0,0,0));
+    if (!isfinite(signedDistance) || !isfinite(curvature[0]) || !(curvature[0]>0.0f)) {
+        result.status=ELLIPSOID_NUMERICAL_FAILURE;
+        return result;
+    }
+
+    result.status=signedDistance<0.0f ? ELLIPSOID_INTERSECTING : ELLIPSOID_SEPARATED;
+    result.signedDistance=signedDistance;
+    result.pointEllipsoid=pointEllipsoid;
+    result.pointWall=pointWall;
+    result.wallNormal=n;
+    result.curvatureRadius=curvature[0];
+    return result;
 }
 
 // ****************************************************************************
@@ -506,7 +514,7 @@ void sphereSphereCollision(const CollisionContext& ctx){
     dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0}; //tangential velocity vector
 
     int tang_index = -1;
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, G, tang_index, dfloat3(0, 0, 0));
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, G, tang_index, dfloat3(0, 0, 0), n);
 
     // Compute tangential force
     dfloat3 f_tang = computeTangentialForce(
@@ -571,7 +579,7 @@ void capsuleCapsuleCollision(const CollisionContext& ctx, dfloat3 closestOnA[1],
     dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0};
 
     int tang_index = -1;
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, dot_product(G,n), tang_index, dfloat3(0, 0, 0));
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, dot_product(G,n), tang_index, dfloat3(0, 0, 0), n);
 
     // Compute tangential force
     dfloat3 f_tang = computeTangentialForce(
@@ -631,7 +639,6 @@ void ellipsoidEllipsoidCollision(const CollisionContext& ctx,dfloat3 closestOnA[
     const dfloat DAMPING_NORMAL = SPHERE_SPHERE_DAMPING_CONST * sqrt(effective_mass * STIFFNESS_NORMAL);
     const dfloat DAMPING_TANGENTIAL = SPHERE_SPHERE_DAMPING_CONST * sqrt(effective_mass * STIFFNESS_TANGENTIAL);
 
-
     // Normal force
     dfloat3 f_normal = computeNormalForce(n, G, displacement, STIFFNESS_NORMAL, DAMPING_NORMAL);
     dfloat f_n = vector_length(f_normal);
@@ -641,7 +648,7 @@ void ellipsoidEllipsoidCollision(const CollisionContext& ctx,dfloat3 closestOnA[
     dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0};
 
     int tang_index = -1;
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, G_cn, tang_index, dfloat3(0, 0, 0));
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, G_cn, tang_index, dfloat3(0, 0, 0), n);
 
     dfloat3 f_tang = computeTangentialForce(
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
@@ -650,12 +657,12 @@ void ellipsoidEllipsoidCollision(const CollisionContext& ctx,dfloat3 closestOnA[
 
     // Final force results
     dfloat3 f_dirs = f_normal + f_tang;
-    dfloat3 m_dirs_i = cross_product(rri, f_dirs);
-    dfloat3 m_dirs_j = cross_product(rrj, -f_dirs);
+    dfloat3 m_dirs_i = cross_product(rri, -f_dirs);
+    dfloat3 m_dirs_j = cross_product(rrj,  f_dirs);
 
     //Save data in the particle information
-    accumulateForceAndTorque(pc_i, f_dirs, m_dirs_i);
-    accumulateForceAndTorque(pc_j, -f_dirs, m_dirs_j);
+    accumulateForceAndTorque(pc_i, -f_dirs, m_dirs_i);
+    accumulateForceAndTorque(pc_j,  f_dirs, m_dirs_j);
 }
 
 
@@ -717,8 +724,7 @@ void ellipsoidCylinderCollision(const CollisionContext& ctx, dfloat3 closestOnB[
     }
 
     //hack: we set n = dfloat3(-(7+NUM_PARTICLES), 0, 0)), which should return a tang_index equal to NUM_PARTICLES+10
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G_cn, tang_index, dfloat3(-(7+NUM_PARTICLES), 0, 0));
-
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G_cn, tang_index, dfloat3(-(7+NUM_PARTICLES), 0, 0), n);
 
     dfloat3 f_tang = computeTangentialForce(
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
@@ -859,139 +865,248 @@ dfloat3 ellipsoid_normal(ParticleCenter* pc_i, dfloat R[3][3], dfloat3 point, df
     return normal;
 }
 
+namespace {
+
+struct EllipsoidLineRoots {
+    dfloat enter;
+    dfloat exit;
+    bool valid;
+};
+
+__device__ EllipsoidLineRoots orderedEllipsoidRoots(
+    ParticleCenter* particle,
+    dfloat R[3][3],
+    const dfloat3& origin,
+    const dfloat3& direction,
+    const dfloat3& translation
+) {
+    EllipsoidLineRoots result = {0.0f, 0.0f, false};
+    const dfloat3 pos = particle->getPos();
+    const dfloat3 center = pos + translation;
+    const dfloat a = vector_length(particle->getSemiAxis1() - pos);
+    const dfloat b = vector_length(particle->getSemiAxis2() - pos);
+    const dfloat c = vector_length(particle->getSemiAxis3() - pos);
+    if (!(a > 1.0e-8f && b > 1.0e-8f && c > 1.0e-8f)) return result;
+
+    const dfloat3 p = origin - center;
+    dfloat3 pl, dl;
+    pl.x = R[0][0]*p.x + R[0][1]*p.y + R[0][2]*p.z;
+    pl.y = R[1][0]*p.x + R[1][1]*p.y + R[1][2]*p.z;
+    pl.z = R[2][0]*p.x + R[2][1]*p.y + R[2][2]*p.z;
+    dl.x = R[0][0]*direction.x + R[0][1]*direction.y + R[0][2]*direction.z;
+    dl.y = R[1][0]*direction.x + R[1][1]*direction.y + R[1][2]*direction.z;
+    dl.z = R[2][0]*direction.x + R[2][1]*direction.y + R[2][2]*direction.z;
+
+    const dfloat ia2 = 1.0f/(a*a), ib2 = 1.0f/(b*b), ic2 = 1.0f/(c*c);
+    const dfloat qa = dl.x*dl.x*ia2 + dl.y*dl.y*ib2 + dl.z*dl.z*ic2;
+    const dfloat qb = 2.0f*(pl.x*dl.x*ia2 + pl.y*dl.y*ib2 + pl.z*dl.z*ic2);
+    const dfloat qc = pl.x*pl.x*ia2 + pl.y*pl.y*ib2 + pl.z*pl.z*ic2 - 1.0f;
+    if (!isfinite(qa) || !isfinite(qb) || !isfinite(qc) || qa <= 1.0e-20f) return result;
+
+    dfloat disc = qb*qb - 4.0f*qa*qc;
+    const dfloat discTolerance = 1.0e-6f*(qb*qb + fabsf(4.0f*qa*qc) + 1.0f);
+    if (!isfinite(disc) || disc < -discTolerance) return result;
+    if (disc < 0.0f) disc = 0.0f;
+    const dfloat root = sqrtf(disc);
+    const dfloat invDenom = 0.5f/qa;
+    const dfloat r0 = (-qb-root)*invDenom;
+    const dfloat r1 = (-qb+root)*invDenom;
+    result.enter = r0 < r1 ? r0 : r1;
+    result.exit = r0 < r1 ? r1 : r0;
+    result.valid = isfinite(result.enter) && isfinite(result.exit);
+    return result;
+}
+
+__device__ dfloat3 ellipsoidGradient(
+    ParticleCenter* particle,
+    dfloat R[3][3],
+    const dfloat3& point,
+    const dfloat3& translation
+) {
+    const dfloat3 pos = particle->getPos();
+    const dfloat a = vector_length(particle->getSemiAxis1() - pos);
+    const dfloat b = vector_length(particle->getSemiAxis2() - pos);
+    const dfloat c = vector_length(particle->getSemiAxis3() - pos);
+    const dfloat3 d = point - (pos + translation);
+    dfloat3 local;
+    local.x = R[0][0]*d.x + R[0][1]*d.y + R[0][2]*d.z;
+    local.y = R[1][0]*d.x + R[1][1]*d.y + R[1][2]*d.z;
+    local.z = R[2][0]*d.x + R[2][1]*d.y + R[2][2]*d.z;
+    const dfloat3 gl = dfloat3(2.0f*local.x/(a*a), 2.0f*local.y/(b*b), 2.0f*local.z/(c*c));
+    return dfloat3(
+        R[0][0]*gl.x + R[1][0]*gl.y + R[2][0]*gl.z,
+        R[0][1]*gl.x + R[1][1]*gl.y + R[2][1]*gl.z,
+        R[0][2]*gl.x + R[1][2]*gl.y + R[2][2]*gl.z
+    );
+}
+
+__device__ dfloat ellipsoidLevel(
+    ParticleCenter* particle,
+    dfloat R[3][3],
+    const dfloat3& point,
+    const dfloat3& translation
+) {
+    const dfloat3 pos=particle->getPos();
+    const dfloat a=vector_length(particle->getSemiAxis1()-pos);
+    const dfloat b=vector_length(particle->getSemiAxis2()-pos);
+    const dfloat c=vector_length(particle->getSemiAxis3()-pos);
+    const dfloat3 d=point-(pos+translation);
+    const dfloat x=R[0][0]*d.x+R[0][1]*d.y+R[0][2]*d.z;
+    const dfloat y=R[1][0]*d.x+R[1][1]*d.y+R[1][2]*d.z;
+    const dfloat z=R[2][0]*d.x+R[2][1]*d.y+R[2][2]*d.z;
+    return x*x/(a*a)+y*y/(b*b)+z*z/(c*c);
+}
+
+__device__ bool aligned(const dfloat3& a, const dfloat3& b) {
+    const dfloat aa = dot_product(a,a);
+    const dfloat bb = dot_product(b,b);
+    if (aa <= 1.0e-20f || bb <= 1.0e-20f) return false;
+    return dot_product(a,b)/sqrtf(aa*bb) >= 0.9999995f;
+}
+
+__device__ bool makeEllipsoidFrame(
+    ParticleCenter* particle,
+    dfloat R[3][3],
+    dfloat& a,
+    dfloat& b,
+    dfloat& c
+) {
+    const dfloat3 pos = particle->getPos();
+    const dfloat3 va = particle->getSemiAxis1()-pos;
+    const dfloat3 vb = particle->getSemiAxis2()-pos;
+    const dfloat3 vc = particle->getSemiAxis3()-pos;
+    a = vector_length(va); b = vector_length(vb); c = vector_length(vc);
+    if (!(a > 1.0e-8f && b > 1.0e-8f && c > 1.0e-8f)) return false;
+    const dfloat3 ua=va/a, ub=vb/b, uc=vc/c;
+    if (fabsf(dot_product(ua,ub)) > 1.0e-3f ||
+        fabsf(dot_product(ua,uc)) > 1.0e-3f ||
+        fabsf(dot_product(ub,uc)) > 1.0e-3f) return false;
+    rotationMatrixFromVectors(ua,ub,uc,R);
+    return true;
+}
+
+} // namespace
+
 __device__
-dfloat ellipsoidEllipsoidCollisionDistance(ParticleCenter* pc_i, ParticleCenter* pc_j, dfloat3 contactPoint1[1], dfloat3 contactPoint2[1], dfloat cr1[1], dfloat cr2[1], dfloat3 translation, unsigned int step) {
-    dfloat R1[3][3];
-    dfloat R2[3][3];
-    dfloat3 sphere_center1, sphere_center2;
-    dfloat3 closest_point1, closest_point2;
-    dfloat3 new_sphere_center1, new_sphere_center2;
+EllipsoidContactResult ellipsoidEllipsoidCollisionDistance(
+    ParticleCenter* pc_i,
+    ParticleCenter* pc_j,
+    dfloat3 translation,
+    unsigned int step
+) {
+    (void)step;
+    EllipsoidContactResult out = {};
+    out.status = ELLIPSOID_INVALID_GEOMETRY;
+    out.signedDisplacement = 1.0e37f;
 
-    dfloat3 pos_i = pc_i->getPos();
-    dfloat3 pos_j = pc_j->getPos();
-    dfloat3 center_j = pos_j + translation;
+    dfloat R1[3][3], R2[3][3];
+    dfloat a1,b1,c1,a2,b2,c2;
+    if (!makeEllipsoidFrame(pc_i,R1,a1,b1,c1) || !makeEllipsoidFrame(pc_j,R2,a2,b2,c2)) return out;
 
-    // Precompute semi-axis vectors and lengths
-    dfloat3 vec_a1 = pc_i->getSemiAxis1() - pos_i;
-    dfloat3 vec_b1 = pc_i->getSemiAxis2() - pos_i;
-    dfloat3 vec_c1 = pc_i->getSemiAxis3() - pos_i;
-    dfloat a1 = vector_length(vec_a1);
-    dfloat b1 = vector_length(vec_b1);
-    dfloat c1 = vector_length(vec_c1);
+    dfloat3 center1 = pc_i->getPos();
+    dfloat3 center2 = pc_j->getPos()+translation;
+    dfloat3 interior1=center1, interior2=center2;
+    dfloat3 point1=center1, point2=center2;
+    const int maxIterations=40;
+    const dfloat rootTolerance=1.0e-6f;
 
-    dfloat3 vec_a2 = pc_j->getSemiAxis1() - pos_j;
-    dfloat3 vec_b2 = pc_j->getSemiAxis2() - pos_j;
-    dfloat3 vec_c2 = pc_j->getSemiAxis3() - pos_j;
-    dfloat a2 = vector_length(vec_a2);
-    dfloat b2 = vector_length(vec_b2);
-    dfloat c2 = vector_length(vec_c2);
+    for (int iteration=0; iteration<maxIterations; ++iteration) {
+        const dfloat3 direction=interior2-interior1;
+        if (dot_product(direction,direction) <= 1.0e-20f) {
+            out.status=ELLIPSOID_PROXY_INVALID;
+            out.iterations=iteration;
+            return out;
+        }
+        const EllipsoidLineRoots roots1=orderedEllipsoidRoots(pc_i,R1,interior1,direction,dfloat3(0,0,0));
+        const EllipsoidLineRoots roots2=orderedEllipsoidRoots(pc_j,R2,interior1,direction,translation);
+        if (!roots1.valid || !roots2.valid) {
+            out.status=ELLIPSOID_NUMERICAL_FAILURE;
+            out.iterations=iteration;
+            return out;
+        }
+        point1=interior1+roots1.exit*direction;
+        point2=interior1+roots2.enter*direction;
 
-    // Compute unit vectors for rotation matrices
-    dfloat3 unit_a1 = vec_a1 / a1;
-    dfloat3 unit_b1 = vec_b1 / b1;
-    dfloat3 unit_c1 = vec_c1 / c1;
+        if (roots2.enter <= roots1.exit+rootTolerance) {
+            // Intersection is established by interval overlap. The following loop only
+            // computes the legacy, length-valued fixed-sphere penetration proxy.
+            const dfloat radius=(dfloat)ELLIPSOID_PENETRATION_SPHERE_RADIUS;
+            if (!(radius > 0.0f) || !isfinite(radius)) {
+                out.status=ELLIPSOID_PROXY_INVALID;
+                return out;
+            }
+            for (int overlapIteration=0; overlapIteration<maxIterations; ++overlapIteration) {
+                dfloat dummy1[1],dummy2[1];
+                const dfloat3 normal1=ellipsoid_normal(pc_i,R1,point1,dummy1,dfloat3(0,0,0));
+                const dfloat3 normal2=ellipsoid_normal(pc_j,R2,point2,dummy2,translation);
+                const dfloat3 overlap12=point1-point2;
+                const dfloat3 overlap21=point2-point1;
+                const dfloat3 sphere1=point1-radius*normal1;
+                const dfloat3 sphere2=point2-radius*normal2;
 
-    dfloat3 unit_a2 = vec_a2 / a2;
-    dfloat3 unit_b2 = vec_b2 / b2;
-    dfloat3 unit_c2 = vec_c2 / c2;
+                if (aligned(overlap12,normal1) && aligned(overlap21,normal2)) {
+                    const dfloat proxy=vector_length(sphere2-sphere1)-2.0f*radius;
+                    out.pointA=point1;
+                    out.pointBImage=point2;
+                    out.normalBToA=-normal1;
+                    out.curvatureRadiusA=dummy1[0];
+                    out.curvatureRadiusB=dummy2[0];
+                    out.signedDisplacement=proxy;
+                    out.iterations=iteration+overlapIteration+1;
+                    const bool centersInside=ellipsoidLevel(pc_i,R1,sphere1,dfloat3(0,0,0)) < 1.0f &&
+                                             ellipsoidLevel(pc_j,R2,sphere2,translation) < 1.0f;
+                    // Once penetration exceeds 2r the absolute center distance folds
+                    // over and no longer represents the intended signed overlap.
+                    const bool shallowBranch=dot_product(sphere2-sphere1,normal1) > 0.0f;
+                    out.status=(isfinite(proxy) && proxy < 0.0f && centersInside && shallowBranch)
+                        ? ELLIPSOID_INTERSECTING : ELLIPSOID_PROXY_INVALID;
+                    return out;
+                }
 
-    // Obtain rotation matrices
-    rotationMatrixFromVectors(unit_a1, unit_b1, unit_c1, R1);
-    rotationMatrixFromVectors(unit_a2, unit_b2, unit_c2, R2);
-
-    dfloat3 dir = center_j - pos_i;
-
-    dfloat3 t1 = ellipsoid_intersection(pc_i, R1, pos_i, dir, dfloat3(0.0f, 0.0f, 0.0f));
-    dfloat3 t2 = ellipsoid_intersection(pc_j, R2, pos_i, dir, translation);
-
-    computeContactPoints(pos_i, dir, t1, t2, &closest_point1, &closest_point2);
-
-    dfloat r = 3.0;  //TODO FIND A BETTER WAY TO GET THE BEST RADIUS FOR THIS DETECTION
-
-
-    dfloat3 normal1 = ellipsoid_normal(pc_i, R1, closest_point1, cr1, dfloat3(0.0f, 0.0f, 0.0f));
-    dfloat3 normal2 = ellipsoid_normal(pc_j, R2, closest_point2, cr2, translation);
-
-        
-
-    sphere_center1 = closest_point1 - r * normal1;
-    sphere_center2 = closest_point2 - r * normal2;
-
-    // Iteration loop with squared tolerance
-    const int max_iters = 20;
-    const dfloat tolerance_sq = 1e-6f;
-    for (int i = 0; i < max_iters; ++i) {
-        dir = sphere_center2 - sphere_center1;
-
-        t1 = ellipsoid_intersection(pc_i, R1, sphere_center1, dir, dfloat3(0.0f, 0.0f, 0.0f));
-        t2 = ellipsoid_intersection(pc_j, R2, sphere_center1, dir, translation);
-
-        computeContactPoints(sphere_center1, dir, t1, t2, &closest_point1, &closest_point2);
-
-        normal1 = ellipsoid_normal(pc_i, R1, closest_point1, cr1, dfloat3(0.0f, 0.0f, 0.0f));
-        normal2 = ellipsoid_normal(pc_j, R2, closest_point2, cr2, translation);
-
-        new_sphere_center1 = closest_point1 - r * normal1;
-        new_sphere_center2 = closest_point2 - r * normal2;
-
-        dfloat3 diff1 = new_sphere_center1 - sphere_center1;
-        dfloat3 diff2 = new_sphere_center2 - sphere_center2;
-        dfloat error_sq = (diff1.x * diff1.x + diff1.y * diff1.y + diff1.z * diff1.z) +
-                          (diff2.x * diff2.x + diff2.y * diff2.y + diff2.z * diff2.z);
-
-        if (error_sq < tolerance_sq) {
-            break;
+                const dfloat3 proxyDirection=sphere2-sphere1;
+                if (dot_product(proxyDirection,proxyDirection) <= 1.0e-20f) {
+                    out.status=ELLIPSOID_PROXY_INVALID;
+                    return out;
+                }
+                const EllipsoidLineRoots overlapRoots1=orderedEllipsoidRoots(pc_i,R1,sphere1,proxyDirection,dfloat3(0,0,0));
+                const EllipsoidLineRoots overlapRoots2=orderedEllipsoidRoots(pc_j,R2,sphere1,proxyDirection,translation);
+                if (!overlapRoots1.valid || !overlapRoots2.valid) {
+                    out.status=ELLIPSOID_NUMERICAL_FAILURE;
+                    return out;
+                }
+                point1=sphere1+overlapRoots1.exit*proxyDirection;
+                point2=sphere1+overlapRoots2.enter*proxyDirection;
+            }
+            out.status=ELLIPSOID_MAX_ITERATIONS;
+            return out;
         }
 
-        sphere_center1 = new_sphere_center1;
-        sphere_center2 = new_sphere_center2;
+        const dfloat3 gradient1=ellipsoidGradient(pc_i,R1,point1,dfloat3(0,0,0));
+        const dfloat3 gradient2=ellipsoidGradient(pc_j,R2,point2,translation);
+        if (aligned(point2-point1,gradient1) && aligned(point1-point2,gradient2)) {
+            dfloat curvature1[1],curvature2[1];
+            const dfloat3 normal1=ellipsoid_normal(pc_i,R1,point1,curvature1,dfloat3(0,0,0));
+            ellipsoid_normal(pc_j,R2,point2,curvature2,translation);
+            out.status=ELLIPSOID_SEPARATED;
+            out.signedDisplacement=vector_length(point2-point1);
+            out.pointA=point1;
+            out.pointBImage=point2;
+            out.normalBToA=-normal1;
+            out.curvatureRadiusA=curvature1[0];
+            out.curvatureRadiusB=curvature2[0];
+            out.iterations=iteration+1;
+            return out;
+        }
+
+        dfloat minAxis1=a1; if (b1<minAxis1) minAxis1=b1; if (c1<minAxis1) minAxis1=c1;
+        dfloat minAxis2=a2; if (b2<minAxis2) minAxis2=b2; if (c2<minAxis2) minAxis2=c2;
+        const dfloat gamma1=0.5f*minAxis1*minAxis1;
+        const dfloat gamma2=0.5f*minAxis2*minAxis2;
+        interior1=point1-gamma1*gradient1;
+        interior2=point2-gamma2*gradient2;
     }
-
-    contactPoint1[0] = closest_point1;
-    contactPoint2[0] = closest_point2;
-
-    dfloat3 center_diff = sphere_center2 - sphere_center1;
-    return vector_length(center_diff) - 2.0f * r;
+    out.status=ELLIPSOID_MAX_ITERATIONS;
+    out.iterations=maxIterations;
+    return out;
 }
-__device__
-void computeContactPoints(dfloat3 pos_i, dfloat3 dir, dfloat3 t1, dfloat3 t2, dfloat3 contactPoint1[1], dfloat3 contactPoint2[1]) {
-    // Calculate the squared distances between all four pairs of t values.
-    // The vector_length(dir) is a constant scaling factor, so we can
-    // omit it for the comparison and re-introduce it if needed later.
-    dfloat dist_sq00 = (t1.x - t2.x) * (t1.x - t2.x);
-    dfloat dist_sq01 = (t1.x - t2.y) * (t1.x - t2.y);
-    dfloat dist_sq10 = (t1.y - t2.x) * (t1.y - t2.x);
-    dfloat dist_sq11 = (t1.y - t2.y) * (t1.y - t2.y);
-
-    // Find the minimum squared distance and its indices
-    dfloat min_dist_sq = dist_sq00;
-    int i_min = 0;
-    int j_min = 0;
-
-    if (dist_sq01 < min_dist_sq) {
-        min_dist_sq = dist_sq01;
-        i_min = 0;
-        j_min = 1;
-    }
-    if (dist_sq10 < min_dist_sq) {
-        min_dist_sq = dist_sq10;
-        i_min = 1;
-        j_min = 0;
-    }
-    if (dist_sq11 < min_dist_sq) {
-        min_dist_sq = dist_sq11;
-        i_min = 1;
-        j_min = 1;
-    }
-    
-    // Select the correct t values based on the minimum distance indices.
-    dfloat ta = (i_min == 0) ? t1.x : t1.y;
-    dfloat tb = (j_min == 0) ? t2.x : t2.y;
-
-    // Compute the contact points just once.
-    contactPoint1[0] = pos_i + ta * dir;
-    contactPoint2[0] = pos_i + tb * dir;
-}
-
-
 #endif //PARTICLE_MODEL

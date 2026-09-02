@@ -118,24 +118,24 @@ __device__ dfloat3 getDiffPeriodic(const dfloat3& p1, const dfloat3& p2) {
     dfloat dx, dy, dz;
     // X direction
     #ifdef BC_X_PERIODIC
-    dx = abs(p1.x - p2.x) > ((NX-1) / 2.0_df) ?
-        (p1.x < p2.x ? (p1.x + (NX-1) - p2.x) : (p1.x - (NX-1) - p2.x))
+    dx = abs(p1.x - p2.x) > (NX / 2.0_df) ?
+        (p1.x < p2.x ? (p1.x + NX - p2.x) : (p1.x - NX - p2.x))
         : p1.x - p2.x;
     #else
     dx = p1.x - p2.x;
     #endif
     // Y direction
     #ifdef BC_Y_PERIODIC
-    dy = abs(p1.y - p2.y) > ((NY-1) / 2.0_df) ?
-        (p1.y < p2.y ? (p1.y + (NY-1) - p2.y) : (p1.y - (NY-1) - p2.y))
+    dy = abs(p1.y - p2.y) > (NY / 2.0_df) ?
+        (p1.y < p2.y ? (p1.y + NY - p2.y) : (p1.y - NY - p2.y))
         : p1.y - p2.y;
     #else
     dy = p1.y - p2.y;
     #endif
     // Z direction
     #ifdef BC_Z_PERIODIC
-    dz = abs(p1.z - p2.z) > ((NZ-1) / 2.0_df) ?
-        (p1.z < p2.z ? (p1.z + (NZ-1) - p2.z) : (p1.z - (NZ-1) - p2.z))
+    dz = abs(p1.z - p2.z) > (NZ_TOTAL / 2.0_df) ?
+        (p1.z < p2.z ? (p1.z + NZ_TOTAL - p2.z) : (p1.z - NZ_TOTAL - p2.z))
         : p1.z - p2.z;
     #else
     dz = p1.z - p2.z;
@@ -164,8 +164,8 @@ dfloat point_to_segment_distance_periodic(dfloat3 p, dfloat3 segA, dfloat3 segB,
         int dz = PERIODIC_DOMAIN_OFFSET[i][2];
 
         // Translate the segment by the periodic offsets
-        dfloat3 segA_translated = segA + dfloat3(dx * NX, dy * NY, dz * NZ);
-        dfloat3 segB_translated = segB + dfloat3(dx * NX, dy * NY, dz * NZ);
+        dfloat3 segA_translated = segA + dfloat3(dx * NX, dy * NY, dz * NZ_TOTAL);
+        dfloat3 segB_translated = segB + dfloat3(dx * NX, dy * NY, dz * NZ_TOTAL);
 
         // Compute the closest point on the translated segment
         dfloat3 ab = segB_translated - segA_translated;
@@ -251,8 +251,8 @@ dfloat segment_segment_closest_points_periodic(dfloat3 p1, dfloat3 q1, dfloat3 p
         int dy = PERIODIC_DOMAIN_OFFSET[i][1];
         int dz = PERIODIC_DOMAIN_OFFSET[i][2];
 
-        dfloat3 p2_translated = p2 + dfloat3(dx * NX, dy * NY, dz * NZ);
-        dfloat3 q2_translated = q2 + dfloat3(dx * NX, dy * NY, dz * NZ);
+        dfloat3 p2_translated = p2 + dfloat3(dx * NX, dy * NY, dz * NZ_TOTAL);
+        dfloat3 q2_translated = q2 + dfloat3(dx * NX, dy * NY, dz * NZ_TOTAL);
 
         dfloat3 tempClosestOnAB, tempClosestOnCD;
         dfloat dist = segment_segment_closest_points(p1, q1, p2_translated, q2_translated, &tempClosestOnAB, &tempClosestOnCD);

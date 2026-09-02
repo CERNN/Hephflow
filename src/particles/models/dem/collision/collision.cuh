@@ -19,6 +19,42 @@
 
 #ifdef PARTICLE_MODEL
 
+#ifndef ELLIPSOID_PENETRATION_SPHERE_RADIUS
+#define ELLIPSOID_PENETRATION_SPHERE_RADIUS 3.0f
+#endif
+
+enum EllipsoidContactStatus {
+    ELLIPSOID_SEPARATED = 0,
+    ELLIPSOID_INTERSECTING = 1,
+    ELLIPSOID_PROXY_INVALID = 2,
+    ELLIPSOID_MAX_ITERATIONS = 3,
+    ELLIPSOID_INVALID_GEOMETRY = 4,
+    ELLIPSOID_NUMERICAL_FAILURE = 5
+};
+
+struct EllipsoidContactResult {
+    EllipsoidContactStatus status;
+    dfloat signedDisplacement;
+    dfloat3 pointA;
+    // Point on the selected periodic image of particle B.
+    dfloat3 pointBImage;
+    // Contact normal from B's selected image toward A.
+    dfloat3 normalBToA;
+    dfloat curvatureRadiusA;
+    dfloat curvatureRadiusB;
+    int iterations;
+};
+
+struct EllipsoidWallContactResult {
+    EllipsoidContactStatus status;
+    // Positive when separated, zero at tangency, negative when penetrating.
+    dfloat signedDistance;
+    dfloat3 pointEllipsoid;
+    dfloat3 pointWall;
+    dfloat3 wallNormal;
+    dfloat curvatureRadius;
+};
+
 // ****************************************************************************
 // ************************   FORCE COMPUTATION   *****************************
 // ****************************************************************************
@@ -108,11 +144,25 @@ int startCollision(CollisionData &collisionData, int partnerID, bool isWall, con
  *  @param collisionData: The data structure containing collision information.
  *  @param index: The index of the collision record to update.
  *  @param displacement: The displacement to add to the tangential displacement.
+ *  @param n: The current contact normal, used to re-project the accumulated displacement
+ *            back onto the tangent plane (the normal migrates step to step, so a pure
+ *            running sum otherwise slowly acquires a spurious normal-direction component).
  *  @param currentTimeStep: The current time step to update the last collision step.
  *  @return The updated tangential displacement for the collision record.
  */
 __device__ 
-dfloat3 updateTangentialDisplacement(CollisionData &collisionData, int index, const dfloat3 &displacement, int currentTimeStep);
+dfloat3 updateTangentialDisplacement(CollisionData &collisionData, int index, const dfloat3 &displacement, const dfloat3 &n, int currentTimeStep);
+/**
+ *  @brief Zero out the stored tangential (elastic) displacement for a collision record.
+ *         Used when slip occurs, so the spring actually releases instead of retaining
+ *         its previous accumulated value.
+ *  @param collisionData: The data structure containing collision information.
+ *  @param index: The index of the collision record to reset.
+ *  @param currentTimeStep: The current time step to update the last collision step.
+ *  @return The reset (zero) tangential displacement.
+ */
+__device__
+dfloat3 resetTangentialDisplacement(CollisionData &collisionData, int index, int currentTimeStep);
 /**
  *  @brief End a collision record and reset its data if necessary.
  *  @param collisionData: The data structure containing collision information.
@@ -132,7 +182,10 @@ void endCollision(CollisionData &collisionData, int index, int currentTimeStep);
  * @param G_ct: The relative tangential velocity vector at the contact point.
  * @param G: The relative velocity vector at the contact point.
  * @param tang_index_out: Reference to an integer to store the index of the tangential displacement record.
- * @param wallNormal: The normal vector of the wall (only used if isWall is true).
+ * @param wallNormal: The normal vector of the wall (only used if isWall is true), or a hack-encoded
+ *                    value used by ellipsoidCylinderCollision to force a specific tang_index.
+ * @param n: The actual current contact normal, used to re-project the accumulated tangential
+ *           displacement onto the current tangent plane before it is used/stored.
  * @return The tangential displacement vector associated with the collision.
  */
 __device__ 
@@ -144,7 +197,8 @@ dfloat3 getOrUpdateTangentialDisplacement(
     const dfloat3& G_ct,
     const dfloat3& G,
     int& tang_index_out,
-    const dfloat3& wallNormal = dfloat3{0,0,0} // only used for wall
+    const dfloat3& wallNormal = dfloat3{0,0,0}, // only used for wall
+    const dfloat3& n = dfloat3{0,0,0}           // contact normal, for tangent-plane projection
 );
 
 // ****************************************************************************
@@ -187,16 +241,17 @@ __device__
 void ellipsoidWallCollision(const CollisionContext& ctx, dfloat cr[1]);
 
 /**
- *  @brief Calculate the distance between an ellipsoid particle and a wall, and find the contact point.
- *  @param pc_i: Pointer to the ParticleCenter structure representing the ellipsoid particle.
- *  @param wallData: Structure containing information about the wall, such as normal and distance.
- *  @param contactPoint2: Pointer to store the contact point between the ellipsoid and the wall.
- *  @param step: The current simulation step or time index.
- *  @param radius: gaussian radius on the closest point
- *  @return The distance between the ellipsoid and the wall at the point of contact.
+ * @brief Compute the exact normal gap between an ellipsoid and an axis-aligned
+ * wall using the ellipsoid support point.
+ * @return Signed distance, ellipsoid surface point, its projection on the wall,
+ * inward wall normal, curvature, and an explicit status.
  */
 __device__
-dfloat ellipsoidWallCollisionDistance( ParticleCenter* pc_i, Wall wallData, dfloat3* contactPoint2, dfloat radius[1], unsigned int step);
+EllipsoidWallContactResult ellipsoidWallCollisionDistance(
+    ParticleCenter* pc_i,
+    Wall wallData,
+    unsigned int step
+);
 
 // ****************************************************************************
 // ************************   PARTICLE COLLISION   ****************************
@@ -280,33 +335,22 @@ __device__
 dfloat3 ellipsoid_normal(ParticleCenter* pc_i, dfloat R[3][3],dfloat3 point, dfloat radius[1],dfloat3 translation);
 
 /**
- *  @brief Calculate the distance between two colliding ellipsoids and determine the contact points on their surfaces.
- *  @param pc_i: Pointer to the `ParticleCenter` structure containing information about the first ellipsoid.
- *  @param pc_j: Pointer to the `ParticleCenter` structure containing information about the second ellipsoid.
- *  @param contactPoint1: Array to store the computed contact point on the surface of the first ellipsoid.
- *  @param contactPoint2: Array to store the computed contact point on the surface of the second ellipsoid.
- *  @param cr1: gaussian radius on the contact point for ellipsoid 1
- *  @param cr2: gaussian radius on the contact point for ellipsoid 2
- *  @param step: The current time step for collision detection.
- *  @return The computed distance between the two ellipsoids at the contact points.
+ * @brief Solve one periodic image of an ellipsoid pair.
+ * @param pc_i: Pointer to the ParticleCenter structure representing the first ellipsoid particle.
+ * @param pc_j: Pointer to the ParticleCenter structure representing the second ellipsoid particle.
+ * @param translation: The translation vector to apply to the second ellipsoid for periodic boundary conditions.
+ * @param step: The current simulation time step for collision processing.
+ * @return Explicit status, image-space contact points, B-to-A normal, and a
+ * signed displacement. Separation is positive; a valid fixed-sphere
+ * penetration proxy is negative.
  */
 __device__
-dfloat ellipsoidEllipsoidCollisionDistance( ParticleCenter* pc_i, ParticleCenter* pc_j, dfloat3 contactPoint1[1], dfloat3 contactPoint2[1], dfloat cr1[1], dfloat cr2[1], dfloat3 translation, unsigned int step);
-
-/**
- *  @brief Compute the contact points between two particles based on the given direction vector and tangent vectors.
- *  @param pc_i: Pointer to the `ParticleCenter` structure containing information about the particle in order to determine the vector origon.
- *  @param dir: The direction vector representing the line connecting the two particles.
- *  @param t1: The contact points t value of the segment for the first ellipsoid
- *  @param t2: The contact points t value of the segment for the second ellipsoid
- *  @param contactPoint1: Array to store the first computed contact point on the surface of the particle.
- *  @param contactPoint2: Array to store the second computed contact point on the surface of the particle.
- */
-__device__ 
-void computeContactPoints(dfloat3 pc_i, dfloat3 dir, dfloat3 t1, dfloat3 t2, dfloat3 contactPoint1[1], dfloat3 contactPoint2[1]);
-
-
-
+EllipsoidContactResult ellipsoidEllipsoidCollisionDistance(
+    ParticleCenter* pc_i,
+    ParticleCenter* pc_j,
+    dfloat3 translation,
+    unsigned int step
+);
 
 #endif //PARTICLE_MODEL
 #endif // !__IBM_COLLISION_H

@@ -90,7 +90,7 @@ ParticleCenter::ParticleCenter() {
     w_pos = dfloat3();
     q_pos = dfloat4();
     q_pos_old = dfloat4();
-    q_cumulative_rot = dfloat4({1.0f, 0.0f, 0.0f, 0.0f}); // Identity quaternion
+    q_cumulative_rot = dfloat4(0.0f, 0.0f, 0.0f, 1.0f); // Identity quaternion (x,y,z,w)
     f = dfloat3();
     f_old = dfloat3();
     M = dfloat3();
