@@ -25,7 +25,6 @@
 
 #ifdef PARTICLE_MODEL
 
-
 /**
  *  @brief Perform IBM simulation steps including force interpolation and spreading.
  *  @param particles: Pointer to the ParticlesSoA structure containing particle data.
@@ -53,7 +52,8 @@ void ibmResetNodesForces(
 
 
 /**
- *  @brief Interpolate forces from the fluid to the IBM nodes and spread forces from the IBM nodes back to the fluid.
+ *  @brief Interpolate the predicted fluid velocity and compute one relaxed
+ *         Lagrangian force correction.
  *  @param particlesNodes: Pointer to the IbmNodesSoA structure containing IBM node data.
  *  @param pArray: Pointer to the array of ParticleCenter objects.
  *  @param fMom: Pointer to the device array containing the current macroscopic moments.
@@ -65,6 +65,17 @@ void ibmForceInterpolationSpread(
     ParticleCenter *pArray,
     dfloat *fMom,
     unsigned int step
+);
+
+/**
+ *  @brief Spread the current Lagrangian force correction to the Eulerian
+ *         force moments. This is deliberately separate from interpolation so
+ *         every IBM node in an iteration observes the same force field.
+ */
+__global__
+void ibmSpreadForceCorrection(
+    IbmNodesSoA* particlesNodes,
+    dfloat *fMom
 );
 
 /**
@@ -86,6 +97,3 @@ void ibmParticleNodeMovement(
 
 #endif //PARTICLE_MODEL
 #endif
-
-
-

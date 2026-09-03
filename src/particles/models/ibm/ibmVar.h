@@ -19,8 +19,19 @@
 
 #ifdef PARTICLE_MODEL
 
-// Number of IBM inner iterations
-#define IBM_MAX_ITERATION 1 //TODO: cant handle more than one iteration
+// Multi-direct-forcing controls. Cases may override these before including
+// the particle model headers.
+#ifndef IBM_MAX_ITERATION
+#define IBM_MAX_ITERATION 1
+#endif
+
+#ifndef IBM_FORCE_RELAXATION
+#define IBM_FORCE_RELAXATION 1.0_df
+#endif
+
+#ifndef IBM_VELOCITY_TOL
+#define IBM_VELOCITY_TOL 1.0e-5_df
+#endif
 //#define IBM_DEBUG
 
 
