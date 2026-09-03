@@ -63,6 +63,235 @@ void updateParticleOldValues(
 
 }
 
+namespace {
+
+enum RotationFailureStage {
+    ROTATION_OK = 0,
+    ROTATION_INVALID_INERTIA = 1,
+    ROTATION_INVALID_INPUT = 2,
+    ROTATION_INVALID_QUATERNION = 3,
+    ROTATION_INVALID_MOMENTUM = 4,
+    ROTATION_INVALID_OMEGA = 5,
+    ROTATION_NO_CONVERGENCE = 6
+};
+
+__device__ __forceinline__
+const char* rotationFailureStageName(RotationFailureStage stage) {
+    switch (stage) {
+        case ROTATION_INVALID_INERTIA: return "invalid-inertia";
+        case ROTATION_INVALID_INPUT: return "invalid-input";
+        case ROTATION_INVALID_QUATERNION: return "invalid-quaternion";
+        case ROTATION_INVALID_MOMENTUM: return "invalid-momentum";
+        case ROTATION_INVALID_OMEGA: return "invalid-omega";
+        case ROTATION_NO_CONVERGENCE: return "no-convergence";
+        default: return "unknown";
+    }
+}
+
+struct RotationAdvanceResult {
+    bool ok;
+    dfloat3 omega;
+    dfloat4 q_relative;
+    dfloat6 inertia;
+    int substep;
+    int iteration;
+    dfloat convergence_metric;
+    RotationFailureStage failure_stage;
+};
+
+__host__ __device__ __forceinline__
+bool finite3(const dfloat3& v) {
+    return isfinite(v.x) && isfinite(v.y) && isfinite(v.z);
+}
+
+__host__ __device__ __forceinline__
+dfloat inertiaRelativeChange(const dfloat6& current, const dfloat6& previous, const dfloat3& principal) {
+    const dfloat scale = fmaxf(principal.x, fmaxf(principal.y, principal.z));
+    const dfloat inv_scale = 1.0_df / scale;
+    const dfloat dxx = (current.xx - previous.xx) * inv_scale;
+    const dfloat dyy = (current.yy - previous.yy) * inv_scale;
+    const dfloat dzz = (current.zz - previous.zz) * inv_scale;
+    const dfloat dxy = (current.xy - previous.xy) * inv_scale;
+    const dfloat dxz = (current.xz - previous.xz) * inv_scale;
+    const dfloat dyz = (current.yz - previous.yz) * inv_scale;
+    return sqrtf(dxx*dxx + dyy*dyy + dzz*dzz +
+                 2.0_df*(dxy*dxy + dxz*dxz + dyz*dyz));
+}
+
+__host__ __device__ __forceinline__
+bool incrementalRotation(const dfloat3& omega, dfloat stage_dt, dfloat4* rotation) {
+    if (rotation == nullptr || !finite3(omega) || !isfinite(stage_dt) || stage_dt <= 0.0_df) {
+        return false;
+    }
+
+    const dfloat norm_sq = dot_product(omega, omega);
+    if (!isfinite(norm_sq) || norm_sq < 0.0_df) {
+        return false;
+    }
+
+    const dfloat norm = sqrtf(norm_sq);
+    const dfloat half_angle = 0.5_df * stage_dt * norm;
+    if (!isfinite(half_angle)) {
+        return false;
+    }
+
+    // sin(x)/|omega| tends to stage_dt/2 as |omega| tends to zero.
+    const dfloat vector_scale = norm > 1.0e-7_df ? sinf(half_angle) / norm : 0.5_df * stage_dt;
+    const dfloat4 raw(
+        omega.x * vector_scale,
+        omega.y * vector_scale,
+        omega.z * vector_scale,
+        cosf(half_angle));
+    return quart_normalize_safe(raw, rotation);
+}
+
+__host__ __device__
+RotationAdvanceResult advanceRotationArdekani(
+    dfloat3 omega_initial,
+    dfloat4 q_relative_initial,
+    dfloat4 q_reference,
+    dfloat3 principal_inertia,
+    dfloat3 torque_rate)
+{
+    RotationAdvanceResult result = {};
+    result.ok = false;
+    result.omega = omega_initial;
+    result.q_relative = q_relative_initial;
+    result.failure_stage = ROTATION_INVALID_INPUT;
+
+    if (!finite3(principal_inertia) || principal_inertia.x <= 0.0_df ||
+        principal_inertia.y <= 0.0_df || principal_inertia.z <= 0.0_df) {
+        result.failure_stage = ROTATION_INVALID_INERTIA;
+        return result;
+    }
+    if (!finite3(omega_initial) || !finite3(torque_rate)) {
+        return result;
+    }
+    if (!quart_normalize_safe(q_relative_initial, &result.q_relative) ||
+        !quart_normalize_safe(q_reference, &q_reference)) {
+        result.failure_stage = ROTATION_INVALID_QUATERNION;
+        return result;
+    }
+
+    const dfloat stage_dt = 1.0_df / (dfloat)PARTICLE_ROTATION_SUBSTEPS;
+    dfloat3 omega_start = omega_initial;
+    dfloat4 q_relative_start = result.q_relative;
+    dfloat6 inertia_final = {};
+
+    for (int substep = 0; substep < PARTICLE_ROTATION_SUBSTEPS; ++substep) {
+        result.substep = substep;
+        dfloat4 q_absolute_start;
+        if (!quart_normalize_safe(quart_multiplication(q_relative_start, q_reference), &q_absolute_start)) {
+            result.failure_stage = ROTATION_INVALID_QUATERNION;
+            return result;
+        }
+
+        const dfloat3 angular_momentum_start =
+            apply_world_inertia(omega_start, q_absolute_start, principal_inertia);
+        const dfloat3 target_momentum = angular_momentum_start + stage_dt * torque_rate;
+        if (!finite3(target_momentum)) {
+            result.failure_stage = ROTATION_INVALID_MOMENTUM;
+            return result;
+        }
+
+        dfloat6 inertia_guess = world_inertia_from_principal(q_absolute_start, principal_inertia);
+        dfloat3 omega_guess = apply_world_inverse_inertia(target_momentum, q_absolute_start, principal_inertia);
+        if (!finite3(omega_guess)) {
+            result.failure_stage = ROTATION_INVALID_OMEGA;
+            return result;
+        }
+
+        bool converged = false;
+        dfloat4 q_relative_candidate = q_relative_start;
+        dfloat3 omega_candidate = omega_guess;
+        for (int iteration = 0; iteration < PARTICLE_ROTATION_MAX_ITERS; ++iteration) {
+            result.iteration = iteration;
+            const dfloat3 omega_average = 0.5_df * (omega_start + omega_guess);
+            dfloat4 q_increment;
+            if (!incrementalRotation(omega_average, stage_dt, &q_increment) ||
+                !quart_normalize_safe(
+                    quart_multiplication(q_increment, q_relative_start),
+                    &q_relative_candidate)) {
+                result.failure_stage = ROTATION_INVALID_QUATERNION;
+                return result;
+            }
+
+            dfloat4 q_absolute_candidate;
+            if (!quart_normalize_safe(
+                    quart_multiplication(q_relative_candidate, q_reference),
+                    &q_absolute_candidate)) {
+                result.failure_stage = ROTATION_INVALID_QUATERNION;
+                return result;
+            }
+
+            const dfloat6 inertia_candidate =
+                world_inertia_from_principal(q_absolute_candidate, principal_inertia);
+            const dfloat relative_change =
+                inertiaRelativeChange(inertia_candidate, inertia_guess, principal_inertia);
+            result.convergence_metric = relative_change;
+            omega_candidate =
+                apply_world_inverse_inertia(target_momentum, q_absolute_candidate, principal_inertia);
+            if (!isfinite(relative_change) || !finite3(omega_candidate)) {
+                result.failure_stage = ROTATION_INVALID_OMEGA;
+                return result;
+            }
+
+            inertia_guess = inertia_candidate;
+            omega_guess = omega_candidate;
+            inertia_final = inertia_candidate;
+            if (relative_change <= (dfloat)PARTICLE_ROTATION_REL_TOL) {
+                converged = true;
+                break;
+            }
+        }
+
+        if (!converged) {
+            result.failure_stage = ROTATION_NO_CONVERGENCE;
+            return result;
+        }
+
+        omega_start = omega_candidate;
+        q_relative_start = q_relative_candidate;
+    }
+
+    result.ok = true;
+    result.failure_stage = ROTATION_OK;
+    result.omega = omega_start;
+    result.q_relative = q_relative_start;
+    result.inertia = inertia_final;
+    return result;
+}
+
+__device__
+void reportRotationFailure(
+    ParticleCenter* particle,
+    int particle_index,
+    unsigned int step,
+    const RotationAdvanceResult& result,
+    const dfloat3& principal,
+    const dfloat3& torque)
+{
+    if (!particle->getRotationFaulted()) {
+        const dfloat4 q = particle->getQ_cumulative_rot();
+        const dfloat3 w = particle->getW_old();
+        printf("ERROR: Particle rotation fault particle=%d step=%u substep=%d iteration=%d stage=%s "
+               "rel_change=%e tol=%e I=(%e,%e,%e) torque=(%e,%e,%e) "
+               "omega=(%e,%e,%e) q=(%e,%e,%e,%e)\n",
+               particle_index, step, result.substep, result.iteration,
+               rotationFailureStageName(result.failure_stage),
+               result.convergence_metric, (dfloat)PARTICLE_ROTATION_REL_TOL,
+               principal.x, principal.y, principal.z, torque.x, torque.y, torque.z,
+               w.x, w.y, w.z, q.x, q.y, q.z, q.w);
+    }
+    particle->setRotationFaulted(true);
+    particle->setQ_cumulative_rot(particle->getQ_cumulative_rot_last_valid());
+    particle->setW(dfloat3(0.0_df, 0.0_df, 0.0_df));
+    particle->setW_old(dfloat3(0.0_df, 0.0_df, 0.0_df));
+    particle->setW_avg(dfloat3(0.0_df, 0.0_df, 0.0_df));
+}
+
+} // namespace
+
 __global__ 
 void updateParticleCenterVelocityAndRotation(
     ParticleCenter *pArray,
@@ -111,71 +340,34 @@ void updateParticleCenterVelocityAndRotation(
     //            + (1.0 - FLUID_DENSITY/pc_i->getDensity()) * g);
 
 
-    // Update particle angular velocity  
-
-    // Recompute world-frame inertia from the immutable body-frame reference and the
-    // cumulative rotation quaternion. This avoids off-diagonal drift that accumulates
-    // when I is updated incrementally via R*I*R^T every timestep.
-    dfloat6 I = rotate_inertia_by_quart(pc_i->getQ_cumulative_rot(), pc_i->getI_body());
-    dfloat I_det = I.zz*I.xy*I.xy + I.yy*I.xz*I.xz + I.xx*I.yz*I.yz - I.xx*I.yy*I.zz - 2*I.xy*I.xz*I.yz;
-    if (!isfinite(I_det) || fabs(I_det) < 1e-15) {
-        printf("ERROR: Invalid inertia determinant %e at step %u\n", I_det, step);
+    // Ardekani et al. (2016), Eqs. (7)-(8): advance angular momentum and
+    // iteratively couple angular velocity to the end-of-stage orientation.
+    if (pc_i->getRotationFaulted()) {
+        pc_i->setW(dfloat3(0.0_df, 0.0_df, 0.0_df));
+        pc_i->setW_old(dfloat3(0.0_df, 0.0_df, 0.0_df));
+        pc_i->setW_avg(dfloat3(0.0_df, 0.0_df, 0.0_df));
         return;
     }
-    dfloat inv_I_det_neg = 1.0/I_det;
-    dfloat3 wAux = pc_i->getW_old();
-    dfloat3 wAvg = (pc_i->getW_old() + pc_i->getW())/2;
-    dfloat3 LM_avg = pc_i->getDL_internal() + (pc_i->getM_old() + pc_i->getM())/2;
 
-    dfloat error = 1.0;
-    dfloat3 wNew;
-    dfloat4 q_rot;
-    dfloat6 Iaux6;
+    const dfloat3 principal_inertia = pc_i->getPrincipalInertia();
+    const dfloat3 torque_rate =
+        pc_i->getDL_internal() + 0.5_df * (pc_i->getM_old() + pc_i->getM());
+    const RotationAdvanceResult rotation = advanceRotationArdekani(
+        pc_i->getW_old(),
+        pc_i->getQ_cumulative_rot(),
+        pc_i->getQ_inertia_reference(),
+        principal_inertia,
+        torque_rate);
 
-    //for (int i = 0; error > 1e-4; i++)
-    {
-        wNew.x = pc_i->getWOldX() + ((I.yz*I.yz - I.yy*I.zz)*(LM_avg.x + (wAvg.z)*(I.xy*wAvg.x + I.yy*wAvg.y + I.yz*wAvg.z) - (wAvg.y)*(I.xz*wAvg.x + I.yz*wAvg.y + I.zz*wAvg.z))
-                                   - (I.xy*I.yz - I.xz*I.yy)*(LM_avg.z + (wAvg.y)*(I.xx*wAvg.x + I.xy*wAvg.y + I.xz*wAvg.z) - (wAvg.x)*(I.xy*wAvg.x + I.yy*wAvg.y + I.yz*wAvg.z))
-                                   - (I.xz*I.yz - I.xy*I.zz)*(LM_avg.y + (wAvg.x)*(I.xz*wAvg.x + I.yz*wAvg.y + I.zz*wAvg.z) - (wAvg.z)*(I.xx*wAvg.x + I.xy*wAvg.y + I.xz*wAvg.z)))*inv_I_det_neg;
-        wNew.y = pc_i->getWOldY() + ((I.xz*I.xz - I.xx*I.zz)*(LM_avg.y + (wAvg.x)*(I.xz*wAvg.x + I.yz*wAvg.y + I.zz*wAvg.z) - (wAvg.z)*(I.xx*wAvg.x + I.xy*wAvg.y + I.xz*wAvg.z))
-                                   - (I.xy*I.xz - I.xx*I.yz)*(LM_avg.z + (wAvg.y)*(I.xx*wAvg.x + I.xy*wAvg.y + I.xz*wAvg.z) - (wAvg.x)*(I.xy*wAvg.x + I.yy*wAvg.y + I.yz*wAvg.z))
-                                   - (I.xz*I.yz - I.xy*I.zz)*(LM_avg.x + (wAvg.z)*(I.xy*wAvg.x + I.yy*wAvg.y + I.yz*wAvg.z) - (wAvg.y)*(I.xz*wAvg.x + I.yz*wAvg.y + I.zz*wAvg.z)))*inv_I_det_neg;
-        wNew.z = pc_i->getWOldZ() + ((I.xy*I.xy - I.xx*I.yy)*(LM_avg.z + (wAvg.y)*(I.xx*wAvg.x + I.xy*wAvg.y + I.xz*wAvg.z) - (wAvg.x)*(I.xy*wAvg.x + I.yy*wAvg.y + I.yz*wAvg.z))
-                                   - (I.xy*I.xz - I.xx*I.yz)*(LM_avg.y + (wAvg.x)*(I.xz*wAvg.x + I.yz*wAvg.y + I.zz*wAvg.z) - (wAvg.z)*(I.xx*wAvg.x + I.xy*wAvg.y + I.xz*wAvg.z))
-                                   - (I.xy*I.yz - I.xz*I.yy)*(LM_avg.x + (wAvg.z)*(I.xy*wAvg.x + I.yy*wAvg.y + I.yz*wAvg.z) - (wAvg.y)*(I.xz*wAvg.x + I.yz*wAvg.y + I.zz*wAvg.z)))*inv_I_det_neg;
-
-
-        wAvg = (wAux + pc_i->getW_old())/2;
-        //calculate rotation quartention
-        q_rot = axis_angle_to_quart(wAvg,vector_length(wAvg));
-        //compute new moment of inertia       
-        Iaux6 = rotate_inertia_by_quart(q_rot,I);
-
-        error =  (Iaux6.xx-I.xx)*(Iaux6.xx-I.xx)/(Iaux6.xx*Iaux6.xx);
-        error += (Iaux6.yy-I.yy)*(Iaux6.yy-I.yy)/(Iaux6.yy*Iaux6.yy);
-        error += (Iaux6.zz-I.zz)*(Iaux6.zz-I.zz)/(Iaux6.zz*Iaux6.zz);
-        error += (Iaux6.xy-I.xy)*(Iaux6.xy-I.xy)/(Iaux6.xy*Iaux6.xy);
-        error += (Iaux6.xz-I.xz)*(Iaux6.xz-I.xz)/(Iaux6.xz*Iaux6.xz);
-        error += (Iaux6.yz-I.yz)*(Iaux6.yz-I.yz)/(Iaux6.yz*Iaux6.yz);
-        
-        wAux.x = wNew.x;
-        wAux.y = wNew.y;
-        wAux.z = wNew.z;
-
-        I.xx = Iaux6.xx;
-        I.yy = Iaux6.yy;
-        I.zz = Iaux6.zz;
-        I.xy = Iaux6.xy;
-        I.xz = Iaux6.xz;
-        I.yz = Iaux6.yz;                     
+    if (!rotation.ok) {
+        reportRotationFailure(pc_i, globalIdx, step, rotation, principal_inertia, torque_rate);
+        return;
     }
 
-    // Store new velocities in particle center
-    pc_i->setWX(wNew.x);
-    pc_i->setWY(wNew.y);
-    pc_i->setWZ(wNew.z);
-    // I_body is the drift-free reference; world-frame I is recomputed each step from
-    // q_cumulative, so we no longer store the rotated Iaux6 back.
+    pc_i->setW(rotation.omega);
+    pc_i->setW_avg(0.5_df * (pc_i->getW_old() + rotation.omega));
+    pc_i->setQ_cumulative_rot(rotation.q_relative);
+    pc_i->setI(rotation.inertia);
 
     #ifdef PARTICLE_DEBUG
     printf("updateParticleCenterVelocityAndRotation 2 pos  x: %e y: %e z: %e\n",pc_i->getPosX(),pc_i->getPosY(),pc_i->getPosZ());
@@ -242,10 +434,6 @@ void updateParticlePosition(
         pc_i->setPosZ((mod_z < 0) ? mod_z + (dfloat)NZ_TOTAL : mod_z);
     #endif //BC_Z_PERIODIC
 
-    //Compute angular velocity
-    pc_i->setW_avg((pc_i->getW() + pc_i->getW_old())/2);
-
-    //update angular position
     pc_i->setW_pos(pc_i->getW_pos() + pc_i->getW_avg());
 
     #ifdef PARTICLE_DEBUG
@@ -255,25 +443,7 @@ void updateParticlePosition(
     #endif //PARTICLE_DEBUG
 
 
-    const dfloat w_norm = sqrt((pc_i->getWAvgX() * pc_i->getWAvgX()) 
-                             + (pc_i->getWAvgY() * pc_i->getWAvgY()) 
-                             + (pc_i->getWAvgZ() * pc_i->getWAvgZ()));
-    dfloat3 axis = {0,0,0};
-    if (w_norm > 1e-8) {
-        axis.x = pc_i->getWAvgX() / w_norm;
-        axis.y = pc_i->getWAvgY() / w_norm;
-        axis.z = pc_i->getWAvgZ() / w_norm;
-    }
-    dfloat angle = w_norm;
-    dfloat4 q = axis_angle_to_quart(axis, angle);
-    
-    dfloat4 q_cumulative = pc_i->getQ_cumulative_rot();
-    q_cumulative = quart_multiplication(q, q_cumulative);
-    q_cumulative = quart_normalize(q_cumulative);
-
-    
-    // Store updated cumulative rotation back to particle center
-    pc_i->setQ_cumulative_rot(q_cumulative);
+    const dfloat4 q_cumulative = pc_i->getQ_cumulative_rot();
     
     dfloat3 pos_old = pc_i->getPos_old();
 

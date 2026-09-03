@@ -197,6 +197,7 @@ public:
     __host__ __device__ dfloat getQCumulativeRotZ() const;
     __host__ __device__ dfloat getQCumulativeRotW() const;
     __host__ __device__ void setQ_cumulative_rot(const dfloat4& q_cumulative_rot);
+    __host__ __device__ dfloat4 getQ_cumulative_rot_last_valid() const;
     __host__ __device__ void setQCumulativeRotX(dfloat x);
     __host__ __device__ void setQCumulativeRotY(dfloat y);
     __host__ __device__ void setQCumulativeRotZ(dfloat z);
@@ -269,6 +270,17 @@ public:
     // Reference body-frame inertia (set once at init, never mutated — prevents world-frame drift)
     __host__ __device__ dfloat6 getI_body() const;
     __host__ __device__ void setI_body(const dfloat6& I_body);
+
+    // Principal inertia and its immutable initial world orientation.
+    // The live orientation is q_cumulative_rot * q_inertia_reference.
+    __host__ __device__ dfloat3 getPrincipalInertia() const;
+    __host__ __device__ void setPrincipalInertia(const dfloat3& principal_inertia);
+    __host__ __device__ dfloat4 getQ_inertia_reference() const;
+    __host__ __device__ void setQ_inertia_reference(const dfloat4& q_inertia_reference);
+
+    // A rotational fault freezes orientation while allowing translation to continue.
+    __host__ __device__ bool getRotationFaulted() const;
+    __host__ __device__ void setRotationFaulted(bool rotation_faulted);
 
     // Internal momentum change
     __host__ __device__ dfloat3 getDP_internal() const;
@@ -373,12 +385,16 @@ protected:
     dfloat4 q_pos; // Particle angular poistion defined by a quartenion
     dfloat4 q_pos_old; // Particle angular poistion defined by a quartenion
     dfloat4 q_cumulative_rot; // Cumulative rotation quaternion for precision fix
+    dfloat4 q_cumulative_rot_last_valid; // Recovery snapshot for rotational faults
     dfloat3 f;          // Sum of the forces acting on particle
     dfloat3 f_old;      // Old sum of the forces acting on particle
     dfloat3 M;          // Total momentum acting on particle
     dfloat3 M_old;      // Old total momentum acting on particle
     dfloat6 I;          // I innertia moment I.x = Ixx
     dfloat6 I_body;     // Reference inertia in initial world-frame orientation — never mutated
+    dfloat3 principal_inertia; // Principal moments before initial orientation is applied
+    dfloat4 q_inertia_reference; // Initial orientation of the principal inertia frame
+    bool rotation_faulted; // Persistent guard against invalid rotational state
     dfloat3 dP_internal; // Linear momentum of fluid mass inside IBM particle mesh (delta - backward Euler)
     dfloat3 dL_internal; // Angular momentum of fluid mass inside IBM particle mesh (delta - backward Euler)
     dfloat S;           // Total area of the particle

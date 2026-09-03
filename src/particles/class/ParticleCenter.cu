@@ -91,12 +91,16 @@ ParticleCenter::ParticleCenter() {
     q_pos = dfloat4();
     q_pos_old = dfloat4();
     q_cumulative_rot = dfloat4(0.0f, 0.0f, 0.0f, 1.0f); // Identity quaternion (x,y,z,w)
+    q_cumulative_rot_last_valid = q_cumulative_rot;
     f = dfloat3();
     f_old = dfloat3();
     M = dfloat3();
     M_old = dfloat3();
     I = dfloat6();
     I_body = dfloat6();
+    principal_inertia = dfloat3();
+    q_inertia_reference = dfloat4(0.0f, 0.0f, 0.0f, 1.0f);
+    rotation_faulted = false;
     dP_internal = dfloat3();
     dL_internal = dfloat3();
     S = 0;
@@ -214,7 +218,22 @@ __host__ __device__ dfloat ParticleCenter::getQCumulativeRotX() const { return t
 __host__ __device__ dfloat ParticleCenter::getQCumulativeRotY() const { return this->q_cumulative_rot.y; }
 __host__ __device__ dfloat ParticleCenter::getQCumulativeRotZ() const { return this->q_cumulative_rot.z; }
 __host__ __device__ dfloat ParticleCenter::getQCumulativeRotW() const { return this->q_cumulative_rot.w; }
-__host__ __device__ void ParticleCenter::setQ_cumulative_rot(const dfloat4& q_cumulative_rot) { this->q_cumulative_rot = q_cumulative_rot; }
+__host__ __device__ void ParticleCenter::setQ_cumulative_rot(const dfloat4& q_cumulative_rot) {
+    this->q_cumulative_rot = q_cumulative_rot;
+    const dfloat norm_sq = q_cumulative_rot.x*q_cumulative_rot.x +
+                           q_cumulative_rot.y*q_cumulative_rot.y +
+                           q_cumulative_rot.z*q_cumulative_rot.z +
+                           q_cumulative_rot.w*q_cumulative_rot.w;
+    if (isfinite(norm_sq) && norm_sq > 1.0e-20_df) {
+        const dfloat inv_norm = rsqrtf(norm_sq);
+        this->q_cumulative_rot_last_valid = dfloat4(
+            q_cumulative_rot.x * inv_norm,
+            q_cumulative_rot.y * inv_norm,
+            q_cumulative_rot.z * inv_norm,
+            q_cumulative_rot.w * inv_norm);
+    }
+}
+__host__ __device__ dfloat4 ParticleCenter::getQ_cumulative_rot_last_valid() const { return this->q_cumulative_rot_last_valid; }
 __host__ __device__ void ParticleCenter::setQCumulativeRotX(dfloat x) { this->q_cumulative_rot.x = x; }
 __host__ __device__ void ParticleCenter::setQCumulativeRotY(dfloat y) { this->q_cumulative_rot.y = y; }
 __host__ __device__ void ParticleCenter::setQCumulativeRotZ(dfloat z) { this->q_cumulative_rot.z = z; }
@@ -281,6 +300,12 @@ __host__ __device__ void ParticleCenter::setIYZ(dfloat val) { this->I.yz = val; 
 
 __host__ __device__ dfloat6 ParticleCenter::getI_body() const { return this->I_body; }
 __host__ __device__ void ParticleCenter::setI_body(const dfloat6& I_body) { this->I_body = I_body; }
+__host__ __device__ dfloat3 ParticleCenter::getPrincipalInertia() const { return this->principal_inertia; }
+__host__ __device__ void ParticleCenter::setPrincipalInertia(const dfloat3& principal_inertia) { this->principal_inertia = principal_inertia; }
+__host__ __device__ dfloat4 ParticleCenter::getQ_inertia_reference() const { return this->q_inertia_reference; }
+__host__ __device__ void ParticleCenter::setQ_inertia_reference(const dfloat4& q_inertia_reference) { this->q_inertia_reference = q_inertia_reference; }
+__host__ __device__ bool ParticleCenter::getRotationFaulted() const { return this->rotation_faulted; }
+__host__ __device__ void ParticleCenter::setRotationFaulted(bool rotation_faulted) { this->rotation_faulted = rotation_faulted; }
 
 __host__ __device__ dfloat3 ParticleCenter::getDP_internal() const { return this->dP_internal; }
 __host__ __device__ dfloat ParticleCenter::getDPInternalX() const { return this->dP_internal.x; }

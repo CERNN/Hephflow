@@ -392,17 +392,32 @@ dfloat4 quart_multiplication(dfloat4 q1, dfloat4 q2){
  */
 __host__ __device__
 dfloat4 quart_normalize(dfloat4 q){
-    dfloat magnitude = sqrtf(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
-    
-    // Avoid division by zero
-    if (magnitude > 1.0e-10f) {
-        q.w /= magnitude;
-        q.x /= magnitude;
-        q.y /= magnitude;
-        q.z /= magnitude;
+    dfloat4 normalized;
+    if (!quart_normalize_safe(q, &normalized)) {
+        return dfloat4(0.0_df, 0.0_df, 0.0_df, 1.0_df);
     }
-    
-    return q;
+    return normalized;
+}
+
+__host__ __device__
+bool quart_normalize_safe(dfloat4 q, dfloat4* normalized){
+    if (normalized == nullptr || !isfinite(q.w) || !isfinite(q.x) ||
+        !isfinite(q.y) || !isfinite(q.z)) {
+        return false;
+    }
+
+    const dfloat magnitude_sq = q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z;
+    if (!isfinite(magnitude_sq) || magnitude_sq <= 1.0e-20_df) {
+        return false;
+    }
+
+    const dfloat inv_magnitude = rsqrtf(magnitude_sq);
+    normalized->w = q.w * inv_magnitude;
+    normalized->x = q.x * inv_magnitude;
+    normalized->y = q.y * inv_magnitude;
+    normalized->z = q.z * inv_magnitude;
+    return isfinite(normalized->w) && isfinite(normalized->x) &&
+           isfinite(normalized->y) && isfinite(normalized->z);
 }
 
 // ****************************************************************************
@@ -589,6 +604,27 @@ dfloat6 rotate_inertia_by_quart(dfloat4 q, dfloat6 I6) {
     I6 = matrix_to_dfloat6(I);  
     return I6;
 
+}
+
+__host__ __device__
+dfloat3 apply_world_inertia(dfloat3 v, dfloat4 orientation, dfloat3 principal_inertia) {
+    const dfloat3 body_v = rotate_vector_by_quart_R(v, quart_conjugate(orientation));
+    const dfloat3 body_Iv = body_v * principal_inertia;
+    return rotate_vector_by_quart_R(body_Iv, orientation);
+}
+
+__host__ __device__
+dfloat3 apply_world_inverse_inertia(dfloat3 v, dfloat4 orientation, dfloat3 principal_inertia) {
+    const dfloat3 body_v = rotate_vector_by_quart_R(v, quart_conjugate(orientation));
+    const dfloat3 body_solution = body_v / principal_inertia;
+    return rotate_vector_by_quart_R(body_solution, orientation);
+}
+
+__host__ __device__
+dfloat6 world_inertia_from_principal(dfloat4 orientation, dfloat3 principal_inertia) {
+    return rotate_inertia_by_quart(
+        orientation,
+        dfloat6(principal_inertia.x, principal_inertia.y, principal_inertia.z, 0.0_df, 0.0_df, 0.0_df));
 }
 
 __host__ __device__

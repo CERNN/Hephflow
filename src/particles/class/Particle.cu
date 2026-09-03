@@ -336,6 +336,9 @@ void Particle::makeUniformBox(ParticleCenter *particleCenter)
     pCenter->setIXZ(0.0_df);
     pCenter->setIYZ(0.0_df);
     pCenter->setI_body(pCenter->getI());
+    pCenter->setPrincipalInertia(dfloat3(1.0_df, 1.0_df, 1.0_df));
+    pCenter->setQ_inertia_reference(dfloat4(0.0_df, 0.0_df, 0.0_df, 1.0_df));
+    pCenter->setRotationFaulted(false);
 
     pCenter->setFX(0.0_df);
     pCenter->setFY(0.0_df);
@@ -428,6 +431,9 @@ void Particle::makeRandomBox(ParticleCenter *particleCenter)
     pCenter->setIXZ(0.0_df);
     pCenter->setIYZ(0.0_df);
     pCenter->setI_body(pCenter->getI());
+    pCenter->setPrincipalInertia(dfloat3(1.0_df, 1.0_df, 1.0_df));
+    pCenter->setQ_inertia_reference(dfloat4(0.0_df, 0.0_df, 0.0_df, 1.0_df));
+    pCenter->setRotationFaulted(false);
 
     pCenter->setFX(0.0_df);
     pCenter->setFY(0.0_df);
@@ -533,6 +539,9 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
     pCenter->setIXZ(0.0_df);
     pCenter->setIYZ(0.0_df);
     pCenter->setI_body(pCenter->getI());
+    pCenter->setPrincipalInertia(dfloat3(pCenter->getIXX(), pCenter->getIYY(), pCenter->getIZZ()));
+    pCenter->setQ_inertia_reference(dfloat4(0.0_df, 0.0_df, 0.0_df, 1.0_df));
+    pCenter->setRotationFaulted(false);
 
     pCenter->setFX(0.0_df);
     pCenter->setFY(0.0_df);
@@ -984,6 +993,9 @@ void Particle::makeCapsule(ParticleCenter *particleCenter){
     //rotate inertia 
     pCenter->setI(rotate_inertia_by_quart(q1,In));
     pCenter->setI_body(pCenter->getI());
+    pCenter->setPrincipalInertia(dfloat3(In.xx, In.yy, In.zz));
+    pCenter->setQ_inertia_reference(q1);
+    pCenter->setRotationFaulted(false);
 
     pCenter->setQPosW(qf.w);
     pCenter->setQPosX(qf.x);
@@ -1075,8 +1087,8 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
     unsigned int i;
 
     a = particleCenter->getSemiAxis1().x;
-    b = particleCenter->getSemiAxis1().y;
-    c = particleCenter->getSemiAxis1().z;
+    b = particleCenter->getSemiAxis2().y;
+    c = particleCenter->getSemiAxis3().z;
 
     pCenter->setRadius(POW_FUNCTION(a*b*c,1.0_df/3.0_df));
     pCenter->setVolume(a*b*c*4*M_PI/3);
@@ -1300,6 +1312,9 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
     //rotate inertia 
     pCenter->setI(rotate_inertia_by_quart(q2,In));
     pCenter->setI_body(pCenter->getI());
+    pCenter->setPrincipalInertia(dfloat3(In.xx, In.yy, In.zz));
+    pCenter->setQ_inertia_reference(q2);
+    pCenter->setRotationFaulted(false);
 
     dfloat3 new_pos;
     for (i = 0; i < numberNodes; i++) {
