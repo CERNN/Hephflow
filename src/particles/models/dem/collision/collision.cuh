@@ -79,7 +79,7 @@ dfloat3 computeNormalForce(const dfloat3& n, const dfloat3& G, dfloat displaceme
  * @param damping: The damping coefficient for the tangential force calculation.
  * @param friction_coef: The coefficient of friction between the colliding bodies.
  * @param f_n: The normal force magnitude.
- * @param t: The tangential direction vector at the contact point.
+ * @param n: Current contact normal, used to keep corrected history tangential.
  * @param pc_i: Pointer to the ParticleCenter structure representing the particle.
  * @param tang_index: The index of the tangential displacement record for the collision.
  * @param step: The current simulation step or time index.
@@ -93,7 +93,7 @@ dfloat3 computeTangentialForce(
     dfloat damping,
     dfloat friction_coef,
     dfloat f_n,
-    const dfloat3& t,
+    const dfloat3& n,
     ParticleCenter* pc_i,
     int tang_index,
     int step
@@ -105,8 +105,11 @@ dfloat3 computeTangentialForce(
  * @param f_dirs: The force vector to be accumulated.
  * @param m_dirs: The torque vector to be accumulated.
  */
-__device__ 
-void accumulateForceAndTorque(ParticleCenter* pc_i, const dfloat3& f_dirs, const dfloat3& m_dirs);
+__device__
+void accumulateForceAndTorque(
+    ParticleCenter* pc_i,
+    const dfloat3& f_dirs,
+    const dfloat3& m_dirs);
 
 // ****************************************************************************
 // ************************   COLLISION TRACKING   ****************************

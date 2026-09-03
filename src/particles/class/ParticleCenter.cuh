@@ -34,6 +34,10 @@ class CollisionData {
         __host__ __device__ int getLastCollisionStep(int idx) const;
         __host__ __device__ void setLastCollisionStep(int idx, int step);
 
+        // Atomically claim a particle-particle history slot. Multiple pair
+        // threads can access the same particle concurrently.
+        __device__ int claimParticleCollisionSlot(int partnerID, int currentStep);
+
     protected:
         int collisionPartnerIDs[MAX_ACTIVE_COLLISIONS];
         dfloat3 tangentialDisplacements[MAX_ACTIVE_COLLISIONS];

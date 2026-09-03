@@ -53,6 +53,49 @@ void CollisionData::setLastCollisionStep(int idx, int step) {
     if (idx >= 0 && idx < MAX_ACTIVE_COLLISIONS)
         lastCollisionStep[idx] = step;
 }
+
+__device__
+int CollisionData::claimParticleCollisionSlot(int partnerID, int currentStep) {
+    constexpr int CLAIMED_SLOT = -2;
+
+    for (int i = FIRST_PARTICLE_COLLISION_SLOT; i < MAX_ACTIVE_COLLISIONS; ++i) {
+        const int storedPartner = atomicAdd(&collisionPartnerIDs[i], 0);
+        const int storedStep = atomicAdd(&lastCollisionStep[i], 0);
+        if (storedPartner == partnerID && storedStep >= 0 &&
+            currentStep - storedStep <= 1) {
+            return i;
+        }
+    }
+
+    // Claim unused records through a sentinel, so another CUDA thread cannot
+    // observe or take a partially initialized record.
+    for (int i = FIRST_PARTICLE_COLLISION_SLOT; i < MAX_ACTIVE_COLLISIONS; ++i) {
+        if (atomicCAS(&collisionPartnerIDs[i], -1, CLAIMED_SLOT) == -1) {
+            tangentialDisplacements[i] = dfloat3(0, 0, 0);
+            atomicExch(&lastCollisionStep[i], currentStep);
+            __threadfence();
+            atomicExch(&collisionPartnerIDs[i], partnerID);
+            return i;
+        }
+    }
+
+    // Separation has no callback, so reclaim histories not seen recently.
+    for (int i = FIRST_PARTICLE_COLLISION_SLOT; i < MAX_ACTIVE_COLLISIONS; ++i) {
+        const int storedPartner = atomicAdd(&collisionPartnerIDs[i], 0);
+        const int storedStep = atomicAdd(&lastCollisionStep[i], 0);
+        if (storedPartner >= 0 && storedStep >= 0 &&
+            currentStep - storedStep > 1 &&
+            atomicCAS(&collisionPartnerIDs[i], storedPartner, CLAIMED_SLOT) == storedPartner) {
+            tangentialDisplacements[i] = dfloat3(0, 0, 0);
+            atomicExch(&lastCollisionStep[i], currentStep);
+            __threadfence();
+            atomicExch(&collisionPartnerIDs[i], partnerID);
+            return i;
+        }
+    }
+
+    return -1;
+}
 // Class TangentialCollisionTracker
 
 /* Constructor */

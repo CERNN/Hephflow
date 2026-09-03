@@ -20,28 +20,44 @@ __device__ dfloat3 computeTangentialForce(
     dfloat damping,
     dfloat friction_coef,
     dfloat f_n,
-    const dfloat3& t,
+    const dfloat3& n,
     ParticleCenter* pc_i,
     int tang_index,
     int step
 ) {
-    dfloat3 f_tang;
-    f_tang.x = - stiffness * tang_disp.x - damping * G_ct.x* POW_FUNCTION(abs(tang_disp.x) ,0.25);
-    f_tang.y = - stiffness * tang_disp.y - damping * G_ct.y* POW_FUNCTION(abs(tang_disp.y) ,0.25);
-    f_tang.z = - stiffness * tang_disp.z - damping * G_ct.z* POW_FUNCTION(abs(tang_disp.z) ,0.25);
-    dfloat mag = vector_length(f_tang);
-    if (mag > friction_coef * fabsf(f_n)) {
-        // Slipping: actually zero the stored elastic spring (previous call added
-        // a zero delta to the existing value, which left the old, possibly large,
-        // displacement in storage - the spring never actually released).
-        tang_disp = resetTangentialDisplacement(pc_i->getCollision(), tang_index, step);
-        // Apply Coulomb (kinetic) friction
-        f_tang = -friction_coef * f_n * t;
+    // DAMPING_TANGENTIAL is formed from sqrt(m_eff*k_t), and k_t already
+    // contains sqrt(normal overlap). It therefore already has the required
+    // Hertz overlap dependence. Component-wise powers of tangential history
+    // made the old force anisotropic and impossible to back-project exactly.
+    const dfloat3 damping_force = -damping * G_ct;
+    dfloat3 f_tang = -stiffness * tang_disp + damping_force;
+    const dfloat mag = vector_length(f_tang);
+    const dfloat coulomb_limit = friction_coef * fabsf(f_n);
+    if (mag > coulomb_limit && mag > 0.0f) {
+        // Scale the complete trial force. This remains well-defined if the
+        // instantaneous tangential velocity is zero but the spring is loaded.
+        f_tang = (coulomb_limit / mag) * f_tang;
+
+        // Store the spring state that reproduces the capped total force:
+        // F_cap = -k_t*xi_corrected + F_damping.
+        if (stiffness > 0.0f) {
+            tang_disp = (damping_force - f_tang) / stiffness;
+            tang_disp = tang_disp - dot_product(tang_disp, n) * n;
+        } else {
+            tang_disp = dfloat3(0.0f, 0.0f, 0.0f);
+        }
+        if (tang_index >= 0) {
+            pc_i->getCollision().setTangentialDisplacement(tang_index, tang_disp);
+            pc_i->getCollision().setLastCollisionStep(tang_index, step);
+        }
     }
     return f_tang;
 }
 
-__device__ void accumulateForceAndTorque(ParticleCenter* pc_i, const dfloat3& f_dirs, const dfloat3& m_dirs) {
+__device__ void accumulateForceAndTorque(
+    ParticleCenter* pc_i,
+    const dfloat3& f_dirs,
+    const dfloat3& m_dirs) {
     atomicAdd(&(pc_i->getFXatomic()), f_dirs.x);
     atomicAdd(&(pc_i->getFYatomic()), f_dirs.y);
     atomicAdd(&(pc_i->getFZatomic()), f_dirs.z);
@@ -76,7 +92,7 @@ int calculateWallIndex(const dfloat3 &n) {
 
 __device__ 
 int getCollisionIndexByPartnerID(const CollisionData &collisionData, int partnerID, int currentTimeStep) {
-    for (int i = 7; i < MAX_ACTIVE_COLLISIONS ; i++) {
+    for (int i = FIRST_PARTICLE_COLLISION_SLOT; i < MAX_ACTIVE_COLLISIONS ; i++) {
         if (collisionData.getCollisionPartnerID(i) == partnerID &&
             currentTimeStep - collisionData.getLastCollisionStep(i) <= 1) {
             return i; // Found the collision index for a particle
@@ -95,15 +111,7 @@ int startCollision(CollisionData &collisionData, int partnerID, bool isWall, con
         collisionData.setTangentialDisplacement(index, {0.0, 0.0, 0.0});
         collisionData.setLastCollisionStep(index, currentTimeStep);
     } else {
-        for (int i = 7; i < MAX_ACTIVE_COLLISIONS; i++) {
-            if (collisionData.getLastCollisionStep(i) == -1) { // Check for an unused slot
-                collisionData.setCollisionPartnerID(i, partnerID);
-                collisionData.setTangentialDisplacement(i, {0.0, 0.0, 0.0});
-                collisionData.setLastCollisionStep(i, currentTimeStep);
-                index = i;
-                break;
-            }
-        }
+        index = collisionData.claimParticleCollisionSlot(partnerID, currentTimeStep);
     }
 
     return index;
@@ -124,6 +132,8 @@ dfloat3 updateTangentialDisplacement(CollisionData &collisionData, int index, co
 
 __device__
 dfloat3 resetTangentialDisplacement(CollisionData &collisionData, int index, int currentTimeStep) {
+    // Actually zero the stored spring, unlike calling updateTangentialDisplacement
+    // with a zero delta (which just adds 0 to whatever was already stored).
     collisionData.setTangentialDisplacement(index, dfloat3{0.0, 0.0, 0.0});
     collisionData.setLastCollisionStep(index, currentTimeStep);
     return dfloat3{0.0, 0.0, 0.0};
@@ -136,7 +146,7 @@ void endCollision(CollisionData &collisionData, int index, int currentTimeStep) 
         collisionData.setLastCollisionStep(index, -1);
     }
     // Check if index is valid for particle collisions 
-    else if (index >= 7 && index < MAX_ACTIVE_COLLISIONS ) {
+    else if (index >= FIRST_PARTICLE_COLLISION_SLOT && index < MAX_ACTIVE_COLLISIONS ) {
         if (currentTimeStep - collisionData.getLastCollisionStep(index) > 1) {
             collisionData.setTangentialDisplacement(index, {0.0, 0.0, 0.0});
             collisionData.setLastCollisionStep(index, -1); // Indicate the slot is available '
@@ -156,7 +166,7 @@ dfloat3 getOrUpdateTangentialDisplacement(
     const dfloat3& G_cn,
     int& tang_index_out,
     const dfloat3& wallNormal, // only used for wall index calc / hack encoding
-    const dfloat3& n           //actual contact normal, used for tangent-plane projection
+    const dfloat3& n           // actual contact normal, used for tangent-plane projection
 ) {
     dfloat3 tang_disp;
     int tang_index = -1;
@@ -232,8 +242,6 @@ void sphereWallCollision(const CollisionContext& ctx, ParticleWallForces *d_pwFo
 
     // Relative tangential velocity
     dfloat3 G_ct = G + r_i * cross_product(w_i, n) - dot_product(G, n) * n;
-    dfloat mag = vector_length(G_ct);
-    dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0}; //tangential velocity vector
 
 
     //retrive and update tangential displacement
@@ -243,7 +251,7 @@ void sphereWallCollision(const CollisionContext& ctx, ParticleWallForces *d_pwFo
     // Compute tangential force
     dfloat3 f_tang = computeTangentialForce(
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
-        PW_FRICTION_COEF, f_n, t, pc_i, tang_index, step
+        PW_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
 
     //Total forces and torque in the particle
@@ -318,8 +326,6 @@ void capsuleWallCollisionCap(const CollisionContext& ctx) {
     dfloat f_n = vector_length(f_normal);
 
     // Relative tangential velocity
-    dfloat mag = vector_length(G_ct);
-    dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0}; // Tangential velocity vector
 
     // Tangential displacement tracking
     //retrive and update tangential displacement
@@ -330,7 +336,7 @@ void capsuleWallCollisionCap(const CollisionContext& ctx) {
     // Compute tangential force
     dfloat3 f_tang = computeTangentialForce(
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
-        PW_FRICTION_COEF, f_n, t, pc_i, tang_index, step
+        PW_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
 
     //Total forces and torque in the particle
@@ -377,8 +383,6 @@ void ellipsoidWallCollision(const CollisionContext& ctx, dfloat cr[1]) {
     dfloat f_n = vector_length(f_normal);
 
     // Relative tangential velocity
-    dfloat mag = vector_length(G_ct);
-    dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0}; // Tangential velocity vector
 
 
     //retrive and update tangential displacement
@@ -388,7 +392,7 @@ void ellipsoidWallCollision(const CollisionContext& ctx, dfloat cr[1]) {
     // Compute tangential force
     dfloat3 f_tang = computeTangentialForce(
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
-        PW_FRICTION_COEF, f_n, t, pc_i, tang_index, step
+        PW_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
 
     //sum the forces
@@ -510,8 +514,6 @@ void sphereSphereCollision(const CollisionContext& ctx){
 
     // Relative tangential velocity
     dfloat3 G_ct = G + r_i * cross_product(w_i, n) + r_j * cross_product(w_j, n) - dot_product(G, n) * n;
-    dfloat mag = vector_length(G_ct);
-    dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0}; //tangential velocity vector
 
     int tang_index = -1;
     dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, G, tang_index, dfloat3(0, 0, 0), n);
@@ -519,7 +521,7 @@ void sphereSphereCollision(const CollisionContext& ctx){
     // Compute tangential force
     dfloat3 f_tang = computeTangentialForce(
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
-        PW_FRICTION_COEF, f_n, t, pc_i, tang_index, step
+        PP_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
 
     // Final force results
@@ -575,8 +577,6 @@ void capsuleCapsuleCollision(const CollisionContext& ctx, dfloat3 closestOnA[1],
 
     // Relative tangential velocity
     dfloat3 G_ct = G + r_i * cross_product(w_i, n) + r_j * cross_product(w_j, n) - dot_product(G, n) * n;
-    dfloat mag = vector_length(G_ct);
-    dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0};
 
     int tang_index = -1;
     dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, dot_product(G,n), tang_index, dfloat3(0, 0, 0), n);
@@ -584,7 +584,7 @@ void capsuleCapsuleCollision(const CollisionContext& ctx, dfloat3 closestOnA[1],
     // Compute tangential force
     dfloat3 f_tang = computeTangentialForce(
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
-        PP_FRICTION_COEF, f_n, t, pc_i, tang_index, step
+        PP_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
 
     // Final force results
@@ -644,15 +644,13 @@ void ellipsoidEllipsoidCollision(const CollisionContext& ctx,dfloat3 closestOnA[
     dfloat f_n = vector_length(f_normal);
 
     // Relative tangential velocity
-    dfloat mag = vector_length(G_ct);
-    dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0};
 
     int tang_index = -1;
     dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, partnerID, false, step, G_ct, G_cn, tang_index, dfloat3(0, 0, 0), n);
 
     dfloat3 f_tang = computeTangentialForce(
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
-        PP_FRICTION_COEF, f_n, t, pc_i, tang_index, step
+        PP_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
 
     // Final force results
@@ -671,7 +669,7 @@ void ellipsoidCylinderCollision(const CollisionContext& ctx, dfloat3 closestOnB[
     ParticleCenter* pc_i = ctx.pc_i;
     int step = ctx.step;
     dfloat displacement = ctx.displacement;
-    dfloat3 endpoint = closestOnB[1];
+    dfloat3 endpoint = closestOnB[0];
 
     dfloat3 pos_i = pc_i->getPos(); 
     dfloat3 pos_c_i = endpoint;
@@ -702,33 +700,28 @@ void ellipsoidCylinderCollision(const CollisionContext& ctx, dfloat3 closestOnB[
     dfloat effective_radius = 1.0 / ((cr1[0] + cRadius) / (cr1[0] * cRadius));
     dfloat effective_mass = 1.0 / (m_i); //wall has infinite mass
 
-    const dfloat STIFFNESS_NORMAL = SPHERE_SPHERE_STIFFNESS_NORMAL_CONST * sqrt(effective_radius);
-    const dfloat STIFFNESS_TANGENTIAL = SPHERE_SPHERE_STIFFNESS_TANGENTIAL_CONST * sqrt(effective_radius) * sqrt(abs(displacement));
+    const dfloat STIFFNESS_NORMAL = SPHERE_WALL_STIFFNESS_NORMAL_CONST * sqrt(effective_radius);
+    const dfloat STIFFNESS_TANGENTIAL = SPHERE_WALL_STIFFNESS_TANGENTIAL_CONST * sqrt(effective_radius) * sqrt(abs(displacement));
 
-    const dfloat DAMPING_NORMAL = SPHERE_SPHERE_DAMPING_CONST * sqrt(effective_mass * STIFFNESS_NORMAL);
-    const dfloat DAMPING_TANGENTIAL = SPHERE_SPHERE_DAMPING_CONST * sqrt(effective_mass * STIFFNESS_TANGENTIAL);
+    const dfloat DAMPING_NORMAL = SPHERE_WALL_DAMPING_CONST * sqrt(effective_mass * STIFFNESS_NORMAL);
+    const dfloat DAMPING_TANGENTIAL = SPHERE_WALL_DAMPING_CONST * sqrt(effective_mass * STIFFNESS_TANGENTIAL);
 
     // Normal force
     dfloat3 f_normal = computeNormalForce(n, G, displacement, STIFFNESS_NORMAL, DAMPING_NORMAL);
     dfloat f_n = vector_length(f_normal);
 
     // Relative tangential velocity
-    dfloat mag = vector_length(G_ct);
-    dfloat3 t = (mag != 0) ? (G_ct / mag) : dfloat3{0.0, 0.0, 0.0};
 
-    int tang_index;
-    if(cyDir == -1){
-        tang_index = calculateWallIndex(dfloat3(0,0,0)); //this returns to 3 which is not being used
-    }else{
-        tang_index = NUM_PARTICLES+10; //it forces to be a id outside of particle range
-    }
-
-    //hack: we set n = dfloat3(-(7+NUM_PARTICLES), 0, 0)), which should return a tang_index equal to NUM_PARTICLES+10
-    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(pc_i, 0, true, step, G_ct, G_cn, tang_index, dfloat3(-(7+NUM_PARTICLES), 0, 0), n);
+    // Slot 3 is reserved for the cylindrical/duct wall. The former encoded
+    // NUM_PARTICLES+10 index could overlap particle-contact slots or exceed
+    // MAX_ACTIVE_COLLISIONS.
+    int tang_index = -1;
+    dfloat3 tang_disp = getOrUpdateTangentialDisplacement(
+        pc_i, 0, true, step, G_ct, G_cn, tang_index, dfloat3(0, 0, 0), n);
 
     dfloat3 f_tang = computeTangentialForce(
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
-        PP_FRICTION_COEF, f_n, t, pc_i, tang_index, step
+        PW_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
 
     // Final force results
