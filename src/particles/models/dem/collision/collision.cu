@@ -724,7 +724,7 @@ void ellipsoidCylinderCollision(const CollisionContext& ctx, dfloat3 closestOnB[
     dfloat3 G_ct = G - G_cn;
 
     dfloat effective_radius = 1.0 / ((cr1[0] + cRadius) / (cr1[0] * cRadius));
-    dfloat effective_mass = 1.0 / (m_i); //wall has infinite mass
+    dfloat effective_mass = (m_i); //wall has infinite mass
 
     const dfloat STIFFNESS_NORMAL = SPHERE_WALL_STIFFNESS_NORMAL_CONST * sqrt(effective_radius);
     const dfloat STIFFNESS_TANGENTIAL = SPHERE_WALL_STIFFNESS_TANGENTIAL_CONST * sqrt(effective_radius) * sqrt(abs(displacement));
