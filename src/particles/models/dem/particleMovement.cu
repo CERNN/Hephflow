@@ -60,6 +60,9 @@ void updateParticleOldValues(
     pc_i->setM_old(pc_i->getM());
     pc_i->setF(dfloat3(0,0,0));
     pc_i->setM(dfloat3(0,0,0));
+    #ifdef PARTICLE_FORCE_DEBUG
+    pc_i->resetDebugCollisionLoads();
+    #endif
 
 }
 

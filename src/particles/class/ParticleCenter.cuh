@@ -18,6 +18,19 @@
 #include "../models/dem/collision/collisionVar.h"
 
 #ifdef PARTICLE_MODEL
+
+#ifdef PARTICLE_FORCE_DEBUG
+#ifndef PARTICLE_FORCE_DEBUG_START_STEP
+#define PARTICLE_FORCE_DEBUG_START_STEP 0u
+#endif
+#ifndef PARTICLE_FORCE_DEBUG_END_STEP
+#define PARTICLE_FORCE_DEBUG_END_STEP 0xffffffffu
+#endif
+static_assert(
+    PARTICLE_FORCE_DEBUG_START_STEP <= PARTICLE_FORCE_DEBUG_END_STEP,
+    "PARTICLE_FORCE_DEBUG_START_STEP must not exceed PARTICLE_FORCE_DEBUG_END_STEP");
+#endif
+
 class CollisionData {
     public:
         __host__ __device__ CollisionData();  // Construtor
@@ -34,6 +47,14 @@ class CollisionData {
         __host__ __device__ int getLastCollisionStep(int idx) const;
         __host__ __device__ void setLastCollisionStep(int idx, int step);
 
+        #ifdef PARTICLE_FORCE_DEBUG
+        __host__ __device__ void setDebugContact(
+            int idx, dfloat overlap, const dfloat3& normalForce, const dfloat3& tangentialForce);
+        __host__ __device__ dfloat getDebugOverlap(int idx) const;
+        __host__ __device__ dfloat3 getDebugNormalForce(int idx) const;
+        __host__ __device__ dfloat3 getDebugTangentialForce(int idx) const;
+        #endif
+
         // Atomically claim a particle-particle history slot. Multiple pair
         // threads can access the same particle concurrently.
         __device__ int claimParticleCollisionSlot(int partnerID, int currentStep);
@@ -42,6 +63,11 @@ class CollisionData {
         int collisionPartnerIDs[MAX_ACTIVE_COLLISIONS];
         dfloat3 tangentialDisplacements[MAX_ACTIVE_COLLISIONS];
         int lastCollisionStep[MAX_ACTIVE_COLLISIONS];
+        #ifdef PARTICLE_FORCE_DEBUG
+        dfloat debugOverlaps[MAX_ACTIVE_COLLISIONS];
+        dfloat3 debugNormalForces[MAX_ACTIVE_COLLISIONS];
+        dfloat3 debugTangentialForces[MAX_ACTIVE_COLLISIONS];
+        #endif
 };
 
 class TangentialCollisionTracker 
@@ -255,6 +281,16 @@ public:
     __host__ __device__ void setMOldY(dfloat y);
     __host__ __device__ void setMOldZ(dfloat z);
 
+    #ifdef PARTICLE_FORCE_DEBUG
+    __host__ __device__ void resetDebugCollisionLoads();
+    __host__ __device__ dfloat3 getDebugPPForce() const;
+    __host__ __device__ dfloat3 getDebugPPTorque() const;
+    __host__ __device__ dfloat3 getDebugWallForce() const;
+    __host__ __device__ dfloat3 getDebugWallTorque() const;
+    __device__ void addDebugPPForceAndTorque(const dfloat3& force, const dfloat3& torque);
+    __device__ void addDebugWallForceAndTorque(const dfloat3& force, const dfloat3& torque);
+    #endif
+
     // Inertia tensor
     __host__ __device__ dfloat6 getI() const;
     __host__ __device__ dfloat getIXX() const;
@@ -394,6 +430,12 @@ protected:
     dfloat3 f_old;      // Old sum of the forces acting on particle
     dfloat3 M;          // Total momentum acting on particle
     dfloat3 M_old;      // Old total momentum acting on particle
+    #ifdef PARTICLE_FORCE_DEBUG
+    dfloat3 debug_pp_force;
+    dfloat3 debug_pp_torque;
+    dfloat3 debug_wall_force;
+    dfloat3 debug_wall_torque;
+    #endif
     dfloat6 I;          // I innertia moment I.x = Ixx
     dfloat6 I_body;     // Reference inertia in initial world-frame orientation — never mutated
     dfloat3 principal_inertia; // Principal moments before initial orientation is applied

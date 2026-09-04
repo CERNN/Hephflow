@@ -57,13 +57,21 @@ __device__ dfloat3 computeTangentialForce(
 __device__ void accumulateForceAndTorque(
     ParticleCenter* pc_i,
     const dfloat3& f_dirs,
-    const dfloat3& m_dirs) {
+    const dfloat3& m_dirs,
+    CollisionForceSource source) {
     atomicAdd(&(pc_i->getFXatomic()), f_dirs.x);
     atomicAdd(&(pc_i->getFYatomic()), f_dirs.y);
     atomicAdd(&(pc_i->getFZatomic()), f_dirs.z);
     atomicAdd(&(pc_i->getMXatomic()), m_dirs.x);
     atomicAdd(&(pc_i->getMYatomic()), m_dirs.y);
     atomicAdd(&(pc_i->getMZatomic()), m_dirs.z);
+    #ifdef PARTICLE_FORCE_DEBUG
+    if (source == COLLISION_SOURCE_WALL) {
+        pc_i->addDebugWallForceAndTorque(f_dirs, m_dirs);
+    } else {
+        pc_i->addDebugPPForceAndTorque(f_dirs, m_dirs);
+    }
+    #endif
 }
 
 
@@ -253,13 +261,16 @@ void sphereWallCollision(const CollisionContext& ctx, ParticleWallForces *d_pwFo
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
         PW_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
+    #ifdef PARTICLE_FORCE_DEBUG
+    pc_i->getCollision().setDebugContact(tang_index, displacement, f_normal, f_tang);
+    #endif
 
     //Total forces and torque in the particle
     dfloat3 f_dirs = f_normal + f_tang;
     dfloat3 m_dirs = r_i * cross_product(n, f_tang);
 
     //Save data in the particle information
-    accumulateForceAndTorque(pc_i, f_dirs, m_dirs);
+    accumulateForceAndTorque(pc_i, f_dirs, m_dirs, COLLISION_SOURCE_WALL);
 
     // Force exerted by particle on wall
     dfloat3 f_on_wall = -f_dirs;
@@ -338,13 +349,16 @@ void capsuleWallCollisionCap(const CollisionContext& ctx) {
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
         PW_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
+    #ifdef PARTICLE_FORCE_DEBUG
+    pc_i->getCollision().setDebugContact(tang_index, displacement, f_normal, f_tang);
+    #endif
 
     //Total forces and torque in the particle
     dfloat3 f_dirs = f_normal + f_tang;
     dfloat3 m_dirs = cross_product((n * r_i) + rri, f_dirs);
 
     //Save data in the particle information
-    accumulateForceAndTorque(pc_i, f_dirs, m_dirs);
+    accumulateForceAndTorque(pc_i, f_dirs, m_dirs, COLLISION_SOURCE_WALL);
 }
 
 // ------------------------ ELLIPSOID COLLISIONS ------------------------------
@@ -394,6 +408,9 @@ void ellipsoidWallCollision(const CollisionContext& ctx, dfloat cr[1]) {
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
         PW_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
+    #ifdef PARTICLE_FORCE_DEBUG
+    pc_i->getCollision().setDebugContact(tang_index, displacement, f_normal, f_tang);
+    #endif
 
     //sum the forces
     dfloat3 f_dirs = f_normal + f_tang;
@@ -402,7 +419,7 @@ void ellipsoidWallCollision(const CollisionContext& ctx, dfloat cr[1]) {
     dfloat3 m_dirs = cross_product(rri,f_dirs);
 
     //save date in the particle information
-    accumulateForceAndTorque(pc_i, f_dirs, m_dirs);
+    accumulateForceAndTorque(pc_i, f_dirs, m_dirs, COLLISION_SOURCE_WALL);
 }
 
 __device__
@@ -523,6 +540,9 @@ void sphereSphereCollision(const CollisionContext& ctx){
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
         PP_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
+    #ifdef PARTICLE_FORCE_DEBUG
+    pc_i->getCollision().setDebugContact(tang_index, displacement, -f_normal, -f_tang);
+    #endif
 
     // Final force results
     dfloat3 f_dirs = f_normal + f_tang;
@@ -586,6 +606,9 @@ void capsuleCapsuleCollision(const CollisionContext& ctx, dfloat3 closestOnA[1],
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
         PP_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
+    #ifdef PARTICLE_FORCE_DEBUG
+    pc_i->getCollision().setDebugContact(tang_index, displacement, -f_normal, -f_tang);
+    #endif
 
     // Final force results
     dfloat3 f_dirs = f_normal + f_tang;
@@ -652,6 +675,9 @@ void ellipsoidEllipsoidCollision(const CollisionContext& ctx,dfloat3 closestOnA[
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
         PP_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
+    #ifdef PARTICLE_FORCE_DEBUG
+    pc_i->getCollision().setDebugContact(tang_index, displacement, -f_normal, -f_tang);
+    #endif
 
     // Final force results
     dfloat3 f_dirs = f_normal + f_tang;
@@ -723,13 +749,16 @@ void ellipsoidCylinderCollision(const CollisionContext& ctx, dfloat3 closestOnB[
         tang_disp, G_ct, STIFFNESS_TANGENTIAL, DAMPING_TANGENTIAL,
         PW_FRICTION_COEF, f_n, n, pc_i, tang_index, step
     );
+    #ifdef PARTICLE_FORCE_DEBUG
+    pc_i->getCollision().setDebugContact(tang_index, displacement, f_normal, f_tang);
+    #endif
 
     // Final force results
     dfloat3 f_dirs = f_normal + f_tang;
     dfloat3 m_dirs_i = cross_product(rri, f_dirs);
 
     //Save data in the particle information
-    accumulateForceAndTorque(pc_i, f_dirs, m_dirs_i);
+    accumulateForceAndTorque(pc_i, f_dirs, m_dirs_i, COLLISION_SOURCE_WALL);
 }
 
 

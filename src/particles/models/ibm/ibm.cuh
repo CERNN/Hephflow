@@ -25,6 +25,31 @@
 
 #ifdef PARTICLE_MODEL
 
+enum IbmNodeDebugStatus {
+    IBM_DEBUG_VALID = 0,
+    IBM_DEBUG_NONFINITE_POSITION = 1,
+    IBM_DEBUG_OUTSIDE_DOMAIN = 2,
+    IBM_DEBUG_INVALID_STENCIL = 3,
+    IBM_DEBUG_INVALID_EULERIAN_STATE = 4
+};
+
+struct IbmNodeDebugRecord {
+    int nodeIndex;
+    int particleIndex;
+    int stencilStatus;
+    int clippedPoints;
+    int minIdx[3];
+    int maxIdx[3];
+    dfloat3 position;
+    dfloat3 fluidVelocity;
+    dfloat3 rigidVelocity;
+    dfloat3 deltaForce;
+    dfloat rho;
+    dfloat forceScale;
+    dfloat stencilWeightSum;
+};
+
+
 /**
  *  @brief Perform IBM simulation steps including force interpolation and spreading.
  *  @param particles: Pointer to the ParticlesSoA structure containing particle data.
@@ -64,7 +89,8 @@ void ibmForceInterpolationSpread(
     IbmNodesSoA* particlesNodes,
     ParticleCenter *pArray,
     dfloat *fMom,
-    unsigned int step
+    unsigned int step,
+    IbmNodeDebugRecord* debugRecords
 );
 
 /**

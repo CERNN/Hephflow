@@ -1,9 +1,130 @@
 
 #include "ibm.cuh"
 
+#ifdef PARTICLE_FORCE_DEBUG
+#include <cmath>
+#include <fstream>
+#include <iomanip>
+#include <limits>
+#include <vector>
+#endif
 
 #ifdef PARTICLE_MODEL
 
+#ifdef PARTICLE_FORCE_DEBUG
+namespace {
+bool ibmDebugStep(unsigned int step) {
+    return step - PARTICLE_FORCE_DEBUG_START_STEP <=
+           PARTICLE_FORCE_DEBUG_END_STEP - PARTICLE_FORCE_DEBUG_START_STEP;
+}
+
+double debugMagnitude(const dfloat3& value) {
+    return std::sqrt(
+        static_cast<double>(value.x) * value.x +
+        static_cast<double>(value.y) * value.y +
+        static_cast<double>(value.z) * value.z);
+}
+
+void writeDebugVec3(std::ofstream& out, const dfloat3& value) {
+    out << ',' << value.x << ',' << value.y << ',' << value.z;
+}
+
+void exportIbmNodeDebug(
+    const std::vector<IbmNodeDebugRecord>& records,
+    unsigned int step,
+    int iteration
+) {
+    static bool initialized = false;
+    const std::ios::openmode mode = initialized ? std::ios::app : std::ios::trunc;
+    std::ofstream out("particle_ibm_node_debug.csv", mode);
+    if (!out) {
+        std::fprintf(stderr, "ERROR: Could not open particle_ibm_node_debug.csv\n");
+        return;
+    }
+
+    if (!initialized) {
+        out << "step,iteration,particle,node_count,valid_nodes,invalid_nodes"
+            << ",nonfinite_nodes,clipped_nodes,min_weight_sum,max_weight_sum"
+            << ",worst_node,worst_stencil_status,worst_clipped_points"
+            << ",worst_min_x,worst_min_y,worst_min_z"
+            << ",worst_max_x,worst_max_y,worst_max_z"
+            << ",pos_x,pos_y,pos_z,rho,force_scale,weight_sum"
+            << ",fluid_ux,fluid_uy,fluid_uz"
+            << ",rigid_ux,rigid_uy,rigid_uz"
+            << ",slip_x,slip_y,slip_z"
+            << ",delta_fx,delta_fy,delta_fz,delta_f_mag\n";
+        initialized = true;
+    }
+    out << std::scientific << std::setprecision(9);
+
+    for (int particle = 0; particle < NUM_PARTICLES; ++particle) {
+        int nodeCount = 0;
+        int validNodes = 0;
+        int invalidStencilNodes = 0;
+        int nonfiniteNodes = 0;
+        int clippedNodes = 0;
+        dfloat minWeight = std::numeric_limits<dfloat>::infinity();
+        dfloat maxWeight = -std::numeric_limits<dfloat>::infinity();
+        const IbmNodeDebugRecord* worst = nullptr;
+        double worstMagnitude = -1.0;
+
+        for (const IbmNodeDebugRecord& record : records) {
+            if (record.particleIndex != particle) continue;
+            ++nodeCount;
+            if (record.stencilStatus != 0) {
+                ++invalidStencilNodes;
+                if (worst == nullptr) worst = &record;
+                continue;
+            }
+
+            ++validNodes;
+            if (record.clippedPoints > 0) ++clippedNodes;
+            if (std::isfinite(static_cast<double>(record.stencilWeightSum))) {
+                if (record.stencilWeightSum < minWeight) minWeight = record.stencilWeightSum;
+                if (record.stencilWeightSum > maxWeight) maxWeight = record.stencilWeightSum;
+            }
+
+            const double magnitude = debugMagnitude(record.deltaForce);
+            const bool finite = std::isfinite(magnitude) &&
+                std::isfinite(static_cast<double>(record.rho)) &&
+                std::isfinite(static_cast<double>(record.forceScale)) &&
+                std::isfinite(static_cast<double>(record.stencilWeightSum)) &&
+                std::isfinite(debugMagnitude(record.fluidVelocity)) &&
+                std::isfinite(debugMagnitude(record.rigidVelocity));
+            if (!finite) ++nonfiniteNodes;
+            if ((!finite && nonfiniteNodes == 1) ||
+                (finite && nonfiniteNodes == 0 && magnitude > worstMagnitude)) {
+                worst = &record;
+                worstMagnitude = magnitude;
+            }
+        }
+
+        if (validNodes == 0) {
+            minWeight = 0;
+            maxWeight = 0;
+        }
+        if (worst == nullptr) continue;
+
+        const dfloat3 slip = worst->fluidVelocity - worst->rigidVelocity;
+        out << step << ',' << iteration << ',' << particle << ',' << nodeCount << ',' << validNodes
+            << ',' << invalidStencilNodes << ',' << nonfiniteNodes << ',' << clippedNodes
+            << ',' << minWeight << ',' << maxWeight
+            << ',' << worst->nodeIndex << ',' << worst->stencilStatus
+            << ',' << worst->clippedPoints;
+        for (int axis = 0; axis < 3; ++axis) out << ',' << worst->minIdx[axis];
+        for (int axis = 0; axis < 3; ++axis) out << ',' << worst->maxIdx[axis];
+        writeDebugVec3(out, worst->position);
+        out << ',' << worst->rho << ',' << worst->forceScale
+            << ',' << worst->stencilWeightSum;
+        writeDebugVec3(out, worst->fluidVelocity);
+        writeDebugVec3(out, worst->rigidVelocity);
+        writeDebugVec3(out, slip);
+        writeDebugVec3(out, worst->deltaForce);
+        out << ',' << debugMagnitude(worst->deltaForce) << '\n';
+    }
+}
+} // namespace
+#endif
 
 void ibmSimulation(
     ParticlesSoA* particles,
@@ -43,10 +164,29 @@ void ibmSimulation(
     // Reset forces in all IBM nodes;
     ibmResetNodesForces<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(d_nodes,step);
     ibmParticleNodeMovement<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(d_nodes,pArray,range.first,range.last,step);
+    IbmNodeDebugRecord* d_debugRecords = nullptr;
+    #ifdef PARTICLE_FORCE_DEBUG
+    std::vector<IbmNodeDebugRecord> debugRecords;
+    if (ibmDebugStep(step)) {
+        debugRecords.resize(pNumNodes);
+        checkCudaErrors(cudaMalloc(&d_debugRecords, pNumNodes * sizeof(IbmNodeDebugRecord)));
+    }
+    #endif
+
     for (int iteration = 0; iteration < IBM_MAX_ITERATION; ++iteration) {
         ibmForceInterpolationSpread<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(
-            d_nodes, pArray, &fMom[0], step);
+            d_nodes, pArray, &fMom[0], step, d_debugRecords);
 
+        #ifdef PARTICLE_FORCE_DEBUG
+        if (d_debugRecords != nullptr) {
+            checkCudaErrors(cudaMemcpyAsync(
+                debugRecords.data(), d_debugRecords,
+                pNumNodes * sizeof(IbmNodeDebugRecord),
+                cudaMemcpyDeviceToHost, streamParticles));
+            checkCudaErrors(cudaStreamSynchronize(streamParticles));
+            exportIbmNodeDebug(debugRecords, step, iteration);
+        }
+        #endif
 
         // Same-stream launch ordering guarantees that spreading is complete
         // before the next iteration reinterpolates the predicted velocity.
@@ -54,6 +194,9 @@ void ibmSimulation(
             d_nodes, &fMom[0]);
     }
 
+    #ifdef PARTICLE_FORCE_DEBUG
+    if (d_debugRecords != nullptr) checkCudaErrors(cudaFree(d_debugRecords));
+    #endif
     
     cudaFree(d_nodes);
     // cudaFree(d_particlesSoA);
@@ -149,7 +292,8 @@ void ibmForceInterpolationSpread(
     IbmNodesSoA* particlesNodes,
     ParticleCenter *pArray,
     dfloat *fMom,
-    unsigned int step
+    unsigned int step,
+    IbmNodeDebugRecord* debugRecords
 ){
 
     int i = threadIdx.x + blockDim.x * blockIdx.x;
@@ -170,7 +314,17 @@ void ibmForceInterpolationSpread(
 
     const dfloat pos[3] = {xIBM, yIBM, zIBM};
 
+    #ifdef PARTICLE_FORCE_DEBUG
+    IbmNodeDebugRecord debugRecord = {};
+    debugRecord.nodeIndex = i;
+    debugRecord.particleIndex = particleCenterIdx;
+    debugRecord.stencilStatus = IBM_DEBUG_NONFINITE_POSITION;
+    debugRecord.position = dfloat3(xIBM, yIBM, zIBM);
+    #endif
     if (!isfinite(xIBM) || !isfinite(yIBM) || !isfinite(zIBM)) {
+        #ifdef PARTICLE_FORCE_DEBUG
+        if (debugRecords != nullptr) debugRecords[i] = debugRecord;
+        #endif
         return;
     }
 
@@ -233,14 +387,28 @@ void ibmForceInterpolationSpread(
         #endif //BC_Z_PERIODIC
     };
 
+    #ifdef PARTICLE_FORCE_DEBUG
+        for (int axis = 0; axis < 3; ++axis) {
+            debugRecord.minIdx[axis] = minIdx[axis];
+            debugRecord.maxIdx[axis] = maxIdx[axis];
+        }
+    #endif
 
 
     // Particle stencil out of the domain
     if(maxIdx[0] < 0 || maxIdx[1] < 0 || maxIdx[2] < 0) {
+        #ifdef PARTICLE_FORCE_DEBUG
+        debugRecord.stencilStatus = IBM_DEBUG_OUTSIDE_DOMAIN;
+        if (debugRecords != nullptr) debugRecords[i] = debugRecord;
+        #endif
         return;
     }
     // Particle stencil out of the domain
     if(minIdx[0] >= P_DIST*2 || minIdx[1] >= P_DIST*2 || minIdx[2] >= P_DIST*2) {
+        #ifdef PARTICLE_FORCE_DEBUG
+        debugRecord.stencilStatus = IBM_DEBUG_OUTSIDE_DOMAIN;
+        if (debugRecords != nullptr) debugRecords[i] = debugRecord;
+        #endif
         return;
     }
     
@@ -249,9 +417,23 @@ void ibmForceInterpolationSpread(
        minIdx[0] > maxIdx[0] || minIdx[1] > maxIdx[1] || minIdx[2] > maxIdx[2]) {
        // printf("ERROR: Invalid stencil indices - minIdx=[%d,%d,%d] maxIdx=[%d,%d,%d]\n",
        //        minIdx[0], minIdx[1], minIdx[2], maxIdx[0], maxIdx[1], maxIdx[2]);
+        #ifdef PARTICLE_FORCE_DEBUG
+            debugRecord.stencilStatus = IBM_DEBUG_INVALID_STENCIL;
+            if (debugRecords != nullptr) debugRecords[i] = debugRecord;
+        #endif
         return;
     }
 
+    #ifdef PARTICLE_FORCE_DEBUG
+        debugRecord.stencilStatus = IBM_DEBUG_VALID;
+        const int retainedPoints =
+            (maxIdx[0] - minIdx[0] + 1) *
+            (maxIdx[1] - minIdx[1] + 1) *
+            (maxIdx[2] - minIdx[2] + 1);
+        const int stencilWidth = P_DIST * 2;
+        debugRecord.clippedPoints =
+            stencilWidth * stencilWidth * stencilWidth - retainedPoints;
+    #endif
 
 
     //compute stencil values
@@ -266,6 +448,9 @@ void ibmForceInterpolationSpread(
     dfloat uyVar = 0;
     dfloat uzVar = 0;
     bool invalidEulerianState = false;
+    #ifdef PARTICLE_FORCE_DEBUG
+        dfloat stencilWeightSum = 0;
+    #endif
 
     int xx,yy,zz;
 
@@ -340,6 +525,9 @@ void ibmForceInterpolationSpread(
                 #ifdef EXTERNAL_DUCT_BC
                     dfloat pos_r_i = (xx - DUCT_CENTER_X)*(xx - DUCT_CENTER_X) + (yy - DUCT_CENTER_Y)*(yy - DUCT_CENTER_Y);
                     if(pos_r_i < OUTER_RADIUS*OUTER_RADIUS){
+                        #ifdef PARTICLE_FORCE_DEBUG
+                        stencilWeightSum += aux;
+                        #endif
                         rhoVar += aux * rhoNode;
                         uxVar  += aux * uxPredicted;
                         uyVar  += aux * uyPredicted;
@@ -347,6 +535,9 @@ void ibmForceInterpolationSpread(
                     }
                 #endif
                 #ifndef EXTERNAL_DUCT_BC
+                    #ifdef PARTICLE_FORCE_DEBUG
+                    stencilWeightSum += aux;
+                    #endif
                     rhoVar += aux * rhoNode;
                     uxVar  += aux * uxPredicted;
                     uyVar  += aux * uyPredicted;
@@ -428,7 +619,23 @@ void ibmForceInterpolationSpread(
         deltaF = aux * velocityResidual;
     }
 
+    #ifdef PARTICLE_FORCE_DEBUG
+        if (!validCorrection) {
+            debugRecord.stencilStatus = IBM_DEBUG_INVALID_EULERIAN_STATE;
+        }
+    #endif
 
+    #ifdef PARTICLE_FORCE_DEBUG
+        if (debugRecords != nullptr) {
+            debugRecord.fluidVelocity = dfloat3(uxVar, uyVar, uzVar);
+            debugRecord.rigidVelocity = dfloat3(ux_calc, uy_calc, uz_calc);
+            debugRecord.deltaForce = deltaF;
+            debugRecord.rho = rhoVar;
+            debugRecord.forceScale = aux;
+            debugRecord.stencilWeightSum = stencilWeightSum;
+            debugRecords[i] = debugRecord;
+        }
+    #endif
 
     // Calculate IBM forces
     const dfloat3SoA force = particlesNodes->getF();

@@ -99,17 +99,24 @@ dfloat3 computeTangentialForce(
     int step
 ); 
 
+
+enum CollisionForceSource {
+    COLLISION_SOURCE_PARTICLE,
+    COLLISION_SOURCE_WALL
+};
 /**
  * @brief Accumulate forces and torques on a particle atomically.
  * @param pc_i: Pointer to the ParticleCenter structure representing the particle.
  * @param f_dirs: The force vector to be accumulated.
  * @param m_dirs: The torque vector to be accumulated.
+ * @param source: The source of the collision force, indicating whether it originates from another particle or a wall.
  */
 __device__
 void accumulateForceAndTorque(
     ParticleCenter* pc_i,
     const dfloat3& f_dirs,
-    const dfloat3& m_dirs);
+    const dfloat3& m_dirs,
+    CollisionForceSource source = COLLISION_SOURCE_PARTICLE);
 
 // ****************************************************************************
 // ************************   COLLISION TRACKING   ****************************

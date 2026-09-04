@@ -15,6 +15,11 @@ void CollisionData::reset() {
         setCollisionPartnerID(i, -1);
         setTangentialDisplacement(i, dfloat3(0, 0, 0));
         setLastCollisionStep(i, -1);
+        #ifdef PARTICLE_FORCE_DEBUG
+        debugOverlaps[i] = 0.0f;
+        debugNormalForces[i] = dfloat3(0, 0, 0);
+        debugTangentialForces[i] = dfloat3(0, 0, 0);
+        #endif
     }
 }
 // Getters
@@ -53,6 +58,26 @@ void CollisionData::setLastCollisionStep(int idx, int step) {
     if (idx >= 0 && idx < MAX_ACTIVE_COLLISIONS)
         lastCollisionStep[idx] = step;
 }
+
+#ifdef PARTICLE_FORCE_DEBUG
+__host__ __device__
+void CollisionData::setDebugContact(
+    int idx, dfloat overlap, const dfloat3& normalForce, const dfloat3& tangentialForce) {
+    if (idx < 0 || idx >= MAX_ACTIVE_COLLISIONS) return;
+    debugOverlaps[idx] = overlap;
+    debugNormalForces[idx] = normalForce;
+    debugTangentialForces[idx] = tangentialForce;
+}
+__host__ __device__ dfloat CollisionData::getDebugOverlap(int idx) const {
+    return (idx >= 0 && idx < MAX_ACTIVE_COLLISIONS) ? debugOverlaps[idx] : 0.0f;
+}
+__host__ __device__ dfloat3 CollisionData::getDebugNormalForce(int idx) const {
+    return (idx >= 0 && idx < MAX_ACTIVE_COLLISIONS) ? debugNormalForces[idx] : dfloat3();
+}
+__host__ __device__ dfloat3 CollisionData::getDebugTangentialForce(int idx) const {
+    return (idx >= 0 && idx < MAX_ACTIVE_COLLISIONS) ? debugTangentialForces[idx] : dfloat3();
+}
+#endif
 
 __device__
 int CollisionData::claimParticleCollisionSlot(int partnerID, int currentStep) {
@@ -139,6 +164,9 @@ ParticleCenter::ParticleCenter() {
     f_old = dfloat3();
     M = dfloat3();
     M_old = dfloat3();
+    #ifdef PARTICLE_FORCE_DEBUG
+    resetDebugCollisionLoads();
+    #endif
     I = dfloat6();
     I_body = dfloat6();
     principal_inertia = dfloat3();
@@ -325,6 +353,27 @@ __host__ __device__ void ParticleCenter::setM_old(const dfloat3& M_old) { this->
 __host__ __device__ void ParticleCenter::setMOldX(dfloat x) { this->M_old.x = x; }
 __host__ __device__ void ParticleCenter::setMOldY(dfloat y) { this->M_old.y = y; }
 __host__ __device__ void ParticleCenter::setMOldZ(dfloat z) { this->M_old.z = z; }
+
+#ifdef PARTICLE_FORCE_DEBUG
+__host__ __device__ void ParticleCenter::resetDebugCollisionLoads() {
+    debug_pp_force = dfloat3(0, 0, 0);
+    debug_pp_torque = dfloat3(0, 0, 0);
+    debug_wall_force = dfloat3(0, 0, 0);
+    debug_wall_torque = dfloat3(0, 0, 0);
+}
+__host__ __device__ dfloat3 ParticleCenter::getDebugPPForce() const { return debug_pp_force; }
+__host__ __device__ dfloat3 ParticleCenter::getDebugPPTorque() const { return debug_pp_torque; }
+__host__ __device__ dfloat3 ParticleCenter::getDebugWallForce() const { return debug_wall_force; }
+__host__ __device__ dfloat3 ParticleCenter::getDebugWallTorque() const { return debug_wall_torque; }
+__device__ void ParticleCenter::addDebugPPForceAndTorque(const dfloat3& force, const dfloat3& torque) {
+    atomicAdd(&debug_pp_force.x, force.x); atomicAdd(&debug_pp_force.y, force.y); atomicAdd(&debug_pp_force.z, force.z);
+    atomicAdd(&debug_pp_torque.x, torque.x); atomicAdd(&debug_pp_torque.y, torque.y); atomicAdd(&debug_pp_torque.z, torque.z);
+}
+__device__ void ParticleCenter::addDebugWallForceAndTorque(const dfloat3& force, const dfloat3& torque) {
+    atomicAdd(&debug_wall_force.x, force.x); atomicAdd(&debug_wall_force.y, force.y); atomicAdd(&debug_wall_force.z, force.z);
+    atomicAdd(&debug_wall_torque.x, torque.x); atomicAdd(&debug_wall_torque.y, torque.y); atomicAdd(&debug_wall_torque.z, torque.z);
+}
+#endif
 
 __host__ __device__ dfloat6 ParticleCenter::getI() const { return this->I; }
 __host__ __device__ dfloat ParticleCenter::getIXX() const { return this->I.xx; }
