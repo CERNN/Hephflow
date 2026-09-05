@@ -48,7 +48,7 @@ void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, Par
     */
     const unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if(idx > TOTAL_PCOLLISION_THREADS)
+    if(idx >= TOTAL_PCOLLISION_THREADS)
         return;
     
     const unsigned int row = ceil((-1.0+sqrt((dfloat)1+8*(idx+1)))/2);
@@ -236,29 +236,29 @@ void checkCollisionWallsElipsoid(ParticleCenter* pc_i, unsigned int step) {
     int wallCount = 0;
 
     #ifdef BC_X_WALL
-    walls[wallCount++] = wall(dfloat3(1, 0, 0), 0);
-    walls[wallCount++] = wall(dfloat3(-1, 0, 0), NX - 1);
+    walls[wallCount++] = wall(dfloat3(1,0,0),0,dfloat3(0,-WALL_VEL_UY,-WALL_VEL_UZ));
+    walls[wallCount++] = wall(dfloat3(-1,0,0),NX-1,dfloat3(0,WALL_VEL_UY,WALL_VEL_UZ));
     #endif
 
     #ifdef BC_Y_WALL
-    walls[wallCount++] = wall(dfloat3(0, 1, 0), 0);
-    walls[wallCount++] = wall(dfloat3(0, -1, 0), NY - 1);
+    walls[wallCount++] = wall(dfloat3(0,1,0),0,dfloat3(-WALL_VEL_UX,0,-WALL_VEL_UZ));
+    walls[wallCount++] = wall(dfloat3(0,-1,0),NY-1,dfloat3(WALL_VEL_UX,0,WALL_VEL_UZ));
     #endif
     
     #ifdef BC_Z_WALL
-    walls[wallCount++] = wall(dfloat3(0, 0, 1), 0);
-    walls[wallCount++] = wall(dfloat3(0, 0, -1), NZ - 1);
+    walls[wallCount++] = wall(dfloat3(0,0,1),0,dfloat3(-WALL_VEL_UX,-WALL_VEL_UY,0));
+    walls[wallCount++] = wall(dfloat3(0,0,-1),NZ_TOTAL-1,dfloat3(WALL_VEL_UX,WALL_VEL_UY,0));
     #endif
 
     // Loop through all defined walls and check for collision
     for (int i = 0; i < wallCount; ++i) {
-        dfloat distanceWall = 0;
-        dfloat3 contactPoint2[1];
-        dfloat cr[1];
-
-        distanceWall = ellipsoidWallCollisionDistance(pc_i, walls[i], contactPoint2, cr, step);
-        if (distanceWall < 0) {
-            ellipsoidWallCollision({pc_i, walls[i], -distanceWall, step, contactPoint2[0]}, cr);
+        const EllipsoidWallContactResult contact=ellipsoidWallCollisionDistance(pc_i,walls[i],step);
+        if (contact.status==ELLIPSOID_INTERSECTING && contact.signedDistance<0.0f) {
+            dfloat cr[1]={contact.curvatureRadius};
+            ellipsoidWallCollision(
+                {pc_i,walls[i],-contact.signedDistance,step,contact.pointEllipsoid},
+                cr
+            );
         }
     }
 }
@@ -419,52 +419,52 @@ void capsuleSphereCollisionCheck(unsigned int column, unsigned int row, Particle
 
 __device__
 void ellipsoidEllipsoidCollisionCheck(unsigned int column, unsigned int row, ParticleCenter* pc_i, ParticleCenter* pc_j, int step) {
-    dfloat minDist = 1E+37f;
-    dfloat3 bestClosestOnA, bestClosestOnB;
-    dfloat bestcr1, bestcr2;
+    EllipsoidContactResult bestResult = {};
+    bestResult.status = ELLIPSOID_INVALID_GEOMETRY;
+    bestResult.signedDisplacement = 1E+37f;
     dfloat3 bestTranslation;
-    dfloat dist;
-
-    // The temporary arrays must be declared to pass to the called function
-    dfloat3 closestOnA[1], closestOnB[1];
-    dfloat cr1[1], cr2[1];
+    bool haveResult = false;
+    bool hadProxyInvalid = false;
 
     for (int i = 0; i < NUM_PERIODIC_DOMAIN_OFFSET; ++i) {
         int dx = PERIODIC_DOMAIN_OFFSET[i][0];
         int dy = PERIODIC_DOMAIN_OFFSET[i][1];
         int dz = PERIODIC_DOMAIN_OFFSET[i][2];
 
-        dfloat3 translation = dfloat3(dx * NX, dy * NY, dz * NZ);
-        dist = ellipsoidEllipsoidCollisionDistance(pc_i, pc_j, closestOnA, closestOnB, cr1, cr2, translation, step);
-
-        if (dist < minDist) {
-            minDist = dist;
-            bestClosestOnA = closestOnA[0];
-            bestClosestOnB = closestOnB[0];
-            bestcr1 = cr1[0];
-            bestcr2 = cr2[0];
+        dfloat3 translation = dfloat3(dx * NX, dy * NY, dz * NZ_TOTAL);
+        EllipsoidContactResult candidate = ellipsoidEllipsoidCollisionDistance(pc_i, pc_j, translation, step);
+        const bool candidateUsable = candidate.status == ELLIPSOID_SEPARATED ||
+                                     candidate.status == ELLIPSOID_INTERSECTING;
+        hadProxyInvalid = hadProxyInvalid || candidate.status == ELLIPSOID_PROXY_INVALID;
+        if (candidateUsable && (!haveResult || candidate.signedDisplacement < bestResult.signedDisplacement)) {
+            bestResult = candidate;
             bestTranslation = translation;
+            haveResult = true;
         }
     }
 
-    closestOnA[0] = bestClosestOnA;
-    closestOnB[0] = bestClosestOnB - bestTranslation;
-    cr1[0] = bestcr1;
-    cr2[0] = bestcr2;
-    dist = minDist;
+    #ifdef PARTICLE_DEBUG
+    if (!haveResult || hadProxyInvalid) {
+        printf("ELLIPSOID CONTACT FAILURE i=%u j=%u status=%d step=%d\n",
+               column,row,hadProxyInvalid ? (int)ELLIPSOID_PROXY_INVALID : (int)bestResult.status,step);
+    }
+    #endif
 
-    if (dist < 0) {
-        dfloat3 diff_pos = getDiffPeriodic(closestOnA[0], closestOnB[0]);
-        dfloat mag_dist = vector_length(diff_pos);
-        dfloat3 normal = (mag_dist != 0) ? (diff_pos / mag_dist) : dfloat3{0.0, 0.0, 0.0};
+    if (haveResult && bestResult.status == ELLIPSOID_INTERSECTING && bestResult.signedDisplacement < 0.0f) {
+        dfloat3 closestOnA[1] = {bestResult.pointA};
+        // ellipsoidEllipsoidCollision currently accepts B in the base frame and
+        // adds the selected image translation internally.
+        dfloat3 closestOnB[1] = {bestResult.pointBImage-bestTranslation};
+        dfloat cr1[1] = {bestResult.curvatureRadiusA};
+        dfloat cr2[1] = {bestResult.curvatureRadiusB};
 
         CollisionContext ctx = {};
         ctx.pc_i = pc_i;
         ctx.pc_j = pc_j;
-        ctx.displacement = dist;
+        ctx.displacement = bestResult.signedDisplacement;
         ctx.step = step;
         ctx.partnerID = row;
-        ctx.wall.normal = normal;
+        ctx.wall.normal = bestResult.normalBToA;
 
 
         ellipsoidEllipsoidCollision(ctx,closestOnA, closestOnB, cr1, cr2, bestTranslation);

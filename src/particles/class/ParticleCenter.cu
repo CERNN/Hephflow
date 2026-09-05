@@ -15,6 +15,11 @@ void CollisionData::reset() {
         setCollisionPartnerID(i, -1);
         setTangentialDisplacement(i, dfloat3(0, 0, 0));
         setLastCollisionStep(i, -1);
+        #ifdef PARTICLE_FORCE_DEBUG
+        debugOverlaps[i] = 0.0f;
+        debugNormalForces[i] = dfloat3(0, 0, 0);
+        debugTangentialForces[i] = dfloat3(0, 0, 0);
+        #endif
     }
 }
 // Getters
@@ -53,6 +58,69 @@ void CollisionData::setLastCollisionStep(int idx, int step) {
     if (idx >= 0 && idx < MAX_ACTIVE_COLLISIONS)
         lastCollisionStep[idx] = step;
 }
+
+#ifdef PARTICLE_FORCE_DEBUG
+__host__ __device__
+void CollisionData::setDebugContact(
+    int idx, dfloat overlap, const dfloat3& normalForce, const dfloat3& tangentialForce) {
+    if (idx < 0 || idx >= MAX_ACTIVE_COLLISIONS) return;
+    debugOverlaps[idx] = overlap;
+    debugNormalForces[idx] = normalForce;
+    debugTangentialForces[idx] = tangentialForce;
+}
+__host__ __device__ dfloat CollisionData::getDebugOverlap(int idx) const {
+    return (idx >= 0 && idx < MAX_ACTIVE_COLLISIONS) ? debugOverlaps[idx] : 0.0f;
+}
+__host__ __device__ dfloat3 CollisionData::getDebugNormalForce(int idx) const {
+    return (idx >= 0 && idx < MAX_ACTIVE_COLLISIONS) ? debugNormalForces[idx] : dfloat3();
+}
+__host__ __device__ dfloat3 CollisionData::getDebugTangentialForce(int idx) const {
+    return (idx >= 0 && idx < MAX_ACTIVE_COLLISIONS) ? debugTangentialForces[idx] : dfloat3();
+}
+#endif
+
+__device__
+int CollisionData::claimParticleCollisionSlot(int partnerID, int currentStep) {
+    constexpr int CLAIMED_SLOT = -2;
+
+    for (int i = FIRST_PARTICLE_COLLISION_SLOT; i < MAX_ACTIVE_COLLISIONS; ++i) {
+        const int storedPartner = atomicAdd(&collisionPartnerIDs[i], 0);
+        const int storedStep = atomicAdd(&lastCollisionStep[i], 0);
+        if (storedPartner == partnerID && storedStep >= 0 &&
+            currentStep - storedStep <= 1) {
+            return i;
+        }
+    }
+
+    // Claim unused records through a sentinel, so another CUDA thread cannot
+    // observe or take a partially initialized record.
+    for (int i = FIRST_PARTICLE_COLLISION_SLOT; i < MAX_ACTIVE_COLLISIONS; ++i) {
+        if (atomicCAS(&collisionPartnerIDs[i], -1, CLAIMED_SLOT) == -1) {
+            tangentialDisplacements[i] = dfloat3(0, 0, 0);
+            atomicExch(&lastCollisionStep[i], currentStep);
+            __threadfence();
+            atomicExch(&collisionPartnerIDs[i], partnerID);
+            return i;
+        }
+    }
+
+    // Separation has no callback, so reclaim histories not seen recently.
+    for (int i = FIRST_PARTICLE_COLLISION_SLOT; i < MAX_ACTIVE_COLLISIONS; ++i) {
+        const int storedPartner = atomicAdd(&collisionPartnerIDs[i], 0);
+        const int storedStep = atomicAdd(&lastCollisionStep[i], 0);
+        if (storedPartner >= 0 && storedStep >= 0 &&
+            currentStep - storedStep > 1 &&
+            atomicCAS(&collisionPartnerIDs[i], storedPartner, CLAIMED_SLOT) == storedPartner) {
+            tangentialDisplacements[i] = dfloat3(0, 0, 0);
+            atomicExch(&lastCollisionStep[i], currentStep);
+            __threadfence();
+            atomicExch(&collisionPartnerIDs[i], partnerID);
+            return i;
+        }
+    }
+
+    return -1;
+}
 // Class TangentialCollisionTracker
 
 /* Constructor */
@@ -90,13 +158,20 @@ ParticleCenter::ParticleCenter() {
     w_pos = dfloat3();
     q_pos = dfloat4();
     q_pos_old = dfloat4();
-    q_cumulative_rot = dfloat4({1.0f, 0.0f, 0.0f, 0.0f}); // Identity quaternion
+    q_cumulative_rot = dfloat4(0.0f, 0.0f, 0.0f, 1.0f); // Identity quaternion (x,y,z,w)
+    q_cumulative_rot_last_valid = q_cumulative_rot;
     f = dfloat3();
     f_old = dfloat3();
     M = dfloat3();
     M_old = dfloat3();
+    #ifdef PARTICLE_FORCE_DEBUG
+    resetDebugCollisionLoads();
+    #endif
     I = dfloat6();
     I_body = dfloat6();
+    principal_inertia = dfloat3();
+    q_inertia_reference = dfloat4(0.0f, 0.0f, 0.0f, 1.0f);
+    rotation_faulted = false;
     dP_internal = dfloat3();
     dL_internal = dfloat3();
     S = 0;
@@ -214,7 +289,22 @@ __host__ __device__ dfloat ParticleCenter::getQCumulativeRotX() const { return t
 __host__ __device__ dfloat ParticleCenter::getQCumulativeRotY() const { return this->q_cumulative_rot.y; }
 __host__ __device__ dfloat ParticleCenter::getQCumulativeRotZ() const { return this->q_cumulative_rot.z; }
 __host__ __device__ dfloat ParticleCenter::getQCumulativeRotW() const { return this->q_cumulative_rot.w; }
-__host__ __device__ void ParticleCenter::setQ_cumulative_rot(const dfloat4& q_cumulative_rot) { this->q_cumulative_rot = q_cumulative_rot; }
+__host__ __device__ void ParticleCenter::setQ_cumulative_rot(const dfloat4& q_cumulative_rot) {
+    this->q_cumulative_rot = q_cumulative_rot;
+    const dfloat norm_sq = q_cumulative_rot.x*q_cumulative_rot.x +
+                           q_cumulative_rot.y*q_cumulative_rot.y +
+                           q_cumulative_rot.z*q_cumulative_rot.z +
+                           q_cumulative_rot.w*q_cumulative_rot.w;
+    if (isfinite(norm_sq) && norm_sq > 1.0e-20_df) {
+        const dfloat inv_norm = rsqrtf(norm_sq);
+        this->q_cumulative_rot_last_valid = dfloat4(
+            q_cumulative_rot.x * inv_norm,
+            q_cumulative_rot.y * inv_norm,
+            q_cumulative_rot.z * inv_norm,
+            q_cumulative_rot.w * inv_norm);
+    }
+}
+__host__ __device__ dfloat4 ParticleCenter::getQ_cumulative_rot_last_valid() const { return this->q_cumulative_rot_last_valid; }
 __host__ __device__ void ParticleCenter::setQCumulativeRotX(dfloat x) { this->q_cumulative_rot.x = x; }
 __host__ __device__ void ParticleCenter::setQCumulativeRotY(dfloat y) { this->q_cumulative_rot.y = y; }
 __host__ __device__ void ParticleCenter::setQCumulativeRotZ(dfloat z) { this->q_cumulative_rot.z = z; }
@@ -264,6 +354,27 @@ __host__ __device__ void ParticleCenter::setMOldX(dfloat x) { this->M_old.x = x;
 __host__ __device__ void ParticleCenter::setMOldY(dfloat y) { this->M_old.y = y; }
 __host__ __device__ void ParticleCenter::setMOldZ(dfloat z) { this->M_old.z = z; }
 
+#ifdef PARTICLE_FORCE_DEBUG
+__host__ __device__ void ParticleCenter::resetDebugCollisionLoads() {
+    debug_pp_force = dfloat3(0, 0, 0);
+    debug_pp_torque = dfloat3(0, 0, 0);
+    debug_wall_force = dfloat3(0, 0, 0);
+    debug_wall_torque = dfloat3(0, 0, 0);
+}
+__host__ __device__ dfloat3 ParticleCenter::getDebugPPForce() const { return debug_pp_force; }
+__host__ __device__ dfloat3 ParticleCenter::getDebugPPTorque() const { return debug_pp_torque; }
+__host__ __device__ dfloat3 ParticleCenter::getDebugWallForce() const { return debug_wall_force; }
+__host__ __device__ dfloat3 ParticleCenter::getDebugWallTorque() const { return debug_wall_torque; }
+__device__ void ParticleCenter::addDebugPPForceAndTorque(const dfloat3& force, const dfloat3& torque) {
+    atomicAdd(&debug_pp_force.x, force.x); atomicAdd(&debug_pp_force.y, force.y); atomicAdd(&debug_pp_force.z, force.z);
+    atomicAdd(&debug_pp_torque.x, torque.x); atomicAdd(&debug_pp_torque.y, torque.y); atomicAdd(&debug_pp_torque.z, torque.z);
+}
+__device__ void ParticleCenter::addDebugWallForceAndTorque(const dfloat3& force, const dfloat3& torque) {
+    atomicAdd(&debug_wall_force.x, force.x); atomicAdd(&debug_wall_force.y, force.y); atomicAdd(&debug_wall_force.z, force.z);
+    atomicAdd(&debug_wall_torque.x, torque.x); atomicAdd(&debug_wall_torque.y, torque.y); atomicAdd(&debug_wall_torque.z, torque.z);
+}
+#endif
+
 __host__ __device__ dfloat6 ParticleCenter::getI() const { return this->I; }
 __host__ __device__ dfloat ParticleCenter::getIXX() const { return this->I.xx; }
 __host__ __device__ dfloat ParticleCenter::getIYY() const { return this->I.yy; }
@@ -281,6 +392,12 @@ __host__ __device__ void ParticleCenter::setIYZ(dfloat val) { this->I.yz = val; 
 
 __host__ __device__ dfloat6 ParticleCenter::getI_body() const { return this->I_body; }
 __host__ __device__ void ParticleCenter::setI_body(const dfloat6& I_body) { this->I_body = I_body; }
+__host__ __device__ dfloat3 ParticleCenter::getPrincipalInertia() const { return this->principal_inertia; }
+__host__ __device__ void ParticleCenter::setPrincipalInertia(const dfloat3& principal_inertia) { this->principal_inertia = principal_inertia; }
+__host__ __device__ dfloat4 ParticleCenter::getQ_inertia_reference() const { return this->q_inertia_reference; }
+__host__ __device__ void ParticleCenter::setQ_inertia_reference(const dfloat4& q_inertia_reference) { this->q_inertia_reference = q_inertia_reference; }
+__host__ __device__ bool ParticleCenter::getRotationFaulted() const { return this->rotation_faulted; }
+__host__ __device__ void ParticleCenter::setRotationFaulted(bool rotation_faulted) { this->rotation_faulted = rotation_faulted; }
 
 __host__ __device__ dfloat3 ParticleCenter::getDP_internal() const { return this->dP_internal; }
 __host__ __device__ dfloat ParticleCenter::getDPInternalX() const { return this->dP_internal.x; }

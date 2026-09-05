@@ -684,6 +684,10 @@ dfloat4 quart_multiplication(dfloat4 q1, dfloat4 q2);
 __host__ __device__
 dfloat4 quart_normalize(dfloat4 q);
 
+/** Normalize a finite quaternion, returning false for an invalid magnitude. */
+__host__ __device__
+bool quart_normalize_safe(dfloat4 q, dfloat4* normalized);
+
 // ****************************************************************************
 // **********************   CONVERSION OPERATIONS   ***************************
 // ****************************************************************************
@@ -810,6 +814,18 @@ void rotate_matrix_by_R_w_quart(dfloat4 q, dfloat I[3][3]);
  */
 __host__ __device__
 dfloat6 rotate_inertia_by_quart(dfloat4 q, dfloat6 I6);
+
+/** Apply R diag(principal_inertia) R^T to a world-frame vector. */
+__host__ __device__
+dfloat3 apply_world_inertia(dfloat3 v, dfloat4 orientation, dfloat3 principal_inertia);
+
+/** Apply R diag(1/principal_inertia) R^T without forming or inverting a matrix. */
+__host__ __device__
+dfloat3 apply_world_inverse_inertia(dfloat3 v, dfloat4 orientation, dfloat3 principal_inertia);
+
+/** Construct the world-frame tensor for storage and convergence diagnostics only. */
+__host__ __device__
+dfloat6 world_inertia_from_principal(dfloat4 orientation, dfloat3 principal_inertia);
 
 
 __host__ __device__

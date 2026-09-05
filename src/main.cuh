@@ -260,84 +260,84 @@ void interfaceFree(ghostInterfaceData &ghostInterface, macroInterfaceGPUData &ma
 
     #endif //A_ZZ_DIST
 
-    if (LOAD_CHECKPOINT){
-        cudaFree(ghostInterface.h_pop.X_0);
-        cudaFree(ghostInterface.h_pop.X_1);
-        cudaFree(ghostInterface.h_pop.Y_0);
-        cudaFree(ghostInterface.h_pop.Y_1);
-        cudaFree(ghostInterface.h_pop.Z_0);
-        cudaFree(ghostInterface.h_pop.Z_1);
+    if (LOAD_CHECKPOINT || CHECKPOINT_SAVE){
+        cudaFreeHost(ghostInterface.h_pop.X_0);
+        cudaFreeHost(ghostInterface.h_pop.X_1);
+        cudaFreeHost(ghostInterface.h_pop.Y_0);
+        cudaFreeHost(ghostInterface.h_pop.Y_1);
+        cudaFreeHost(ghostInterface.h_pop.Z_0);
+        cudaFreeHost(ghostInterface.h_pop.Z_1);
         #ifdef SECOND_DIST
-            cudaFree(ghostInterface.h_g.X_0);
-            cudaFree(ghostInterface.h_g.X_1);
-            cudaFree(ghostInterface.h_g.Y_0);
-            cudaFree(ghostInterface.h_g.Y_1);
-            cudaFree(ghostInterface.h_g.Z_0);
-            cudaFree(ghostInterface.h_g.Z_1);
+            cudaFreeHost(ghostInterface.h_g.X_0);
+            cudaFreeHost(ghostInterface.h_g.X_1);
+            cudaFreeHost(ghostInterface.h_g.Y_0);
+            cudaFreeHost(ghostInterface.h_g.Y_1);
+            cudaFreeHost(ghostInterface.h_g.Z_0);
+            cudaFreeHost(ghostInterface.h_g.Z_1);
         #endif //SECOND_DIST
         #ifdef PHI_DIST
-            cudaFree(ghostInterface.h_phi.X_0);
-            cudaFree(ghostInterface.h_phi.X_1);
-            cudaFree(ghostInterface.h_phi.Y_0);
-            cudaFree(ghostInterface.h_phi.Y_1);
-            cudaFree(ghostInterface.h_phi.Z_0);
-            cudaFree(ghostInterface.h_phi.Z_1);
+            cudaFreeHost(ghostInterface.h_phi.X_0);
+            cudaFreeHost(ghostInterface.h_phi.X_1);
+            cudaFreeHost(ghostInterface.h_phi.Y_0);
+            cudaFreeHost(ghostInterface.h_phi.Y_1);
+            cudaFreeHost(ghostInterface.h_phi.Z_0);
+            cudaFreeHost(ghostInterface.h_phi.Z_1);
         #endif //PHI_DIST
         #ifdef LAMBDA_DIST
-            cudaFree(ghostInterface.h_lambda.X_0);
-            cudaFree(ghostInterface.h_lambda.X_1);
-            cudaFree(ghostInterface.h_lambda.Y_0);
-            cudaFree(ghostInterface.h_lambda.Y_1);
-            cudaFree(ghostInterface.h_lambda.Z_0);
-            cudaFree(ghostInterface.h_lambda.Z_1);
+            cudaFreeHost(ghostInterface.h_lambda.X_0);
+            cudaFreeHost(ghostInterface.h_lambda.X_1);
+            cudaFreeHost(ghostInterface.h_lambda.Y_0);
+            cudaFreeHost(ghostInterface.h_lambda.Y_1);
+            cudaFreeHost(ghostInterface.h_lambda.Z_0);
+            cudaFreeHost(ghostInterface.h_lambda.Z_1);
         #endif //LAMBDA_DIST
         #ifdef A_XX_DIST
-            cudaFree(ghostInterface.h_Axx.X_0);
-            cudaFree(ghostInterface.h_Axx.X_1);
-            cudaFree(ghostInterface.h_Axx.Y_0);
-            cudaFree(ghostInterface.h_Axx.Y_1);
-            cudaFree(ghostInterface.h_Axx.Z_0);
-            cudaFree(ghostInterface.h_Axx.Z_1);
+            cudaFreeHost(ghostInterface.h_Axx.X_0);
+            cudaFreeHost(ghostInterface.h_Axx.X_1);
+            cudaFreeHost(ghostInterface.h_Axx.Y_0);
+            cudaFreeHost(ghostInterface.h_Axx.Y_1);
+            cudaFreeHost(ghostInterface.h_Axx.Z_0);
+            cudaFreeHost(ghostInterface.h_Axx.Z_1);
         #endif //A_XX_DIST
         #ifdef A_XY_DIST
-            cudaFree(ghostInterface.h_Axy.X_0);
-            cudaFree(ghostInterface.h_Axy.X_1);
-            cudaFree(ghostInterface.h_Axy.Y_0);
-            cudaFree(ghostInterface.h_Axy.Y_1);
-            cudaFree(ghostInterface.h_Axy.Z_0);
-            cudaFree(ghostInterface.h_Axy.Z_1);
+            cudaFreeHost(ghostInterface.h_Axy.X_0);
+            cudaFreeHost(ghostInterface.h_Axy.X_1);
+            cudaFreeHost(ghostInterface.h_Axy.Y_0);
+            cudaFreeHost(ghostInterface.h_Axy.Y_1);
+            cudaFreeHost(ghostInterface.h_Axy.Z_0);
+            cudaFreeHost(ghostInterface.h_Axy.Z_1);
         #endif //A_XY_DIST
         #ifdef A_XZ_DIST
-            cudaFree(ghostInterface.h_Axz.X_0);
-            cudaFree(ghostInterface.h_Axz.X_1);
-            cudaFree(ghostInterface.h_Axz.Y_0);
-            cudaFree(ghostInterface.h_Axz.Y_1);
-            cudaFree(ghostInterface.h_Axz.Z_0);
-            cudaFree(ghostInterface.h_Axz.Z_1);
+            cudaFreeHost(ghostInterface.h_Axz.X_0);
+            cudaFreeHost(ghostInterface.h_Axz.X_1);
+            cudaFreeHost(ghostInterface.h_Axz.Y_0);
+            cudaFreeHost(ghostInterface.h_Axz.Y_1);
+            cudaFreeHost(ghostInterface.h_Axz.Z_0);
+            cudaFreeHost(ghostInterface.h_Axz.Z_1);
         #endif //A_XZ_DIST
         #ifdef A_YY_DIST
-            cudaFree(ghostInterface.h_Ayy.X_0);
-            cudaFree(ghostInterface.h_Ayy.X_1);
-            cudaFree(ghostInterface.h_Ayy.Y_0);
-            cudaFree(ghostInterface.h_Ayy.Y_1);
-            cudaFree(ghostInterface.h_Ayy.Z_0);
-            cudaFree(ghostInterface.h_Ayy.Z_1);
+            cudaFreeHost(ghostInterface.h_Ayy.X_0);
+            cudaFreeHost(ghostInterface.h_Ayy.X_1);
+            cudaFreeHost(ghostInterface.h_Ayy.Y_0);
+            cudaFreeHost(ghostInterface.h_Ayy.Y_1);
+            cudaFreeHost(ghostInterface.h_Ayy.Z_0);
+            cudaFreeHost(ghostInterface.h_Ayy.Z_1);
         #endif //A_YY_DIST
         #ifdef A_YZ_DIST
-            cudaFree(ghostInterface.h_Ayz.X_0);
-            cudaFree(ghostInterface.h_Ayz.X_1);
-            cudaFree(ghostInterface.h_Ayz.Y_0);
-            cudaFree(ghostInterface.h_Ayz.Y_1);
-            cudaFree(ghostInterface.h_Ayz.Z_0);
-            cudaFree(ghostInterface.h_Ayz.Z_1);
+            cudaFreeHost(ghostInterface.h_Ayz.X_0);
+            cudaFreeHost(ghostInterface.h_Ayz.X_1);
+            cudaFreeHost(ghostInterface.h_Ayz.Y_0);
+            cudaFreeHost(ghostInterface.h_Ayz.Y_1);
+            cudaFreeHost(ghostInterface.h_Ayz.Z_0);
+            cudaFreeHost(ghostInterface.h_Ayz.Z_1);
         #endif //A_YZ_DIST
         #ifdef A_ZZ_DIST
-            cudaFree(ghostInterface.h_Azz.X_0);
-            cudaFree(ghostInterface.h_Azz.X_1);
-            cudaFree(ghostInterface.h_Azz.Y_0);
-            cudaFree(ghostInterface.h_Azz.Y_1);
-            cudaFree(ghostInterface.h_Azz.Z_0);
-            cudaFree(ghostInterface.h_Azz.Z_1);
+            cudaFreeHost(ghostInterface.h_Azz.X_0);
+            cudaFreeHost(ghostInterface.h_Azz.X_1);
+            cudaFreeHost(ghostInterface.h_Azz.Y_0);
+            cudaFreeHost(ghostInterface.h_Azz.Y_1);
+            cudaFreeHost(ghostInterface.h_Azz.Z_0);
+            cudaFreeHost(ghostInterface.h_Azz.Z_1);
         #endif //A_ZZ_DIST
 
     }
@@ -664,6 +664,17 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface, macroInterfaceGPUData &
 
         memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
         #endif //PHI_DIST
+
+        #ifdef LAMBDA_DIST
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_lambda.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_lambda.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_lambda.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_lambda.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_lambda.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
+        checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_lambda.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF));
+
+        memAllocated += GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
+        #endif //LAMBDA_DIST
 
         #ifdef A_XX_DIST
         checkCudaErrors(cudaMallocHost((void **)&(ghostInterface.h_Axx.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF));

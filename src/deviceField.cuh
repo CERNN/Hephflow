@@ -371,15 +371,6 @@ typedef struct deviceField{
         printf("Syncing data back to host (g=%d) \n", g); if(console_flush) fflush(stdout);
 
 
-        // Free random numbers if initialized
-        #ifdef RANDOM_NUMBERS
-            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-            checkCudaErrors(cudaFree(randomNumbers[g]));
-            randomNumbers[g] = nullptr;
-            // Do NOT call free(randomNumbers) here - the shared pointer array is freed in main.cu after threads join
-            printf("Random numbers free \n"); if(console_flush) fflush(stdout);
-        #endif //RANDOM_NUMBERS
-        
     }
 
     #ifdef CURVED_BOUNDARY_CONDITION
@@ -1457,6 +1448,13 @@ typedef struct deviceField{
 
     void freeDeviceField(int g) {
         interfaceFree(ghostInterface[g], macroInterfaceGPU[g]);
+
+        #ifdef CURVED_BOUNDARY_CONDITION
+        cudaFree(d_curvedBC[g]);
+        cudaFree(d_curvedBC_array[g]);
+        d_curvedBC[g] = nullptr;
+        d_curvedBC_array[g] = nullptr;
+        #endif
 
         cudaFree(d_fMom[g]);
         cudaFree(dNodeType[g]);
