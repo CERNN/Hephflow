@@ -132,33 +132,32 @@ void ibmSimulation(
     cudaStream_t streamParticles,
     unsigned int step
 ){
-    //TODO: FIX THIS SO IS NOT COPIED EVERY SINGLE STEP
-    // the input on the functions should be particles->getNodesSoA() instead of d_nodes
-    IbmNodesSoA h_nodes = *(particles->getNodesSoA());
-    IbmNodesSoA* d_nodes = &h_nodes;
-    cudaMalloc(&d_nodes, sizeof(IbmNodesSoA));
-    cudaMemcpy(d_nodes, &h_nodes, sizeof(IbmNodesSoA), cudaMemcpyHostToDevice);
-
-    checkCudaErrors(cudaSetDevice(GPU_INDEX));
-    MethodRange range = particles->getMethodRange(IBM);
-
-    //int numIBMParticles = range.last - range.first + 1; 
-    const unsigned int threadsNodesIBM = 64;
-    unsigned int pNumNodes = particles->getNodesSoA()->getNumNodes();
-    const unsigned int gridNodesIBM = pNumNodes % threadsNodesIBM ? pNumNodes / threadsNodesIBM + 1 : pNumNodes / threadsNodesIBM;
-
     if (particles == nullptr) {
         printf("Error: particles is nullptr\n");
         return;
     }
 
-    checkCudaErrors(cudaStreamSynchronize(streamParticles));
-
+    MethodRange range = particles->getMethodRange(IBM);
     if (range.first < 0 || range.last >= NUM_PARTICLES || range.first > range.last) {
-    printf("Error: Invalid range - first: %d, last: %d, NUM_PARTICLES: %d\n", 
+        printf("Error: Invalid range - first: %d, last: %d, NUM_PARTICLES: %d\n",
             range.first, range.last, NUM_PARTICLES);
-    return;
+        return;
     }
+
+    //TODO: FIX THIS SO IS NOT COPIED EVERY SINGLE STEP
+    // the input on the functions should be particles->getNodesSoA() instead of d_nodes
+    IbmNodesSoA h_nodes = *(particles->getNodesSoA());
+    IbmNodesSoA* d_nodes = nullptr;
+    checkCudaErrors(cudaSetDevice(GPU_INDEX));
+    checkCudaErrors(cudaMalloc(&d_nodes, sizeof(IbmNodesSoA)));
+    checkCudaErrors(cudaMemcpy(d_nodes, &h_nodes, sizeof(IbmNodesSoA), cudaMemcpyHostToDevice));
+
+    //int numIBMParticles = range.last - range.first + 1;
+    const unsigned int threadsNodesIBM = 64;
+    unsigned int pNumNodes = particles->getNodesSoA()->getNumNodes();
+    const unsigned int gridNodesIBM = pNumNodes % threadsNodesIBM ? pNumNodes / threadsNodesIBM + 1 : pNumNodes / threadsNodesIBM;
+
+    checkCudaErrors(cudaStreamSynchronize(streamParticles));
 
     ParticleCenter* pArray = particles->getPCenterArray();
     // Reset forces in all IBM nodes;

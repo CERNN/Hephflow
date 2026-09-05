@@ -18,6 +18,7 @@
 #include <random>
 #include "./../../var.h"
 #include <map>
+#include <vector>
 #include "./../../globalFunctions.h"
 
 #ifdef PARTICLE_MODEL
@@ -173,6 +174,7 @@ class ParticlesSoA{
         std::map<ParticleMethod, MethodRange> methodRanges;
 
         std::vector<ParticleCenter> centerStorage;
+        std::vector<ParticleShape> shapeStorage;
 };
 
 #endif //PARTICLE_MODEL

@@ -122,8 +122,10 @@ void IbmNodesSoA::freeMemory()
     this->deltaF.freeMemory();
     this->originalRelativePos.freeMemory();
 
-    cudaFree(this->S);
-    cudaFree(this->particleCenterIdx);
+    if (this->S) cudaFree(this->S);
+    if (this->particleCenterIdx) cudaFree(this->particleCenterIdx);
+    this->S = nullptr;
+    this->particleCenterIdx = nullptr;
 }
 
 __host__ __device__

@@ -8,20 +8,19 @@
 __host__ __device__ Particle::Particle(){
     method = none; // Initialize method
     numNodes = 0; // Initialize numNodes
+    pCenter = nullptr;
+    collideParticle = false;
+    collideWall = false;
+    shape = nullptr;
     nodes = nullptr; // Initialize nodes
 }
 
 __host__ Particle::~Particle(){
-    if (pCenter) {
-        delete pCenter;
-        pCenter = nullptr;
-    }
-    if (shape) {
-        delete shape;
-        shape = nullptr;
-    }
+    // pCenter and shape point into ParticlesSoA-owned vectors.
+    pCenter = nullptr;
+    shape = nullptr;
     if (nodes) {
-        delete nodes;
+        delete[] nodes;
         nodes = nullptr;
     }
 }
@@ -145,17 +144,13 @@ int ParticlesSoA::getMethodCount(ParticleMethod method) const {
 __host__ void ParticlesSoA::createParticles(Particle *particles){
    
     centerStorage.resize(NUM_PARTICLES);
-    pShape = new ParticleShape[NUM_PARTICLES];
+    shapeStorage.assign(NUM_PARTICLES, SPHERE);
+    pShape = shapeStorage.data();
+    for (int i = 0; i < NUM_PARTICLES; ++i) {
+        particles[i].setShape(&pShape[i]);
+    }
 
     #include CASE_PARTICLE_CREATE
-
-    if (pShape == nullptr) {
-        pShape = new ParticleShape[NUM_PARTICLES]; 
-        for (int i = 0; i < NUM_PARTICLES; i++) {
-            pShape[i] = SPHERE;
-            particles[i].setShape(&pShape[i]);
-        }
-    }
 
 
     for(int i = 0; i <NUM_PARTICLES ; i++){
@@ -373,7 +368,7 @@ void Particle::makeUniformBox(ParticleCenter *particleCenter)
     int Ny = n;
     int Nz = n;
     this->numNodes = Nx * Ny * Nz;
-    this->nodes = (IbmNodes*) malloc(sizeof(IbmNodes) * this->numNodes);
+    this->nodes = new IbmNodes[this->numNodes];
 
     unsigned int nodeIndex = 0;
 
@@ -458,7 +453,7 @@ void Particle::makeRandomBox(ParticleCenter *particleCenter)
     int Npoints = particleCenter->getDiameter(); // USING DIAMETER TO PASS THE NUMBER OF NODES
 
     this->numNodes = Npoints;
-    this->nodes = (IbmNodes*) malloc(sizeof(IbmNodes) * this->numNodes);
+    this->nodes = new IbmNodes[this->numNodes];
 
     unsigned int nodeIndex = 0;
 
@@ -618,7 +613,7 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
     S[0] = S[nLayer];
     
 
-    this->nodes = (IbmNodes*) malloc(sizeof(IbmNodes) * this->numNodes);
+    this->nodes = new IbmNodes[this->numNodes];
 
     IbmNodes* first_node = &(this->nodes[0]);
 
@@ -1037,7 +1032,7 @@ void Particle::makeCapsule(ParticleCenter *particleCenter){
 
     this->numNodes = nTotalPoints;
 
-    this->nodes = (IbmNodes*) malloc(sizeof(IbmNodes) * this->numNodes);
+    this->nodes = new IbmNodes[this->numNodes];
 
     //convert nodes info
 
@@ -1168,9 +1163,9 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
     // --- Static cache for identical ellipsoids ---
     static dfloat cache_a = -1, cache_b = -1, cache_c = -1;
     static int    cache_numNodes = 0;
-    static dfloat *cache_posx = nullptr;
-    static dfloat *cache_posy = nullptr;
-    static dfloat *cache_posz = nullptr;
+    static std::vector<dfloat> cache_posx;
+    static std::vector<dfloat> cache_posy;
+    static std::vector<dfloat> cache_posz;
 
     bool sameShape = (a_orig == cache_a && b_orig == cache_b && c_orig == cache_c && cache_numNodes > 0);
 
@@ -1259,15 +1254,11 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
         }
 
         // Update cache
-        if (cache_posx) { free(cache_posx); free(cache_posy); free(cache_posz); }
         cache_a = a_orig; cache_b = b_orig; cache_c = c_orig;
         cache_numNodes = numberNodes;
-        cache_posx = (dfloat *)malloc(numberNodes * sizeof(dfloat));
-        cache_posy = (dfloat *)malloc(numberNodes * sizeof(dfloat));
-        cache_posz = (dfloat *)malloc(numberNodes * sizeof(dfloat));
-        memcpy(cache_posx, posx, numberNodes * sizeof(dfloat));
-        memcpy(cache_posy, posy, numberNodes * sizeof(dfloat));
-        memcpy(cache_posz, posz, numberNodes * sizeof(dfloat));
+        cache_posx.assign(posx, posx + numberNodes);
+        cache_posy.assign(posy, posy + numberNodes);
+        cache_posz.assign(posz, posz + numberNodes);
 
         free(phi); free(theta); free(fx); free(fy); free(fz);
         phi = nullptr; theta = nullptr; fx = nullptr; fy = nullptr; fz = nullptr;
@@ -1278,13 +1269,13 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
         printf("  Ellipsoid at (%.1f,%.1f,%.1f): %d nodes (reusing cached layout)\n",
                particleCenter->getPosX(), particleCenter->getPosY(), particleCenter->getPosZ(), numberNodes);
         fflush(stdout);
-        memcpy(posx, cache_posx, numberNodes * sizeof(dfloat));
-        memcpy(posy, cache_posy, numberNodes * sizeof(dfloat));
-        memcpy(posz, cache_posz, numberNodes * sizeof(dfloat));
+        memcpy(posx, cache_posx.data(), numberNodes * sizeof(dfloat));
+        memcpy(posy, cache_posy.data(), numberNodes * sizeof(dfloat));
+        memcpy(posz, cache_posz.data(), numberNodes * sizeof(dfloat));
     }
       
 
-    this->nodes = (IbmNodes*) malloc(sizeof(IbmNodes) * this->numNodes);
+    this->nodes = new IbmNodes[this->numNodes];
 
     for (int nodeIndex = 0; nodeIndex < numberNodes; nodeIndex++) {
         this->nodes[nodeIndex].setPos(dfloat3(posx[nodeIndex],posy[nodeIndex],posz[nodeIndex]));
