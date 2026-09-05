@@ -42,10 +42,21 @@ int main() {
     /* ------------------------- ALLOCATION FOR CPU ------------------------- */
     int step = 0;
 
-    dfloat** randomNumbers = nullptr;
-    randomNumbers = (dfloat**)calloc(N_GPUS, sizeof(dfloat*));
+    // The outer array is required even when RANDOM_NUMBERS is disabled because
+    // gpuInitialization_mom() is still passed randomNumbers[g] (a null device
+    // pointer in that configuration).
+    dfloat** randomNumbers = (dfloat**)calloc(N_GPUS, sizeof(dfloat*));
+    if (randomNumbers == nullptr) {
+        fprintf(stderr, "Failed to allocate random-number pointer array\n");
+        return EXIT_FAILURE;
+    }
 
     hostField.allocateHostMemoryHostField();
+
+    #ifdef DENSITY_CORRECTION
+    // This is one global host value, not one allocation per GPU.
+    hostField.allocateDensityCorrectionMemory();
+    #endif
     
     /* -------------- ALLOCATION FOR GPUs ------------- */
     cudaStream_t streamsLBM[N_GPUS];
@@ -78,8 +89,6 @@ int main() {
             #endif //PARTICLE_MODEL
             
             #ifdef DENSITY_CORRECTION
-                // Allocate density correction memory in both host and device fields
-                hostField.allocateDensityCorrectionMemory();
                 devices[g].allocateDensityCorrectionMemory(g);
             #endif //DENSITY_CORRECTION
 
@@ -134,11 +143,12 @@ int main() {
     #ifdef RANDOM_NUMBERS
         for (int g = 0; g < N_GPUS; g++) {
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-            cudaFree(randomNumbers[g]);
+            checkCudaErrors(cudaFree(randomNumbers[g]));
+            randomNumbers[g] = nullptr;
         }
-        free(randomNumbers);
-        randomNumbers = nullptr;
     #endif
+    free(randomNumbers);
+    randomNumbers = nullptr;
 
     int ini_step = step;
 

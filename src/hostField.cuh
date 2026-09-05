@@ -185,6 +185,9 @@ typedef struct hostField{
             #ifdef PHI_DIST
             , m_phi(nullptr)
             #endif
+            #ifdef LAMBDA_DIST
+            , m_lambda(nullptr)
+            #endif
         #endif
         #ifdef BC_FORCES
             #ifdef SAVE_BC_FORCES
@@ -609,6 +612,10 @@ typedef struct hostField{
         if (ux)       cudaFreeHost(ux);
         if (uy)       cudaFreeHost(uy);
         if (uz)       cudaFreeHost(uz);
+
+        #ifdef OMEGA_FIELD
+        if (omega)    cudaFreeHost(omega);
+        #endif //OMEGA_FIELD
         
         if (hNodeType) cudaFreeHost(hNodeType);
 
@@ -622,6 +629,9 @@ typedef struct hostField{
         #ifdef PHI_DIST 
         if (phi) cudaFreeHost(phi);
         #endif //PHI_DIST
+        #ifdef LAMBDA_DIST
+        if (lambda) cudaFreeHost(lambda);
+        #endif //LAMBDA_DIST
         #ifdef A_XX_DIST 
         if (Axx) cudaFreeHost(Axx);
         #endif //A_XX_DIST
@@ -653,6 +663,9 @@ typedef struct hostField{
             #ifdef PHI_DIST
             if (m_phi) cudaFreeHost(m_phi);
             #endif //PHI_DIST
+            #ifdef LAMBDA_DIST
+            if (m_lambda) cudaFreeHost(m_lambda);
+            #endif //LAMBDA_DIST
         #endif //MEAN_FLOW
     
         #ifdef BC_FORCES
