@@ -1,5 +1,6 @@
 #include "mlbm.cuh"
 
+
 __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 {
     // Unpack parameters from struct (passed by value - CUDA optimized!)
@@ -451,10 +452,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 ;
                 phiVar = phiVar + phiSource; 
                 //clamp 
-                if(phiVar > PHI_TWO)
-                    phiVar = PHI_TWO;
-                if(phiVar < PHI_ONE)
-                    phiVar = PHI_ONE;
+                phiVar = myMin(myMax(phi, PHI_ONE), PHI_TWO);
 
                 phi_qx_t30 = (gNode[1] - gNode[2] 
                     #ifdef D3G19
@@ -1735,6 +1733,8 @@ __global__ void gpuComputePhaseNormals(
     unsigned int nodeType = dNodeType[idxScalarBlock(tx, ty, tz, bx, by, bz)];
     if (nodeType == 0b11111111) return;  // only skip fully solid
 
+    dfloat phi_c = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
+
     auto getPhi = [&](int dx, int dy, int dz) -> dfloat {
         #ifdef BC_X_WALL
         int nx = min(NX - 1, max(0, x + dx));
@@ -1774,8 +1774,6 @@ __global__ void gpuComputePhaseNormals(
         
         return fMom[idxMom(ntx, nty, ntz, M3_PHI_INDEX, nbx, nby, nbz)];
     };
-
-    dfloat phi_c = fMom[idxMom(tx, ty, tz, M3_PHI_INDEX, bx, by, bz)];
 
     // load all neighbors with standard clamping
     dfloat phi_xm1 = getPhi(-1, 0, 0);  dfloat phi_xp1 = getPhi(+1, 0, 0);
@@ -2043,7 +2041,7 @@ __global__ void gpuComputeLaplacianMu(
         // int nz = (z + dz + (NZ/N_GPUS)) % (NZ/N_GPUS);
         // #endif
         int nz = z + dz;
-        const int planeIdx = nx + nx * NX;
+        const int planeIdx = nx + ny * NX;
         
 
         if (nz < 0) {
@@ -2090,5 +2088,54 @@ __global__ void gpuComputeLaplacianMu(
 }
 
 /**/
+
+__global__ void gpuPackMacroHalos(const dfloat *fMom,
+    macroInterfaceGPUData halos, size_t localNZ)
+{
+    const int planeIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (planeIdx >= NX * NY) return;
+    const int x = planeIdx % NX, y = planeIdx / NX;
+    const int z = blockIdx.y == 0 ? 0 : (int)localNZ - 1;
+    auto pack = [&](gpuDirection field, int moment) {
+        dfloat *face = blockIdx.y == 0 ? field.Z_0 : field.Z_1;
+        face[planeIdx] = fMom[idxMom(x % BLOCK_NX, y % BLOCK_NY, z % BLOCK_NZ,
+            moment, x / BLOCK_NX, y / BLOCK_NY, z / BLOCK_NZ)];
+    };
+    pack(halos.rho, M_RHO_INDEX);
+    pack(halos.ux, M_UX_INDEX);
+    pack(halos.uy, M_UY_INDEX);
+    pack(halos.uz, M_UZ_INDEX);
+#ifdef SECOND_DIST
+    pack(halos.g, M2_C_INDEX);
+#endif
+#ifdef LAMBDA_DIST
+    pack(halos.lambda, M4_LAMBDA_INDEX);
+#endif
+#ifdef A_XX_DIST
+    pack(halos.Axx, A_XX_C_INDEX);
+#endif
+#ifdef A_XY_DIST
+    pack(halos.Axy, A_XY_C_INDEX);
+#endif
+#ifdef A_XZ_DIST
+    pack(halos.Axz, A_XZ_C_INDEX);
+#endif
+#ifdef A_YY_DIST
+    pack(halos.Ayy, A_YY_C_INDEX);
+#endif
+#ifdef A_YZ_DIST
+    pack(halos.Ayz, A_YZ_C_INDEX);
+#endif
+#ifdef A_ZZ_DIST
+    pack(halos.Azz, A_ZZ_C_INDEX);
+#endif
+#ifdef PHI_DIST
+    pack(halos.phi, M3_PHI_INDEX);
+    pack(halos.nx, M3_NX_INDEX);
+    pack(halos.ny, M3_NY_INDEX);
+    pack(halos.nz, M3_NZ_INDEX);
+    pack(halos.mu, M3_MU_INDEX);
+#endif
+}
 
 #endif // PHI_DIST

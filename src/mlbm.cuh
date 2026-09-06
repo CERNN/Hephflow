@@ -78,4 +78,8 @@ __global__ void gpuComputeLaplacianMu(
     int zStart
 );
 
+// Launch with a 1D plane grid and grid.y == 2 (bottom/top).
+__global__ void gpuPackMacroHalos(const dfloat *fMom,
+    macroInterfaceGPUData halos, size_t localNZ);
+
 #endif //__MLBM_H

@@ -150,6 +150,52 @@ int main() {
     free(randomNumbers);
     randomNumbers = nullptr;
 
+    // A host-wide barrier is needed before reading another GPU's send buffers.
+    auto synchronizeLBMStreams = [&]() {
+        for (int g = 0; g < N_GPUS; ++g) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            checkCudaErrors(cudaStreamSynchronize(streamsLBM[g]));
+        }
+    };
+
+    auto publishMacroHalos = [&]() {
+        for (int g = 0; g < N_GPUS; ++g)
+            devices[g].packMacroHalosDeviceField(g, slice, streamsLBM[g]);
+        synchronizeLBMStreams();
+    };
+
+    #ifdef PHI_DIST
+    auto updatePhaseDerivatives = [&]() {
+        // PHI and its halo neighbors must belong to the same time level.
+        publishMacroHalos();
+        for (int g = 0; g < N_GPUS; ++g)
+            devices[g].exchangeMacroField(g, devices.data(),
+                &macroInterfaceGPUData::phi, streamsLBM[g]);
+        synchronizeLBMStreams();
+
+        for (int g = 0; g < N_GPUS; ++g)
+            devices[g].computePhaseNormalsDeviceField(gridBlock, threadBlock,
+                g, slice, streamsLBM[g]);
+        // Packing follows the phase kernels on each stream; wait for all senders.
+        publishMacroHalos();
+        for (int g = 0; g < N_GPUS; ++g)
+            devices[g].exchangeMacroField(g, devices.data(),
+                &macroInterfaceGPUData::mu, streamsLBM[g]);
+        synchronizeLBMStreams();
+
+        for (int g = 0; g < N_GPUS; ++g)
+            devices[g].gpuComputeLaplacianMuDeviceField(gridBlock, threadBlock,
+                g, slice, streamsLBM[g]);
+        synchronizeLBMStreams();
+        CHECK_KERNEL_ERR("Phase derivatives kernels");
+    };
+
+    // Also rebuild derived phase fields from initialized or restored moments.
+    updatePhaseDerivatives();
+    #else
+    publishMacroHalos();
+    #endif
+
     int ini_step = step;
 
     printf("Domain Initialized. Starting simulation\n"); if(console_flush) fflush(stdout);
@@ -228,6 +274,10 @@ int main() {
         CHECK_KERNEL_ERR("Stream Collision kernel");
 
         //------------------------- Auxiliary Kernels -------------------------
+        #ifdef PHI_DIST
+        updatePhaseDerivatives();
+        #endif
+
         if (N_GPUS == 1) {
             devices[0].halfStepKernels(gridBlock, threadBlock, step, 0, slice, streamsLBM[0]);
             #ifdef PARTICLE_MODEL

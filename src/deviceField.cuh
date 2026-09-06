@@ -656,6 +656,30 @@ typedef struct deviceField{
         #endif
     }
 
+    void packMacroHalosDeviceField(int g, int slice, cudaStream_t stream) {
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        const dim3 grid((NX * NY + 255) / 256, 2);
+        gpuPackMacroHalos<<<grid, 256, 0, stream>>>(d_fMom[g], macroInterfaceGPU[g], slice);
+        CHECK_KERNEL_ERR("Pack macro halos kernel");
+    }
+
+    // Each sender pushes its top face and pulls the next slab's bottom face.
+    void exchangeMacroField(int g, deviceField* allDevices,
+        gpuDirection macroInterfaceGPUData::*field, cudaStream_t stream) {
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        #ifdef BC_Z_WALL
+        if (g == N_GPUS - 1) return;
+        #endif
+        const int next = (g + 1) % N_GPUS;
+        const gpuDirection own = macroInterfaceGPU[g].*field;
+        const gpuDirection neighbor = allDevices[next].macroInterfaceGPU[next].*field;
+        const size_t bytes = (size_t)NX * NY * sizeof(dfloat);
+        checkCudaErrors(cudaMemcpyPeerAsync(neighbor.auxZ_1, GPUS_TO_USE[next],
+            own.Z_1, GPUS_TO_USE[g], bytes, stream));
+        checkCudaErrors(cudaMemcpyPeerAsync(own.auxZ_0, GPUS_TO_USE[g],
+            neighbor.Z_0, GPUS_TO_USE[next], bytes, stream));
+    }
+
     void sendMacroTopToNext(int g, deviceField* allDevices, cudaStream_t streamLBM)
     {
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
@@ -822,7 +846,7 @@ typedef struct deviceField{
         const size_t MacroHaloSize = NX * NY * sizeof(dfloat);
 
         #ifdef BC_Z_WALL
-        if (g == 0) return;
+        if (g == N_GPUS - 1) return;
         #endif
 
         checkCudaErrors(cudaMemcpyPeerAsync(
@@ -989,13 +1013,21 @@ typedef struct deviceField{
             haloSize, streamLBM
         ));
 
+        #if defined(SECOND_DIST) || defined(PHI_DIST) || defined(LAMBDA_DIST) || \
+            defined(A_XX_DIST) || defined(A_XY_DIST) || defined(A_XZ_DIST) || \
+            defined(A_YY_DIST) || defined(A_YZ_DIST) || defined(A_ZZ_DIST)
+        const size_t scalarPlaneSize = (size_t)BLOCK_NX * BLOCK_NY * NUM_BLOCK_X * NUM_BLOCK_Y * GF;
+        const size_t scalarHaloSize = scalarPlaneSize * sizeof(dfloat);
+        const size_t scalarTopOffset = (size_t)(NUM_BLOCK_Z_LOCAL - 1) * scalarPlaneSize;
+        #endif
+
         #ifdef SECOND_DIST
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[gNext].ghostInterface[gNext].gAux.Z_1,
             GPUS_TO_USE[gNext],
-            allDevices[g].ghostInterface[g].g.Z_1 + topOffset,
+            allDevices[g].ghostInterface[g].g.Z_1 + scalarTopOffset,
             GPUS_TO_USE[g],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //SECOND_DIST
 
@@ -1003,9 +1035,9 @@ typedef struct deviceField{
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[gNext].ghostInterface[gNext].phiAux.Z_1,
             GPUS_TO_USE[gNext],
-            allDevices[g].ghostInterface[g].phi.Z_1 + topOffset,
+            allDevices[g].ghostInterface[g].phi.Z_1 + scalarTopOffset,
             GPUS_TO_USE[g],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //PHI_DIST
 
@@ -1013,9 +1045,9 @@ typedef struct deviceField{
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[gNext].ghostInterface[gNext].lambdaAux.Z_1,
             GPUS_TO_USE[gNext],
-            allDevices[g].ghostInterface[g].lambda.Z_1 + topOffset,
+            allDevices[g].ghostInterface[g].lambda.Z_1 + scalarTopOffset,
             GPUS_TO_USE[g],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //LAMBDA_DIST
 
@@ -1023,9 +1055,9 @@ typedef struct deviceField{
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[gNext].ghostInterface[gNext].AxxAux.Z_1,
             GPUS_TO_USE[gNext],
-            allDevices[g].ghostInterface[g].Axx.Z_1 + topOffset,
+            allDevices[g].ghostInterface[g].Axx.Z_1 + scalarTopOffset,
             GPUS_TO_USE[g],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //A_XX_DIST
 
@@ -1033,9 +1065,9 @@ typedef struct deviceField{
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[gNext].ghostInterface[gNext].AxyAux.Z_1,
             GPUS_TO_USE[gNext],
-            allDevices[g].ghostInterface[g].Axy.Z_1 + topOffset,
+            allDevices[g].ghostInterface[g].Axy.Z_1 + scalarTopOffset,
             GPUS_TO_USE[g],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //A_XY_DIST
 
@@ -1043,9 +1075,9 @@ typedef struct deviceField{
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[gNext].ghostInterface[gNext].AxzAux.Z_1,
             GPUS_TO_USE[gNext],
-            allDevices[g].ghostInterface[g].Axz.Z_1 + topOffset,
+            allDevices[g].ghostInterface[g].Axz.Z_1 + scalarTopOffset,
             GPUS_TO_USE[g],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //A_XZ_DIST
 
@@ -1053,9 +1085,9 @@ typedef struct deviceField{
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[gNext].ghostInterface[gNext].AyyAux.Z_1,
             GPUS_TO_USE[gNext],
-            allDevices[g].ghostInterface[g].Ayy.Z_1 + topOffset,
+            allDevices[g].ghostInterface[g].Ayy.Z_1 + scalarTopOffset,
             GPUS_TO_USE[g],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //A_YY_DIST
 
@@ -1063,9 +1095,9 @@ typedef struct deviceField{
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[gNext].ghostInterface[gNext].AyzAux.Z_1,
             GPUS_TO_USE[gNext],
-            allDevices[g].ghostInterface[g].Ayz.Z_1 + topOffset,
+            allDevices[g].ghostInterface[g].Ayz.Z_1 + scalarTopOffset,
             GPUS_TO_USE[g],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //A_YZ_DIST
 
@@ -1073,9 +1105,9 @@ typedef struct deviceField{
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[gNext].ghostInterface[gNext].AzzAux.Z_1,
             GPUS_TO_USE[gNext],
-            allDevices[g].ghostInterface[g].Azz.Z_1 + topOffset,
+            allDevices[g].ghostInterface[g].Azz.Z_1 + scalarTopOffset,
             GPUS_TO_USE[g],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //A_ZZ_DIST
     }
@@ -1087,9 +1119,7 @@ typedef struct deviceField{
         const int gNext = (g + 1) % N_GPUS;
         const size_t planeSize = (size_t)BLOCK_NX * BLOCK_NY * NUM_BLOCK_X * NUM_BLOCK_Y * QF;
         const size_t haloSize  = planeSize * sizeof(dfloat);
-        const size_t topOffset = (size_t)(NUM_BLOCK_Z_LOCAL - 1) * planeSize;
 
-        const size_t MacroHaloSize = NX * NY * sizeof(dfloat);
 
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[g].ghostInterface[g].popAux.Z_0,
@@ -1099,13 +1129,20 @@ typedef struct deviceField{
             haloSize, streamLBM
         ));
 
+        #if defined(SECOND_DIST) || defined(PHI_DIST) || defined(LAMBDA_DIST) || \
+            defined(A_XX_DIST) || defined(A_XY_DIST) || defined(A_XZ_DIST) || \
+            defined(A_YY_DIST) || defined(A_YZ_DIST) || defined(A_ZZ_DIST)
+        const size_t scalarPlaneSize = (size_t)BLOCK_NX * BLOCK_NY * NUM_BLOCK_X * NUM_BLOCK_Y * GF;
+        const size_t scalarHaloSize = scalarPlaneSize * sizeof(dfloat);
+        #endif
+
         #ifdef SECOND_DIST
         checkCudaErrors(cudaMemcpyPeerAsync(
             allDevices[g].ghostInterface[g].gAux.Z_0,
             GPUS_TO_USE[g],
             allDevices[gNext].ghostInterface[gNext].g.Z_0,
             GPUS_TO_USE[gNext],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //SECOND_DIST
 
@@ -1115,7 +1152,7 @@ typedef struct deviceField{
             GPUS_TO_USE[g],
             allDevices[gNext].ghostInterface[gNext].phi.Z_0,
             GPUS_TO_USE[gNext],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //PHI_DIST
 
@@ -1125,7 +1162,7 @@ typedef struct deviceField{
             GPUS_TO_USE[g],
             allDevices[gNext].ghostInterface[gNext].lambda.Z_0,
             GPUS_TO_USE[gNext],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //LAMBDA_DIST
 
@@ -1135,7 +1172,7 @@ typedef struct deviceField{
             GPUS_TO_USE[g],
             allDevices[gNext].ghostInterface[gNext].Axx.Z_0,
             GPUS_TO_USE[gNext],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //A_XX_DIST
         #ifdef A_XY_DIST
@@ -1144,7 +1181,7 @@ typedef struct deviceField{
             GPUS_TO_USE[g],
             allDevices[gNext].ghostInterface[gNext].Axy.Z_0,
             GPUS_TO_USE[gNext],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //A_XY_DIST
         #ifdef A_XZ_DIST
@@ -1153,7 +1190,7 @@ typedef struct deviceField{
             GPUS_TO_USE[g],
             allDevices[gNext].ghostInterface[gNext].Axz.Z_0,
             GPUS_TO_USE[gNext],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //A_XZ_DIST
         #ifdef A_YY_DIST
@@ -1162,7 +1199,7 @@ typedef struct deviceField{
             GPUS_TO_USE[g],
             allDevices[gNext].ghostInterface[gNext].Ayy.Z_0,
             GPUS_TO_USE[gNext],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //A_YY_DIST
         #ifdef A_YZ_DIST
@@ -1171,7 +1208,7 @@ typedef struct deviceField{
             GPUS_TO_USE[g],
             allDevices[gNext].ghostInterface[gNext].Ayz.Z_0,
             GPUS_TO_USE[gNext],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //A_YZ_DIST
         #ifdef A_ZZ_DIST
@@ -1180,12 +1217,13 @@ typedef struct deviceField{
             GPUS_TO_USE[g],
             allDevices[gNext].ghostInterface[gNext].Azz.Z_0,
             GPUS_TO_USE[gNext],
-            haloSize, streamLBM
+            scalarHaloSize, streamLBM
         ));
         #endif //A_ZZ_DIST
     }
 
     #ifdef PHI_DIST
+    // Caller must exchange fresh PHI before this stage and fresh mu afterward.
     void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock, int g, int slice, cudaStream_t stream){
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         int zStart = g * slice;
@@ -1193,7 +1231,6 @@ typedef struct deviceField{
         size_t localNZ = zEnd - zStart;
         gpuComputePhaseNormals<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], macroInterfaceGPU[g], localNZ, zStart);
         gpuComputeChemicalPotential<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], localNZ, zStart);
-        gpuComputeLaplacianMu<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], macroInterfaceGPU[g], localNZ, zStart);
     }
 
     void gpuComputeLaplacianMuDeviceField(dim3 gridBlock, dim3 threadBlock, int g, int slice, cudaStream_t stream){
@@ -1220,10 +1257,6 @@ typedef struct deviceField{
             updateCurvedBoundaryVelocitiesDeviceField(g, stream);
             CHECK_KERNEL_ERR("Curved BC kernel");
         #endif //CURVED_BOUNDARY_CONDITION
-        #ifdef PHI_DIST
-            computePhaseNormalsDeviceField(gridBlock, threadBlock, g, slice, stream);
-            CHECK_KERNEL_ERR("Phi gradients kernel");
-        #endif //PHI_DIST
         #ifdef DENSITY_CORRECTION
             mean_rhoDeviceField(step, g, stream);
             CHECK_KERNEL_ERR("Density correction kernel");
