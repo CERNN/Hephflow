@@ -19,7 +19,7 @@ dfloat phiSharpSource = 0.0_df;
     dfloat S_CH = M_CH * laplacian_mu;
 
     /* Counteract bare LBM diffusion */
-    dfloat S_counter = -PHI_DIFF_REF * laplacian_phi;
+    dfloat S_counter = -PHI_LBM_DIFF * laplacian_phi;
 
     /* Total source */
     phiSharpSource = S_CH + S_counter;

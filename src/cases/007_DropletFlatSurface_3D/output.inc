@@ -10,7 +10,7 @@
 /* --------------------- OUTPUT FORMATS --------------------- */
 #define VTK_SAVE (true)
 #define BIN_SAVE (false)
-#define ONLY_FINAL_MACRO (false)
+#define ONLY_FINAL_MACRO (true)
 #define MACR_SAVE (2500)
 #define REPORT_SAVE (250)
 

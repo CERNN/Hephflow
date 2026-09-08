@@ -13,11 +13,14 @@ const dfloat zc = 0.5_df * (dfloat)NZ;
 
 // Distance between the bubble surface and the wall.
 // Set to 0 for exact contact.
-const dfloat gap = 1.5_df;
+const dfloat R_REF = R0;
+const dfloat ct = cos(contact_angle);
+dfloat volFactor =    2.0_df    - 3.0_df * ct    + ct * ct * ct;
+volFactor = myMax(volFactor, 1.0e-12_df);
+const dfloat Rs = R_REF * pow(2.0_df / volFactor, 1.0_df / 3.0_df);
 
 // Bubble center height above the wall.
-dfloat R0 = 20.0_df; // Initial bubble radius
-const dfloat yc = R0 + gap;
+const dfloat yc = -Rs * ct;
 
 const dfloat X = (dfloat)x;
 const dfloat Y = (dfloat)y;
@@ -30,7 +33,7 @@ const dfloat rr =
          (Z - zc) * (Z - zc));
 
 // Signed distance to the bubble interface
-const dfloat delta = R0 - rr;
+const dfloat delta = Rs - rr;
 
 // PHI_TWO inside the bubble, PHI_ONE outside
 phiVar = phi_mid + phi_half * tanh(2.0_df * delta / phi_del);

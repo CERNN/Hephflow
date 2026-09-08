@@ -1568,8 +1568,8 @@ std::string getSimInfoString(int step, dfloat MLUPS, const fluidPhaseProps& phas
     strSimInfo << "      Reference Phi: " << PHI_REFERENCE << "\n";
     strSimInfo << "            Phi One: " << PHI_ONE << "\n";
     strSimInfo << "            Phi Two: " << PHI_TWO << "\n";
-    strSimInfo << "  Diffusivity ratio: " << PHI_DIFFUSIVITY_RATIO << "\n";
-    strSimInfo << "  Diffusivity Coef.: " << PHI_DIFFUSIVITY << "\n";
+    strSimInfo << "  Diffusivity ratio: " << (VISC/PHI_LBM_DIFF) << "\n";
+    strSimInfo << "  Diffusivity Coef.: " << PHI_LBM_DIFF << "\n";
     strSimInfo << "         Phi Offset: " << PHI_ZERO << "\n";
     strSimInfo << "            PHI_TAU: " << PHI_TAU << "\n";
     strSimInfo << "          PHI_OMEGA: " << PHI_OMEGA << "\n";
