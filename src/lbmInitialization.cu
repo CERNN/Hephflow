@@ -1731,13 +1731,23 @@ unsigned int bc_id(unsigned int *dNodeType, int x, int y, int z){
 
 
 #ifdef CURVED_BOUNDARY_CONDITION
-    unsigned int getNumberCurvedBoundaryNodes(unsigned int *&hNodeType){
+    unsigned int getNumberCurvedBoundaryNodes(const unsigned int *hNodeType, int localNZ){
         unsigned int numberCurvedBoundaryNodes = 0;
-        unsigned int nodeType;
-        for (size_t i = 0; i < NUMBER_LBM_NODES; i++) {
-            nodeType = hNodeType[i];
-            if((nodeType & (0b111 << 8)) == (0b101 << 8) ){ //mask bits 8,9,10 then compare with BC_CURVED_BC
-                    numberCurvedBoundaryNodes++;
+        for (int x = 0; x < NX; x++) {
+            for (int y = 0; y < NY; y++) {
+                for (int zLocal = 0; zLocal < localNZ; zLocal++) {
+                    const size_t idx = idxScalarBlock(
+                        x % BLOCK_NX,
+                        y % BLOCK_NY,
+                        zLocal % BLOCK_NZ,
+                        x / BLOCK_NX,
+                        y / BLOCK_NY,
+                        zLocal / BLOCK_NZ);
+                    const unsigned int nodeType = hNodeType[idx];
+                    if ((nodeType & (0b111 << 8)) == (0b101 << 8)) {
+                        numberCurvedBoundaryNodes++;
+                    }
+                }
             }
         }
         printf("Found %u curved boundary nodes\n", numberCurvedBoundaryNodes);
@@ -1748,26 +1758,35 @@ unsigned int bc_id(unsigned int *dNodeType, int x, int y, int z){
     void allocateDeviceMemoryCurvedBoundary(CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array, unsigned int numberCurvedBoundaryNodes){
         unsigned int memAllocated = 0;
 
-        cudaMalloc((void**)&d_curvedBC, sizeof(CurvedBoundary*) * NUMBER_LBM_NODES); //already allocated in
-        cudaMalloc((void**)&d_curvedBC_array, sizeof(CurvedBoundary) * numberCurvedBoundaryNodes);
+        checkCudaErrors(cudaMalloc((void**)&d_curvedBC, sizeof(CurvedBoundary*) * NUMBER_LBM_NODES_LOCAL));
+        if (numberCurvedBoundaryNodes > 0) {
+            checkCudaErrors(cudaMalloc((void**)&d_curvedBC_array, sizeof(CurvedBoundary) * numberCurvedBoundaryNodes));
+        } else {
+            d_curvedBC_array = nullptr;
+        }
 
-        memAllocated += sizeof(CurvedBoundary*) * NUMBER_LBM_NODES + sizeof(CurvedBoundary) * numberCurvedBoundaryNodes;
+        memAllocated += sizeof(CurvedBoundary*) * NUMBER_LBM_NODES_LOCAL
+                      + sizeof(CurvedBoundary) * numberCurvedBoundaryNodes;
 
         printf("Device Memory Allocated for Curved Boundary: %.2f MB \n", (float)memAllocated /(1024.0_df * 1024.0_df));
     }
 
 
     void initializeCurvedBoundaryArray(
-        unsigned int *&hNodeType, 
-        unsigned int *&dNodeType, 
+        const unsigned int *hNodeType,
+        unsigned int *dNodeType,
         CurvedBoundary** &d_curvedBC, 
         CurvedBoundary* &d_curvedBC_array, 
-        unsigned int numberCurvedBoundaryNodes
+        unsigned int numberCurvedBoundaryNodes,
+        int zStart,
+        int localNZ
     ){
-        CurvedBoundary** h_curvedBC_ptrs = (CurvedBoundary**)malloc(sizeof(CurvedBoundary*) * NUMBER_LBM_NODES);
-        CurvedBoundary*  h_curvedBC_array = (CurvedBoundary*)malloc(sizeof(CurvedBoundary) * numberCurvedBoundaryNodes);
+        CurvedBoundary** h_curvedBC_ptrs = (CurvedBoundary**)malloc(sizeof(CurvedBoundary*) * NUMBER_LBM_NODES_LOCAL);
+        CurvedBoundary* h_curvedBC_array = numberCurvedBoundaryNodes > 0
+            ? (CurvedBoundary*)malloc(sizeof(CurvedBoundary) * numberCurvedBoundaryNodes)
+            : nullptr;
 
-        for (size_t i = 0; i < NUMBER_LBM_NODES; i++){
+        for (size_t i = 0; i < NUMBER_LBM_NODES_LOCAL; i++){
             h_curvedBC_ptrs[i] = nullptr;
         }
 
@@ -1776,12 +1795,21 @@ unsigned int bc_id(unsigned int *dNodeType, int x, int y, int z){
         unsigned int nodeType;
         for(int x = 0; x < NX; x++){
             for(int y = 0; y < NY; y++){
-                for(int z = 0; z < NZ_TOTAL; z++){
-                    idx = idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ);
+                for(int zLocal = 0; zLocal < localNZ; zLocal++){
+                    const int z = zStart + zLocal;
+                    idx = idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, zLocal%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, zLocal/BLOCK_NZ);
                     nodeType = hNodeType[idx];
                     if((nodeType & (0b111 << 8)) == (0b101 << 8) ){ //mask bits 8,9,10 then compare with 
                         h_curvedBC_ptrs[idx] = d_curvedBC_array + curvedBCCount;
                         #include CASE_CURVED_BC_DEF
+
+                        // Geometry is evaluated with global z coordinates, but interpolation
+                        // indexes the local per-GPU moment array.
+                        h_curvedBC_array[curvedBCCount].b.z -= zStart;
+                        h_curvedBC_array[curvedBCCount].w.z -= zStart;
+                        h_curvedBC_array[curvedBCCount].pf1.z -= zStart;
+                        h_curvedBC_array[curvedBCCount].pf2.z -= zStart;
+                        h_curvedBC_array[curvedBCCount].pf3.z -= zStart;
                         curvedBCCount++;
                     }
                 }
@@ -1789,18 +1817,20 @@ unsigned int bc_id(unsigned int *dNodeType, int x, int y, int z){
         }
 
         // Copy the indices to device
-        cudaMemcpy(d_curvedBC, h_curvedBC_ptrs, sizeof(CurvedBoundary*) * NUMBER_LBM_NODES, cudaMemcpyHostToDevice);
+        checkCudaErrors(cudaMemcpy(d_curvedBC, h_curvedBC_ptrs, sizeof(CurvedBoundary*) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyHostToDevice));
         // Copy the CurvedBoundary array to device
-        cudaMemcpy(d_curvedBC_array, h_curvedBC_array, sizeof(CurvedBoundary) * numberCurvedBoundaryNodes, cudaMemcpyHostToDevice);
+        if (numberCurvedBoundaryNodes > 0) {
+            checkCudaErrors(cudaMemcpy(d_curvedBC_array, h_curvedBC_array, sizeof(CurvedBoundary) * numberCurvedBoundaryNodes, cudaMemcpyHostToDevice));
+        }
 
         free(h_curvedBC_ptrs);
         free(h_curvedBC_array);
     }
 
-    unsigned int initializeCurvedBoundaryDeviceField(unsigned int *&hNodeType, unsigned int *&dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array){
-        unsigned int numberCurvedBoundaryNodes = getNumberCurvedBoundaryNodes(hNodeType);
+    unsigned int initializeCurvedBoundaryDeviceField(const unsigned int *hNodeType, unsigned int *dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array, int zStart, int localNZ){
+        unsigned int numberCurvedBoundaryNodes = getNumberCurvedBoundaryNodes(hNodeType, localNZ);
         allocateDeviceMemoryCurvedBoundary(d_curvedBC, d_curvedBC_array, numberCurvedBoundaryNodes);
-        initializeCurvedBoundaryArray(hNodeType, dNodeType, d_curvedBC, d_curvedBC_array,numberCurvedBoundaryNodes);
+        initializeCurvedBoundaryArray(hNodeType, dNodeType, d_curvedBC, d_curvedBC_array, numberCurvedBoundaryNodes, zStart, localNZ);
         return numberCurvedBoundaryNodes;
     }
 #endif //CURVED_BOUNDARY_CONDITION

@@ -541,6 +541,7 @@ typedef struct curvedBoundary{
     dfloat delta_r;  // Spacing between fluid points (lattice spacing in normal direction)
     dfloat theta;
 
+    dfloat3 wallVel; // Prescribed velocity at the physical wall point
     dfloat3 vel; //extrapolated velocity, which will be used on the boundary condition
 
 }CurvedBoundary;

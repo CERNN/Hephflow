@@ -1743,6 +1743,8 @@ __global__ void gpuComputeLaplacianMu(
     fMom[idxMom(tx, ty, tz, M3_LM_INDEX, bx, by, bz)] = laplacian_mu;
 }
 
+#endif // PHI_DIST
+
 /**/
 
 __global__ void gpuPackMacroHalos(const dfloat *fMom,
@@ -1793,5 +1795,3 @@ __global__ void gpuPackMacroHalos(const dfloat *fMom,
     pack(halos.mu, M3_MU_INDEX);
 #endif
 }
-
-#endif // PHI_DIST

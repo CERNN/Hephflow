@@ -18,9 +18,21 @@
 #define __CURVED_BC_CUH
 
 __host__ __device__
-dfloat curvedBoundaryExtrapolation(dfloat delta, dfloat delta_r, dfloat pf1_value, dfloat pf2_value) {
-	return (delta * (delta - 2.0_df * delta_r) / (delta_r * delta_r)) * pf1_value 
-	     - (delta * (delta - delta_r) / (2.0_df * delta_r * delta_r)) * pf2_value;
+dfloat curvedBoundaryExtrapolation(
+    dfloat delta,
+    dfloat delta_r,
+    dfloat wall_value,
+    dfloat pf1_value,
+    dfloat pf2_value)
+{
+    const dfloat inv_delta_r_sq = 1.0_df / (delta_r * delta_r);
+    const dfloat wall_weight =
+        (2.0_df * delta_r * delta_r - delta * delta + 3.0_df * delta * delta_r)
+        * 0.5_df * inv_delta_r_sq;
+    const dfloat pf1_weight = delta * (delta - 2.0_df * delta_r) * inv_delta_r_sq;
+    const dfloat pf2_weight = -delta * (delta - delta_r) * 0.5_df * inv_delta_r_sq;
+
+    return wall_weight * wall_value + pf1_weight * pf1_value + pf2_weight * pf2_value;
 }
 
 __device__ inline
@@ -72,15 +84,15 @@ void curvedBoundaryInterpExtrapStore(
     // Get scaled velocities from fMom and unscale them
     val1 = curvedBC_interp_moment(pf1, M_UX_INDEX, fMom, same_x, same_y, same_z, const_x, const_y, const_z) / F_M_I_SCALE;
     val2 = curvedBC_interp_moment(pf2, M_UX_INDEX, fMom, same_x, same_y, same_z, const_x, const_y, const_z) / F_M_I_SCALE;
-    dfloat ux_e = curvedBoundaryExtrapolation(delta, delta_r, val1, val2);
+    dfloat ux_e = curvedBoundaryExtrapolation(delta, delta_r, tempCBC->wallVel.x, val1, val2);
 
     val1 = curvedBC_interp_moment(pf1, M_UY_INDEX, fMom, same_x, same_y, same_z, const_x, const_y, const_z) / F_M_I_SCALE;
     val2 = curvedBC_interp_moment(pf2, M_UY_INDEX, fMom, same_x, same_y, same_z, const_x, const_y, const_z) / F_M_I_SCALE;
-    dfloat uy_e = curvedBoundaryExtrapolation(delta, delta_r, val1, val2);
+    dfloat uy_e = curvedBoundaryExtrapolation(delta, delta_r, tempCBC->wallVel.y, val1, val2);
 
     val1 = curvedBC_interp_moment(pf1, M_UZ_INDEX, fMom, same_x, same_y, same_z, const_x, const_y, const_z) / F_M_I_SCALE;
     val2 = curvedBC_interp_moment(pf2, M_UZ_INDEX, fMom, same_x, same_y, same_z, const_x, const_y, const_z) / F_M_I_SCALE;
-    dfloat uz_e = curvedBoundaryExtrapolation(delta, delta_r, val1, val2);
+    dfloat uz_e = curvedBoundaryExtrapolation(delta, delta_r, tempCBC->wallVel.z, val1, val2);
 
     tempCBC->vel = dfloat3(ux_e, uy_e, uz_e);
 }

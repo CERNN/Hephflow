@@ -333,11 +333,18 @@ typedef struct deviceField{
 
         #ifdef CURVED_BOUNDARY_CONDITION
             numberCurvedBoundaryNodes = initializeCurvedBoundaryDeviceField(
-                hostField.hNodeType,
+                hNodeType_slice,
                 dNodeType[g],
                 d_curvedBC[g],
-                d_curvedBC_array[g]
+                d_curvedBC_array[g],
+                zStart,
+                localNZ
             );
+            // The main collision kernel consumes curvedBC->vel. Populate it from
+            // the initialized moment field before the first simulation step.
+            updateCurvedBoundaryVelocitiesDeviceField(g, 0);
+            CHECK_KERNEL_ERR("Initial curved BC kernel");
+            checkCudaErrors(cudaDeviceSynchronize());
         #endif
 
         // Interface population initialization
