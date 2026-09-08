@@ -20,6 +20,24 @@ h_curvedBC_array[curvedBCCount].wallVel = dfloat3(
      OUTER_VELOCITY);
 h_curvedBC_array[curvedBCCount].vel = dfloat3(0.0_df, 0.0_df, 0.0_df);
 
+#ifdef CONFORMATION_TENSOR
+h_curvedBC_array[curvedBCCount].conformation[0] = CONF_ZERO + 1.0_df;
+h_curvedBC_array[curvedBCCount].conformation[1] = CONF_ZERO;
+h_curvedBC_array[curvedBCCount].conformation[2] = CONF_ZERO;
+h_curvedBC_array[curvedBCCount].conformation[3] = CONF_ZERO + 1.0_df;
+h_curvedBC_array[curvedBCCount].conformation[4] = CONF_ZERO;
+h_curvedBC_array[curvedBCCount].conformation[5] = CONF_ZERO + 1.0_df;
+for (int component = 0; component < 6; ++component) {
+    for (int direction = 0; direction < 3; ++direction) {
+        h_curvedBC_array[curvedBCCount]
+            .conformationFluxT30[3 * component + direction] = 0.0_df;
+    }
+}
+h_curvedBC_array[curvedBCCount].conformationInteriorVelocityT30[0] = 0.0_df;
+h_curvedBC_array[curvedBCCount].conformationInteriorVelocityT30[1] = 0.0_df;
+h_curvedBC_array[curvedBCCount].conformationInteriorVelocityT30[2] = 0.0_df;
+#endif
+
 h_curvedBC_array[curvedBCCount].delta = vector_length(wall - b);
 h_curvedBC_array[curvedBCCount].delta_r = lattice_dx;
 

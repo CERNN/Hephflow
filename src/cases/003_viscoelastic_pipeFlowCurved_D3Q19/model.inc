@@ -1,7 +1,7 @@
 /* ============================================================================
  * MODEL CONFIGURATION
- * Case: 001_pipeFlowCurved_D3Q19
- * Description: Pipe flow with curved boundary condition
+ * Case: 003_viscoelastic_pipeFlowCurved_D3Q19
+ * Description: Oldroyd-B flow through a pipe with a curved wall
  * ========================================================================== */
 
 /* --------------------- VELOCITY SET --------------------- */
@@ -16,7 +16,7 @@
 // Enable specific physics models (uncomment to activate)
 //#define THERMAL_MODEL                 // Thermal coupling
 //#define PARTICLE_MODEL                // IBM particle simulation
-//#define FENE_P                        // FENE-P viscoelastic model
+#define FENE_P                         // Enables conformation transport
 
 /* --------------------- LES MODELS --------------------- */
 // Uncomment the one to use. Comment all to simulate newtonian fluid
@@ -29,4 +29,5 @@
 //#define RANDOM_NUMBERS true    // to generate random numbers 
                                // (useful for turbulence)
 
-
+#define TREAT_DATA_INCLUDE
+#define FORCE_FIELD_INCLUDE
