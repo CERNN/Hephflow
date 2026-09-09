@@ -1,4 +1,5 @@
 #include "mlbm.cuh"
+#include "curvedConformationBC.cuh"
 
 
 __global__ void gpuMomCollisionStream(DeviceKernelParams params)
@@ -482,6 +483,17 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                     #endif
                 );
             }
+
+            #ifdef PHI_INLET_RESERVOIR_Z_NODES
+            if (z < PHI_INLET_RESERVOIR_Z_NODES) {
+                phiVar = PHI_TWO;
+                // ux_t30 etc. are still stored in scaled form at this point;
+                // the phase moments below are converted back to stored form.
+                phi_qx_t30 = PHI_TWO * ux_t30 / F_M_I_SCALE;
+                phi_qy_t30 = PHI_TWO * uy_t30 / F_M_I_SCALE;
+                phi_qz_t30 = PHI_TWO * uz_t30 / F_M_I_SCALE;
+            }
+            #endif
 
             
             phi_qx_t30 = F_M_I_SCALE * phi_qx_t30;

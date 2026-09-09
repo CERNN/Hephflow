@@ -344,6 +344,10 @@ typedef struct deviceField{
             // the initialized moment field before the first simulation step.
             updateCurvedBoundaryVelocitiesDeviceField(g, 0);
             CHECK_KERNEL_ERR("Initial curved BC kernel");
+            #if defined(CONFORMATION_TENSOR) && defined(D3G19)
+            updateCurvedBoundaryConformationDeviceField(g, 0);
+            CHECK_KERNEL_ERR("Initial curved conformation BC kernel");
+            #endif
             checkCudaErrors(cudaDeviceSynchronize());
         #endif
 
@@ -391,6 +395,17 @@ typedef struct deviceField{
         const int curvedBCGridSize = (numberCurvedBoundaryNodes + curvedBCBlockSize - 1) / curvedBCBlockSize;
         updateCurvedBoundaryVelocities<<<curvedBCGridSize, curvedBCBlockSize, 0, stream>>>(d_curvedBC_array[g], d_fMom[g], numberCurvedBoundaryNodes);
     }
+
+    #if defined(CONFORMATION_TENSOR) && defined(D3G19)
+    void updateCurvedBoundaryConformationDeviceField(int g, cudaStream_t stream){
+        if (numberCurvedBoundaryNodes == 0) return;
+        const int curvedBCBlockSize = 256;
+        const int curvedBCGridSize =
+            (numberCurvedBoundaryNodes + curvedBCBlockSize - 1) / curvedBCBlockSize;
+        updateCurvedBoundaryConformation<<<curvedBCGridSize, curvedBCBlockSize, 0, stream>>>(
+            d_curvedBC_array[g], d_fMom[g], numberCurvedBoundaryNodes);
+    }
+    #endif
     #endif //CURVED_BOUNDARY_CONDITION
 
     #ifdef DENSITY_CORRECTION
@@ -1263,6 +1278,10 @@ typedef struct deviceField{
         #ifdef CURVED_BOUNDARY_CONDITION
             updateCurvedBoundaryVelocitiesDeviceField(g, stream);
             CHECK_KERNEL_ERR("Curved BC kernel");
+            #if defined(CONFORMATION_TENSOR) && defined(D3G19)
+                updateCurvedBoundaryConformationDeviceField(g, stream);
+                CHECK_KERNEL_ERR("Curved conformation BC kernel");
+            #endif
         #endif //CURVED_BOUNDARY_CONDITION
         #ifdef DENSITY_CORRECTION
             mean_rhoDeviceField(step, g, stream);
