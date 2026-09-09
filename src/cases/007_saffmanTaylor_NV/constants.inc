@@ -1,8 +1,8 @@
 /* ============================================================================
  * CONSTANTS CONFIGURATION
  * Case: Vertical viscoelastic displacement between parallel plates
- * Description: Viscoelastic phase injected at x = 0 into a Newtonian resident
- *              phase. Walls at y = 0 and y = NY-1; z is periodic.
+ * Description: Viscoelastic phase injected at z = 0 into a Newtonian resident
+ *              phase. Walls at y = 0 and y = NY-1; x is periodic.
  * ========================================================================== */
 
 /* --------------------- SIMULATION SCALE --------------------- */
@@ -15,9 +15,9 @@ constexpr int INI_STEP = 0;                  // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
 constexpr int N = 32 * SCALE;               // Reference channel resolution
-constexpr int NX = 16 * N;                    // Streamwise direction, x
+constexpr int NX = N;                        // Periodic spanwise direction, x
 constexpr int NY = N;                        // Plate-normal direction, y
-constexpr int NZ = N;                        // Periodic spanwise direction, z
+constexpr int NZ = 16 * N;                   // Streamwise direction, z
 constexpr int NZ_TOTAL = NZ;                 // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */
@@ -30,14 +30,14 @@ constexpr dfloat t_c = H / U_IN;             // Characteristic advective time H/
 constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962_df;
 
 // Initial viscoelastic buffer: interface centered one channel height from inlet.
-// Phase 2 is viscoelastic and occupies x < INITIAL_INTERFACE_X initially.
+// Phase 2 is viscoelastic and occupies z < INITIAL_INTERFACE_Z initially.
 constexpr int MIN_INITIAL_INJECTED_NODES = 10;
-constexpr dfloat INITIAL_INTERFACE_X = H;
+constexpr dfloat INITIAL_INTERFACE_Z = H;
 
 // Maintain a pure injected-fluid reservoir next to the inlet. This prevents
 // wall/inlet corner transients and CH kinetic modes from contaminating the
 // prescribed incoming phase before it enters the physical displacement zone.
-#define PHI_INLET_RESERVOIR_NODES MIN_INITIAL_INJECTED_NODES
+#define PHI_INLET_RESERVOIR_Z_NODES MIN_INITIAL_INJECTED_NODES
 
 /* --------------------- VISCOELASTIC PARAMETERS --------------------- */
 constexpr dfloat BETA = 0.1;                 // Solvent fraction in viscoelastic phase
@@ -50,12 +50,12 @@ constexpr dfloat FZ = 0.0_df;
 
 /* --------------------- INITIAL CONDITIONS --------------------- */
 constexpr dfloat RHO_0 = 1.0_df;
-constexpr dfloat U_0_X = 0.0_df;             // Initially at rest; inlet BC drives the flow
+constexpr dfloat U_0_X = 0.0_df;
 constexpr dfloat U_0_Y = 0.0_df;
-constexpr dfloat U_0_Z = 0.0_df;
+constexpr dfloat U_0_Z = 0.0_df;             // Initially at rest; inlet BC drives the flow
 
 /* --------------------- BOUNDARY CONDITION VALUES --------------------- */
-// Wall values remain zero. The x-inlet velocity is spatially varying and will
+// Wall values remain zero. The z-inlet velocity is spatially varying and will
 // be imposed directly by the inlet BC using U_IN.
 __device__ const dfloat UX_BC[4] = {0, 0, 0, 0};
 __device__ const dfloat UY_BC[4] = {0, 0, 0, 0};
@@ -64,9 +64,9 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 constexpr dfloat RHO_OUTLET = RHO_0;
 
 /* --------------------- BOUNDARY CONDITION TYPES --------------------- */
-#define BC_X_WALL
+#define BC_X_PERIODIC
 #define BC_Y_WALL
-#define BC_Z_PERIODIC
+#define BC_Z_WALL
 
 /* --------------------- FLUID PROPERTIES --------------------- */
 constexpr dfloat TAU = 0.8;                  // Phase 1: Newtonian resident fluid
@@ -196,8 +196,8 @@ constexpr dfloat phi_del = 4.0;
 constexpr dfloat M_CH = 0.005_df;
 
 // Keep at least ten lattice nodes of injected fluid before the diffuse
-// interface begins. With the current grid, the interface begins near x = 29.
-static_assert(INITIAL_INTERFACE_X - 0.5_df * phi_del >=
+// interface begins. With the current grid, the interface begins near z = 29.
+static_assert(INITIAL_INTERFACE_Z - 0.5_df * phi_del >=
               (dfloat)MIN_INITIAL_INJECTED_NODES,
               "Initial viscoelastic inlet buffer must contain at least 10 nodes");
 
@@ -222,10 +222,10 @@ constexpr dfloat DELTA_RHO_ABS = (PHI_DRHO_PHASE12 >= 0.0_df) ? PHI_DRHO_PHASE12
 constexpr dfloat RHO_MID_REF = 0.5_df * (PHI_RHO_PHASE1 + PHI_RHO_PHASE2);
 
 
-// Gravity acts downward, i.e. in the -x direction.
+// Gravity acts downward, i.e. in the -z direction.
 // Existing convention is kept: signed magnitude times a unit direction vector.
 constexpr dfloat g_value = -1.5e-5_df;
-__device__ const dfloat gravity_vector[3] = {1.0, 0.0, 0.0};
+__device__ const dfloat gravity_vector[3] = {0.0, 0.0, 1.0};
 
 /* --------------------- FORCE COUPLING CONTROL FLAGS --------------------- */
 #define PHI_FORCE_FS_ENABLED 1

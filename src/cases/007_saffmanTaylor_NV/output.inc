@@ -12,7 +12,7 @@
 #define VTK_SAVE (true)                   // Save VTK format (ParaView)
 #define BIN_SAVE (false)                  // Save binary format
 #define ONLY_FINAL_MACRO (false)          // Save only last time step macroscopic
-#define MACR_SAVE (100)                   // Save macroscopic fields
+#define MACR_SAVE (500)                   // Save macroscopic fields
 #define REPORT_SAVE (500)               // Console report frequency (steps)
 
 /* --------------------- DATA TREATMENT --------------------- */

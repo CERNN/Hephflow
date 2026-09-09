@@ -37,39 +37,38 @@ switch (nodeType) {
                       + fMom[idxMom(threadIdx.x, threadIdx.y + 3, threadIdx.z, A_YY_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)]) * 0.5_df / F_M_I_SCALE;
         break;
 
-    case WEST: {
+    case SOUTH_BACK:
+    case NORTH_BACK:
+    case BACK: {
         // Prescribed fully-developed Oldroyd-B inlet.
-        // u_x = 6 U_IN eta (1-eta), eta = y/(NY-1)
-        // gamma_dot = du_x/dy = 6 U_IN/(NY-1) * (1-2 eta)
+        // u_z = 6 U_IN eta (1-eta), eta = y/(NY-1)
         const dfloat H_bc   = (dfloat)(NY - 1);
         const dfloat eta_bc = ((dfloat)y) / H_bc;
-        const dfloat ux_bc  = 6.0_df * U_IN * eta_bc * (1.0_df - eta_bc);
-        const dfloat gamma_bc = (6.0_df * U_IN / H_bc) * (1.0_df - 2.0_df * eta_bc);
-        const dfloat Wi_local = LAMBDA * gamma_bc;
+        const dfloat uz_bc  = 6.0_df * U_IN * eta_bc * (1.0_df - eta_bc);
 
-        // Physical Oldroyd-B fully-developed simple-shear value:
-        // A_yy = 1
+        // Physical fully-developed simple-shear value: A_yy = 1.
         AyyVar = CONF_ZERO + 1.0_df;
 
-        // Follow the same first-moment convention used by flow initialization.
-        Ayy_qx_t30 = AyyVar * ux_bc;
+        Ayy_qx_t30 = 0.0_df;
         Ayy_qy_t30 = 0.0_df;
-        Ayy_qz_t30 = 0.0_df;
+        Ayy_qz_t30 = AyyVar * uz_bc;
         break;
     }
 
-    case EAST: {
-        const dfloat ux_out = fMom[idxMom(threadIdx.x - 1, threadIdx.y, threadIdx.z, M_UX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] / F_M_I_SCALE;
-        if (ux_out < 0.0_df) {
+    case SOUTH_FRONT:
+    case NORTH_FRONT:
+    case FRONT: {
+        const dfloat uz_out = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z - 1, M_UZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] / F_M_I_SCALE;
+        if (uz_out < 0.0_df) {
             AyyVar = CONF_ZERO + 1.0_df;
             Ayy_qx_t30 = Ayy_qy_t30 = Ayy_qz_t30 = 0.0_df;
             break;
         }
-        // Homogeneous Neumann outlet: copy all A_yy moments from x-1.
-        AyyVar = fMom[idxMom(threadIdx.x - 1, threadIdx.y, threadIdx.z, A_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-        Ayy_qx_t30 = fMom[idxMom(threadIdx.x - 1, threadIdx.y, threadIdx.z, A_YY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] / F_M_I_SCALE;
-        Ayy_qy_t30 = fMom[idxMom(threadIdx.x - 1, threadIdx.y, threadIdx.z, A_YY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] / F_M_I_SCALE;
-        Ayy_qz_t30 = fMom[idxMom(threadIdx.x - 1, threadIdx.y, threadIdx.z, A_YY_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] / F_M_I_SCALE;
+        // Homogeneous Neumann outlet: copy all A_yy moments from z-1.
+        AyyVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z - 1, A_YY_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+        Ayy_qx_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z - 1, A_YY_CX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] / F_M_I_SCALE;
+        Ayy_qy_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z - 1, A_YY_CY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] / F_M_I_SCALE;
+        Ayy_qz_t30 = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z - 1, A_YY_CZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] / F_M_I_SCALE;
         break;
     }
     default:
