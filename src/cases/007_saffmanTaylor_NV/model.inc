@@ -1,7 +1,7 @@
 /* ============================================================================
  * MODEL CONFIGURATION
- * Case: Oscillating Droplet
- * Description: Two-phase flow simulation of oscillating droplet
+ * Case: Vertical viscoelastic displacement between parallel plates
+ * Description: Viscoelastic fluid displacing a Newtonian resident fluid
  * ========================================================================== */
 
 /* --------------------- VELOCITY SET --------------------- */
@@ -18,7 +18,12 @@
 //#define MODEL_CONST_SMAGORINSKY //https://doi.org/10.1016/j.jcp.2005.03.022
 
 /* --------------------- PHYSICS MODELS --------------------- */
-#define FENE_P
+// Define SAFFMAN_TAYLOR_NEWTONIAN_BASELINE at compile time to exercise the
+// same two-phase problem with identical Newtonian fluids and no conformation
+// transport. The default remains the intended Newtonian-viscoelastic case.
+#ifndef SAFFMAN_TAYLOR_NEWTONIAN_BASELINE
+    #define FENE_P
+#endif
 
 // Enable phase-dependent viscosity blending via omega field
 #define NON_NEWTONIAN_FLUID

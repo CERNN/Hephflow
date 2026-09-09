@@ -1,19 +1,19 @@
 /* ============================================================================
  * OUTPUT CONFIGURATION
- * Case: Rayleigh-Taylor Instability
- * Description: Two-phase flow simulation of Rayleigh-Taylor instability
+ * Case: Vertical viscoelastic displacement between parallel plates
+ * Description: Viscoelastic fluid displacing a Newtonian resident fluid
  * ========================================================================== */
 
 /* --------------------- OUTPUT FILES --------------------- */
 #define ID_SIM "000"                      // Prefix for simulation's files
-#define PATH_FILES "TwoLayerChannel_NV"   // Path to save simulation's files
+#define PATH_FILES "007_saffmanTaylor_NV"   // Path to save simulation's files
 
 /* --------------------- OUTPUT FORMATS --------------------- */
 #define VTK_SAVE (true)                   // Save VTK format (ParaView)
 #define BIN_SAVE (false)                  // Save binary format
 #define ONLY_FINAL_MACRO (false)          // Save only last time step macroscopic
-#define MACR_SAVE (250000)                   // Save macroscopic fields
-#define REPORT_SAVE (1000)               // Console report frequency (steps)
+#define MACR_SAVE (100)                   // Save macroscopic fields
+#define REPORT_SAVE (500)               // Console report frequency (steps)
 
 /* --------------------- DATA TREATMENT --------------------- */
 #define TREATFIELD (true)                // Treat data over entire field

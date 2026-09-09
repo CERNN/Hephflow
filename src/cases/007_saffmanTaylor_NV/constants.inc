@@ -9,13 +9,13 @@
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- TIME STEPPING --------------------- */
-constexpr int N_STEPS = 2500000;            // Total simulation steps
+constexpr int N_STEPS = 40000;            // Total simulation steps
 constexpr int CONFORMATION_SWITCH = 0;       // Step to switch on conformation
 constexpr int INI_STEP = 0;                  // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
-constexpr int N = 128 * SCALE;               // Reference channel resolution
-constexpr int NX = 4 * N;                    // Streamwise direction, x
+constexpr int N = 32 * SCALE;               // Reference channel resolution
+constexpr int NX = 16 * N;                    // Streamwise direction, x
 constexpr int NY = N;                        // Plate-normal direction, y
 constexpr int NZ = N;                        // Periodic spanwise direction, z
 constexpr int NZ_TOTAL = NZ;                 // Total grid size in Z (multi-GPU)
@@ -23,7 +23,7 @@ constexpr int NZ_TOTAL = NZ;                 // Total grid size in Z (multi-GPU)
 /* --------------------- REFERENCE VALUES --------------------- */
 constexpr dfloat H = (dfloat)(NY - 1);       // Plate spacing in lattice units
 constexpr dfloat L = H;                      // Compatibility alias: reference length = H
-constexpr dfloat U_IN = 0.01_df;             // Mean inlet velocity
+constexpr dfloat U_IN = 0.005_df;             // Mean inlet velocity
 constexpr dfloat U_MAX = 1.5_df * U_IN;      // Maximum of planar Poiseuille inlet profile
 constexpr dfloat U_C = U_IN;                 // Characteristic velocity
 constexpr dfloat t_c = H / U_IN;             // Characteristic advective time H/U_in
@@ -31,7 +31,13 @@ constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962_df;
 
 // Initial viscoelastic buffer: interface centered one channel height from inlet.
 // Phase 2 is viscoelastic and occupies x < INITIAL_INTERFACE_X initially.
+constexpr int MIN_INITIAL_INJECTED_NODES = 10;
 constexpr dfloat INITIAL_INTERFACE_X = H;
+
+// Maintain a pure injected-fluid reservoir next to the inlet. This prevents
+// wall/inlet corner transients and CH kinetic modes from contaminating the
+// prescribed incoming phase before it enters the physical displacement zone.
+#define PHI_INLET_RESERVOIR_NODES MIN_INITIAL_INJECTED_NODES
 
 /* --------------------- VISCOELASTIC PARAMETERS --------------------- */
 constexpr dfloat BETA = 0.1;                 // Solvent fraction in viscoelastic phase
@@ -102,10 +108,19 @@ static inline fluidPhaseProps makeCasePhasePropsPhase2(){
         pp.nnf.type = FLUID_BINGHAM;
         pp.nnf.hasLambda = false;
         pp.nnf.u.bingham.s_y = 0.0_df;
+#ifdef SAFFMAN_TAYLOR_NEWTONIAN_BASELINE
+        // Boundary-condition baseline: make phase 2 identical to the
+        // Newtonian resident phase while retaining the phase-field interface.
+        pp.nnf.u.bingham.omega_p = 1.0_df / TAU;
+        pp.ve.type = VE_NEWTONIAN;
+        pp.ve.eta_p = 0.0_df;
+        pp.ve.lambda = 1.0_df;
+#else
         pp.nnf.u.bingham.omega_p = 1.0_df / TAU_SOLVENT_PHASE2;
         pp.ve.type = VE_OLDROYD_B;
         pp.ve.eta_p = ETA_P_V;
         pp.ve.lambda = LAMBDA;
+#endif
         return pp;
 }
 
@@ -180,8 +195,18 @@ constexpr dfloat phi_sigma = 0.0003;
 constexpr dfloat phi_del = 4.0;
 constexpr dfloat M_CH = 0.005_df;
 
+// Keep at least ten lattice nodes of injected fluid before the diffuse
+// interface begins. With the current grid, the interface begins near x = 29.
+static_assert(INITIAL_INTERFACE_X - 0.5_df * phi_del >=
+              (dfloat)MIN_INITIAL_INJECTED_NODES,
+              "Initial viscoelastic inlet buffer must contain at least 10 nodes");
+
 constexpr dfloat kappa_CH = 0.75_df * phi_sigma * phi_del;
 constexpr dfloat A_CH = (6.0_df * phi_sigma) / phi_del;
+
+constexpr dfloat CONTACT_ANGLE_DEG = 90.0_df;
+static __device__ dfloat contact_angle = CONTACT_ANGLE_DEG * ((dfloat)M_PI / 180.0_df);
+
 
 // constexpr dfloat phi_xi = phi_del / 2.94;
 // Unused in current METHOD_CAHN_HILLIARD path (Allen-Cahn only):
@@ -193,6 +218,9 @@ constexpr dfloat A_CH = (6.0_df * phi_sigma) / phi_del;
 constexpr dfloat PHI_RHO_PHASE2 = 1.0;
 constexpr dfloat PHI_RHO_PHASE1 = 1.0;
 constexpr dfloat PHI_DRHO_PHASE12 = PHI_RHO_PHASE2 - PHI_RHO_PHASE1;
+constexpr dfloat DELTA_RHO_ABS = (PHI_DRHO_PHASE12 >= 0.0_df) ? PHI_DRHO_PHASE12 : -PHI_DRHO_PHASE12;
+constexpr dfloat RHO_MID_REF = 0.5_df * (PHI_RHO_PHASE1 + PHI_RHO_PHASE2);
+
 
 // Gravity acts downward, i.e. in the -x direction.
 // Existing convention is kept: signed magnitude times a unit direction vector.
@@ -208,9 +236,13 @@ __device__ const dfloat gravity_vector[3] = {1.0, 0.0, 0.0};
 /* --------------------- PHASE-FIELD TRANSPORT (LBM) --------------------- */
 constexpr dfloat PHI_DIFFUSIVITY_RATIO = 1;
 constexpr dfloat PHI_DIFFUSIVITY = VISC/PHI_DIFFUSIVITY_RATIO;
-constexpr dfloat PHI_DIFF_REF = 0.0000033333;
+// Numerical reference diffusivity for the phase-population relaxation. The
+// explicit counter-source removes this contribution from the macroscopic CH
+// equation, so 1/6 damps kinetic boundary modes without changing M_CH.
+constexpr dfloat PHI_DIFF_REF = 1.0_df / 6.0_df;
 
-constexpr dfloat PHI_TAU   = 0.5 + 3.0 * PHI_DIFF_REF;
-constexpr dfloat PHI_OMEGA = 1.0 / PHI_TAU;
+constexpr dfloat PHI_LBM_DIFF = PHI_DIFF_REF;
+constexpr dfloat PHI_TAU = 0.5_df + 3.0_df * PHI_LBM_DIFF;
+constexpr dfloat PHI_OMEGA = 1.0_df / PHI_TAU;
 
 /* ----- END CONSTANTS CONFIGURATION ----- */

@@ -1,5 +1,9 @@
 rho = RHO_0;
-ux  = U_0_X;
+// Start from the same fully-developed volume flux imposed at the inlet.
+// Initializing only x=0 with this profile creates a large artificial
+// divergence and leaves the next streamwise node almost at rest.
+const dfloat eta_init = ((dfloat)y) / ((dfloat)(NY - 1));
+ux  = 6.0_df * U_IN * eta_init * (1.0_df - eta_init);
 uy  = U_0_Y;
 uz  = U_0_Z;
 
@@ -18,50 +22,62 @@ const dfloat X = (dfloat)x;
 const dfloat delta = X - INITIAL_INTERFACE_X;
 phiVar = phi_mid - phi_half * tanh(delta / denom);
 
+// Smooth indicator of the injected (viscoelastic) phase. It is used below
+// to initialize its conformation consistently with the inlet profile while
+// retaining A=I in the initially Newtonian resident phase.
+const dfloat injected_fraction = myMin(myMax(
+    (phiVar - PHI_ONE) / (PHI_TWO - PHI_ONE), 0.0_df), 1.0_df);
+
 #endif
 
 #ifdef OMEGA_FIELD
 omega = OMEGA;
 #endif
 
-// The conformation tensor is initialized at equilibrium, A = I.
-// Because the macroscopic fluid is initialized at rest, its first-order
-// transport moments are initially zero.
+// Fully-developed Oldroyd-B conformation in the injected phase, smoothly
+// blended to A=I in the Newtonian resident phase.
+#if defined(A_XX_DIST) || defined(A_XY_DIST) || defined(A_XZ_DIST) || \
+    defined(A_YY_DIST) || defined(A_YZ_DIST) || defined(A_ZZ_DIST)
+const dfloat gamma_init = (6.0_df * U_IN / ((dfloat)(NY - 1)))
+                        * (1.0_df - 2.0_df * eta_init);
+const dfloat Wi_init = LAMBDA * gamma_init;
+#endif
 #ifdef A_XX_DIST
-AxxVar = CONF_ZERO + 1.0;
-Axx_qx_t30 = 3.0*AxxVar*(ux + 0.0);
-Axx_qy_t30 = 3.0*AxxVar*(uy + 0.0);
-Axx_qz_t30 = 3.0*AxxVar*(uz + 0.0);
+AxxVar = CONF_ZERO + 1.0_df
+       + injected_fraction * 2.0_df * Wi_init * Wi_init;
+Axx_qx_t30 = F_M_I_SCALE*AxxVar*ux;
+Axx_qy_t30 = F_M_I_SCALE*AxxVar*uy;
+Axx_qz_t30 = F_M_I_SCALE*AxxVar*uz;
 #endif
 #ifdef A_XY_DIST
-AxyVar = CONF_ZERO;
-Axy_qx_t30 = 3.0*AxyVar*(ux + 0.0);
-Axy_qy_t30 = 3.0*AxyVar*(uy + 0.0);
-Axy_qz_t30 = 3.0*AxyVar*(uz + 0.0);
+AxyVar = CONF_ZERO + injected_fraction * Wi_init;
+Axy_qx_t30 = F_M_I_SCALE*AxyVar*ux;
+Axy_qy_t30 = F_M_I_SCALE*AxyVar*uy;
+Axy_qz_t30 = F_M_I_SCALE*AxyVar*uz;
 #endif
 #ifdef A_XZ_DIST
 AxzVar = CONF_ZERO;
-Axz_qx_t30 = 3.0*AxzVar*(ux + 0.0);
-Axz_qy_t30 = 3.0*AxzVar*(uy + 0.0);
-Axz_qz_t30 = 3.0*AxzVar*(uz + 0.0);
+Axz_qx_t30 = F_M_I_SCALE*AxzVar*ux;
+Axz_qy_t30 = F_M_I_SCALE*AxzVar*uy;
+Axz_qz_t30 = F_M_I_SCALE*AxzVar*uz;
 #endif
 #ifdef A_YY_DIST
 AyyVar = CONF_ZERO + 1.0;
-Ayy_qx_t30 = 3.0*AyyVar*(ux + 0.0);
-Ayy_qy_t30 = 3.0*AyyVar*(uy + 0.0);
-Ayy_qz_t30 = 3.0*AyyVar*(uz + 0.0);
+Ayy_qx_t30 = F_M_I_SCALE*AyyVar*ux;
+Ayy_qy_t30 = F_M_I_SCALE*AyyVar*uy;
+Ayy_qz_t30 = F_M_I_SCALE*AyyVar*uz;
 #endif
 #ifdef A_YZ_DIST
 AyzVar = CONF_ZERO;
-Ayz_qx_t30 = 3.0*AyzVar*(ux + 0.0);
-Ayz_qy_t30 = 3.0*AyzVar*(uy + 0.0);
-Ayz_qz_t30 = 3.0*AyzVar*(uz + 0.0);
+Ayz_qx_t30 = F_M_I_SCALE*AyzVar*ux;
+Ayz_qy_t30 = F_M_I_SCALE*AyzVar*uy;
+Ayz_qz_t30 = F_M_I_SCALE*AyzVar*uz;
 #endif
 #ifdef A_ZZ_DIST
 AzzVar = CONF_ZERO + 1.0;
-Azz_qx_t30 = 3.0*AzzVar*(ux + 0.0);
-Azz_qy_t30 = 3.0*AzzVar*(uy + 0.0);
-Azz_qz_t30 = 3.0*AzzVar*(uz + 0.0);
+Azz_qx_t30 = F_M_I_SCALE*AzzVar*ux;
+Azz_qy_t30 = F_M_I_SCALE*AzzVar*uy;
+Azz_qz_t30 = F_M_I_SCALE*AzzVar*uz;
 #endif
 
 #ifdef NON_NEWTONIAN_FLUID
