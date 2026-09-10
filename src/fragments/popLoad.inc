@@ -200,16 +200,16 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
         if (tz == 0){ //b
             //Condition for reading the boundary from the neighboring GPU.
             if(bz == 0){
-                pop[ 5] = ghostInterface.auxZ_1[idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
-                pop[ 9] = ghostInterface.auxZ_1[idxPopZ(txm1  , ty   ,   1, bxAtWest   , by        , 0)];
-                pop[11] = ghostInterface.auxZ_1[idxPopZ(tx    , tym1 ,   2, bx         , byAtSouth , 0)];
-                pop[16] = ghostInterface.auxZ_1[idxPopZ(txp1  , ty   ,   3, bxAtEast   , by        , 0)];
-                pop[18] = ghostInterface.auxZ_1[idxPopZ(tx    , typ1 ,   4, bx         , byAtNorth , 0)];
+                pop[ 5] = ghostInterfaceCopy.auxZ_1[idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
+                pop[ 9] = ghostInterfaceCopy.auxZ_1[idxPopZ(txm1  , ty   ,   1, bxAtWest   , by        , 0)];
+                pop[11] = ghostInterfaceCopy.auxZ_1[idxPopZ(tx    , tym1 ,   2, bx         , byAtSouth , 0)];
+                pop[16] = ghostInterfaceCopy.auxZ_1[idxPopZ(txp1  , ty   ,   3, bxAtEast   , by        , 0)];
+                pop[18] = ghostInterfaceCopy.auxZ_1[idxPopZ(tx    , typ1 ,   4, bx         , byAtNorth , 0)];
                 #ifdef D3Q27
-                pop[19] = ghostInterface.auxZ_1[idxPopZ(txm1  , tym1 ,   5, bxAtWest   , byAtSouth , 0)];
-                pop[22] = ghostInterface.auxZ_1[idxPopZ(txp1  , typ1 ,   6, bxAtEast   , byAtNorth , 0)];
-                pop[23] = ghostInterface.auxZ_1[idxPopZ(txm1  , typ1 ,   7, bxAtWest   , byAtNorth , 0)];
-                pop[25] = ghostInterface.auxZ_1[idxPopZ(txp1  , tym1 ,   8, bxAtEast   , byAtSouth , 0)];
+                pop[19] = ghostInterfaceCopy.auxZ_1[idxPopZ(txm1  , tym1 ,   5, bxAtWest   , byAtSouth , 0)];
+                pop[22] = ghostInterfaceCopy.auxZ_1[idxPopZ(txp1  , typ1 ,   6, bxAtEast   , byAtNorth , 0)];
+                pop[23] = ghostInterfaceCopy.auxZ_1[idxPopZ(txm1  , typ1 ,   7, bxAtWest   , byAtNorth , 0)];
+                pop[25] = ghostInterfaceCopy.auxZ_1[idxPopZ(txp1  , tym1 ,   8, bxAtEast   , byAtSouth , 0)];
                 #endif //D3Q27
             }else{
                 pop[ 5] = loadGhostZBack[idxPopZ(tx    , ty   ,   0, bx         , by        , loadBzBack)];
@@ -227,16 +227,16 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
         }else if (tz == (BLOCK_NZ - 1)){ //f
             //Condition for reading the boundary from the neighboring GPU.
             if(bz == top){
-                pop[ 6] = ghostInterface.auxZ_0[idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
-                pop[10] = ghostInterface.auxZ_0[idxPopZ(txp1  , ty   ,   1, bxAtEast   , by        , 0)];
-                pop[12] = ghostInterface.auxZ_0[idxPopZ(tx    , typ1 ,   2, bx         , byAtNorth , 0)];
-                pop[15] = ghostInterface.auxZ_0[idxPopZ(txm1  , ty   ,   3, bxAtWest   , by        , 0)];
-                pop[17] = ghostInterface.auxZ_0[idxPopZ(tx    , tym1 ,   4, bx         , byAtSouth , 0)];
+                pop[ 6] = ghostInterfaceCopy.auxZ_0[idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
+                pop[10] = ghostInterfaceCopy.auxZ_0[idxPopZ(txp1  , ty   ,   1, bxAtEast   , by        , 0)];
+                pop[12] = ghostInterfaceCopy.auxZ_0[idxPopZ(tx    , typ1 ,   2, bx         , byAtNorth , 0)];
+                pop[15] = ghostInterfaceCopy.auxZ_0[idxPopZ(txm1  , ty   ,   3, bxAtWest   , by        , 0)];
+                pop[17] = ghostInterfaceCopy.auxZ_0[idxPopZ(tx    , tym1 ,   4, bx         , byAtSouth , 0)];
                 #ifdef D3Q27
-                pop[20] = ghostInterface.auxZ_0[idxPopZ(txp1  , typ1 ,   5, bxAtEast   , byAtNorth , 0)];
-                pop[21] = ghostInterface.auxZ_0[idxPopZ(txm1  , tym1 ,   6, bxAtWest   , byAtSouth , 0)];
-                pop[24] = ghostInterface.auxZ_0[idxPopZ(txp1  , tym1 ,   7, bxAtEast   , byAtSouth , 0)];
-                pop[26] = ghostInterface.auxZ_0[idxPopZ(txm1  , typ1 ,   8, bxAtWest   , byAtNorth , 0)];
+                pop[20] = ghostInterfaceCopy.auxZ_0[idxPopZ(txp1  , typ1 ,   5, bxAtEast   , byAtNorth , 0)];
+                pop[21] = ghostInterfaceCopy.auxZ_0[idxPopZ(txm1  , tym1 ,   6, bxAtWest   , byAtSouth , 0)];
+                pop[24] = ghostInterfaceCopy.auxZ_0[idxPopZ(txp1  , tym1 ,   7, bxAtEast   , byAtSouth , 0)];
+                pop[26] = ghostInterfaceCopy.auxZ_0[idxPopZ(txm1  , typ1 ,   8, bxAtWest   , byAtNorth , 0)];
                 #endif //D3Q27
             }else{
                 pop[ 6] = loadGhostZFront[idxPopZ(tx    , ty   ,   0, bx         , by        , loadBzFront)];

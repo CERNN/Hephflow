@@ -19,14 +19,31 @@ dfloat ux_yp1 = fMom[idxMom(tx, typ1, tz, M_UX_INDEX, bx, ((y + 1) % NY) / BLOCK
 dfloat uy_yp1 = fMom[idxMom(tx, typ1, tz, M_UY_INDEX, bx, ((y + 1) % NY) / BLOCK_NY, bz)];
 dfloat uz_yp1 = fMom[idxMom(tx, typ1, tz, M_UZ_INDEX, bx, ((y + 1) % NY) / BLOCK_NY, bz)];
 
-dfloat ux_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUux.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UX_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
-dfloat uy_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUuy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UY_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
-dfloat uz_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUuz.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UZ_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
+dfloat ux_zm1;
+dfloat uy_zm1;
+dfloat uz_zm1;
 
-dfloat ux_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUux.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UX_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
-dfloat uy_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUuy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UY_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
-dfloat uz_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUuz.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UZ_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
+dfloat ux_zp1;
+dfloat uy_zp1;
+dfloat uz_zp1;
 
+if (stepParity){
+    ux_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUux.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UX_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
+    uy_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUuy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UY_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
+    uz_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUuz.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UZ_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
+
+    ux_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUux.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UX_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
+    uy_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUuy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UY_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
+    uz_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUuz.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UZ_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
+}else{
+    ux_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUuxCopy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UX_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
+    uy_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUuyCopy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UY_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
+    uz_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUuzCopy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UZ_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
+
+    ux_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUuxCopy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UX_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
+    uy_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUuyCopy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UY_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
+    uz_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUuzCopy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UZ_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
+}
 
 dfloat duxdx_t30 = (ux_xp1 - ux_xm1) *0.5_df;
 dfloat duydx_t30 = (uy_xp1 - uy_xm1) *0.5_df;

@@ -230,15 +230,17 @@ int main() {
         // update saving flags
         saveField.flagsUpdate(step);
 
+        const bool stepParity = (step & 1u);
+
         /* -------------- Exchanging halos between neighboring GPUs using P2P ------------- */
         // sendTopToNext and sendBottomToPrev access different ghost buffers
         // (pop.Z_1/popAux.Z_1 vs pop.Z_0/popAux.Z_0) so they can launch together.
         for (int g = 0; g < N_GPUS; g++) {
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-            devices[g].sendTopToNext(g, devices.data(), streamsLBM[g]);
-            devices[g].sendBottomToPrev(g, devices.data(), streamsLBM[g]);
-            devices[g].sendMacroTopToNext(g, devices.data(), streamsLBM[g]);
-            devices[g].sendMacroBottomToPrev(g, devices.data(), streamsLBM[g]);
+            devices[g].sendTopToNext(g, devices.data(), streamsLBM[g], stepParity);
+            devices[g].sendBottomToPrev(g, devices.data(), streamsLBM[g], stepParity);
+            devices[g].sendMacroTopToNext(g, devices.data(), streamsLBM[g], stepParity);
+            devices[g].sendMacroBottomToPrev(g, devices.data(), streamsLBM[g], stepParity);
         }
     
         for (int g = 0; g < N_GPUS; g++) {
