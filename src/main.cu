@@ -110,7 +110,8 @@ int main() {
 
     step = INI_STEP;
 
-
+    bool stepParity = (step & 1u);
+    
     //Declaration of atomic flags to safely control the state of data saving in multiple threads.
     std::atomic<bool> savingMacrVtk(false);
     std::atomic<bool> savingMacrParticle(false);
@@ -170,22 +171,22 @@ int main() {
         publishMacroHalos();
         for (int g = 0; g < N_GPUS; ++g)
             devices[g].exchangeMacroField(g, devices.data(),
-                &macroInterfaceGPUData::phi, streamsLBM[g]);
+                &macroInterfaceGPUData::phi, streamsLBM[g], stepParity);
         synchronizeLBMStreams();
 
         for (int g = 0; g < N_GPUS; ++g)
             devices[g].computePhaseNormalsDeviceField(gridBlock, threadBlock,
-                g, slice, streamsLBM[g]);
+                g, slice, streamsLBM[g], stepParity);
         // Packing follows the phase kernels on each stream; wait for all senders.
         publishMacroHalos();
         for (int g = 0; g < N_GPUS; ++g)
             devices[g].exchangeMacroField(g, devices.data(),
-                &macroInterfaceGPUData::mu, streamsLBM[g]);
+                &macroInterfaceGPUData::mu, streamsLBM[g], stepParity);
         synchronizeLBMStreams();
 
         for (int g = 0; g < N_GPUS; ++g)
             devices[g].gpuComputeLaplacianMuDeviceField(gridBlock, threadBlock,
-                g, slice, streamsLBM[g]);
+                g, slice, streamsLBM[g], stepParity);
         synchronizeLBMStreams();
         CHECK_KERNEL_ERR("Phase derivatives kernels");
     };
@@ -230,7 +231,7 @@ int main() {
         // update saving flags
         saveField.flagsUpdate(step);
 
-        const bool stepParity = (step & 1u);
+        stepParity = (step & 1u);
 
         /* -------------- Exchanging halos between neighboring GPUs using P2P ------------- */
         // sendTopToNext and sendBottomToPrev access different ghost buffers

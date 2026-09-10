@@ -760,19 +760,29 @@ typedef struct deviceField{
 
     // Each sender pushes its top face and pulls the next slab's bottom face.
     void exchangeMacroField(int g, deviceField* allDevices,
-        gpuDirection macroInterfaceGPUData::*field, cudaStream_t stream) {
+        gpuDirection macroInterfaceGPUData::*field, cudaStream_t stream, bool stepParity) {
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         #ifdef BC_Z_WALL
         if (g == N_GPUS - 1) return;
         #endif
         const int next = (g + 1) % N_GPUS;
-        const gpuDirection own = macroInterfaceGPU[g].*field;
-        const gpuDirection neighbor = allDevices[next].macroInterfaceGPU[next].*field;
+
+        const gpuDirection ownSrc      = macroInterfaceGPU[g].*field;
+        const gpuDirection neighborSrc = allDevices[next].macroInterfaceGPU[next].*field;
+
+        macroInterfaceGPUData& ownDstIface = stepParity
+            ? macroInterfaceGPU[g] : macroInterfaceGPUCopy[g];
+        macroInterfaceGPUData& neighborDstIface = stepParity
+            ? allDevices[next].macroInterfaceGPU[next] : allDevices[next].macroInterfaceGPUCopy[next];
+
+        const gpuDirection ownDst      = ownDstIface.*field;
+        const gpuDirection neighborDst = neighborDstIface.*field;
+
         const size_t bytes = (size_t)NX * NY * sizeof(dfloat);
-        checkCudaErrors(cudaMemcpyPeerAsync(neighbor.auxZ_1, GPUS_TO_USE[next],
-            own.Z_1, GPUS_TO_USE[g], bytes, stream));
-        checkCudaErrors(cudaMemcpyPeerAsync(own.auxZ_0, GPUS_TO_USE[g],
-            neighbor.Z_0, GPUS_TO_USE[next], bytes, stream));
+        checkCudaErrors(cudaMemcpyPeerAsync(neighborDst.auxZ_1, GPUS_TO_USE[next],
+            ownSrc.Z_1, GPUS_TO_USE[g], bytes, stream));
+        checkCudaErrors(cudaMemcpyPeerAsync(ownDst.auxZ_0, GPUS_TO_USE[g],
+        neighborSrc.Z_0, GPUS_TO_USE[next], bytes, stream));
     }
 
     void sendMacroTopToNext(int g, deviceField* allDevices, cudaStream_t streamLBM, bool stepParity)
@@ -1223,21 +1233,25 @@ typedef struct deviceField{
 
     #ifdef PHI_DIST
     // Caller must exchange fresh PHI before this stage and fresh mu afterward.
-    void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock, int g, int slice, cudaStream_t stream){
+    void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock, int g, int slice, cudaStream_t stream, bool stepParity){
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         int zStart = g * slice;
         int zEnd   = (g == N_GPUS - 1) ? NZ : zStart + slice;
         size_t localNZ = zEnd - zStart;
-        gpuComputePhaseNormals<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], macroInterfaceGPU[g], localNZ, zStart);
+        macroInterfaceGPUData& macroIF = stepParity ? macroInterfaceGPU[g] : macroInterfaceGPUCopy[g];
+
+        gpuComputePhaseNormals<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], macroIF, localNZ, zStart);
         gpuComputeChemicalPotential<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], localNZ, zStart);
     }
 
-    void gpuComputeLaplacianMuDeviceField(dim3 gridBlock, dim3 threadBlock, int g, int slice, cudaStream_t stream){
+    void gpuComputeLaplacianMuDeviceField(dim3 gridBlock, dim3 threadBlock, int g, int slice, cudaStream_t stream, bool stepParity){
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         int zStart = g * slice;
         int zEnd   = (g == N_GPUS - 1) ? NZ : zStart + slice;
         size_t localNZ = zEnd - zStart;
-        gpuComputeLaplacianMu<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], macroInterfaceGPU[g], localNZ, zStart);
+        macroInterfaceGPUData& macroIF = stepParity ? macroInterfaceGPU[g] : macroInterfaceGPUCopy[g];
+
+        gpuComputeLaplacianMu<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], macroIF, localNZ, zStart);
     }
     
     #endif //PHI_DIST
