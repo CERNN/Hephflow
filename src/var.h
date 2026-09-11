@@ -48,6 +48,18 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0,1};       // Which GPUs to use
 #include CASE_CONSTANTS
 #include CASE_OUTPUTS
 
+// Classic single-GPU benchmark has no macroscopic inter-partition halos.
+// Advanced physics and multi-GPU paths retain the macro halo machinery.
+#if defined(SECOND_DIST) || defined(PHI_DIST) || defined(LAMBDA_DIST) || \
+    defined(A_XX_DIST) || defined(A_XY_DIST) || defined(A_XZ_DIST) || \
+    defined(A_YY_DIST) || defined(A_YZ_DIST) || defined(A_ZZ_DIST) || \
+    defined(COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE) || \
+    defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
+constexpr bool MACRO_HALOS_REQUIRED = true;
+#else
+constexpr bool MACRO_HALOS_REQUIRED = (N_GPUS > 1);
+#endif
+
 /* ======================== PROJECT HEADER INCLUDES ======================== */
 
 #include "definitions.h"
@@ -59,6 +71,7 @@ static_assert(NX >= BLOCK_NX, "NX must be >= BLOCK_NX, Update block size in memo
 static_assert(NY >= BLOCK_NY, "NY must be >= BLOCK_NY, Update block size in memory_layout.h or increase domain in constants.inc");
 static_assert(NZ >= BLOCK_NZ, "NZ must be >= BLOCK_NZ, Update block size in memory_layout.h or increase domain in constants.inc");
 
+#ifndef HEPHFLOW_SKIP_CONSTEXPR_MATH_TESTS
 
 constexpr auto err = constexprPow(2.0_df, 0.5_df) - sqrtt(2.0_df);
 constexpr dfloat tol = 100 * std::numeric_limits<dfloat>::epsilon();
@@ -126,6 +139,8 @@ static_assert(isClose(constexprPow(base_val, 1.7_df) * constexprPow(base_val, -1
 // Power of a power: (x^a)^b = x^(a * b)
 static_assert(isClose(constexprPow(constexprPow(3.0_df, 0.4_df), 2.5_df), 3.0_df),
               "Failed: Power rule (x^a)^b = x^(a*b)");
+
+#endif // HEPHFLOW_SKIP_CONSTEXPR_MATH_TESTS
 
 
 #endif //__VAR_H

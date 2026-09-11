@@ -89,3 +89,20 @@ constexpr dfloat T_DIFF_FLUC = T_DIFFUSIVITY - T_DIFF_REF;
 constexpr dfloat G_AAA = (3*T_DIFF_FLUC*G_OMEGA);
 constexpr dfloat G_DIFF_FLUC_COEF = G_AAA/(1.0+G_AAA);
 #endif
+// Optional, mutually exclusive Step 7 block-face streaming experiments.
+// Define one through the build flags; the default benchmark remains AA.
+// #define STEP7_ESOTERIC_PULL
+// #define STEP7_ESOTERIC_TWIST
+// #define STEP7_ESOTERIC_PUSH
+
+// Queue the single-GPU timestep on its existing stream and synchronize only
+// at real host-consumption/timing boundaries. Multi-GPU behavior is unchanged.
+#define STEP8_QUEUE_SINGLE_GPU
+
+// Split the local slab into one interior launch and one launch per Z boundary.
+// Step 11 keeps the current serialized dependencies; Step 12 adds events/overlap.
+#define STEP11_SPLIT_Z_KERNEL
+
+// Compute boundaries first, then transfer their next-generation halos on a
+// separate stream while the current interior range runs.
+// #define STEP12_OVERLAP_HALOS
