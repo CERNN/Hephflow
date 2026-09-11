@@ -600,6 +600,7 @@ struct DeviceKernelParams {
     bool save;                              ///< Whether to save data
     size_t localNZ; 
     int zStart;
+    unsigned int zBlockOffset;              ///< Maps split-kernel launch Z to the local slab block index.
 
     gpuDirection rho_macro;
     gpuDirection ux_macro;

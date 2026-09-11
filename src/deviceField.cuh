@@ -427,6 +427,7 @@ typedef struct deviceField{
         params.save = save;
         params.zStart = zStart;
         params.localNZ = localNZ;
+        params.zBlockOffset = 0;
 
         params.rho_macro.Z_0 = macroInterfaceGPU[g].rho.Z_0;
         params.rho_macro.Z_1 = macroInterfaceGPU[g].rho.Z_1;
@@ -741,13 +742,33 @@ typedef struct deviceField{
         #endif //PHI_DIST
         #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
         
-        // Pass struct by value - CUDA handles this efficiently
+        // Pass struct by value - CUDA handles this efficiently.
+        #ifdef STEP11_SPLIT_Z_KERNEL
+        auto launchZRange = [&](unsigned int firstBlock, unsigned int blockCount) {
+            if (blockCount == 0) return;
+            params.zBlockOffset = firstBlock;
+            const dim3 splitGrid(gridBlock.x, gridBlock.y, blockCount);
+            #ifdef DYNAMIC_SHARED_MEMORY
+            gpuMomCollisionStream<<<splitGrid, threadBlock, MAX_SHARED_MEMORY_SIZE, stream>>>(params);
+            #else
+            gpuMomCollisionStream<<<splitGrid, threadBlock, 0, stream>>>(params);
+            #endif
+        };
+
+        const unsigned int localBlockCount = gridBlock.z;
+        if (localBlockCount > 2) {
+            launchZRange(1, localBlockCount - 2); // Interior: no incoming Z halo dependency.
+        }
+        launchZRange(0, 1);                      // Back boundary.
+        if (localBlockCount > 1) {
+            launchZRange(localBlockCount - 1, 1); // Front boundary; avoid duplicating a one-block slab.
+        }
+        #else
         #ifdef DYNAMIC_SHARED_MEMORY
         gpuMomCollisionStream<<<gridBlock, threadBlock, MAX_SHARED_MEMORY_SIZE, stream>>>(params);
         #else
-
         gpuMomCollisionStream<<<gridBlock, threadBlock, 0, stream>>>(params);
-
+        #endif
         #endif
     }
 

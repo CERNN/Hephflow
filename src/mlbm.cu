@@ -3,6 +3,13 @@
 
 __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 {
+    // Split launches use a smaller grid in Z. Shadow CUDA's launch block index
+    // with the corresponding block index in the complete local slab so the
+    // existing indexing and AA face-neighbor logic remain unchanged.
+    const uint3 launchBlockIdx = blockIdx;
+    const dim3 blockIdx(launchBlockIdx.x, launchBlockIdx.y,
+                        launchBlockIdx.z + params.zBlockOffset);
+
     // Unpack parameters from struct (passed by value - CUDA optimized!)
     dfloat *fMom = params.fMom;
     unsigned int *dNodeType = params.dNodeType;
@@ -148,7 +155,7 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     const int y = threadIdx.y + blockDim.y * blockIdx.y;
     const int z_local = threadIdx.z + blockDim.z * blockIdx.z;
 
-    if (x >= NX || y >= NY || z_local >= localNZ+1)
+    if (x >= NX || y >= NY || z_local >= localNZ)
         return;
     
     const int z = zStart + z_local;
