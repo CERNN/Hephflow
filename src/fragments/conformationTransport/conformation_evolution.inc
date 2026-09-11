@@ -98,9 +98,23 @@ dfloat Gyz = confSourceWeight * (veR.yz + ADU_DUTA_yz_t30/F_M_I_SCALE);
 
 // Polymeric coupling is explicitly multiplied by eta_p_local. In the Newtonian phase
 // h(phi)=0 => eta_p_local=0, so the regularized inv_lambda_local introduces no stress.
-L_Fx += (dAxxdx + dAxydy + dAxzdz)*(eta_p_local*inv_lambda_local)*switch_conf;
-L_Fy += (dAxydx + dAyydy + dAyzdz)*(eta_p_local*inv_lambda_local)*switch_conf;
-L_Fz += (dAxzdx + dAyzdy + dAzzdz)*(eta_p_local*inv_lambda_local)*switch_conf;
+#ifndef DISABLE_POLYMER_MOMENTUM_FEEDBACK
+    dfloat polymerFeedbackRamp = 1.0_df;
+    #ifdef VISCOELASTIC_STARTUP_RAMP
+    {
+        const dfloat rampCoordinate = fmin(
+            1.0_df, (dfloat)step / (dfloat)STARTUP_RAMP_STEPS);
+        polymerFeedbackRamp = rampCoordinate * rampCoordinate
+                            * (3.0_df - 2.0_df * rampCoordinate);
+    }
+    #endif
+L_Fx += (dAxxdx + dAxydy + dAxzdz)*(eta_p_local*inv_lambda_local)
+      * switch_conf * polymerFeedbackRamp;
+L_Fy += (dAxydx + dAyydy + dAyzdz)*(eta_p_local*inv_lambda_local)
+      * switch_conf * polymerFeedbackRamp;
+L_Fz += (dAxzdx + dAyzdy + dAzzdz)*(eta_p_local*inv_lambda_local)
+      * switch_conf * polymerFeedbackRamp;
+#endif
 
 
 AxxVar += CONF_ZERO;

@@ -544,6 +544,14 @@ typedef struct curvedBoundary{
     dfloat3 wallVel; // Prescribed velocity at the physical wall point
     dfloat3 vel; //extrapolated velocity, which will be used on the boundary condition
 
+    #ifdef CONFORMATION_TENSOR
+    dfloat conformation[6]; // precomputed Axx, Axy, Axz, Ayy, Ayz, Azz
+    // Stored t30 moments at the nearest interior sampling point. Component
+    // order matches conformation[]; direction order is x, y, z.
+    dfloat conformationFluxT30[18];
+    dfloat conformationInteriorVelocityT30[3];
+    #endif
+
 }CurvedBoundary;
 
 struct ParticleWallForce {

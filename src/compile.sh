@@ -3,6 +3,63 @@ set -o pipefail
 
 # CC=86
 
+SHOW_WARNINGS=0
+OUTPUT_PREFIX=""
+
+usage() {
+    echo "Usage: $0 [--show-warnings|--hide-warnings] <output_prefix>"
+    echo "  --show-warnings  Show nvcc warnings (warnings are hidden by default)."
+    echo "  --hide-warnings  Hide nvcc warnings explicitly."
+}
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --show-warnings|-W)
+            SHOW_WARNINGS=1
+            ;;
+        --hide-warnings)
+            SHOW_WARNINGS=0
+            ;;
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            echo "Error: Unknown option: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+        *)
+            if [ -n "$OUTPUT_PREFIX" ]; then
+                echo "Error: Only one output prefix may be specified." >&2
+                usage >&2
+                exit 2
+            fi
+            OUTPUT_PREFIX=$1
+            ;;
+    esac
+    shift
+done
+
+if [ "$#" -gt 0 ]; then
+    if [ -n "$OUTPUT_PREFIX" ] || [ "$#" -gt 1 ]; then
+        echo "Error: Only one output prefix may be specified." >&2
+        usage >&2
+        exit 2
+    fi
+    OUTPUT_PREFIX=$1
+fi
+
+if [ -z "$OUTPUT_PREFIX" ]; then
+    echo "Error: Missing output prefix." >&2
+    usage >&2
+    exit 2
+fi
+
 # Prevent runtime cudaErrorInsufficientDriver by validating CUDA compatibility
 # before compiling: toolkit version (nvcc) must be <= driver supported version.
 get_nvcc_version() {
@@ -94,12 +151,70 @@ if [ -z "$VELOCITY_SET" ]; then
 fi
 echo "Velocity set: $VELOCITY_SET (from cases/${BC_PROBLEM}/model.inc)"
 
-nvcc --std=c++17 -gencode arch=compute_${CC},code=sm_${CC} -rdc=true -O3 --restrict -DSM_${CC}  \
-    --maxrregcount=$MAX_REGS \
-    $(find . -name '*.cu') \
-    -diag-suppress 39 \
-    -diag-suppress 179 \
-    -lcudadevrt -lcurand -o ./../bin/$1sim_${VELOCITY_SET}_sm${CC} 2>&1 | tee compile_log.txt
+mapfile -t CUDA_SOURCES < <(find . -name '*.cu' -print | sort)
+if [ "${#CUDA_SOURCES[@]}" -eq 0 ]; then
+    echo "Error: No CUDA source files found." >&2
+    exit 1
+fi
+
+WARNING_FLAGS=()
+if [ "$SHOW_WARNINGS" -eq 0 ]; then
+    WARNING_FLAGS+=(--disable-warnings)
+fi
+
+BUILD_DIR=$(mktemp -d "${TMPDIR:-/tmp}/hephflow-build.XXXXXX") || {
+    echo "Error: Could not create temporary build directory." >&2
+    exit 1
+}
+trap 'rm -rf -- "$BUILD_DIR"' EXIT
+
+OBJECT_EXTENSION=o
+if [ "${OS:-}" = "Windows_NT" ]; then
+    OBJECT_EXTENSION=obj
+fi
+
+: > compile_log.txt
+OBJECTS=()
+SOURCE_INDEX=0
+
+for SOURCE in "${CUDA_SOURCES[@]}"; do
+    SOURCE_INDEX=$((SOURCE_INDEX + 1))
+    OBJECT="$BUILD_DIR/${SOURCE_INDEX}.${OBJECT_EXTENSION}"
+    OBJECTS+=("$OBJECT")
+    echo "${SOURCE#./}"
+
+    nvcc --std=c++17 -gencode arch=compute_${CC},code=sm_${CC} -rdc=true -dc -O3 --restrict -DSM_${CC} \
+        --maxrregcount="$MAX_REGS" \
+        "${WARNING_FLAGS[@]}" \
+        -diag-suppress 39 \
+        -diag-suppress 179 \
+        "$SOURCE" -o "$OBJECT" \
+        2>&1 | sed '/^[[:space:]]*tmpxft_[^[:space:]]*[[:space:]]*$/d' | tee -a compile_log.txt
+    BUILD_STATUS=${PIPESTATUS[0]}
+
+    if [ "$BUILD_STATUS" -ne 0 ]; then
+        echo "Compilation failed (exit code $BUILD_STATUS)." >&2
+        exit "$BUILD_STATUS"
+    fi
+done
+
+echo "Linking executable"
+nvcc --std=c++17 -gencode arch=compute_${CC},code=sm_${CC} -rdc=true \
+    "${WARNING_FLAGS[@]}" \
+    "${OBJECTS[@]}" \
+    -lcudadevrt -lcurand -o "./../bin/${OUTPUT_PREFIX}sim_${VELOCITY_SET}_sm${CC}" \
+    2>&1 | sed \
+        -e '/^[[:space:]]*tmpxft_[^[:space:]]*[[:space:]]*$/d' \
+        -e '/^[[:space:]]*[0-9][0-9]*\.\(o\|obj\)[[:space:]]*$/d' \
+        | tee -a compile_log.txt
+BUILD_STATUS=${PIPESTATUS[0]}
+
+if [ "$BUILD_STATUS" -ne 0 ]; then
+    echo "Linking failed (exit code $BUILD_STATUS)." >&2
+    exit "$BUILD_STATUS"
+fi
+
+echo "Built: ../bin/${OUTPUT_PREFIX}sim_${VELOCITY_SET}_sm${CC}"
 
 rm -f ./../bin/*.exp ./../bin/*.lib
 
