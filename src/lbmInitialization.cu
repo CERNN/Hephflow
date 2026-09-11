@@ -38,7 +38,7 @@ __global__ void gpuInitialization_mom(
     int y = threadIdx.y + blockDim.y * blockIdx.y;
     int z_local = threadIdx.z + blockDim.z * blockIdx.z;
     
-    if (x >= NX || y >= NY || z_local >= localNZ+1)
+    if (x >= NX || y >= NY || z_local >= localNZ)
         return;
     
     int z = zStart + z_local;
@@ -243,7 +243,7 @@ __global__ void gpuInitialization_pop(
     int y = threadIdx.y + blockDim.y * blockIdx.y;
     int z_local = threadIdx.z + blockDim.z * blockIdx.z;
 
-    if (x >= NX || y >= NY || z_local >= localNZ+1)
+    if (x >= NX || y >= NY || z_local >= localNZ)
         return;
 
     int z = zStart + z_local;

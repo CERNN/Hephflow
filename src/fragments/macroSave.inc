@@ -3,10 +3,12 @@
     if (tz == 0)
     { //b
             if  (bz == 0) {
-                macroInterfaceGPUrho.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-                macroInterfaceGPUux.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-                macroInterfaceGPUuy.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-                macroInterfaceGPUuz.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                if constexpr (MACRO_HALOS_REQUIRED) {
+                    macroInterfaceGPUrho.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                    macroInterfaceGPUux.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                    macroInterfaceGPUuy.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                    macroInterfaceGPUuz.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                }
 
                 #ifdef SECOND_DIST
                 macroInterfaceGPUg.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
@@ -54,10 +56,12 @@
     if (tz == (BLOCK_NZ - 1))
     { //b
             if  (bz == NUM_BLOCK_Z_LOCAL - 1) {
-                macroInterfaceGPUrho.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-                macroInterfaceGPUux.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-                macroInterfaceGPUuy.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-                macroInterfaceGPUuz.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                if constexpr (MACRO_HALOS_REQUIRED) {
+                    macroInterfaceGPUrho.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                    macroInterfaceGPUux.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                    macroInterfaceGPUuy.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                    macroInterfaceGPUuz.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                }
 
                 #ifdef SECOND_DIST
                 macroInterfaceGPUg.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M2_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];

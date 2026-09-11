@@ -194,7 +194,9 @@ int main() {
     // Also rebuild derived phase fields from initialized or restored moments.
     updatePhaseDerivatives();
     #else
-    publishMacroHalos();
+    if constexpr (MACRO_HALOS_REQUIRED) {
+        publishMacroHalos();
+    }
     #endif
 
     int ini_step = step;
@@ -240,8 +242,10 @@ int main() {
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
             devices[g].sendTopToNext(g, devices.data(), streamsLBM[g], stepParity);
             devices[g].sendBottomToPrev(g, devices.data(), streamsLBM[g], stepParity);
-            devices[g].sendMacroTopToNext(g, devices.data(), streamsLBM[g], stepParity);
-            devices[g].sendMacroBottomToPrev(g, devices.data(), streamsLBM[g], stepParity);
+            if constexpr (MACRO_HALOS_REQUIRED) {
+                devices[g].sendMacroTopToNext(g, devices.data(), streamsLBM[g], stepParity);
+                devices[g].sendMacroBottomToPrev(g, devices.data(), streamsLBM[g], stepParity);
+            }
         }
     
         for (int g = 0; g < N_GPUS; g++) {
