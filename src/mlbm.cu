@@ -7,10 +7,16 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     dfloat *fMom = params.fMom;
     unsigned int *dNodeType = params.dNodeType;
     const ghostFacePtrs ghostInterface = params.pop;  // 8 ptrs (64B) - fits registers
+    const ghostFacePtrs ghostInterfaceCopy = params.popCopy;
     const gpuDirection macroInterfaceGPUrho = params.rho_macro;
     const gpuDirection macroInterfaceGPUux = params.ux_macro;
     const gpuDirection macroInterfaceGPUuy = params.uy_macro;
     const gpuDirection macroInterfaceGPUuz = params.uz_macro;
+
+    const gpuDirection macroInterfaceGPUrhoCopy = params.rho_macroCopy;
+    const gpuDirection macroInterfaceGPUuxCopy = params.ux_macroCopy;
+    const gpuDirection macroInterfaceGPUuyCopy = params.uy_macroCopy;
+    const gpuDirection macroInterfaceGPUuzCopy = params.uz_macroCopy;
 
     unsigned int step = params.step;
     bool save = params.save;
@@ -19,37 +25,53 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
     #ifdef SECOND_DIST
     const ghostFacePtrs ghostInterfaceG = params.g;
+    const ghostFacePtrs ghostInterfaceGCopy = params.gCopy;
     const gpuDirection macroInterfaceGPUg = params.g_macro;
+    const gpuDirection macroInterfaceGPUgCopy = params.g_macroCopy;
     #endif //SECOND_DIST
 
     #ifdef A_XX_DIST
     const ghostFacePtrs ghostInterfaceAxx = params.Axx;
+    const ghostFacePtrs ghostInterfaceAxxCopy = params.AxxCopy;
     const gpuDirection macroInterfaceGPUAxx = params.Axx_macro;
+    const gpuDirection macroInterfaceGPUAxxCopy = params.Axx_macroCopy;
     #endif //A_XX_DIST
     #ifdef A_XY_DIST
     const ghostFacePtrs ghostInterfaceAxy = params.Axy;
+    const ghostFacePtrs ghostInterfaceAxyCopy = params.AxyCopy;
     const gpuDirection macroInterfaceGPUAxy = params.Axy_macro;
+    const gpuDirection macroInterfaceGPUAxyCopy = params.Axy_macroCopy;
     #endif //A_XY_DIST
     #ifdef A_XZ_DIST
     const ghostFacePtrs ghostInterfaceAxz = params.Axz;
+    const ghostFacePtrs ghostInterfaceAxzCopy = params.AxzCopy;
     const gpuDirection macroInterfaceGPUAxz = params.Axz_macro;
+    const gpuDirection macroInterfaceGPUAxzCopy = params.Axz_macroCopy;
     #endif //A_XZ_DIST
     #ifdef A_YY_DIST
     const ghostFacePtrs ghostInterfaceAyy = params.Ayy;
+    const ghostFacePtrs ghostInterfaceAyyCopy = params.AyyCopy;
     const gpuDirection macroInterfaceGPUAyy = params.Ayy_macro;
+    const gpuDirection macroInterfaceGPUAyyCopy = params.Ayy_macroCopy;
     #endif //A_YY_DIST
     #ifdef A_YZ_DIST
     const ghostFacePtrs ghostInterfaceAyz = params.Ayz;
+    const ghostFacePtrs ghostInterfaceAyzCopy = params.AyzCopy;
     const gpuDirection macroInterfaceGPUAyz = params.Ayz_macro;
+    const gpuDirection macroInterfaceGPUAyzCopy = params.Ayz_macroCopy;
     #endif //A_YZ_DIST
     #ifdef A_ZZ_DIST
     const ghostFacePtrs ghostInterfaceAzz = params.Azz;
+    const ghostFacePtrs ghostInterfaceAzzCopy = params.AzzCopy;
     const gpuDirection macroInterfaceGPUAzz = params.Azz_macro;
+    const gpuDirection macroInterfaceGPUAzzCopy = params.Azz_macroCopy;
     #endif //A_ZZ_DIST
 
     #ifdef LAMBDA_DIST
     const ghostFacePtrs ghostInterfaceLambda = params.lambda;
+    const ghostFacePtrs ghostInterfaceLambdaCopy = params.lambdaCopy;
     const gpuDirection macroInterfaceGPUlambda = params.lambda_macro;
+    const gpuDirection macroInterfaceGPUlambdaCopy = params.lambda_macroCopy;
     #endif //LAMBDA_DIST
     
     #ifdef DENSITY_CORRECTION
@@ -107,11 +129,18 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     #ifdef PHI_DIST
     const fluidPhaseProps phasePropsB = params.phasePropsB;
     const ghostFacePtrs ghostInterfacePhi = params.phi;
+    const ghostFacePtrs ghostInterfacePhiCopy = params.phiCopy;
     const gpuDirection macroInterfaceGPUphi = params.phi_macro;
     const gpuDirection macroInterfaceGPUnx = params.nx_macro;
     const gpuDirection macroInterfaceGPUny = params.ny_macro;
     const gpuDirection macroInterfaceGPUnz = params.nz_macro;
     const gpuDirection macroInterfaceGPUmu = params.mu_macro;
+
+    const gpuDirection macroInterfaceGPUphiCopy = params.phi_macroCopy;
+    const gpuDirection macroInterfaceGPUnxCopy = params.nx_macroCopy;
+    const gpuDirection macroInterfaceGPUnyCopy = params.ny_macroCopy;
+    const gpuDirection macroInterfaceGPUnzCopy = params.nz_macroCopy;
+    const gpuDirection macroInterfaceGPUmuCopy = params.mu_macroCopy;
     #endif
     #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
 

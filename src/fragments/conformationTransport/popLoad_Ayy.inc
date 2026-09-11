@@ -121,11 +121,11 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
 
         if (tz == 0){ //b
             if(bz == 0){
-                gNode[ 5] = ghostInterfaceAyy.auxZ_1[g_idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
-                gNode[ 9] = ghostInterfaceAyy.auxZ_1[g_idxPopZ(txm1  , ty   ,   1, bxAtWest   , by        , 0)];
-                gNode[11] = ghostInterfaceAyy.auxZ_1[g_idxPopZ(tx    , tym1 ,   2, bx         , byAtSouth , 0)];
-                gNode[16] = ghostInterfaceAyy.auxZ_1[g_idxPopZ(txp1  , ty   ,   3, bxAtEast   , by        , 0)];
-                gNode[18] = ghostInterfaceAyy.auxZ_1[g_idxPopZ(tx    , typ1 ,   4, bx         , byAtNorth , 0)];
+                gNode[ 5] = ghostInterfaceAyyCopy.auxZ_1[g_idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
+                gNode[ 9] = ghostInterfaceAyyCopy.auxZ_1[g_idxPopZ(txm1  , ty   ,   1, bxAtWest   , by        , 0)];
+                gNode[11] = ghostInterfaceAyyCopy.auxZ_1[g_idxPopZ(tx    , tym1 ,   2, bx         , byAtSouth , 0)];
+                gNode[16] = ghostInterfaceAyyCopy.auxZ_1[g_idxPopZ(txp1  , ty   ,   3, bxAtEast   , by        , 0)];
+                gNode[18] = ghostInterfaceAyyCopy.auxZ_1[g_idxPopZ(tx    , typ1 ,   4, bx         , byAtNorth , 0)];
             }else{
                 gNode[ 5] = loadGhostZBack[g_idxPopZ(tx    , ty   ,   0, bx         , by        , loadBzBack)];
                 gNode[ 9] = loadGhostZBack[g_idxPopZ(txm1  , ty   ,   1, bxAtWest   , by        , loadBzBack)];
@@ -135,11 +135,11 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             }
         }else if (tz == (BLOCK_NZ - 1)){ //f
             if(bz == top){
-                gNode[ 6] = ghostInterfaceAyy.auxZ_0[g_idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
-                gNode[10] = ghostInterfaceAyy.auxZ_0[g_idxPopZ(txp1  , ty   ,   1, bxAtEast   , by        , 0)];
-                gNode[12] = ghostInterfaceAyy.auxZ_0[g_idxPopZ(tx    , typ1 ,   2, bx         , byAtNorth , 0)];
-                gNode[15] = ghostInterfaceAyy.auxZ_0[g_idxPopZ(txm1  , ty   ,   3, bxAtWest   , by        , 0)];
-                gNode[17] = ghostInterfaceAyy.auxZ_0[g_idxPopZ(tx    , tym1 ,   4, bx         , byAtSouth , 0)];
+                gNode[ 6] = ghostInterfaceAyyCopy.auxZ_0[g_idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
+                gNode[10] = ghostInterfaceAyyCopy.auxZ_0[g_idxPopZ(txp1  , ty   ,   1, bxAtEast   , by        , 0)];
+                gNode[12] = ghostInterfaceAyyCopy.auxZ_0[g_idxPopZ(tx    , typ1 ,   2, bx         , byAtNorth , 0)];
+                gNode[15] = ghostInterfaceAyyCopy.auxZ_0[g_idxPopZ(txm1  , ty   ,   3, bxAtWest   , by        , 0)];
+                gNode[17] = ghostInterfaceAyyCopy.auxZ_0[g_idxPopZ(tx    , tym1 ,   4, bx         , byAtSouth , 0)];
             }else{
                 gNode[ 6] = loadGhostZFront[g_idxPopZ(tx    , ty   ,   0, bx         , by        , loadBzFront)];
                 gNode[10] = loadGhostZFront[g_idxPopZ(txp1  , ty   ,   1, bxAtEast   , by        , loadBzFront)];

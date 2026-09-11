@@ -595,6 +595,7 @@ struct DeviceKernelParams {
     dfloat *fMom;                           ///< Device array of macroscopic moments
     unsigned int *dNodeType;                ///< Device array of node type information
     ghostFacePtrs pop;                      ///< Ghost face pointers (8 ptrs, no host data)
+    ghostFacePtrs popCopy;
     unsigned int step;                      ///< Current time step
     bool save;                              ///< Whether to save data
     size_t localNZ; 
@@ -605,39 +606,60 @@ struct DeviceKernelParams {
     gpuDirection uy_macro;
     gpuDirection uz_macro;
 
+    gpuDirection rho_macroCopy;
+    gpuDirection ux_macroCopy;
+    gpuDirection uy_macroCopy;
+    gpuDirection uz_macroCopy;
+
     #ifdef SECOND_DIST
     ghostFacePtrs g;
+    ghostFacePtrs gCopy;
     gpuDirection g_macro;
+    gpuDirection g_macroCopy;
     #endif //SECOND_DIST
 
     #ifdef A_XX_DIST
         ghostFacePtrs Axx;
+        ghostFacePtrs AxxCopy;
         gpuDirection Axx_macro;
+        gpuDirection Axx_macroCopy;
     #endif //A_XX_DIST
     #ifdef A_XY_DIST
         ghostFacePtrs Axy;
+        ghostFacePtrs AxyCopy;
         gpuDirection Axy_macro;
+        gpuDirection Axy_macroCopy;
     #endif //A_XY_DIST
     #ifdef A_XZ_DIST
         ghostFacePtrs Axz;
+        ghostFacePtrs AxzCopy;
         gpuDirection Axz_macro;
+        gpuDirection Axz_macroCopy;
     #endif //A_XZ_DIST
     #ifdef A_YY_DIST
         ghostFacePtrs Ayy;
+        ghostFacePtrs AyyCopy;
         gpuDirection Ayy_macro;
+        gpuDirection Ayy_macroCopy;
     #endif //A_YY_DIST
     #ifdef A_YZ_DIST
         ghostFacePtrs Ayz;
+        ghostFacePtrs AyzCopy;
         gpuDirection Ayz_macro;
+        gpuDirection Ayz_macroCopy;
     #endif //A_YZ_DIST
     #ifdef A_ZZ_DIST
         ghostFacePtrs Azz;
+        ghostFacePtrs AzzCopy;
         gpuDirection Azz_macro;
+        gpuDirection Azz_macroCopy;
     #endif //A_ZZ_DIST
 
     #ifdef LAMBDA_DIST
     ghostFacePtrs lambda;
+    ghostFacePtrs lambdaCopy;
     gpuDirection lambda_macro;
+    gpuDirection lambda_macroCopy;
     #endif //LAMBDA_DIST
 
     #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
@@ -645,11 +667,18 @@ struct DeviceKernelParams {
     #ifdef PHI_DIST
     fluidPhaseProps phasePropsB;            ///< Phase-2 fluid properties (viscous + viscoelastic)
     ghostFacePtrs phi;
+    ghostFacePtrs phiCopy;
     gpuDirection phi_macro;
     gpuDirection nx_macro;
     gpuDirection ny_macro;
     gpuDirection nz_macro;
     gpuDirection mu_macro;
+
+    gpuDirection phi_macroCopy;
+    gpuDirection nx_macroCopy;
+    gpuDirection ny_macroCopy;
+    gpuDirection nz_macroCopy;
+    gpuDirection mu_macroCopy;
     #endif //PHI_DIST
     #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
 

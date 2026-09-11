@@ -31,11 +31,11 @@
 
 constexpr bool console_flush = false;
 constexpr unsigned int N_GPUS = 2;                      // Number of GPUS to use
-constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0,0};       // Which GPUs to use
+constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0,1};       // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 003_viscoelasticTaylorGreen
+#define BC_PROBLEM 007_RayleighTaylor_3D
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 
