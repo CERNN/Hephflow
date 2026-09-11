@@ -1,3 +1,14 @@
+#if (defined(STEP7_ESOTERIC_PULL) + defined(STEP7_ESOTERIC_TWIST) + defined(STEP7_ESOTERIC_PUSH)) > 1
+#error "Select only one Step 7 streaming scheme"
+#endif
+
+#if defined(STEP7_ESOTERIC_TWIST) && defined(D3Q19)
+#include "popLoad_esoteric_twist.inc"
+#elif defined(STEP7_ESOTERIC_PUSH) && defined(D3Q19)
+#include "popLoad_esoteric_push.inc"
+#elif defined(STEP7_ESOTERIC_PULL) && defined(D3Q19)
+#include "popLoad_esoteric_pull.inc"
+#else
 // AA scheme: face pointers fixed, parity selects block index
 const dfloat* loadGhostXWest  = ghostInterface.X_1; // Even: neighbor -x; Odd: own slot (swapped by non-shared path)
 const dfloat* loadGhostXEast  = ghostInterface.X_0; // Even: neighbor +x; Odd: own slot (swapped by non-shared path)
@@ -254,3 +265,4 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
            
         }
     }
+#endif // guarded Step 7 streaming scheme

@@ -1,3 +1,14 @@
+#if (defined(STEP7_ESOTERIC_PULL) + defined(STEP7_ESOTERIC_TWIST) + defined(STEP7_ESOTERIC_PUSH)) > 1
+#error "Select only one Step 7 streaming scheme"
+#endif
+
+#if defined(STEP7_ESOTERIC_TWIST) && defined(D3Q19)
+#include "popSave_esoteric_twist.inc"
+#elif defined(STEP7_ESOTERIC_PUSH) && defined(D3Q19)
+#include "popSave_esoteric_push.inc"
+#elif defined(STEP7_ESOTERIC_PULL) && defined(D3Q19)
+#include "popSave_esoteric_pull.inc"
+#else
 dfloat* storeGhostXWest  = ghostInterface.X_0; // Write own west face
 dfloat* storeGhostXEast  = ghostInterface.X_1; // Write own east face
 dfloat* storeGhostYSouth = ghostInterface.Y_0; // Write own south face
@@ -182,3 +193,4 @@ const int storeBzFront =  (stepParity ? bz : bzp1);
             #endif //D3Q27
         }
     }
+#endif // guarded Step 7 streaming scheme

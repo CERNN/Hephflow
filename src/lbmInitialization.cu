@@ -287,6 +287,13 @@ __global__ void gpuInitialization_pop(
     int by = blockIdx.y;
     int bz = blockIdx.z;
 
+    #if defined(STEP7_ESOTERIC_TWIST) && defined(D3Q19)
+    #include "fragments/popInit_esoteric_twist.inc"
+    #elif defined(STEP7_ESOTERIC_PUSH) && defined(D3Q19)
+    #include "fragments/popInit_esoteric_push.inc"
+    #elif defined(STEP7_ESOTERIC_PULL) && defined(D3Q19)
+    #include "fragments/popInit_esoteric_pull.inc"
+    #else
     if (threadIdx.x == 0) { //w
         ghostInterface.pop.X_0[idxPopX(ty, tz, 0, bx, by, bz)] = pop[ 2]; 
         ghostInterface.pop.X_0[idxPopX(ty, tz, 1, bx, by, bz)] = pop[ 8];
@@ -364,6 +371,7 @@ __global__ void gpuInitialization_pop(
         ghostInterface.pop.Z_1[idxPopZ(tx, ty, 8, bx, by, bz)] = pop[25];
         #endif //D3Q27                                                                                                                                                                                                                    
     }
+    #endif
 
     #ifdef CONVECTION_DIFFUSION_TRANSPORT
         dfloat gNode[GQ];
