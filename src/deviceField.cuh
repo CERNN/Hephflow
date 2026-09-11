@@ -401,7 +401,9 @@ typedef struct deviceField{
     }
     #endif //DENSITY_CORRECTION
 
-    void gpuMomCollisionStreamDeviceField(dim3 gridBlock, dim3 threadBlock, unsigned int step, bool save, int g, int slice, cudaStream_t stream){
+    void gpuMomCollisionStreamDeviceField(dim3 gridBlock, dim3 threadBlock, unsigned int step, bool save,
+        int g, int slice, cudaStream_t stream,
+        ZKernelLaunchRegion launchRegion = ZKernelLaunchRegion::All){
         // Create parameter struct and pass by value (most efficient!)
         cudaSetDevice(GPUS_TO_USE[g]);
         DeviceKernelParams params;
@@ -428,6 +430,7 @@ typedef struct deviceField{
         params.zStart = zStart;
         params.localNZ = localNZ;
         params.zBlockOffset = 0;
+        params.mapBoundaryBlocks = false;
 
         params.rho_macro.Z_0 = macroInterfaceGPU[g].rho.Z_0;
         params.rho_macro.Z_1 = macroInterfaceGPU[g].rho.Z_1;
@@ -756,12 +759,17 @@ typedef struct deviceField{
         };
 
         const unsigned int localBlockCount = gridBlock.z;
-        if (localBlockCount > 2) {
+        if (launchRegion != ZKernelLaunchRegion::Boundaries && localBlockCount > 2) {
             launchZRange(1, localBlockCount - 2); // Interior: no incoming Z halo dependency.
         }
-        launchZRange(0, 1);                      // Back boundary.
-        if (localBlockCount > 1) {
-            launchZRange(localBlockCount - 1, 1); // Front boundary; avoid duplicating a one-block slab.
+        if (launchRegion == ZKernelLaunchRegion::Boundaries) {
+            params.mapBoundaryBlocks = true;
+            launchZRange(0, localBlockCount > 1 ? 2 : 1);
+        } else if (launchRegion == ZKernelLaunchRegion::All) {
+            launchZRange(0, 1);                  // Back boundary.
+            if (localBlockCount > 1) {
+                launchZRange(localBlockCount - 1, 1); // Front boundary; avoid a duplicate one-block slab.
+            }
         }
         #else
         #ifdef DYNAMIC_SHARED_MEMORY

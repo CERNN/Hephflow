@@ -7,8 +7,8 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     // with the corresponding block index in the complete local slab so the
     // existing indexing and AA face-neighbor logic remain unchanged.
     const uint3 launchBlockIdx = blockIdx;
-    const dim3 blockIdx(launchBlockIdx.x, launchBlockIdx.y,
-                        launchBlockIdx.z + params.zBlockOffset);
+    const unsigned int logicalBlockZ = (params.mapBoundaryBlocks && launchBlockIdx.z == 1) ? NUM_BLOCK_Z_LOCAL - 1 : launchBlockIdx.z + params.zBlockOffset;
+    const dim3 blockIdx(launchBlockIdx.x, launchBlockIdx.y, logicalBlockZ);
 
     // Unpack parameters from struct (passed by value - CUDA optimized!)
     dfloat *fMom = params.fMom;

@@ -8,6 +8,10 @@
 
 #include <chrono>
 
+#if defined(STEP12_OVERLAP_HALOS) && !defined(STEP11_SPLIT_Z_KERNEL)
+#error "STEP12_OVERLAP_HALOS requires STEP11_SPLIT_Z_KERNEL"
+#endif
+
 using namespace std;
 
 int main() {
@@ -60,6 +64,13 @@ int main() {
     
     /* -------------- ALLOCATION FOR GPUs ------------- */
     cudaStream_t streamsLBM[N_GPUS];
+    #ifdef STEP12_OVERLAP_HALOS
+    cudaStream_t streamsBoundary[N_GPUS];
+    cudaStream_t streamsHalo[N_GPUS];
+    cudaEvent_t stepReady[N_GPUS];
+    cudaEvent_t boundaryReady[N_GPUS];
+    cudaEvent_t haloReady[N_GPUS];
+    #endif
     threads.reserve(N_GPUS);
     for(int g = 0; g < N_GPUS; g++){
 
@@ -95,6 +106,16 @@ int main() {
             /* -------------- Setup Streams ------------- */
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
             checkCudaErrors(cudaStreamCreateWithFlags(&streamsLBM[g], cudaStreamNonBlocking));
+            #ifdef STEP12_OVERLAP_HALOS
+            int leastPriority = 0;
+            int greatestPriority = 0;
+            checkCudaErrors(cudaDeviceGetStreamPriorityRange(&leastPriority, &greatestPriority));
+            checkCudaErrors(cudaStreamCreateWithPriority(&streamsBoundary[g], cudaStreamNonBlocking, greatestPriority));
+            checkCudaErrors(cudaStreamCreateWithFlags(&streamsHalo[g], cudaStreamNonBlocking));
+            checkCudaErrors(cudaEventCreateWithFlags(&stepReady[g], cudaEventDisableTiming));
+            checkCudaErrors(cudaEventCreateWithFlags(&boundaryReady[g], cudaEventDisableTiming));
+            checkCudaErrors(cudaEventCreateWithFlags(&haloReady[g], cudaEventDisableTiming));
+            #endif
             checkCudaErrors(cudaDeviceSynchronize());
             #ifdef PARTICLE_MODEL
             particleField.setupStreams();
@@ -199,6 +220,27 @@ int main() {
     }
     #endif
 
+    #ifdef STEP12_OVERLAP_HALOS
+    // Seed the first timestep's compute dependency.
+    for (int g = 0; g < N_GPUS; ++g) {
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        checkCudaErrors(cudaEventRecord(stepReady[g], streamsLBM[g]));
+    }
+
+    // Bootstrap the incoming generation from the initialized outgoing faces.
+    // Subsequent transfers are launched immediately after boundary computation.
+    for (int g = 0; g < N_GPUS; ++g) {
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        devices[g].sendTopToNext(g, devices.data(), streamsHalo[g], stepParity);
+        devices[g].sendBottomToPrev(g, devices.data(), streamsHalo[g], stepParity);
+        if constexpr (MACRO_HALOS_REQUIRED) {
+            devices[g].sendMacroTopToNext(g, devices.data(), streamsHalo[g], stepParity);
+            devices[g].sendMacroBottomToPrev(g, devices.data(), streamsHalo[g], stepParity);
+        }
+        checkCudaErrors(cudaEventRecord(haloReady[g], streamsHalo[g]));
+    }
+    #endif
+
     int ini_step = step;
 
     printf("Domain Initialized. Starting simulation\n"); if(console_flush) fflush(stdout);
@@ -236,6 +278,60 @@ int main() {
         stepParity = (step & 1u);
 
         /* -------------- Exchanging halos between neighboring GPUs using P2P ------------- */
+        #ifdef STEP12_OVERLAP_HALOS
+        // Consume the incoming generation, then produce the next outgoing faces
+        // first on a high-priority stream. Boundary and interior kernels operate
+        // on disjoint block planes and were already unordered in the full grid.
+        for (int g = 0; g < N_GPUS; ++g) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            const int previous = (g + N_GPUS - 1) % N_GPUS;
+            checkCudaErrors(cudaStreamWaitEvent(streamsBoundary[g], stepReady[g], 0));
+            checkCudaErrors(cudaStreamWaitEvent(streamsBoundary[g], haloReady[g], 0));
+            if (previous != g) {
+                checkCudaErrors(cudaStreamWaitEvent(streamsBoundary[g], haloReady[previous], 0));
+            }
+            devices[g].gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step,
+                saveField.save, g, slice, streamsBoundary[g], ZKernelLaunchRegion::Boundaries);
+            checkCudaErrors(cudaEventRecord(boundaryReady[g], streamsBoundary[g]));
+        }
+
+        // Submit the long interior launch only after every boundary launch has
+        // been submitted, so priority does not have to preempt resident blocks.
+        for (int g = 0; g < N_GPUS; ++g) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            devices[g].gpuMomCollisionStreamDeviceField(gridBlock, threadBlock, step,
+                saveField.save, g, slice, streamsLBM[g], ZKernelLaunchRegion::Interior);
+        }
+
+        // The just-produced faces belong to the next AA generation. Copies can
+        // overlap the current interior, and are omitted after the final step.
+        if (step + 1 < N_STEPS) {
+            const bool nextStepParity = ((step + 1) & 1u);
+            for (int g = 0; g < N_GPUS; ++g) {
+                checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+                const int next = (g + 1) % N_GPUS;
+                checkCudaErrors(cudaStreamWaitEvent(streamsHalo[g], boundaryReady[g], 0));
+                if (next != g) {
+                    checkCudaErrors(cudaStreamWaitEvent(streamsHalo[g], boundaryReady[next], 0));
+                }
+                devices[g].sendTopToNext(g, devices.data(), streamsHalo[g], nextStepParity);
+                devices[g].sendBottomToPrev(g, devices.data(), streamsHalo[g], nextStepParity);
+                if constexpr (MACRO_HALOS_REQUIRED) {
+                    devices[g].sendMacroTopToNext(g, devices.data(), streamsHalo[g], nextStepParity);
+                    devices[g].sendMacroBottomToPrev(g, devices.data(), streamsHalo[g], nextStepParity);
+                }
+                checkCudaErrors(cudaEventRecord(haloReady[g], streamsHalo[g]));
+            }
+        }
+
+        // Join the boundary stream only where downstream work consumes the
+        // complete timestep. The interior is already ordered on streamsLBM.
+        for (int g = 0; g < N_GPUS; ++g) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            checkCudaErrors(cudaStreamWaitEvent(streamsLBM[g], boundaryReady[g], 0));
+            checkCudaErrors(cudaGetLastError());
+        }
+        #else
         // sendTopToNext and sendBottomToPrev access different ghost buffers
         // (pop.Z_1/popAux.Z_1 vs pop.Z_0/popAux.Z_0) so they can launch together.
         for (int g = 0; g < N_GPUS; g++) {
@@ -279,6 +375,7 @@ int main() {
         //deviceField.swapGhostInterfacesDeviceField();
             
         CHECK_KERNEL_ERR("Stream Collision kernel");
+        #endif
 
         //------------------------- Auxiliary Kernels -------------------------
         #ifdef PHI_DIST
@@ -303,6 +400,13 @@ int main() {
             for (auto &t : threads) { t.join(); }
             threads.clear();
         }
+
+        #ifdef STEP12_OVERLAP_HALOS
+        for (int g = 0; g < N_GPUS; ++g) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            checkCudaErrors(cudaEventRecord(stepReady[g], streamsLBM[g]));
+        }
+        #endif
 
         //------------------------- Saving Data -------------------------
         // Saving checkpoint     
@@ -461,6 +565,13 @@ int main() {
     for(int g = 0; g < N_GPUS; g++){
         threads.emplace_back([&, g]() {
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            #ifdef STEP12_OVERLAP_HALOS
+            checkCudaErrors(cudaEventDestroy(haloReady[g]));
+            checkCudaErrors(cudaEventDestroy(boundaryReady[g]));
+            checkCudaErrors(cudaEventDestroy(stepReady[g]));
+            checkCudaErrors(cudaStreamDestroy(streamsHalo[g]));
+            checkCudaErrors(cudaStreamDestroy(streamsBoundary[g]));
+            #endif
             checkCudaErrors(cudaStreamDestroy(streamsLBM[g]));
             devices[g].freeDeviceField(g);
         });

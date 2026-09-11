@@ -601,6 +601,7 @@ struct DeviceKernelParams {
     size_t localNZ; 
     int zStart;
     unsigned int zBlockOffset;              ///< Maps split-kernel launch Z to the local slab block index.
+    bool mapBoundaryBlocks;                 ///< Maps a two-plane launch to local Z blocks 0 and N-1.
 
     gpuDirection rho_macro;
     gpuDirection ux_macro;
@@ -733,6 +734,12 @@ struct DeviceKernelParams {
     CurvedBoundary** d_curvedBC;            ///< Curved boundary condition data
     CurvedBoundary* d_curvedBC_array;       ///< Curved boundary condition array
     #endif //CURVED_BOUNDARY_CONDITION
+};
+
+enum class ZKernelLaunchRegion {
+    All,
+    Interior,
+    Boundaries
 };
 
 // ============================================================================
