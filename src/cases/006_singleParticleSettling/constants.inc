@@ -9,7 +9,11 @@ constexpr dfloat RE = 10;                   // Reynolds number (custom for settl
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- TIME STEPPING --------------------- */
+#ifdef TESTS
+constexpr int N_STEPS = 2500;              // Short local regression run
+#else
 constexpr int N_STEPS = 20000;             // Total simulation steps
+#endif
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */

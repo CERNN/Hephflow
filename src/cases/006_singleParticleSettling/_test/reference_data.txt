@@ -1,0 +1,4 @@
+# Reference metadata for the pre-optimization settling trajectory.
+REFERENCE_STEP,19900
+REFERENCE_COMMIT,pre-ibm-optimization
+PARTICLE_DIAMETER,15.0
