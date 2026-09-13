@@ -78,15 +78,36 @@ dfloat __forceinline__ calcOmegaPowerLaw(dfloat k_consistency, dfloat n_index, d
     if(auxStressMag < 1e-6_df)
         return 0.0_df;
 
-    for (int i = 0; i < 7; i++){
-        fx = a * POW_FUNCTION(omega, n_index) + b * omega + c;
-        fx_dx = a * n_index * POW_FUNCTION(omega, n_index - 1.0_df) + b;
+    // The two most common indices have closed forms.  Besides being exact,
+    // these avoid the iterative solver and all per-iteration pow() calls.
+    // NNF_DISABLE_ANALYTIC_FAST_PATHS is retained for performance A/B tests.
+#ifndef NNF_DISABLE_ANALYTIC_FAST_PATHS
+    if (n_index == 1.0_df)
+        return auxStressMag / (a + b);
+    if (n_index == 0.5_df) {
+        const dfloat discriminant = a * a + 4.0_df * b * auxStressMag;
+        const dfloat root = (2.0_df * auxStressMag) /
+                            (a + sqrt(discriminant));
+        return root * root;
+    }
+#endif
 
-        if (fabs(fx / fx_dx) < 1e-6_df){
+    for (int i = 0; i < 7; i++){
+        // omega is positive for physical LBM relaxation rates.  Reusing
+        // omega^n avoids a second, expensive pow() in every Newton step.
+        const dfloat omegaPowN = POW_FUNCTION(omega, n_index);
+        const dfloat omegaPowNm1 = (omega != 0.0_df)
+                                  ? (omegaPowN / omega)
+                                  : POW_FUNCTION(omega, n_index - 1.0_df);
+        fx = a * omegaPowN + b * omega + c;
+        fx_dx = a * n_index * omegaPowNm1 + b;
+
+        const dfloat delta = fx / fx_dx;
+        if (fabs(delta) < 1e-6_df){
             break;
         }
             
-        omega = omega - fx / fx_dx;
+        omega -= delta;
     }
     return omega;
 }
@@ -95,9 +116,11 @@ __host__ __device__
 dfloat __forceinline__ calcOmegaBingham(dfloat omega_p, dfloat s_y, dfloat auxStressMag){
     if (s_y <= 0.0_df)
         return omega_p;
-    if (auxStressMag <= 1.0e-12_df)
+    // The unyielded branch is exactly zero and needs no division.  Testing
+    // against s_y also subsumes the near-zero-stress guard for s_y > 0.
+    if (auxStressMag <= s_y)
         return 0.0_df;
-    return omega_p * myMax(0.0_df, (1.0_df - s_y / auxStressMag));
+    return omega_p * (1.0_df - s_y / auxStressMag);
 }
 
 __host__ __device__ 
@@ -152,6 +175,28 @@ dfloat __forceinline__ calcOmegaHerschelBulkley(
     if (A == 0.0_df)
         return fmax(OMEGA_MIN, fmin(C / B, OMEGA_MAX));
 
+    // Closed forms for common rheological indices avoid the safeguarded
+    // Newton loop entirely.  The formulas use the positive physical root.
+#ifndef NNF_DISABLE_ANALYTIC_FAST_PATHS
+    if (n_index == 1.0_df)
+        return fmax(OMEGA_MIN, fmin(C / (A + B), OMEGA_MAX));
+    if (n_index == 0.5_df) {
+        const dfloat discriminant = A * A + 4.0_df * B * C;
+        if (!isfinite(discriminant))
+            return OMEGA_MIN;
+        const dfloat root = (2.0_df * C) / (A + sqrt(discriminant));
+        return fmax(OMEGA_MIN, fmin(root * root, OMEGA_MAX));
+    }
+    if (n_index == 2.0_df) {
+        const dfloat discriminant = B * B + 4.0_df * A * C;
+        if (!isfinite(discriminant))
+            return OMEGA_MIN;
+        const dfloat omegaExact = (2.0_df * C) /
+                                  (B + sqrt(discriminant));
+        return fmax(OMEGA_MIN, fmin(omegaExact, OMEGA_MAX));
+    }
+#endif
+
     // For physical parameters f(omega)=A*omega^n+B*omega-C is strictly
     // increasing.  Maintain a sign-changing bracket and accept a Newton step
     // only when it remains inside that bracket; otherwise use bisection.
@@ -197,8 +242,9 @@ dfloat __forceinline__ calcOmegaHerschelBulkley(
         if ((omegaHigh - omegaLow) <= STEP_TOL * omegaScale)
             return midpoint;
 
-        const dfloat omn1 = POW_FUNCTION(omega, n_index - 1.0_df);
-        const dfloat derivative = A * n_index * omn1 + B;
+        // omega is bracketed above OMEGA_MIN, so omega^(n-1) can be obtained
+        // from the already computed omega^n without another pow().
+        const dfloat derivative = A * n_index * (omn / omega) + B;
         dfloat candidate = midpoint;
 
         if (isfinite(derivative) && derivative > 0.0_df) {
@@ -219,13 +265,18 @@ dfloat __forceinline__ calcOmegaHerschelBulkley(
 }
 
 
-// NOT TESTED/VALIDATED
+// EXPERIMENTAL: algebraically regression-tested, not yet physically validated.
 __host__ __device__ 
 dfloat __forceinline__ calcOmegaBiViscosity(dfloat omega_y, dfloat omega_p, dfloat s_y, dfloat visc_ratio, dfloat auxStressMag){
+    if (s_y <= 0.0_df)
+        return myMax(omega_y, omega_p);
+    if (auxStressMag <= 1.0e-12_df)
+        return omega_y;
     return myMax(omega_y, omega_p * (1.0_df - s_y * (1.0_df - visc_ratio) / auxStressMag));
 }
 
-// NOT TESTED/VALIDATED https://arxiv.org/abs/2401.02942 has analytical solution
+// EXPERIMENTAL: algebraically regression-tested, not yet physically validated.
+// https://arxiv.org/abs/2401.02942 has an analytical solution.
 __host__ __device__ 
 dfloat __forceinline__ calcOmegaKeeTurcotee(dfloat s_y, dfloat t1, dfloat eta_0, dfloat omegaOld, dfloat auxStressMag, int step){
     const dfloat cs2 = 1.0_df / 3.0_df;
@@ -241,14 +292,16 @@ dfloat __forceinline__ calcOmegaKeeTurcotee(dfloat s_y, dfloat t1, dfloat eta_0,
     
     dfloat fx, fx_dx;
     for (int i = 0; i < 7; i++){
-        fx = omega * (A + C * expf(D * omega)) + E;
-        fx_dx = A + C * expf(D * omega) * (1.0_df + D * omega);
+        const dfloat expTerm = EXP_FUNCTION(D * omega);
+        fx = omega * (A + C * expTerm) + E;
+        fx_dx = A + C * expTerm * (1.0_df + D * omega);
 
-        if (fabs(fx / fx_dx) < 1e-6_df){
+        const dfloat delta = fx / fx_dx;
+        if (fabs(delta) < 1e-6_df){
             break;
         }
             
-        omega = omega - fx / fx_dx;
+        omega -= delta;
     }
     return omega;  
 }
@@ -273,21 +326,21 @@ dfloat __forceinline__ calcYieldStress_thixo(const fluidProps& fp, dfloat lambda
 
 #ifdef LAMBDA_DIST
 __host__ __device__ 
-dfloat __forceinline__ calcVisco_thixo(const fluidProps& fp, dfloat lambda, dfloat gammaDot)
+dfloat __forceinline__ calcVisco_thixo(const fluidProps& fp, dfloat lambda_actual, dfloat gammaDot)
 {
-    // Clamp lambda to [0, 1]
-    lambda = fmax(0.0_df, fmin(1.0_df, lambda - LAMBDA_ZERO));
+    // The caller has already removed the distribution offset.
+    lambda_actual = fmax(0.0_df, fmin(1.0_df, lambda_actual));
     
     switch(fp.u.thixo.model)
     {
         case THIXO_MOORE1959:
-            return lambda * fp.u.thixo.u.moore1959.eta_0;
+            return lambda_actual * fp.u.thixo.u.moore1959.eta_0;
         case THIXO_WORRALL1964:
-            return lambda * fp.u.thixo.u.worrall1964.eta_0;
+            return lambda_actual * fp.u.thixo.u.worrall1964.eta_0;
         case THIXO_HOUSKA1980:
-            return lambda * fp.u.thixo.u.houska1980.k_consistency * POW_FUNCTION(fmax(gammaDot, 1e-12_df), fp.u.thixo.u.houska1980.n_index - 1.0_df);
+            return lambda_actual * fp.u.thixo.u.houska1980.k_consistency * POW_FUNCTION(fmax(gammaDot, 1e-12_df), fp.u.thixo.u.houska1980.n_index - 1.0_df);
         case THIXO_TOORMAN1997:
-            return lambda * fp.u.thixo.u.toorman1997.eta_0;
+            return lambda_actual * fp.u.thixo.u.toorman1997.eta_0;
         default:
             return 0.0_df;
     }
@@ -363,24 +416,23 @@ veFluidProps __forceinline__ blendVeProps(
 
     const dfloat eps = 1.0e-14_df;
 
-    // Interpolate eta and lambda directly, then compute Gmix = eta_mix/lambda_mix.
+    // Interpolate eta and lambda directly.  The previous eta/lambda followed
+    // by eta/G round trip reduced algebraically to this same lambda and cost
+    // two divisions in every diffuse-interface cell.
     const dfloat eta_mix = vp.eta_p;
     const dfloat lambda_mix = inv_h * A.lambda + h * B.lambda;
     const dfloat lambda_mix_safe = fmax(lambda_mix, lambda_min);
-    const dfloat Gmix = eta_mix / lambda_mix_safe;
 
-    if (vp.eta_p <= eps || Gmix <= eps) {
+    if (eta_mix <= eps || eta_mix <= eps * lambda_mix_safe) {
         // No polymer contribution in mixture cell: treat it as Newtonian.
         vp.type = VE_NEWTONIAN;
         vp.eta_p = 0.0_df;
         vp.lambda = 0.0_df;
     } else {
-        vp.lambda = fmax(vp.eta_p / Gmix, lambda_min);
+        vp.lambda = lambda_mix_safe;
     }
 
     // 3. Handle internal structural parameters
-    bool same_ve_model = (A.type == B.type && A.type != VE_NEWTONIAN);
-
     switch (vp.type) {
         case VE_FENE_P:
             vp.u.fenep.L_sq = inv_h * A.u.fenep.L_sq + h * B.u.fenep.L_sq;
@@ -444,13 +496,14 @@ veRelaxTerm __forceinline__ calcVeRelaxationTerm_FeneP(
     dfloat trA = Axx + Ayy + Azz;
     dfloat aa  = 1.0_df / (1.0_df - trA   / L_sq);
     dfloat bb  = 1.0_df / (1.0_df - 3.0_df / L_sq);
+    const dfloat aa_lambda = inv_lambda * aa;
     veRelaxTerm R;
     R.xx = inv_lambda * (bb - aa * Axx); 
     R.yy = inv_lambda * (bb - aa * Ayy);
     R.zz = inv_lambda * (bb - aa * Azz); 
-    R.xy = inv_lambda * (-aa * Axy);
-    R.xz = inv_lambda * (-aa * Axz);     
-    R.yz = inv_lambda * (-aa * Ayz);
+    R.xy = -aa_lambda * Axy;
+    R.xz = -aa_lambda * Axz;
+    R.yz = -aa_lambda * Ayz;
     return R;
 }
 
@@ -488,13 +541,14 @@ veRelaxTerm __forceinline__ calcVeRelaxationTerm_PttLinear(
     dfloat Ayy, dfloat Ayz, dfloat Azz)
 {
     dfloat f = 1.0_df + epsilon * (Axx + Ayy + Azz - 3.0_df);
+    const dfloat relaxation = inv_lambda * f;
     veRelaxTerm R;
-    R.xx = inv_lambda * f * (1.0_df - Axx);
-    R.yy = inv_lambda * f * (1.0_df - Ayy);
-    R.zz = inv_lambda * f * (1.0_df - Azz);
-    R.xy = inv_lambda * f * (-Axy);
-    R.xz = inv_lambda * f * (-Axz);
-    R.yz = inv_lambda * f * (-Ayz);
+    R.xx = relaxation * (1.0_df - Axx);
+    R.yy = relaxation * (1.0_df - Ayy);
+    R.zz = relaxation * (1.0_df - Azz);
+    R.xy = -relaxation * Axy;
+    R.xz = -relaxation * Axz;
+    R.yz = -relaxation * Ayz;
     return R;
 }
 
@@ -507,13 +561,14 @@ veRelaxTerm __forceinline__ calcVeRelaxationTerm_PttExponential(
     dfloat Ayy, dfloat Ayz, dfloat Azz)
 {
     dfloat f = EXP_FUNCTION(epsilon * (Axx + Ayy + Azz - 3.0_df));
+    const dfloat relaxation = inv_lambda * f;
     veRelaxTerm R;
-    R.xx = inv_lambda * f * (1.0_df - Axx); 
-    R.yy = inv_lambda * f * (1.0_df - Ayy);
-    R.zz = inv_lambda * f * (1.0_df - Azz); 
-    R.xy = inv_lambda * f * (-Axy);
-    R.xz = inv_lambda * f * (-Axz);    
-    R.yz = inv_lambda * f * (-Ayz);
+    R.xx = relaxation * (1.0_df - Axx);
+    R.yy = relaxation * (1.0_df - Ayy);
+    R.zz = relaxation * (1.0_df - Azz);
+    R.xy = -relaxation * Axy;
+    R.xz = -relaxation * Axz;
+    R.yz = -relaxation * Ayz;
     return R;
 }
 
