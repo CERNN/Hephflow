@@ -35,7 +35,7 @@
 #include "globalFunctions.h"
 #include "var.h"
 #ifdef PARTICLE_MODEL
-    #include "particles/class/particle.cuh"
+#include "particles/class/Particle.cuh"
 #endif //PARTICLE_MODEL
 #include <sys/stat.h>
 #include <sys/types.h>

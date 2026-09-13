@@ -1,4 +1,4 @@
-#include "particle.cuh"
+#include "Particle.cuh"
 #include <cstdlib>
 #include <cstring>
 #include <iostream>

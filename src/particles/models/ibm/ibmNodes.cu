@@ -1,7 +1,7 @@
 
 
 
-#include "IbmNodes.cuh"
+#include "ibmNodes.cuh"
 #include "../../class/Particle.cuh"
 // #include "../../class/ParticleCenter.cuh"
 

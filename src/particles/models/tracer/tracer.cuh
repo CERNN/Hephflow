@@ -18,7 +18,7 @@
 #include "../../../include/interface.h"
 #include "../../../include/errorDef.h"
 #include "../../../saveData.cuh"
-#include "./../../class/particle.cuh"
+#include "./../../class/Particle.cuh"
 
 #ifdef PARTICLE_MODEL
 /**

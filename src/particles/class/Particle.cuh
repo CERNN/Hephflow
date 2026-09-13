@@ -12,7 +12,7 @@
 #define __PARTICLE_H
 
 
-#include "particleCenter.cuh"
+#include "ParticleCenter.cuh"
 #include "../models/ibm/ibmNodes.cuh"
 #include <math.h>
 #include <random>

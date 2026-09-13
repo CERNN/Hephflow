@@ -1,0 +1,16 @@
+name: Include case check
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  include-case:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Check local include casing
+        run: python scripts/check_include_case.py
