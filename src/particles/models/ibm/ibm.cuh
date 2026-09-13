@@ -65,14 +65,13 @@ void ibmSimulation(
 );
 
 /**
- *  @brief Reset the forces on IBM nodes to zero.
- *  @param particlesNodes: Pointer to the IbmNodesSoA structure containing IBM node data.
- *  @param step: The current simulation time step for collision checking.
+ *  @brief Reset marker forces, reconstruct marker positions, and cache the
+ *         separable interpolation stencil for the current time step.
  */
 __global__ 
-void ibmResetNodesForces(
-    IbmNodesSoA* particlesNodes,
-    unsigned int step
+void ibmPrepareNodes(
+    IbmNodesView particlesNodes,
+    ParticleCenter* pArray
 );
 
 
@@ -86,7 +85,7 @@ void ibmResetNodesForces(
  */
 __global__
 void ibmForceInterpolationSpread(
-    IbmNodesSoA* particlesNodes,
+    IbmNodesView particlesNodes,
     ParticleCenter *pArray,
     dfloat *fMom,
     unsigned int step,
@@ -100,25 +99,8 @@ void ibmForceInterpolationSpread(
  */
 __global__
 void ibmSpreadForceCorrection(
-    IbmNodesSoA* particlesNodes,
+    IbmNodesView particlesNodes,
     dfloat *fMom
-);
-
-/**
- *  @brief 
- *  @param particlesNodes: Pointer to the IbmNodesSoA structure containing IBM node data.
- *  @param pArray: Pointer to the array of ParticleCenter objects.
- *  @param firstIndex: The first index of the particle array to be processed.
- *  @param lastIndex: The last index of the particle array to be processed.
- *  @param step: The current simulation time step for collision checking.
- */
-__global__
-void ibmParticleNodeMovement(
-    IbmNodesSoA* particlesNodes,
-    ParticleCenter *pArray,
-    int firstIndex,
-    int lastIndex,
-    unsigned int step
 );
 
 #endif //PARTICLE_MODEL

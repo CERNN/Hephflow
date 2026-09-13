@@ -205,10 +205,12 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
 
     unsigned int totalIbmNodes = 0;
 
-    // Determine the total number of nodes
+    // Only fully resolved IBM particles use this marker storage. Point IBM and
+    // tracer particles keep their state in the particle-center arrays.
     for (int p = 0; p < NUM_PARTICLES; p++)
     {
-        totalIbmNodes += particles[p].getNumNodes();
+        if (usesResolvedIbmMarkers(particles[p].getMethod()))
+            totalIbmNodes += particles[p].getNumNodes();
     }
 
     printf("Total number of nodes: %u\n", totalIbmNodes);
@@ -257,7 +259,8 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
             this->pMethod[p]            = particles[p].getMethod();
             this->pCollideWall[p]       = particles[p].getCollideWall();
             this->pCollideParticle[p]   = particles[p].getCollideParticle();
-            this->nodesSoA[0].copyNodesFromParticle(&particles[p], p, this->pCenterArray, 0);
+            if (usesResolvedIbmMarkers(method))
+                this->nodesSoA[0].copyNodesFromParticle(&particles[p], p, this->pCenterArray, 0);
             if (firstIndex == -1) firstIndex = p;
             lastIndex = p;
         }

@@ -435,7 +435,7 @@ void operateSimCheckpointParticle(
     // Defining what functions to use (read or write to files)
     void (*f_arr)(void*, const std::string, size_t, void*);
     void (*f_dfloat3SoA)(dfloat3SoA, const std::string, size_t, void*);
-    std::string (*f_filename)(std::string);
+    std::string (*f_filename)(std::string, int);
 
     if(oper == __LOAD_CHECKPOINT){
         f_arr = &readFileIntoArray;
@@ -454,7 +454,7 @@ void operateSimCheckpointParticle(
     dfloat* tmp = (dfloat*)malloc(MEM_SIZE_POP);
 
     // Load/save current step
-    f_arr(step, f_filename("curr_step_particle"), sizeof(int), tmp);
+    f_arr(step, f_filename("curr_step_particle", GPU_INDEX), sizeof(int), tmp);
     
     ParticleMethod* methodArray = particlesSoA.getPMethod();
     ParticleMethod& method = methodArray[GPU_INDEX];
@@ -462,7 +462,7 @@ void operateSimCheckpointParticle(
     if(method == IBM){
         // Load particles centers positions
         checkCudaErrors(cudaSetDevice(GPU_INDEX));
-        f_arr(particlesSoA.getPCenterArray(), f_filename("IBM_particles_centers"), 
+        f_arr(particlesSoA.getPCenterArray(), f_filename("IBM_particles_centers", GPU_INDEX),
             NUM_PARTICLES*sizeof(ParticleCenter), tmp);
     }
     
@@ -475,19 +475,19 @@ void operateSimCheckpointParticle(
 
         // IBM nodes bytes size
         if(oper == __LOAD_CHECKPOINT){
-            size_t filesize = getFileSize(f_filename("IBM_nodes_centers_idx.bin"));
+            size_t filesize = getFileSize(f_filename("IBM_nodes_centers_idx.bin", GPU_INDEX));
             nSoA.setNumNodes(filesize / sizeof(unsigned int));
         }
         size_t ibm_nodes_arr_size = nSoA.getNumNodes() * sizeof(dfloat);
         size_t ibm_nodes_arr_size_uint = nSoA.getNumNodes() * sizeof(unsigned int);
         // Load/save IBM nodes values
-        f_arr(nSoA.getParticleCenterIdx(), f_filename("IBM_nodes_centers_idx"), ibm_nodes_arr_size_uint, tmp);
-        f_dfloat3SoA(nSoA.getPos(), f_filename("IBM_nodes_pos"), ibm_nodes_arr_size, tmp);
-        f_dfloat3SoA(nSoA.getVel(), f_filename("IBM_nodes_vel"), ibm_nodes_arr_size, tmp);
-        f_dfloat3SoA(nSoA.getVelOld(), f_filename("IBM_nodes_vel_old"), ibm_nodes_arr_size, tmp);
-        f_dfloat3SoA(nSoA.getF(), f_filename("IBM_nodes_f"), ibm_nodes_arr_size, tmp);
-        f_dfloat3SoA(nSoA.getDeltaF(), f_filename("IBM_nodes_deltaF"), ibm_nodes_arr_size, tmp);
-        f_arr(nSoA.getS(), f_filename("IBM_nodes_S"), ibm_nodes_arr_size, tmp);
+        f_arr(nSoA.getParticleCenterIdx(), f_filename("IBM_nodes_centers_idx", GPU_INDEX), ibm_nodes_arr_size_uint, tmp);
+        f_dfloat3SoA(nSoA.getPos(), f_filename("IBM_nodes_pos", GPU_INDEX), ibm_nodes_arr_size, tmp);
+        f_dfloat3SoA(nSoA.getVel(), f_filename("IBM_nodes_vel", GPU_INDEX), ibm_nodes_arr_size, tmp);
+        f_dfloat3SoA(nSoA.getVelOld(), f_filename("IBM_nodes_vel_old", GPU_INDEX), ibm_nodes_arr_size, tmp);
+        f_dfloat3SoA(nSoA.getF(), f_filename("IBM_nodes_f", GPU_INDEX), ibm_nodes_arr_size, tmp);
+        f_dfloat3SoA(nSoA.getDeltaF(), f_filename("IBM_nodes_deltaF", GPU_INDEX), ibm_nodes_arr_size, tmp);
+        f_arr(nSoA.getS(), f_filename("IBM_nodes_S", GPU_INDEX), ibm_nodes_arr_size, tmp);
     }
     
     free(tmp);
@@ -498,7 +498,7 @@ int loadSimCheckpointParticle(
     ParticlesSoA& particlesSoA,
     int *step
     ){
-    step[0] = getStep();
+    step[0] = getStep(GPU_INDEX, step);
 
     if(step[0] < INI_STEP)
         step[0]=INI_STEP;

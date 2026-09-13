@@ -48,6 +48,8 @@ IbmNodesSoA::IbmNodesSoA(/* args */)
 {
     this->S = nullptr;
     this->particleCenterIdx = nullptr;
+    this->stencilBase = nullptr;
+    this->stencilWeights = nullptr;
     this->numNodes = 0;
 }
 
@@ -56,6 +58,8 @@ IbmNodesSoA::~IbmNodesSoA()
 {
     this->S = nullptr;
     this->particleCenterIdx = nullptr;
+    this->stencilBase = nullptr;
+    this->stencilWeights = nullptr;
     this->numNodes = 0;
 }
 
@@ -93,10 +97,28 @@ __host__ __device__ void IbmNodesSoA::setOriginalRelativePos(const dfloat3SoA& o
 __host__ __device__ dfloat* IbmNodesSoA::getS() const { return this->S; }
 __host__ __device__ void IbmNodesSoA::setS(dfloat* S) { this->S = S; }
 
+__host__ IbmNodesView IbmNodesSoA::getView() const
+{
+    return {
+        this->numNodes,
+        this->particleCenterIdx,
+        {this->pos.x, this->pos.y, this->pos.z},
+        {this->f.x, this->f.y, this->f.z},
+        {this->deltaF.x, this->deltaF.y, this->deltaF.z},
+        {this->originalRelativePos.x, this->originalRelativePos.y,
+            this->originalRelativePos.z},
+        this->S,
+        this->stencilBase,
+        this->stencilWeights
+    };
+}
+
 
 __host__
 void IbmNodesSoA::allocateMemory(unsigned int numMaxNodes)
 {
+    if (numMaxNodes == 0) return;
+
     this->pos.allocateMemory((size_t) numMaxNodes);
     this->vel.allocateMemory((size_t) numMaxNodes);
     this->vel_old.allocateMemory((size_t) numMaxNodes);
@@ -108,6 +130,11 @@ void IbmNodesSoA::allocateMemory(unsigned int numMaxNodes)
         cudaMallocManaged((void**)&(this->S), sizeof(dfloat) * numMaxNodes));
     checkCudaErrors(
         cudaMallocManaged((void**)&(this->particleCenterIdx), sizeof(unsigned int) * numMaxNodes));
+    checkCudaErrors(
+        cudaMallocManaged((void**)&(this->stencilBase), sizeof(int3) * numMaxNodes));
+    checkCudaErrors(
+        cudaMallocManaged((void**)&(this->stencilWeights),
+            sizeof(dfloat) * 3 * IBM_CACHED_STENCIL_WIDTH * numMaxNodes));
 }
 
 __host__
@@ -124,8 +151,12 @@ void IbmNodesSoA::freeMemory()
 
     if (this->S) cudaFree(this->S);
     if (this->particleCenterIdx) cudaFree(this->particleCenterIdx);
+    if (this->stencilBase) cudaFree(this->stencilBase);
+    if (this->stencilWeights) cudaFree(this->stencilWeights);
     this->S = nullptr;
     this->particleCenterIdx = nullptr;
+    this->stencilBase = nullptr;
+    this->stencilWeights = nullptr;
 }
 
 __host__ __device__

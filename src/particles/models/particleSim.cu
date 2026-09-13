@@ -128,15 +128,15 @@ void particleSimulation(
     unsigned int step
 ){
     // reset force wall    
-    cudaMemset(d_pwForces, 0, sizeof(ParticleWallForces));
+    checkCudaErrors(cudaMemsetAsync(
+        d_pwForces, 0, sizeof(ParticleWallForces), streamParticles[0]));
     // Calculate collision force between particles
     ParticleCenter* pArray = particles->getPCenterArray();
     ParticleShape* shape = particles->getPShape();
     updateParticleOldValues<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
-    checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     particlesCollisionHandler<<<GRID_PCOLLISION, TOTAL_PCOLLISION, 0, streamParticles[0]>>>(shape,pArray,d_pwForces,step);
-    checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     #ifdef PARTICLE_FORCE_DEBUG
+    checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     captureCollisionSnapshot(pArray, step);
     #endif
 
@@ -146,26 +146,20 @@ void particleSimulation(
 
     if(numIBM>0){
        ibmSimulation(particles,fMom,streamParticles[0],step);
-       // Synchronize after IBM to catch any errors early
-       checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     }
     if(numPIBM>0){
         pibmSimulation(particles,fMom,streamParticles[0],step);
-        // Synchronize after PIBM to catch any errors early
-        checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     }
     if(numTRACER>0){
         tracerSimulation(particles,fMom,streamParticles[0],step);
-        // Synchronize after TRACER to catch any errors early
-        checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     }
 
     #ifdef PARTICLE_FORCE_DEBUG
+    checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     exportParticleForceDebug(pArray, step);
     #endif
 
     updateParticleCenterVelocityAndRotation<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
-    checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     updateParticlePosition<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
     checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
 }

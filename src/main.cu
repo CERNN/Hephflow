@@ -64,6 +64,11 @@ int main() {
     
     /* -------------- ALLOCATION FOR GPUs ------------- */
     cudaStream_t streamsLBM[N_GPUS];
+    #ifdef PARTICLE_MODEL
+    // Particle coupling currently owns one single-GPU field/stream.
+    ParticleField particleField;
+    cudaEvent_t particleForceFieldReady;
+    #endif
     #ifdef STEP12_OVERLAP_HALOS
     cudaStream_t streamsBoundary[N_GPUS];
     cudaStream_t streamsHalo[N_GPUS];
@@ -93,12 +98,6 @@ int main() {
             #endif
             #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
             
-            #ifdef PARTICLE_MODEL
-            // Particle field initialization and allocation
-            ParticleField particleField;
-            particleField.allocateMemory();
-            #endif //PARTICLE_MODEL
-            
             #ifdef DENSITY_CORRECTION
                 devices[g].allocateDensityCorrectionMemory(g);
             #endif //DENSITY_CORRECTION
@@ -117,9 +116,6 @@ int main() {
             checkCudaErrors(cudaEventCreateWithFlags(&haloReady[g], cudaEventDisableTiming));
             #endif
             checkCudaErrors(cudaDeviceSynchronize());
-            #ifdef PARTICLE_MODEL
-            particleField.setupStreams();
-            #endif //PARTICLE_MODEL
         });
     }
 
@@ -128,6 +124,14 @@ int main() {
     }
 
     threads.clear();
+
+    #ifdef PARTICLE_MODEL
+    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[GPU_INDEX]));
+    particleField.allocateMemory();
+    particleField.setupStreams();
+    checkCudaErrors(cudaEventCreateWithFlags(
+        &particleForceFieldReady, cudaEventDisableTiming));
+    #endif
 
     step = INI_STEP;
 
@@ -385,7 +389,11 @@ int main() {
         if (N_GPUS == 1) {
             devices[0].halfStepKernels(gridBlock, threadBlock, step, 0, slice, streamsLBM[0]);
             #ifdef PARTICLE_MODEL
-                particleField.simulationStep(deviceField.d_fMom, step);
+                checkCudaErrors(cudaEventRecord(
+                    particleForceFieldReady, streamsLBM[0]));
+                checkCudaErrors(cudaStreamWaitEvent(
+                    particleField.getStream()[0], particleForceFieldReady, 0));
+                particleField.simulationStep(devices[0].d_fMom[0], step);
             #endif //PARTICLE_MODEL
         } else {
             for(int g = 0; g < N_GPUS; g++){
@@ -393,7 +401,7 @@ int main() {
                     checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
                     devices[g].halfStepKernels(gridBlock, threadBlock, step, g, slice, streamsLBM[g]);
                     #ifdef PARTICLE_MODEL
-                        particleField.simulationStep(deviceField.d_fMom, step);
+                        particleField.simulationStep(devices[g].d_fMom[g], step);
                     #endif //PARTICLE_MODEL
                 });
             }
@@ -506,7 +514,7 @@ int main() {
 
     for (auto &t : threads) {
         t.join();
-    }                  
+    }
     threads.clear();
 
     hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
@@ -585,6 +593,7 @@ int main() {
 
     // Free particle field
     #ifdef PARTICLE_MODEL
+        checkCudaErrors(cudaEventDestroy(particleForceFieldReady));
         particleField.freeMemory();
         particleField.destroyStreams();
     #endif //PARTICLE_MODEL

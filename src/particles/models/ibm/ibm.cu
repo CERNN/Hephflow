@@ -11,6 +11,18 @@
 
 #ifdef PARTICLE_MODEL
 
+namespace {
+static_assert(P_DIST * 2 <= IBM_CACHED_STENCIL_WIDTH,
+    "IBM stencil cache is too small for the selected stencil");
+
+__device__ __forceinline__ size_t ibmStencilWeightIndex(
+    int axis, int offset, unsigned int node, unsigned int numNodes)
+{
+    return static_cast<size_t>(axis * IBM_CACHED_STENCIL_WIDTH + offset) *
+        numNodes + node;
+}
+} // namespace
+
 #ifdef PARTICLE_FORCE_DEBUG
 namespace {
 bool ibmDebugStep(unsigned int step) {
@@ -126,6 +138,7 @@ void exportIbmNodeDebug(
 } // namespace
 #endif
 
+#ifndef IBM_UNIT_TEST
 void ibmSimulation(
     ParticlesSoA* particles,
     dfloat *fMom,
@@ -137,32 +150,17 @@ void ibmSimulation(
         return;
     }
 
-    MethodRange range = particles->getMethodRange(IBM);
-    if (range.first < 0 || range.last >= NUM_PARTICLES || range.first > range.last) {
-        printf("Error: Invalid range - first: %d, last: %d, NUM_PARTICLES: %d\n",
-            range.first, range.last, NUM_PARTICLES);
-        return;
-    }
-
-    //TODO: FIX THIS SO IS NOT COPIED EVERY SINGLE STEP
-    // the input on the functions should be particles->getNodesSoA() instead of d_nodes
-    IbmNodesSoA h_nodes = *(particles->getNodesSoA());
-    IbmNodesSoA* d_nodes = nullptr;
     checkCudaErrors(cudaSetDevice(GPU_INDEX));
-    checkCudaErrors(cudaMalloc(&d_nodes, sizeof(IbmNodesSoA)));
-    checkCudaErrors(cudaMemcpy(d_nodes, &h_nodes, sizeof(IbmNodesSoA), cudaMemcpyHostToDevice));
-
-    //int numIBMParticles = range.last - range.first + 1;
     const unsigned int threadsNodesIBM = 64;
-    unsigned int pNumNodes = particles->getNodesSoA()->getNumNodes();
-    const unsigned int gridNodesIBM = pNumNodes % threadsNodesIBM ? pNumNodes / threadsNodesIBM + 1 : pNumNodes / threadsNodesIBM;
-
-    checkCudaErrors(cudaStreamSynchronize(streamParticles));
+    IbmNodesSoA* nodesSoA = particles->getNodesSoA();
+    const unsigned int pNumNodes = nodesSoA->getNumNodes();
+    if (pNumNodes == 0) return;
+    const unsigned int gridNodesIBM =
+        (pNumNodes + threadsNodesIBM - 1) / threadsNodesIBM;
+    const IbmNodesView nodes = nodesSoA->getView();
 
     ParticleCenter* pArray = particles->getPCenterArray();
-    // Reset forces in all IBM nodes;
-    ibmResetNodesForces<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(d_nodes,step);
-    ibmParticleNodeMovement<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(d_nodes,pArray,range.first,range.last,step);
+    ibmPrepareNodes<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(nodes, pArray);
     IbmNodeDebugRecord* d_debugRecords = nullptr;
     #ifdef PARTICLE_FORCE_DEBUG
     std::vector<IbmNodeDebugRecord> debugRecords;
@@ -174,7 +172,7 @@ void ibmSimulation(
 
     for (int iteration = 0; iteration < IBM_MAX_ITERATION; ++iteration) {
         ibmForceInterpolationSpread<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(
-            d_nodes, pArray, &fMom[0], step, d_debugRecords);
+            nodes, pArray, fMom, step, d_debugRecords);
 
         #ifdef PARTICLE_FORCE_DEBUG
         if (d_debugRecords != nullptr) {
@@ -190,105 +188,89 @@ void ibmSimulation(
         // Same-stream launch ordering guarantees that spreading is complete
         // before the next iteration reinterpolates the predicted velocity.
         ibmSpreadForceCorrection<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(
-            d_nodes, &fMom[0]);
+            nodes, fMom);
     }
 
     #ifdef PARTICLE_FORCE_DEBUG
     if (d_debugRecords != nullptr) checkCudaErrors(cudaFree(d_debugRecords));
     #endif
-    
-    cudaFree(d_nodes);
-    // cudaFree(d_particlesSoA);
 }
+#endif
 
 __global__ 
-void ibmResetNodesForces(IbmNodesSoA* particlesNodes, unsigned int step)
+void ibmPrepareNodes(IbmNodesView particlesNodes, ParticleCenter* pArray)
 {
-    int idx = threadIdx.x + blockDim.x * blockIdx.x;
-    if (idx >= particlesNodes->getNumNodes())
-        return;
+    const unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    if (idx >= particlesNodes.numNodes) return;
 
-    const dfloat3SoA force = particlesNodes->getF();
-    const dfloat3SoA delta_force = particlesNodes->getDeltaF();
-
+    const IbmVectorView force = particlesNodes.f;
+    const IbmVectorView delta_force = particlesNodes.deltaF;
     force.x[idx] = 0;
     force.y[idx] = 0;
     force.z[idx] = 0;
     delta_force.x[idx] = 0;
     delta_force.y[idx] = 0;
     delta_force.z[idx] = 0;
-}
 
+    const IbmVectorView pos = particlesNodes.pos;
+    const ParticleCenter pc_i = pArray[particlesNodes.particleCenterIdx[idx]];
+    if (pc_i.getMovable()) {
+        const IbmVectorView originalRelativePos = particlesNodes.originalRelativePos;
+        const dfloat3 originalOffset(
+            originalRelativePos.x[idx],
+            originalRelativePos.y[idx],
+            originalRelativePos.z[idx]);
+        const dfloat3 rotatedOffset = rotate_vector_by_quart_R(
+            originalOffset, pc_i.getQ_cumulative_rot());
+        const dfloat newPosX = pc_i.getPosX() + rotatedOffset.x;
+        const dfloat newPosY = pc_i.getPosY() + rotatedOffset.y;
+        const dfloat newPosZ = pc_i.getPosZ() + rotatedOffset.z;
 
-__global__
-void ibmParticleNodeMovement(
-    IbmNodesSoA* particlesNodes,
-    ParticleCenter *pArray,
-    int firstIndex,
-    int lastIndex,
-    unsigned int step
-){
-    int idx = threadIdx.x + blockDim.x * blockIdx.x;
+        #ifdef BC_X_WALL
+            pos.x[idx] = newPosX;
+        #endif
+        #ifdef BC_X_PERIODIC
+            pos.x[idx] = std::fmod((dfloat)(newPosX + NX), (dfloat)(NX));
+            if (pos.x[idx] < 0) pos.x[idx] += (dfloat)NX;
+        #endif
+        #ifdef BC_Y_WALL
+            pos.y[idx] = newPosY;
+        #endif
+        #ifdef BC_Y_PERIODIC
+            pos.y[idx] = std::fmod((dfloat)(newPosY + NY), (dfloat)(NY));
+            if (pos.y[idx] < 0) pos.y[idx] += (dfloat)NY;
+        #endif
+        #ifdef BC_Z_WALL
+            pos.z[idx] = newPosZ;
+        #endif
+        #ifdef BC_Z_PERIODIC
+            pos.z[idx] = std::fmod((dfloat)(newPosZ + NZ_TOTAL), (dfloat)(NZ_TOTAL));
+            if (pos.z[idx] < 0) pos.z[idx] += (dfloat)NZ_TOTAL;
+        #endif
+    }
 
-    if(idx >= particlesNodes->getNumNodes())
-        return;
+    const dfloat markerPosition[3] = {pos.x[idx], pos.y[idx], pos.z[idx]};
+    if (!isfinite(markerPosition[0]) || !isfinite(markerPosition[1]) ||
+        !isfinite(markerPosition[2])) return;
 
-    const dfloat3SoA pos = particlesNodes->getPos();
-    const dfloat3SoA originalRelativePos = particlesNodes->getOriginalRelativePos();
-
-    //direct copy since we are not modifying
-    const ParticleCenter pc_i = pArray[particlesNodes->getParticleCenterIdx()[idx]];
-
-    if(!pc_i.getMovable())
-        return;
-
-    // Get the original relative position (immutable reference set at initialization)
-    dfloat3 original_offset = dfloat3(
-        originalRelativePos.x[idx],
-        originalRelativePos.y[idx],
-        originalRelativePos.z[idx]
-    );
-    
-    // Fetch the cumulative rotation quaternion from particle center
-    dfloat4 q_cumulative = pc_i.getQ_cumulative_rot();
-    
-    // Rotate the original offset using the accumulated rotation
-    dfloat3 rotated_offset = rotate_vector_by_quart_R(original_offset, q_cumulative);
-    
-    // Reconstruct node position from first principles
-    dfloat new_pos_x = pc_i.getPosX() + rotated_offset.x;
-    dfloat new_pos_y = pc_i.getPosY() + rotated_offset.y;
-    dfloat new_pos_z = pc_i.getPosZ() + rotated_offset.z;
-    
-    // Apply boundary conditions AFTER rotation to final position
-    #ifdef BC_X_WALL
-        pos.x[idx] = new_pos_x;
-    #endif
-    #ifdef BC_X_PERIODIC
-        pos.x[idx] = std::fmod((dfloat)(new_pos_x + NX), (dfloat)(NX));
-        if (pos.x[idx] < 0) pos.x[idx] += (dfloat)NX;
-    #endif
-
-    #ifdef BC_Y_WALL
-        pos.y[idx] = new_pos_y;
-    #endif
-    #ifdef BC_Y_PERIODIC
-        pos.y[idx] = std::fmod((dfloat)(new_pos_y + NY), (dfloat)(NY));
-        if (pos.y[idx] < 0) pos.y[idx] += (dfloat)NY;
-    #endif
-
-    #ifdef BC_Z_WALL
-        pos.z[idx] = new_pos_z;
-    #endif
-    #ifdef BC_Z_PERIODIC
-        pos.z[idx] = std::fmod((dfloat)(new_pos_z + NZ_TOTAL), (dfloat)(NZ_TOTAL));
-        if (pos.z[idx] < 0) pos.z[idx] += (dfloat)NZ_TOTAL;
-    #endif
+    const int3 base = make_int3(
+        static_cast<int>(floor(markerPosition[0])) - P_DIST + 1,
+        static_cast<int>(floor(markerPosition[1])) - P_DIST + 1,
+        static_cast<int>(floor(markerPosition[2])) - P_DIST + 1);
+    particlesNodes.stencilBase[idx] = base;
+    const int baseAxis[3] = {base.x, base.y, base.z};
+    for (int axis = 0; axis < 3; ++axis) {
+        for (int offset = 0; offset < P_DIST * 2; ++offset) {
+            particlesNodes.stencilWeights[ibmStencilWeightIndex(
+                axis, offset, idx, particlesNodes.numNodes)] =
+                stencil(baseAxis[axis] + offset - markerPosition[axis]);
+        }
+    }
 }
 
 __global__
 void ibmForceInterpolationSpread(
-    IbmNodesSoA* particlesNodes,
+    IbmNodesView particlesNodes,
     ParticleCenter *pArray,
     dfloat *fMom,
     unsigned int step,
@@ -297,12 +279,12 @@ void ibmForceInterpolationSpread(
 
     int i = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if(i >= particlesNodes->getNumNodes())
+    if(i >= particlesNodes.numNodes)
         return;
 
-    const dfloat3SoA posNode = particlesNodes->getPos();
+    const IbmVectorView posNode = particlesNodes.pos;
 
-    int particleCenterIdx = particlesNodes->getParticleCenterIdx()[i];
+    int particleCenterIdx = particlesNodes.particleCenterIdx[i];
     ParticleCenter* pc_i = &pArray[particleCenterIdx];
 
     dfloat aux, aux1; // aux variable for many things
@@ -310,8 +292,6 @@ void ibmForceInterpolationSpread(
     const dfloat xIBM = posNode.x[i];
     const dfloat yIBM = posNode.y[i]; 
     const dfloat zIBM = posNode.z[i];
-
-    const dfloat pos[3] = {xIBM, yIBM, zIBM};
 
     #ifdef PARTICLE_FORCE_DEBUG
     IbmNodeDebugRecord debugRecord = {};
@@ -330,11 +310,10 @@ void ibmForceInterpolationSpread(
     // Calculate stencils to use and the valid interval [xyz][idx]
     dfloat stencilVal[3][P_DIST*2];
 
-    // First lattice position for each coordinate
+    // Prepared once per time step and shared by interpolation and spreading.
+    const int3 cachedBase = particlesNodes.stencilBase[i];
     const int posBase[3] = {
-        static_cast<int>(std::floor(xIBM)) - P_DIST + 1,
-        static_cast<int>(std::floor(yIBM)) - P_DIST + 1,
-        static_cast<int>(std::floor(zIBM)) - P_DIST + 1
+        cachedBase.x, cachedBase.y, cachedBase.z
     };
 
    
@@ -435,10 +414,11 @@ void ibmForceInterpolationSpread(
     #endif
 
 
-    //compute stencil values
+    // Load cached separable stencil values.
     for(int ii = 0; ii < 3; ii++){
         for(int jj=minIdx[ii]; jj <= maxIdx[ii]; jj++){
-            stencilVal[ii][jj] = stencil(posBase[ii]+jj-(pos[ii]));
+            stencilVal[ii][jj] = particlesNodes.stencilWeights[
+                ibmStencilWeightIndex(ii, jj, i, particlesNodes.numNodes)];
         }
     }
 
@@ -496,13 +476,21 @@ void ibmForceInterpolationSpread(
                 // Dirac delta (kernel)
                 aux = aux1 * stencilVal[0][xi];
 
-                unsigned int momIdx_rho = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_RHO_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
-                unsigned int momIdx_ux = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
-                unsigned int momIdx_uy = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
-                unsigned int momIdx_uz = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_UZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
-                unsigned int momIdx_fx = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FX_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
-                unsigned int momIdx_fy = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FY_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
-                unsigned int momIdx_fz = idxMom(xx%BLOCK_NX, yy%BLOCK_NY, zz%BLOCK_NZ, M_FZ_INDEX, xx/BLOCK_NX, yy/BLOCK_NY, zz/BLOCK_NZ);
+                const int tx = xx % BLOCK_NX;
+                const int ty = yy % BLOCK_NY;
+                const int tz = zz % BLOCK_NZ;
+                const int bx = xx / BLOCK_NX;
+                const int by = yy / BLOCK_NY;
+                const int bz = zz / BLOCK_NZ;
+                const size_t blockMomentBase = idxMom(
+                    tx, ty, tz, M_RHO_INDEX, bx, by, bz);
+                const size_t momIdx_rho = blockMomentBase;
+                const size_t momIdx_ux = blockMomentBase + M_UX_INDEX * BLOCK_LBM_SIZE;
+                const size_t momIdx_uy = blockMomentBase + M_UY_INDEX * BLOCK_LBM_SIZE;
+                const size_t momIdx_uz = blockMomentBase + M_UZ_INDEX * BLOCK_LBM_SIZE;
+                const size_t momIdx_fx = blockMomentBase + M_FX_INDEX * BLOCK_LBM_SIZE;
+                const size_t momIdx_fy = blockMomentBase + M_FY_INDEX * BLOCK_LBM_SIZE;
+                const size_t momIdx_fz = blockMomentBase + M_FZ_INDEX * BLOCK_LBM_SIZE;
 
                 const dfloat rhoNode = RHO_0 + fMom[momIdx_rho];
                 if (!isfinite(rhoNode) || rhoNode <= 1.0e-6_df) {
@@ -602,7 +590,7 @@ void ibmForceInterpolationSpread(
         uz_calc = vz_pc + (wx_pc * (dy) - wy_pc * (dx));
     }
 
-    const dfloat dA = particlesNodes->getS()[i];
+    const dfloat dA = particlesNodes.S[i];
     aux = IBM_FORCE_RELAXATION * 2 * rhoVar * dA * IBM_THICKNESS;
 
     const dfloat3 velocityResidual(
@@ -637,7 +625,7 @@ void ibmForceInterpolationSpread(
     #endif
 
     // Calculate IBM forces
-    const dfloat3SoA force = particlesNodes->getF();
+    const IbmVectorView force = particlesNodes.f;
     const dfloat fxIBM = force.x[i] + deltaF.x;
     const dfloat fyIBM = force.y[i] + deltaF.y;
     const dfloat fzIBM = force.z[i] + deltaF.z;
@@ -648,7 +636,7 @@ void ibmForceInterpolationSpread(
     force.z[i] = fzIBM;
 
 
-    const dfloat3SoA delta_force = particlesNodes->getDeltaF();
+    const IbmVectorView delta_force = particlesNodes.deltaF;
     // Update node delta force
     delta_force.x[i] = deltaF.x;
     delta_force.y[i] = deltaF.y;
@@ -672,14 +660,14 @@ void ibmForceInterpolationSpread(
 
 __global__
 void ibmSpreadForceCorrection(
-    IbmNodesSoA* particlesNodes,
+    IbmNodesView particlesNodes,
     dfloat *fMom
 ) {
     const int i = threadIdx.x + blockDim.x * blockIdx.x;
-    if (i >= particlesNodes->getNumNodes()) return;
+    if (i >= particlesNodes.numNodes) return;
 
-    const dfloat3SoA posNode = particlesNodes->getPos();
-    const dfloat3SoA deltaForce = particlesNodes->getDeltaF();
+    const IbmVectorView posNode = particlesNodes.pos;
+    const IbmVectorView deltaForce = particlesNodes.deltaF;
     const dfloat xIBM = posNode.x[i];
     const dfloat yIBM = posNode.y[i];
     const dfloat zIBM = posNode.z[i];
@@ -692,17 +680,13 @@ void ibmSpreadForceCorrection(
     if (correction.x == 0 && correction.y == 0 && correction.z == 0) return;
 
     constexpr int stencilWidth = P_DIST * 2;
-    const int posBase[3] = {
-        static_cast<int>(floor(xIBM)) - P_DIST + 1,
-        static_cast<int>(floor(yIBM)) - P_DIST + 1,
-        static_cast<int>(floor(zIBM)) - P_DIST + 1
-    };
-    const dfloat position[3] = {xIBM, yIBM, zIBM};
+    const int3 cachedBase = particlesNodes.stencilBase[i];
+    const int posBase[3] = {cachedBase.x, cachedBase.y, cachedBase.z};
     dfloat stencilVal[3][stencilWidth];
     for (int axis = 0; axis < 3; ++axis) {
         for (int offset = 0; offset < stencilWidth; ++offset) {
-            stencilVal[axis][offset] =
-                stencil(posBase[axis] + offset - position[axis]);
+            stencilVal[axis][offset] = particlesNodes.stencilWeights[
+                ibmStencilWeightIndex(axis, offset, i, particlesNodes.numNodes)];
         }
     }
 
@@ -745,15 +729,12 @@ void ibmSpreadForceCorrection(
                     if (radialSquared >= OUTER_RADIUS * OUTER_RADIUS) continue;
                 #endif
 
-                const unsigned int fxIndex = idxMom(
+                const size_t blockMomentBase = idxMom(
                     xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ,
-                    M_FX_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ);
-                const unsigned int fyIndex = idxMom(
-                    xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ,
-                    M_FY_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ);
-                const unsigned int fzIndex = idxMom(
-                    xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ,
-                    M_FZ_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ);
+                    M_RHO_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ);
+                const size_t fxIndex = blockMomentBase + M_FX_INDEX * BLOCK_LBM_SIZE;
+                const size_t fyIndex = blockMomentBase + M_FY_INDEX * BLOCK_LBM_SIZE;
+                const size_t fzIndex = blockMomentBase + M_FZ_INDEX * BLOCK_LBM_SIZE;
 
                 // deltaForce is the force on the particle. Apply the equal
                 // and opposite correction to the Eulerian fluid.

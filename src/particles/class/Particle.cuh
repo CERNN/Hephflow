@@ -37,6 +37,13 @@ constexpr unsigned int GRID_PARTICLES =
 *   Struct for particle representation
 */
 enum ParticleMethod {none, PIBM, IBM, TRACER};
+
+__host__ __device__ constexpr bool usesResolvedIbmMarkers(
+    ParticleMethod method)
+{
+    return method == IBM;
+}
+
 struct MethodRange {
     int first = -1;
     int last = -1;

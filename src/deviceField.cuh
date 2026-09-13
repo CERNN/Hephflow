@@ -1330,12 +1330,6 @@ typedef struct deviceField{
     }
     #endif //LOCAL_FORCES
 
-    #ifdef PARTICLE_MODEL
-    void particleSimulationDeviceField(ParticlesSoA &particlesSoA, cudaStream_t *streamsPart, ParticleWallForces *d_pwForces,unsigned int step){
-        particleSimulation(&particlesSoA,d_fMom,streamsPart,d_pwForces,step);
-    }
-    #endif //PARTICLE_MODEL
-
     void interfaceCudaMemcpyDeviceField(bool ghost, int g){
         // AA layout: always copy from ghost (single buffer)
         interfaceCudaMemcpy(ghostInterface[g], ghostInterface[g].h_pop, ghostInterface[g].pop, cudaMemcpyDeviceToHost, QF, g);
