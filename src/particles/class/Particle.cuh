@@ -144,24 +144,14 @@ class ParticlesSoA{
 
         __host__ __device__ ParticleCenter* getPCenterArray() const;
         __host__ __device__ void setPCenterArray(ParticleCenter* pArray);
-
-        __host__ __device__ dfloat3* getPCenterLastPos() const;
-        __host__ __device__ void setPCenterLastPos(dfloat3* pLastPos);
-
-        __host__ __device__ dfloat3* getPCenterLastWPos() const;
-        __host__ __device__ void setPCenterLastWPos(dfloat3* pLastWPos);
+        __host__ __device__ CollisionData* getCollisionDataArray() const;
+        __host__ void bindCollisionData();
 
         __host__ __device__ ParticleShape* getPShape() const;
         __host__ __device__ void setPShape(ParticleShape* pShape);
 
         __host__ __device__ ParticleMethod* getPMethod() const;
         __host__ __device__ void setPMethod(ParticleMethod* pMethod);
-
-        __host__ __device__ bool* getPCollideWall() const;
-        __host__ __device__ void setPCollideWall(bool* pCollideWall);
-
-        __host__ __device__ bool* getPCollideParticle() const;
-        __host__ __device__ void setPCollideParticle(bool* pCollideParticle);
 
         __host__ const MethodRange& ParticlesSoA::getMethodRange(ParticleMethod method) const;
         __host__ void ParticlesSoA::setMethodRange(ParticleMethod method, int first, int last);
@@ -172,12 +162,9 @@ class ParticlesSoA{
     private:
         IbmNodesSoA nodesSoA[N_GPUS];
         ParticleCenter* pCenterArray;
-        dfloat3* pCenterLastPos;    // Last particle position
-        dfloat3* pCenterLastWPos;   // Last angular particle position
+        CollisionData* collisionDataArray;
         ParticleShape* pShape;
         ParticleMethod* pMethod;
-        bool* pCollideWall;
-        bool* pCollideParticle;
         std::map<ParticleMethod, MethodRange> methodRanges;
 
         std::vector<ParticleCenter> centerStorage;

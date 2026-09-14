@@ -464,6 +464,10 @@ void operateSimCheckpointParticle(
         checkCudaErrors(cudaSetDevice(GPU_INDEX));
         f_arr(particlesSoA.getPCenterArray(), f_filename("IBM_particles_centers", GPU_INDEX),
             NUM_PARTICLES*sizeof(ParticleCenter), tmp);
+        f_arr(particlesSoA.getCollisionDataArray(),
+            f_filename("IBM_particles_collision_history", GPU_INDEX),
+            NUM_PARTICLES*sizeof(CollisionData), tmp);
+        if (oper == __LOAD_CHECKPOINT) particlesSoA.bindCollisionData();
     }
     
     checkCudaErrors(cudaSetDevice(GPU_INDEX));

@@ -59,12 +59,24 @@ __device__ void accumulateForceAndTorque(
     const dfloat3& f_dirs,
     const dfloat3& m_dirs,
     CollisionForceSource source) {
+    #ifdef DEM_DISABLE_ZERO_ATOMIC_FAST_PATH
     atomicAdd(&(pc_i->getFXatomic()), f_dirs.x);
     atomicAdd(&(pc_i->getFYatomic()), f_dirs.y);
     atomicAdd(&(pc_i->getFZatomic()), f_dirs.z);
     atomicAdd(&(pc_i->getMXatomic()), m_dirs.x);
     atomicAdd(&(pc_i->getMYatomic()), m_dirs.y);
     atomicAdd(&(pc_i->getMZatomic()), m_dirs.z);
+    #else
+    // Axis-aligned wall contacts and frictionless/symmetric contacts contain
+    // many exact zero components. A zero atomic still serializes the target
+    // cache line, so issue only updates that can change the accumulator.
+    if (f_dirs.x != 0.0_df) atomicAdd(&(pc_i->getFXatomic()), f_dirs.x);
+    if (f_dirs.y != 0.0_df) atomicAdd(&(pc_i->getFYatomic()), f_dirs.y);
+    if (f_dirs.z != 0.0_df) atomicAdd(&(pc_i->getFZatomic()), f_dirs.z);
+    if (m_dirs.x != 0.0_df) atomicAdd(&(pc_i->getMXatomic()), m_dirs.x);
+    if (m_dirs.y != 0.0_df) atomicAdd(&(pc_i->getMYatomic()), m_dirs.y);
+    if (m_dirs.z != 0.0_df) atomicAdd(&(pc_i->getMZatomic()), m_dirs.z);
+    #endif
     #ifdef PARTICLE_FORCE_DEBUG
     if (source == COLLISION_SOURCE_WALL) {
         pc_i->addDebugWallForceAndTorque(f_dirs, m_dirs);
@@ -289,12 +301,12 @@ void sphereWallCollision(const CollisionContext& ctx, ParticleWallForces *d_pwFo
     }
 
     if (pwf) {
-        atomicAdd(&pwf->Fx, f_on_wall.x);
-        atomicAdd(&pwf->Fy, f_on_wall.y);
-        atomicAdd(&pwf->Fz, f_on_wall.z);
+        if (f_on_wall.x != 0.0_df) atomicAdd(&pwf->Fx, f_on_wall.x);
+        if (f_on_wall.y != 0.0_df) atomicAdd(&pwf->Fy, f_on_wall.y);
+        if (f_on_wall.z != 0.0_df) atomicAdd(&pwf->Fz, f_on_wall.z);
 
-        atomicAdd(&pwf->Fn, Fn);
-        atomicAdd(&pwf->Ft, Ft);
+        if (Fn != 0.0_df) atomicAdd(&pwf->Fn, Fn);
+        if (Ft != 0.0_df) atomicAdd(&pwf->Ft, Ft);
 
         atomicAdd(&pwf->nContacts, 1);
     }

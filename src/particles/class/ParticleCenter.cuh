@@ -363,6 +363,7 @@ public:
 
     __host__ __device__ CollisionData& getCollision()   ;
     __host__ __device__ void setCollision(const CollisionData& collision);
+    __host__ __device__ void bindCollisionData(CollisionData* collisionData);
 
     __host__ __device__ dfloat3 getSemiAxis1() const;
     __host__ __device__ dfloat getSemiAxis1X() const;
@@ -457,8 +458,8 @@ protected:
     dfloat3 semiAxis1_original; // Original semi-axis 1 (relative to particle center) - immutable reference for precision fix
     dfloat3 semiAxis2_original; // Original semi-axis 2 (relative to particle center) - immutable reference for precision fix
     dfloat3 semiAxis3_original; // Original semi-axis 3 (relative to particle center) - immutable reference for precision fix
-    CollisionData collision;
-}; 
+    CollisionData* collision; // non-owning entry in ParticlesSoA cold storage
+};
 
 
 struct CollisionContext {

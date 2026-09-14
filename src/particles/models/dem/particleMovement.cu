@@ -177,6 +177,7 @@ RotationAdvanceResult advanceRotationArdekani(
     }
 
     const dfloat stage_dt = 1.0_df / (dfloat)PARTICLE_ROTATION_SUBSTEPS;
+
     dfloat3 omega_start = omega_initial;
     dfloat4 q_relative_start = result.q_relative;
     dfloat6 inertia_final = {};
@@ -295,25 +296,12 @@ void reportRotationFailure(
 
 } // namespace
 
-__global__ 
-void updateParticleCenterVelocityAndRotation(
-    ParticleCenter *pArray,
+__device__
+void updateParticleCenterVelocityAndRotationImpl(
+    ParticleCenter* pc_i,
+    int globalIdx,
     unsigned int step)
 {
-    unsigned int localIdx = threadIdx.x + blockDim.x * blockIdx.x;
-    int globalIdx = localIdx;
-
-    if (globalIdx >= NUM_PARTICLES) {
-        return;
-    }
-
-    if (pArray == nullptr) {
-        printf("ERROR: particles is nullptr\n");
-        return;
-    }
-
-    ParticleCenter* pc_i = &pArray[globalIdx];
-
     if(!pc_i->getMovable())
         return;
 
@@ -380,24 +368,25 @@ void updateParticleCenterVelocityAndRotation(
 }
 
 __global__
-void updateParticlePosition(
-    ParticleCenter *pArray,
+void updateParticleCenterVelocityAndRotation(
+    ParticleCenter* pArray,
     unsigned int step)
 {
-    unsigned int localIdx = threadIdx.x + blockDim.x * blockIdx.x;
-    int globalIdx = localIdx;
-
-    if (globalIdx >= NUM_PARTICLES) {
-        return;
-    }
-
+    const unsigned int globalIdx = threadIdx.x + blockDim.x * blockIdx.x;
+    if (globalIdx >= NUM_PARTICLES) return;
     if (pArray == nullptr) {
         printf("ERROR: particles is nullptr\n");
         return;
     }
+    updateParticleCenterVelocityAndRotationImpl(
+        &pArray[globalIdx], globalIdx, step);
+}
 
-    ParticleCenter* pc_i = &pArray[globalIdx];
-
+__device__
+void updateParticlePositionImpl(
+    ParticleCenter* pc_i,
+    unsigned int step)
+{
     if(!pc_i->getMovable())
         return;
 
@@ -459,6 +448,37 @@ void updateParticlePosition(
     pc_i->setSemiAxis1(updateSemiAxis(pc_i->getSemiAxis1Original(), pos_new, q_cumulative));
     pc_i->setSemiAxis2(updateSemiAxis(pc_i->getSemiAxis2Original(), pos_new, q_cumulative));
     pc_i->setSemiAxis3(updateSemiAxis(pc_i->getSemiAxis3Original(), pos_new, q_cumulative));
+}
+
+__global__
+void updateParticlePosition(
+    ParticleCenter* pArray,
+    unsigned int step)
+{
+    const unsigned int globalIdx = threadIdx.x + blockDim.x * blockIdx.x;
+    if (globalIdx >= NUM_PARTICLES) return;
+    if (pArray == nullptr) {
+        printf("ERROR: particles is nullptr\n");
+        return;
+    }
+    updateParticlePositionImpl(&pArray[globalIdx], step);
+}
+
+__global__
+void updateParticleKinematics(
+    ParticleCenter* pArray,
+    unsigned int step)
+{
+    const unsigned int globalIdx = threadIdx.x + blockDim.x * blockIdx.x;
+    if (globalIdx >= NUM_PARTICLES) return;
+    if (pArray == nullptr) {
+        printf("ERROR: particles is nullptr\n");
+        return;
+    }
+
+    ParticleCenter* particle = &pArray[globalIdx];
+    updateParticleCenterVelocityAndRotationImpl(particle, globalIdx, step);
+    updateParticlePositionImpl(particle, step);
 }
 
 

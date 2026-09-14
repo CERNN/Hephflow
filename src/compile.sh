@@ -183,7 +183,9 @@ for SOURCE in "${CUDA_SOURCES[@]}"; do
     OBJECTS+=("$OBJECT")
     echo "${SOURCE#./}"
 
-    nvcc --std=c++17 -gencode arch=compute_${CC},code=sm_${CC} -rdc=true -dc -O3 --restrict -DSM_${CC} \
+    # Preserve device IR through separate compilation so the final link can
+    # inline and optimize calls across CUDA translation units.
+    nvcc --std=c++17 -gencode arch=compute_${CC},code=lto_${CC} -rdc=true -dc -O3 --restrict -DSM_${CC} \
         --maxrregcount="$MAX_REGS" \
         "${WARNING_FLAGS[@]}" \
         -diag-suppress 39 \
@@ -199,7 +201,7 @@ for SOURCE in "${CUDA_SOURCES[@]}"; do
 done
 
 echo "Linking executable"
-nvcc --std=c++17 -gencode arch=compute_${CC},code=sm_${CC} -rdc=true \
+nvcc --std=c++17 -gencode arch=compute_${CC},code=sm_${CC} -rdc=true -dlto \
     "${WARNING_FLAGS[@]}" \
     "${OBJECTS[@]}" \
     -lcudadevrt -lcurand -o "./../bin/${OUTPUT_PREFIX}sim_${VELOCITY_SET}_sm${CC}" \

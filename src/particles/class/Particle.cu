@@ -50,12 +50,9 @@ __host__ __device__ void Particle::setShape(ParticleShape* shape) { this->shape 
 __host__ 
 ParticlesSoA::ParticlesSoA() {
     pCenterArray = nullptr;
-    pCenterLastPos = nullptr;
-    pCenterLastWPos = nullptr;
+    collisionDataArray = nullptr;
     pShape = nullptr;
     pMethod = nullptr;
-    pCollideWall = nullptr;
-    pCollideParticle = nullptr;
 }
 
 __host__ 
@@ -64,13 +61,9 @@ ParticlesSoA::~ParticlesSoA() {
         cudaFree(pCenterArray);
         pCenterArray = nullptr;
     }
-    if (pCenterLastPos) {
-        cudaFree(pCenterLastPos);
-        pCenterLastPos = nullptr;
-    }
-    if (pCenterLastWPos) {
-        cudaFree(pCenterLastWPos);
-        pCenterLastWPos = nullptr;
+    if (collisionDataArray) {
+        cudaFree(collisionDataArray);
+        collisionDataArray = nullptr;
     }
     if (pShape) {
         cudaFree(pShape);
@@ -79,14 +72,6 @@ ParticlesSoA::~ParticlesSoA() {
     if (pMethod) {
         cudaFree(pMethod);
         pMethod = nullptr;
-    }
-    if (pCollideWall) {
-        cudaFree(pCollideWall);
-        pCollideWall = nullptr;
-    }
-    if (pCollideParticle) {
-        cudaFree(pCollideParticle);
-        pCollideParticle = nullptr;
     }
 }
 
@@ -102,24 +87,19 @@ __host__ __device__ void ParticlesSoA::setNodesSoA(const IbmNodesSoA* nodes) {
 
 __host__ __device__ ParticleCenter* ParticlesSoA::getPCenterArray() const {return this->pCenterArray;}
 __host__ __device__ void ParticlesSoA::setPCenterArray(ParticleCenter* pArray) {this->pCenterArray = pArray;}
+__host__ __device__ CollisionData* ParticlesSoA::getCollisionDataArray() const {return this->collisionDataArray;}
 
-__host__ __device__ dfloat3* ParticlesSoA::getPCenterLastPos() const {return this->pCenterLastPos;}
-__host__ __device__ void ParticlesSoA::setPCenterLastPos(dfloat3* pLastPos) {this->pCenterLastPos = pLastPos;}
-
-__host__ __device__ dfloat3* ParticlesSoA::getPCenterLastWPos() const {return this->pCenterLastWPos;}
-__host__ __device__ void ParticlesSoA::setPCenterLastWPos(dfloat3* pLastWPos) {this->pCenterLastWPos = pLastWPos;}
+__host__ void ParticlesSoA::bindCollisionData() {
+    if (pCenterArray == nullptr || collisionDataArray == nullptr) return;
+    for (int p = 0; p < NUM_PARTICLES; ++p)
+        pCenterArray[p].bindCollisionData(&collisionDataArray[p]);
+}
 
 __host__ __device__ ParticleShape* ParticlesSoA::getPShape() const {return this->pShape;}
 __host__ __device__ void ParticlesSoA::setPShape(ParticleShape* pShape) {this->pShape = pShape;}
 
 __host__ __device__ ParticleMethod* ParticlesSoA::getPMethod() const {return this->pMethod;}
 __host__ __device__ void ParticlesSoA::setPMethod(ParticleMethod* pMethod) {this->pMethod = pMethod;}
-
-__host__ __device__ bool* ParticlesSoA::getPCollideWall() const {return this->pCollideWall;}
-__host__ __device__ void ParticlesSoA::setPCollideWall(bool* pMethod) {this->pCollideWall = pCollideWall;}
-
-__host__ __device__ bool* ParticlesSoA::getPCollideParticle() const {return this->pCollideParticle;}
-__host__ __device__ void ParticlesSoA::setPCollideParticle(bool* pMethod) {this->pCollideParticle = pCollideParticle;}
 
 __host__
 const MethodRange& ParticlesSoA::getMethodRange(ParticleMethod method) const {
@@ -215,7 +195,8 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
 
     printf("Total number of nodes: %u\n", totalIbmNodes);
     printf("Total memory used for Particles: %lu Mb\n",
-           (unsigned long)((totalIbmNodes * sizeof(IbmNodes) * N_GPUS + NUM_PARTICLES * sizeof(ParticleCenter)) / BYTES_PER_MB));
+           (unsigned long)((totalIbmNodes * sizeof(IbmNodes) * N_GPUS +
+               NUM_PARTICLES * (sizeof(ParticleCenter) + sizeof(CollisionData))) / BYTES_PER_MB));
     fflush(stdout);
 
     printf("Allocating particles in GPU... \t"); fflush(stdout);
@@ -225,18 +206,18 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
     printf("Success \n"); fflush(stdout);
 
     checkCudaErrors(cudaMallocManaged((void**)&this->pCenterArray,       sizeof(ParticleCenter) * NUM_PARTICLES));
-    checkCudaErrors(cudaMallocManaged((void**)&this->pCenterLastPos,     sizeof(dfloat3)        * NUM_PARTICLES));
-    checkCudaErrors(cudaMallocManaged((void**)&this->pCenterLastWPos,    sizeof(dfloat3)        * NUM_PARTICLES));
-    checkCudaErrors(cudaMallocManaged((void**)&this->pShape,             sizeof(ParticleShape)  * NUM_PARTICLES));
+    checkCudaErrors(cudaMalloc((void**)&this->collisionDataArray,        sizeof(CollisionData)  * NUM_PARTICLES));
+    checkCudaErrors(cudaMalloc((void**)&this->pShape,                    sizeof(ParticleShape)  * NUM_PARTICLES));
     checkCudaErrors(cudaMallocManaged((void**)&this->pMethod,            sizeof(ParticleMethod) * NUM_PARTICLES));
-    checkCudaErrors(cudaMallocManaged((void**)&this->pCollideWall,       sizeof(bool)           * NUM_PARTICLES));
-    checkCudaErrors(cudaMallocManaged((void**)&this->pCollideParticle,   sizeof(bool)           * NUM_PARTICLES));
 
-    if (!this->pCenterArray || !pCenterLastPos || !pCenterLastWPos ||
-        !this->pShape || !this->pMethod || !this->pCollideWall || !this->pCollideParticle) {
+    if (!this->pCenterArray || !this->collisionDataArray ||
+        !this->pShape || !this->pMethod) {
         printf("ERRO: Memory allocation failed!!\n"); fflush(stdout);
         return;
     }
+
+    std::vector<CollisionData> collisionDataHost(NUM_PARTICLES);
+    std::vector<ParticleShape> shapeHost(NUM_PARTICLES);
 
     auto insertByMethod = [&](ParticleMethod method) {
         int firstIndex = -1;
@@ -253,12 +234,10 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
             }
 
             this->pCenterArray[p]       = *pc;
-            this->pCenterLastPos[p]     = pc->getPos_old();
-            this->pCenterLastWPos[p]    = pc->getW_old();
-            this->pShape[p]             = *(particles[p].getShape());
+            this->pCenterArray[p].bindCollisionData(&this->collisionDataArray[p]);
+            collisionDataHost[p]        = CollisionData();
+            shapeHost[p]                = *(particles[p].getShape());
             this->pMethod[p]            = particles[p].getMethod();
-            this->pCollideWall[p]       = particles[p].getCollideWall();
-            this->pCollideParticle[p]   = particles[p].getCollideParticle();
             if (usesResolvedIbmMarkers(method))
                 this->nodesSoA[0].copyNodesFromParticle(&particles[p], p, this->pCenterArray, 0);
             if (firstIndex == -1) firstIndex = p;
@@ -272,6 +251,10 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
     insertByMethod(IBM);
     insertByMethod(PIBM);
     insertByMethod(TRACER);
+    checkCudaErrors(cudaMemcpy(this->collisionDataArray, collisionDataHost.data(),
+        sizeof(CollisionData) * NUM_PARTICLES, cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(this->pShape, shapeHost.data(),
+        sizeof(ParticleShape) * NUM_PARTICLES, cudaMemcpyHostToDevice));
 }
 
 void ParticlesSoA::freeNodesAndCenters(){
@@ -282,18 +265,12 @@ void ParticlesSoA::freeNodesAndCenters(){
     checkCudaErrors(cudaSetDevice(GPUS_TO_USE[0]));
     cudaFree(this->pCenterArray);
     this->pCenterArray = nullptr;
-    cudaFree(this->pCenterLastPos);
-    this->pCenterLastPos = nullptr;
-    cudaFree(this->pCenterLastWPos);
-    this->pCenterLastWPos = nullptr;
+    cudaFree(this->collisionDataArray);
+    this->collisionDataArray = nullptr;
     cudaFree(this->pShape);
     this->pShape = nullptr;
     cudaFree(this->pMethod);
     this->pMethod = nullptr;
-    cudaFree(this->pCollideWall);
-    this->pCollideWall = nullptr;
-    cudaFree(this->pCollideParticle);
-    this->pCollideParticle = nullptr;
 }
 
 #ifdef IBM_METHOD
@@ -571,8 +548,6 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
     //     this->pCenter.collision.lastCollisionStep[i] = -1;
     // }
     
-    pCenter->getCollision().reset(); 
-
     // for (int i = 0; i < MAX_ACTIVE_COLLISIONS; ++i) {
     //     dfloat3 displacement = pCenter->getCollision().getTangentialDisplacement(i);
     // }

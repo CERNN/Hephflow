@@ -74,6 +74,16 @@ void updateParticlePosition(
 );
 
 /**
+ * @brief Advance particle velocity, rotation, position, and oriented geometry
+ *        in one per-particle kernel.
+ */
+__global__
+void updateParticleKinematics(
+    ParticleCenter* pArray,
+    unsigned int step
+);
+
+/**
  * @brief Update the semi-axis positions using cumulative rotation and original offsets.
  * Reconstructs semi-axis position from first principles each frame to avoid error accumulation.
  * Periodic wrapping is implicit through particle_center position (which is already wrapped).

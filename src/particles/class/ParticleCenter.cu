@@ -179,6 +179,7 @@ ParticleCenter::ParticleCenter() {
     volume = 0;
     density = 0;
     movable = false;
+    collision = nullptr;
     semiAxis1_original = dfloat3(); // Will be set to current semi-axis after first setSemiAxis1 call
     semiAxis2_original = dfloat3();
     semiAxis3_original = dfloat3();
@@ -435,8 +436,13 @@ __host__ __device__ void ParticleCenter::setDiameter(dfloat diameter) { this->di
 __host__ __device__ bool ParticleCenter::getMovable() const { return this->movable; }
 __host__ __device__ void ParticleCenter::setMovable(bool movable) { this->movable = movable; }
 
-__host__ __device__ CollisionData& ParticleCenter::getCollision() { return this->collision; }
-__host__ __device__ void ParticleCenter::setCollision(const CollisionData& collision) { this->collision = collision; }
+__host__ __device__ CollisionData& ParticleCenter::getCollision() { return *this->collision; }
+__host__ __device__ void ParticleCenter::setCollision(const CollisionData& value) {
+    if (this->collision != nullptr) *this->collision = value;
+}
+__host__ __device__ void ParticleCenter::bindCollisionData(CollisionData* collisionData) {
+    this->collision = collisionData;
+}
 
 __host__ __device__ dfloat3 ParticleCenter::getSemiAxis1() const { return this->semiAxis1; }
 __host__ __device__ dfloat ParticleCenter::getSemiAxis1X() const { return this->semiAxis1.x; }
