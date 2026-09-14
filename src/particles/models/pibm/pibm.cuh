@@ -10,7 +10,25 @@
 #include "../../../saveData.cuh"
 #include "./../../class/Particle.cuh"
 
+#include "../dem/particleMovement.cuh"
+#include "../dem/collision/collisionDetection.cuh"
+
 #ifdef PARTICLE_MODEL
+
+/**
+ *  @brief Interpolate macroscopics and spread the reaction force into the eulerian fluid grid.
+ *  @param pArray: Pointer to the array of ParticleCenter objects.
+ *  @param methods: Particle coupling method for each center.
+ *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param nParticles: Total number of particle centers.
+ */
+__global__
+void spreadParticleForce(
+    ParticleCenter *pArray,
+    const ParticleMethod *methods,
+    dfloat *fMom, 
+    unsigned int nParticles
+);
 
 /**
  *  @brief Perform PIBM simulation steps including force interpolation and spreading.
@@ -28,5 +46,4 @@ void pibmSimulation(
 
 #endif //PARTICLE_MODEL
 #endif //__PARTICLE_MODEL_PIBM_CUH
-
 
