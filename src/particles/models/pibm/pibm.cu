@@ -1,10 +1,10 @@
 
-
 #include "pibm.cuh"
 
 #ifdef PARTICLE_MODEL
 
-__global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsigned int nParticles)
+__global__ 
+void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsigned int nParticles)
 {
     int p_idx = threadIdx.x + blockDim.x * blockIdx.x;
     if (p_idx >= nParticles)
@@ -23,8 +23,7 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
     dfloat3 fluid_velocity = {ux_interpolated, uy_interpolated, uz_interpolated};
 
     dfloat particle_area = M_PI * pc_i->getDiameter() * pc_i->getDiameter() / 4;
-    // dfloat3 drag_force = 2 * particle_area * (RHO_0 + mom_trilinear_interp(px, py, pz, M_RHO_INDEX, fMom)) * (fluid_velocity - pc_i->getVel());
-    dfloat3 drag_force = particle_area * (RHO_0 + mom_trilinear_interp(px, py, pz, M_RHO_INDEX, fMom)) * (fluid_velocity - pc_i->getVel());
+    dfloat3 drag_force = 2 * particle_area * (RHO_0 + mom_trilinear_interp(px, py, pz, M_RHO_INDEX, fMom)) * (fluid_velocity - pc_i->getVel());
 
     accumulateForceAndTorque(pc_i, drag_force, {0, 0, 0});
 
@@ -82,13 +81,6 @@ __global__ void spreadParticleForce(ParticleCenter *pArray, dfloat *fMom, unsign
             }
         }
     }
-
-    // printf("Drag Force         x: %e y: %e z: %e\n", drag_force.x, drag_force.y, drag_force.z);
-    // printf("Particle Position  x: %e y: %e z: %e\n", pc_i->getPosX(), pc_i->getPosY(), pc_i->getPosZ());
-    // printf("Particle Velocity  x: %e y: %e z: %e\n", pc_i->getVelX(), pc_i->getVelY(), pc_i->getVelZ());
-    // printf("Particle Ang Vel   x: %e y: %e z: %e\n", pc_i->getWX(), pc_i->getWY(), pc_i->getWZ());
-    // printf("Particle Force     x: %e y: %e z: %e\n", pc_i->getFX(), pc_i->getFY(), pc_i->getFZ());
-    // printf("Particle Moment    x: %e y: %e z: %e\n", pc_i->getMX(), pc_i->getMY(), pc_i->getMZ());
 }
 
 __host__ void pibmSimulation(

@@ -16,6 +16,19 @@
 #ifdef PARTICLE_MODEL
 
 /**
+ *  @brief Interpolate macroscopics and spread the reaction force into the eulerian fluid grid.
+ *  @param pArray: Pointer to the array of ParticleCenter objects.
+ *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param nParticles: Total number of pIBM particles to defined thread indexing rule.
+ */
+__global__
+void spreadParticleForce(
+    ParticleCenter *pArray,
+    dfloat *fMom, 
+    unsigned int nParticles
+);
+
+/**
  *  @brief Perform PIBM simulation steps including force interpolation and spreading.
  *  @param particles: Pointer to the ParticlesSoA structure containing particle data.
  *  @param fMom: Pointer to the device array containing the current macroscopic moments.
