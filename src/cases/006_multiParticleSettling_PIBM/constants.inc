@@ -63,6 +63,10 @@ constexpr int INI_STEP = 0; // initial simulation step (0 default)
     //number of particles
     #define NUM_PARTICLES 16384
 
+    // Stall-isolation run: retain translation and wall collisions while
+    // preventing collision-generated particle rotation from being advanced.
+    #define PARTICLE_ROTATION_ENABLED 0
+
     constexpr dfloat GX = 0.0;
     constexpr dfloat GY = 8.4E-04;
     constexpr dfloat GZ = 0.0;

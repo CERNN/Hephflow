@@ -331,6 +331,15 @@ void updateParticleCenterVelocityAndRotationImpl(
     //            + (1.0 - FLUID_DENSITY/pc_i->getDensity()) * g);
 
 
+    // Rotation switch for cases that need to isolate rotational dynamics.
+    // Translation and collision forces remain active.
+    #if !PARTICLE_ROTATION_ENABLED
+    pc_i->setW(dfloat3(0.0_df, 0.0_df, 0.0_df));
+    pc_i->setW_old(dfloat3(0.0_df, 0.0_df, 0.0_df));
+    pc_i->setW_avg(dfloat3(0.0_df, 0.0_df, 0.0_df));
+    return;
+    #endif
+
     // Ardekani et al. (2016), Eqs. (7)-(8): advance angular momentum and
     // iteratively couple angular velocity to the end-of-stage orientation.
     if (pc_i->getRotationFaulted()) {
