@@ -1526,7 +1526,7 @@ typedef struct deviceField{
     }
 
     #if defined BC_FORCES && defined SAVE_BC_FORCES
-    void saveBcForces(hostField &hostField){
+    void saveBcForces(hostField &hostField, int g){
         checkCudaErrors(cudaDeviceSynchronize()); 
         checkCudaErrors(cudaMemcpy(hostField.h_BC_Fx, d_BC_Fx[g], MEM_SIZE_SCALAR_LOCAL, cudaMemcpyDeviceToHost));
         checkCudaErrors(cudaMemcpy(hostField.h_BC_Fy, d_BC_Fy[g], MEM_SIZE_SCALAR_LOCAL, cudaMemcpyDeviceToHost));

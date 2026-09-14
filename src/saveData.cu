@@ -5,6 +5,8 @@
 #include <functional>
 #include <chrono>
 #include <algorithm>
+#include <cstring>
+#include <initializer_list>
 
 
 std::filesystem::path getExecutablePath() {
@@ -30,6 +32,65 @@ std::filesystem::path getExecutablePath() {
 }
 
 namespace {
+    const std::vector<size_t>& vtkToBlockedScalarIndex()
+    {
+        // The simulation stores scalars block-by-block, while VTK requires
+        // x-fastest global ordering. Build this geometry-only permutation
+        // once and reuse it for every output step.
+        static const std::vector<size_t> indices = [] {
+            const size_t vtkPointCount = static_cast<size_t>(NX) * NY * NZ;
+            std::vector<size_t> result(vtkPointCount);
+
+            for (int z = 0; z < NZ; ++z) {
+                for (int y = 0; y < NY; ++y) {
+                    for (int x = 0; x < NX; ++x) {
+                        result[idxScalarGlobal(x, y, z)] = idxScalarBlock(
+                            x % BLOCK_NX, y % BLOCK_NY, z % BLOCK_NZ,
+                            x / BLOCK_NX, y / BLOCK_NY, z / BLOCK_NZ);
+                    }
+                }
+            }
+            return result;
+        }();
+        return indices;
+    }
+
+    size_t momentBaseFromBlockedScalar(size_t blockedScalarIndex)
+    {
+        const size_t block = blockedScalarIndex / BLOCK_LBM_SIZE;
+        const size_t localNode = blockedScalarIndex - block * BLOCK_LBM_SIZE;
+        return localNode + BLOCK_LBM_SIZE * NUMBER_MOMENTS * block;
+    }
+
+    void linearizeBlockedScalars(
+        const std::vector<size_t>& vtkToBlocked,
+        std::initializer_list<dfloat*> fields)
+    {
+        if (fields.size() == 0) return;
+
+        const size_t pointCount = vtkToBlocked.size();
+        const size_t fieldBytes = pointCount * sizeof(dfloat);
+        dfloat* scratch = nullptr;
+        checkCudaErrors(cudaMallocHost(
+            reinterpret_cast<void**>(&scratch), fieldBytes * fields.size()));
+
+        for (size_t vtkIndex = 0; vtkIndex < pointCount; ++vtkIndex) {
+            size_t fieldIndex = 0;
+            for (dfloat* field : fields) {
+                scratch[fieldIndex * pointCount + vtkIndex] =
+                    field[vtkToBlocked[vtkIndex]];
+                ++fieldIndex;
+            }
+        }
+
+        size_t fieldIndex = 0;
+        for (dfloat* field : fields) {
+            std::memcpy(field, scratch + fieldIndex * pointCount, fieldBytes);
+            ++fieldIndex;
+        }
+        cudaFreeHost(scratch);
+    }
+
     std::mutex vtkSeriesMutex;
     std::vector<std::pair<std::string, double>> vtkSeriesEntries;
 
@@ -204,7 +265,7 @@ void saveMacr(const SaveDataParams* params)
     #if NODE_TYPE_SAVE
     unsigned int* nodeTypeData = params->h_nodeTypeSave;
     #endif
-    #ifdef BC_FORCES
+    #if defined(BC_FORCES) && defined(SAVE_BC_FORCES)
     dfloat* h_BC_Fx = params->h_BC_Fx;
     dfloat* h_BC_Fy = params->h_BC_Fy;
     dfloat* h_BC_Fz = params->h_BC_Fz;
@@ -258,167 +319,97 @@ void saveMacr(const SaveDataParams* params)
         }
     }
 
-    //linearize
-    size_t indexMacr;
-    for(int z = 0; z< NZ;z++){
-        for(int y = 0; y< NY;y++){
-            for(int x = 0; x< NX;x++){
-                indexMacr = idxScalarGlobal(x,y,z);
+    const std::vector<size_t>& vtkToBlocked = vtkToBlockedScalarIndex();
+    for (size_t indexMacr = 0; indexMacr < vtkToBlocked.size(); ++indexMacr) {
+        const size_t blockedScalarIndex = vtkToBlocked[indexMacr];
+        const size_t momentBase = momentBaseFromBlockedScalar(blockedScalarIndex);
 
-                rho[indexMacr] = RHO_0+h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_RHO_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-                ux[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_UX_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-                uy[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_UY_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-                uz[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_UZ_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
+        rho[indexMacr] = RHO_0 + h_fMom[momentBase + BLOCK_LBM_SIZE * M_RHO_INDEX];
+        ux[indexMacr]  = h_fMom[momentBase + BLOCK_LBM_SIZE * M_UX_INDEX];
+        uy[indexMacr]  = h_fMom[momentBase + BLOCK_LBM_SIZE * M_UY_INDEX];
+        uz[indexMacr]  = h_fMom[momentBase + BLOCK_LBM_SIZE * M_UZ_INDEX];
 
-                #ifdef OMEGA_FIELD
-                omega[indexMacr] = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_OMEGA_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]; 
-                #endif //OMEGA_FIELD
+        #ifdef OMEGA_FIELD
+        omega[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * M_OMEGA_INDEX];
+        #endif //OMEGA_FIELD
 
-                #ifdef SECOND_DIST 
-                C[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-                #endif //SECOND_DIST
-                #ifdef PHI_DIST 
-                phi[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M3_PHI_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-                #endif //PHI_DIST
-                #ifdef LAMBDA_DIST 
-                lambda[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M4_LAMBDA_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - LAMBDA_ZERO;
-                #endif //LAMBDA_DIST
-                #ifdef A_XX_DIST 
-                Axx[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, A_XX_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - CONF_ZERO;
-                #endif //A_XX_DIST
-                #ifdef A_XY_DIST 
-                Axy[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, A_XY_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - CONF_ZERO;
-                #endif //A_XY_DIST
-                #ifdef A_XZ_DIST 
-                Axz[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, A_XZ_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - CONF_ZERO;
-                #endif //A_XZ_DIST
-                #ifdef A_YY_DIST 
-                Ayy[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, A_YY_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - CONF_ZERO;
-                #endif //A_YY_DIST
-                #ifdef A_YZ_DIST 
-                Ayz[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, A_YZ_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - CONF_ZERO;
-                #endif //A_YZ_DIST
-                #ifdef A_ZZ_DIST 
-                Azz[indexMacr]  = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, A_ZZ_C_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] - CONF_ZERO;
-                #endif //A_ZZ_DIST
-                
-                #if NODE_TYPE_SAVE
-                nodeTypeSave[indexMacr] = (dfloat)hNodeType[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]; 
-                #endif //NODE_TYPE_SAVE
+        #ifdef SECOND_DIST
+        C[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * M2_C_INDEX];
+        #endif //SECOND_DIST
+        #ifdef PHI_DIST
+        phi[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * M3_PHI_INDEX];
+        #endif //PHI_DIST
+        #ifdef LAMBDA_DIST
+        lambda[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * M4_LAMBDA_INDEX] - LAMBDA_ZERO;
+        #endif //LAMBDA_DIST
+        #ifdef A_XX_DIST
+        Axx[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * A_XX_C_INDEX] - CONF_ZERO;
+        #endif //A_XX_DIST
+        #ifdef A_XY_DIST
+        Axy[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * A_XY_C_INDEX] - CONF_ZERO;
+        #endif //A_XY_DIST
+        #ifdef A_XZ_DIST
+        Axz[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * A_XZ_C_INDEX] - CONF_ZERO;
+        #endif //A_XZ_DIST
+        #ifdef A_YY_DIST
+        Ayy[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * A_YY_C_INDEX] - CONF_ZERO;
+        #endif //A_YY_DIST
+        #ifdef A_YZ_DIST
+        Ayz[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * A_YZ_C_INDEX] - CONF_ZERO;
+        #endif //A_YZ_DIST
+        #ifdef A_ZZ_DIST
+        Azz[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * A_ZZ_C_INDEX] - CONF_ZERO;
+        #endif //A_ZZ_DIST
 
-            }
-        }
+        #if NODE_TYPE_SAVE
+        nodeTypeData[indexMacr] = hNodeType[blockedScalarIndex];
+        #endif //NODE_TYPE_SAVE
     }
 
 
     #if defined BC_FORCES && defined SAVE_BC_FORCES
-        dfloat* temp_x; 
-        dfloat* temp_y;
-        dfloat* temp_z;
-        checkCudaErrors(cudaMallocHost((void**)&(temp_x), MEM_SIZE_SCALAR));
-        checkCudaErrors(cudaMallocHost((void**)&(temp_y), MEM_SIZE_SCALAR));
-        checkCudaErrors(cudaMallocHost((void**)&(temp_z), MEM_SIZE_SCALAR));
-
-
-        for(int z = 0; z< NZ;z++){
-            for(int y = 0; y< NY;y++){
-                for(int x = 0; x< NX;x++){
-                    indexMacr = idxScalarGlobal(x,y,z);
-                    temp_x[indexMacr] = h_BC_Fx[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-                    temp_y[indexMacr] = h_BC_Fy[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-                    temp_z[indexMacr] = h_BC_Fz[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-                }
-            }
-        }
-
-        checkCudaErrors(cudaMemcpy(h_BC_Fx, temp_x, MEM_SIZE_SCALAR, cudaMemcpyHostToHost));
-        checkCudaErrors(cudaMemcpy(h_BC_Fy, temp_y, MEM_SIZE_SCALAR, cudaMemcpyHostToHost));
-        checkCudaErrors(cudaMemcpy(h_BC_Fz, temp_z, MEM_SIZE_SCALAR, cudaMemcpyHostToHost));
-
-
-        cudaFreeHost(temp_x);
-        cudaFreeHost(temp_y);
-        cudaFreeHost(temp_z);
+        linearizeBlockedScalars(vtkToBlocked, {h_BC_Fx, h_BC_Fy, h_BC_Fz});
     #endif // BC_FORCES && SAVE_BC_FORCES
 
 
     #ifdef SAVE_LOCAL_FORCES
-        dfloat* temp_lx; 
-        dfloat* temp_ly;
-        dfloat* temp_lz;
-        checkCudaErrors(cudaMallocHost((void**)&(temp_lx), MEM_SIZE_SCALAR));
-        checkCudaErrors(cudaMallocHost((void**)&(temp_ly), MEM_SIZE_SCALAR));
-        checkCudaErrors(cudaMallocHost((void**)&(temp_lz), MEM_SIZE_SCALAR));
-
-
-        for(int z = 0; z< NZ;z++){
-            for(int y = 0; y< NY;y++){
-                for(int x = 0; x< NX;x++){
-                    indexMacr = idxScalarGlobal(x,y,z);
-                    temp_lx[indexMacr] = h_Local_Fx[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-                    temp_ly[indexMacr] = h_Local_Fy[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-                    temp_lz[indexMacr] = h_Local_Fz[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-                }
-            }
-        }
-
-        checkCudaErrors(cudaMemcpy(h_Local_Fx, temp_lx, MEM_SIZE_SCALAR, cudaMemcpyHostToHost));
-        checkCudaErrors(cudaMemcpy(h_Local_Fy, temp_ly, MEM_SIZE_SCALAR, cudaMemcpyHostToHost));
-        checkCudaErrors(cudaMemcpy(h_Local_Fz, temp_lz, MEM_SIZE_SCALAR, cudaMemcpyHostToHost));
-
-
-        cudaFreeHost(temp_lx);
-        cudaFreeHost(temp_ly);
-        cudaFreeHost(temp_lz);
+        linearizeBlockedScalars(vtkToBlocked, {h_Local_Fx, h_Local_Fy, h_Local_Fz});
     #endif // SAVE_LOCAL_FORCES
 
 
     // Linearize source term arrays (same block→global pattern)
     #ifdef SAVE_LOCAL_FORCES
-        // Helper macro to avoid repeating the triple-nested loop for each scalar source
-        #define LINEARIZE_SOURCE_SCALAR(hSrc, tempName) \
-        do { \
-            dfloat* tempName; \
-            checkCudaErrors(cudaMallocHost((void**)&(tempName), MEM_SIZE_SCALAR)); \
-            for(int z = 0; z< NZ;z++){ \
-                for(int y = 0; y< NY;y++){ \
-                    for(int x = 0; x< NX;x++){ \
-                        indexMacr = idxScalarGlobal(x,y,z); \
-                        tempName[indexMacr] = hSrc[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]; \
-                    } \
-                } \
-            } \
-            checkCudaErrors(cudaMemcpy(hSrc, tempName, MEM_SIZE_SCALAR, cudaMemcpyHostToHost)); \
-            cudaFreeHost(tempName); \
-        } while(0)
+        // Reuse the precomputed global-to-blocked permutation for each source.
+        #define LINEARIZE_SOURCE_SCALAR(hSrc) \
+            linearizeBlockedScalars(vtkToBlocked, {hSrc})
 
         #ifdef SECOND_DIST
-        LINEARIZE_SOURCE_SCALAR(h_Source_C, temp_sc);
+        LINEARIZE_SOURCE_SCALAR(h_Source_C);
         #endif
         #ifdef PHI_DIST
-        LINEARIZE_SOURCE_SCALAR(h_Source_Phi, temp_sp);
+        LINEARIZE_SOURCE_SCALAR(h_Source_Phi);
         #endif
         #ifdef LAMBDA_DIST
-        LINEARIZE_SOURCE_SCALAR(h_Source_Lambda, temp_sl);
+        LINEARIZE_SOURCE_SCALAR(h_Source_Lambda);
         #endif
         #ifdef CONFORMATION_TENSOR
             #ifdef A_XX_DIST
-        LINEARIZE_SOURCE_SCALAR(h_Source_Gxx, temp_sgxx);
+        LINEARIZE_SOURCE_SCALAR(h_Source_Gxx);
             #endif
             #ifdef A_XY_DIST
-        LINEARIZE_SOURCE_SCALAR(h_Source_Gxy, temp_sgxy);
+        LINEARIZE_SOURCE_SCALAR(h_Source_Gxy);
             #endif
             #ifdef A_XZ_DIST
-        LINEARIZE_SOURCE_SCALAR(h_Source_Gxz, temp_sgxz);
+        LINEARIZE_SOURCE_SCALAR(h_Source_Gxz);
             #endif
             #ifdef A_YY_DIST
-        LINEARIZE_SOURCE_SCALAR(h_Source_Gyy, temp_sgyy);
+        LINEARIZE_SOURCE_SCALAR(h_Source_Gyy);
             #endif
             #ifdef A_YZ_DIST
-        LINEARIZE_SOURCE_SCALAR(h_Source_Gyz, temp_sgyz);
+        LINEARIZE_SOURCE_SCALAR(h_Source_Gyz);
             #endif
             #ifdef A_ZZ_DIST
-        LINEARIZE_SOURCE_SCALAR(h_Source_Gzz, temp_sgzz);
+        LINEARIZE_SOURCE_SCALAR(h_Source_Gzz);
             #endif
         #endif //CONFORMATION_TENSOR
 
@@ -485,7 +476,7 @@ void saveMacr(const SaveDataParams* params)
         #if NODE_TYPE_SAVE
         saveVarVtkParams.h_nodeTypeSave = nodeTypeData;
         #endif
-        #ifdef BC_FORCES
+        #if defined(BC_FORCES) && defined(SAVE_BC_FORCES)
         saveVarVtkParams.h_BC_Fx = h_BC_Fx;
         saveVarVtkParams.h_BC_Fy = h_BC_Fy;
         saveVarVtkParams.h_BC_Fz = h_BC_Fz;
@@ -608,96 +599,103 @@ void saveMacr(const SaveDataParams* params)
             #endif //CONFORMATION_TENSOR
         #endif //SAVE_LOCAL_FORCES
         // saving files
-        std::vector<dfloat*> varArray;
+        std::vector<const void*> varArray;
         std::vector<std::string> fileArray;
+        std::vector<size_t> sizeArray;
 
-        varArray.push_back(rho); fileArray.push_back(strFileRho);
-        varArray.push_back(ux);  fileArray.push_back(strFileUx);
-        varArray.push_back(uy);  fileArray.push_back(strFileUy);
-        varArray.push_back(uz);  fileArray.push_back(strFileUz);
+        const auto addScalar = [&](const void* data, const std::string& file, size_t bytes = MEM_SIZE_SCALAR) {
+            varArray.push_back(data);
+            fileArray.push_back(file);
+            sizeArray.push_back(bytes);
+        };
+
+        addScalar(rho, strFileRho);
+        addScalar(ux, strFileUx);
+        addScalar(uy, strFileUy);
+        addScalar(uz, strFileUz);
         #ifdef OMEGA_FIELD
-        varArray.push_back(omega); fileArray.push_back(strFileOmega);
+        addScalar(omega, strFileOmega);
         #endif
         #ifdef SECOND_DIST
-        varArray.push_back(C); fileArray.push_back(strFileC);
+        addScalar(C, strFileC);
         #endif //SECOND_DIST
         #ifdef PHI_DIST
-        varArray.push_back(phi); fileArray.push_back(strFilePhi);
+        addScalar(phi, strFilePhi);
         #endif //PHI_DIST
         #ifdef LAMBDA_DIST
-        varArray.push_back(lambda); fileArray.push_back(strFileLambda);
+        addScalar(lambda, strFileLambda);
         #endif //LAMBDA_DIST
         #ifdef A_XX_DIST
-        varArray.push_back(Axx); fileArray.push_back(strFileAxx);
+        addScalar(Axx, strFileAxx);
         #endif
         #ifdef A_XY_DIST
-        varArray.push_back(Axy); fileArray.push_back(strFileAxy);
+        addScalar(Axy, strFileAxy);
         #endif
         #ifdef A_XZ_DIST
-        varArray.push_back(Axz); fileArray.push_back(strFileAxz);
+        addScalar(Axz, strFileAxz);
         #endif
         #ifdef A_YY_DIST
-        varArray.push_back(Ayy); fileArray.push_back(strFileAyy);
+        addScalar(Ayy, strFileAyy);
         #endif
         #ifdef A_YZ_DIST
-        varArray.push_back(Ayz); fileArray.push_back(strFileAyz);
+        addScalar(Ayz, strFileAyz);
         #endif
         #ifdef A_ZZ_DIST
-        varArray.push_back(Azz); fileArray.push_back(strFileAzz);
+        addScalar(Azz, strFileAzz);
         #endif
 
         #if NODE_TYPE_SAVE
-        varArray.push_back((dfloat*)nodeTypeSave);  fileArray.push_back(strFileBc);
+        addScalar(nodeTypeData, strFileBc, sizeof(unsigned int) * NUMBER_LBM_NODES);
         #endif
         #if defined(BC_FORCES) && defined(SAVE_BC_FORCES)
-        varArray.push_back(h_BC_Fx);  fileArray.push_back(strFileFx);
-        varArray.push_back(h_BC_Fy);  fileArray.push_back(strFileFy);
-        varArray.push_back(h_BC_Fz);  fileArray.push_back(strFileFz);
+        addScalar(h_BC_Fx, strFileFx);
+        addScalar(h_BC_Fy, strFileFy);
+        addScalar(h_BC_Fz, strFileFz);
         #endif
         #ifdef SAVE_LOCAL_FORCES
-        varArray.push_back(h_Local_Fx);  fileArray.push_back(strFileLocalFx);
-        varArray.push_back(h_Local_Fy);  fileArray.push_back(strFileLocalFy);
-        varArray.push_back(h_Local_Fz);  fileArray.push_back(strFileLocalFz);
+        addScalar(h_Local_Fx, strFileLocalFx);
+        addScalar(h_Local_Fy, strFileLocalFy);
+        addScalar(h_Local_Fz, strFileLocalFz);
             #ifdef SECOND_DIST
-        varArray.push_back(h_Source_C);  fileArray.push_back(strFileSourceC);
+        addScalar(h_Source_C, strFileSourceC);
             #endif
             #ifdef PHI_DIST
-        varArray.push_back(h_Source_Phi);  fileArray.push_back(strFileSourcePhi);
+        addScalar(h_Source_Phi, strFileSourcePhi);
             #endif
             #ifdef LAMBDA_DIST
-        varArray.push_back(h_Source_Lambda);  fileArray.push_back(strFileSourceLambda);
+        addScalar(h_Source_Lambda, strFileSourceLambda);
             #endif
             #ifdef CONFORMATION_TENSOR
                 #ifdef A_XX_DIST
-        varArray.push_back(h_Source_Gxx);  fileArray.push_back(strFileSourceGxx);
+        addScalar(h_Source_Gxx, strFileSourceGxx);
                 #endif
                 #ifdef A_XY_DIST
-        varArray.push_back(h_Source_Gxy);  fileArray.push_back(strFileSourceGxy);
+        addScalar(h_Source_Gxy, strFileSourceGxy);
                 #endif
                 #ifdef A_XZ_DIST
-        varArray.push_back(h_Source_Gxz);  fileArray.push_back(strFileSourceGxz);
+        addScalar(h_Source_Gxz, strFileSourceGxz);
                 #endif
                 #ifdef A_YY_DIST
-        varArray.push_back(h_Source_Gyy);  fileArray.push_back(strFileSourceGyy);
+        addScalar(h_Source_Gyy, strFileSourceGyy);
                 #endif
                 #ifdef A_YZ_DIST
-        varArray.push_back(h_Source_Gyz);  fileArray.push_back(strFileSourceGyz);
+        addScalar(h_Source_Gyz, strFileSourceGyz);
                 #endif
                 #ifdef A_ZZ_DIST
-        varArray.push_back(h_Source_Gzz);  fileArray.push_back(strFileSourceGzz);
+        addScalar(h_Source_Gzz, strFileSourceGzz);
                 #endif
             #endif //CONFORMATION_TENSOR
         #endif
         for(size_t i = 0; i < varArray.size(); ++i){
             while (savingMacrBin[i]) std::this_thread::yield();
-            saveVarBin(fileArray[i], varArray[i], MEM_SIZE_SCALAR, false, savingMacrBin[i]);
+            saveVarBin(fileArray[i], varArray[i], sizeArray[i], false, savingMacrBin[i]);
         }
     }
 }
 
 void saveVarBin(
     std::string strFile, 
-    dfloat* var, 
+    const void* var,
     size_t memSize,
     bool append,
     std::atomic<bool>& savingMacrBin)
@@ -791,24 +789,25 @@ std::vector<dfloat6> convertPointToCellTensor6(
     return cellField;
 }
 
-std::vector<int> convertPointToCellIntMode(
+std::vector<unsigned int> convertPointToCellIntMode(
     const unsigned int* pointField, size_t NX, size_t NY, size_t NZ)
 {
     size_t Ncells = (NX-1)*(NY-1)*(NZ-1);
-    std::vector<int> cellField(Ncells, 0);
+    std::vector<unsigned int> cellField(Ncells, 0);
 
     for (size_t z=0; z<NZ-1; z++)
     for (size_t y=0; y<NY-1; y++)
     for (size_t x=0; x<NX-1; x++) {
         size_t cidx = x + y*(NX-1) + z*(NX-1)*(NY-1);
-        std::map<int,int> counts;
+        std::map<unsigned int, int> counts;
 
         for(int dz=0; dz<=1; dz++)
         for(int dy=0; dy<=1; dy++)
         for(int dx=0; dx<=1; dx++)
             counts[pointField[idxScalarGlobal(x+dx, y+dy, z+dz)]]++;
 
-        int mode=0,maxCount=0;
+        unsigned int mode = 0;
+        int maxCount = 0;
         for(auto &kv : counts)
             if(kv.second>maxCount) { maxCount=kv.second; mode=kv.first; }
 
@@ -858,7 +857,7 @@ void saveVarVTK(const SaveDataParams* params)
     #if NODE_TYPE_SAVE
     unsigned int* nodeTypeData = params->h_nodeTypeSave;
     #endif
-    #ifdef BC_FORCES
+    #if defined(BC_FORCES) && defined(SAVE_BC_FORCES)
     dfloat* h_BC_Fx = params->h_BC_Fx;
     dfloat* h_BC_Fy = params->h_BC_Fy;
     dfloat* h_BC_Fz = params->h_BC_Fz;
@@ -974,7 +973,7 @@ void saveVarVTK(const SaveDataParams* params)
             #ifdef SAVE_BC_FORCES
                 ofs << "VECTORS forces " << VTK_TYPE << "\n";
                 for (size_t i = 0; i < N; ++i) {
-                    dfloat f[3] = { fx[i], fy[i], fz[i] };
+                    dfloat f[3] = { h_BC_Fx[i], h_BC_Fy[i], h_BC_Fz[i] };
                     writeBigEndian(ofs, f, 3);
                 }
             #endif //SAVE_BC_FORCES
@@ -1046,9 +1045,9 @@ void saveVarVTK(const SaveDataParams* params)
             #endif //SAVE_LOCAL_FORCES
 
             #if NODE_TYPE_SAVE
-                ofs << "SCALARS bc int 1\n"
+                ofs << "SCALARS bc unsigned_int 1\n"
                     << "LOOKUP_TABLE default\n";
-                writeBigEndian(ofs, NODE_TYPE_SAVE_PARAMS N);
+                writeBigEndian(ofs, nodeTypeData, N);
             #endif //NODE_TYPE_SAVE
         }, &savingMacrVtk});
     }else{ 
@@ -1123,10 +1122,10 @@ void saveVarVTK(const SaveDataParams* params)
             #endif //CONFORMATION_TENSOR
 
             #ifdef SAVE_BC_FORCES
-                auto f_cell = convertPointToCellVector(fx, fy, fz,NX,NY,NZ);
+                auto f_cell = convertPointToCellVector(h_BC_Fx, h_BC_Fy, h_BC_Fz, NX, NY, NZ);
                 ofs << "VECTORS forces  " << VTK_TYPE << "\n";
                 for (size_t i = 0; i < Ncells; ++i) {
-                    dfloat f[3] = { fx[i], fy[i], fz[i] };
+                    dfloat f[3] = { f_cell[i].x, f_cell[i].y, f_cell[i].z };
                     writeBigEndian(ofs, f, 3);
                 }
             #endif //SAVE_BC_FORCES
@@ -1230,8 +1229,8 @@ void saveVarVTK(const SaveDataParams* params)
             #endif //SAVE_LOCAL_FORCES
 
             #if NODE_TYPE_SAVE
-                auto bc_cell = convertPointToCellIntMode(nodeTypeSave,NX,NY,NZ);
-                ofs << "SCALARS bc int 1\n"
+                auto bc_cell = convertPointToCellIntMode(nodeTypeData, NX, NY, NZ);
+                ofs << "SCALARS bc unsigned_int 1\n"
                     << "LOOKUP_TABLE default\n";
                 writeBigEndian(ofs, bc_cell.data(), Ncells);
             #endif //NODE_TYPE_SAVE

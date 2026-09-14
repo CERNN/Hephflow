@@ -481,7 +481,7 @@ typedef struct hostField{
                 #if NODE_TYPE_SAVE
                 saveMacrParams.h_nodeTypeSave = nodeTypeSave;
                 #endif
-                #ifdef BC_FORCES
+                #if defined(BC_FORCES) && defined(SAVE_BC_FORCES)
                 saveMacrParams.h_BC_Fx = h_BC_Fx;
                 saveMacrParams.h_BC_Fy = h_BC_Fy;
                 saveMacrParams.h_BC_Fz = h_BC_Fz;
@@ -562,7 +562,7 @@ typedef struct hostField{
             #if NODE_TYPE_SAVE
             saveMacrParams.h_nodeTypeSave = nodeTypeSave;
             #endif
-            #ifdef BC_FORCES
+            #if defined(BC_FORCES) && defined(SAVE_BC_FORCES)
             saveMacrParams.h_BC_Fx = h_BC_Fx;
             saveMacrParams.h_BC_Fy = h_BC_Fy;
             saveMacrParams.h_BC_Fz = h_BC_Fz;

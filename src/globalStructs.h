@@ -812,7 +812,7 @@ struct SaveDataParams {
     unsigned int* h_nodeTypeSave;
     #endif
     
-    #ifdef BC_FORCES
+    #if defined(BC_FORCES) && defined(SAVE_BC_FORCES)
     dfloat* h_BC_Fx;
     dfloat* h_BC_Fy;
     dfloat* h_BC_Fz;

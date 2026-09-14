@@ -77,7 +77,7 @@ void saveMacr(const SaveDataParams* params);
 */
 void saveVarBin(
     std::string strFile, 
-    dfloat* var, 
+    const void* var,
     size_t memSize,
     bool append,
     std::atomic<bool>& savingMacrBin
@@ -149,9 +149,9 @@ std::vector<dfloat6> convertPointToCellTensor6(
  *  @param NX Number of points in the X direction
  *  @param NY Number of points in the Y direction
  *  @param NZ Number of points in the Z direction
- *  @return std::vector<int> Vector containing integer values aggregated at cell centers
+ *  @return Vector containing unsigned node-type values aggregated at cell centers
  */
-std::vector<int> convertPointToCellIntMode(
+std::vector<unsigned int> convertPointToCellIntMode(
     const unsigned int* pointField,
     size_t NX,
     size_t NY,
