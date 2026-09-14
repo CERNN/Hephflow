@@ -52,6 +52,12 @@ struct MethodRange {
 
 enum ParticleShape { SPHERE = 0 , CAPSULE = 1, ELLIPSOID = 2, GRID = 3, RANDOM = 4};
 
+enum ParticleCollisionFlag : unsigned char {
+    PARTICLE_COLLISION_DISABLED = 0,
+    PARTICLE_COLLISION_WITH_PARTICLES = 1u << 0,
+    PARTICLE_COLLISION_WITH_WALLS = 1u << 1
+};
+
 class Particle {
     public:
         __host__ __device__ Particle();
@@ -155,6 +161,10 @@ class ParticlesSoA{
         __host__ __device__ ParticleMethod* getPMethod() const;
         __host__ __device__ void setPMethod(ParticleMethod* pMethod);
 
+        __host__ __device__ const unsigned char* getCollisionFlags() const;
+        __host__ bool hasParticleCollisions() const;
+        __host__ bool hasWallCollisions() const;
+
         __host__ const MethodRange& ParticlesSoA::getMethodRange(ParticleMethod method) const;
         __host__ void ParticlesSoA::setMethodRange(ParticleMethod method, int first, int last);
         __host__ int ParticlesSoA::getMethodCount(ParticleMethod method) const;
@@ -167,6 +177,9 @@ class ParticlesSoA{
         CollisionData* collisionDataArray;
         ParticleShape* pShape;
         ParticleMethod* pMethod;
+        unsigned char* collisionFlags;
+        bool particleCollisionsEnabled;
+        bool wallCollisionsEnabled;
         std::map<ParticleMethod, MethodRange> methodRanges;
 
         std::vector<ParticleCenter> centerStorage;

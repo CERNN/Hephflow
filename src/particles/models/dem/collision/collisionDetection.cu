@@ -9,10 +9,13 @@
 
 //collision
 __global__
-void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, ParticleWallForces *d_pwForces, unsigned int step){
-    /* Maps a 1D array to a Floyd triangle, where the last row is for checking
-    collision against the wall and the other ones to check collision between 
-    particles, with index given by row/column. Example for 7 particles:
+void particlesCollisionHandler(
+    ParticleShape *shape,
+    ParticleCenter *pArray,
+    const unsigned char *collisionFlags,
+    unsigned int step){
+    /* Maps a 1D array to the strict lower triangle, with one thread for each
+    unique particle pair. Example for 7 particles:
 
     FLOYD TRIANGLE
         c0  c1  c2  c3  c4  c5  c6
@@ -31,44 +34,55 @@ void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, Par
     Index 13 will compare p[3] (column) and p[5] (row)
     Index 20 will compare p[5] (column) and p[6] (row)
 
-    For the last column, the particles check collision against the wall.
-    Index 21 will check p[0] (column) collision against the wall
-    Index 27 will check p[6] (column) collision against the wall
-    Index 24 will check p[3] (column) collision against the wall
-
-    FROM INDEX TO ROW/COLUMN
-    Starting column/row from 1, the n'th row always ends (n)*(n+1)/2+1. So:
-
-    k = (n)*(n+1)/2+1
-    n^2 + n - (2k+1) = 0
-
-    (with k=particle index)
-    n_row = ceil((-1 + Sqrt(1 + 8(k+1))) / 2)
-    n_column = k - n_row * (n_row - 1) / 2
+    The inverse triangular estimate is evaluated in double precision and then
+    corrected using exact 64-bit triangular numbers. The correction is needed
+    because applying ceil() directly to a single-precision square root creates
+    self-pairs and skipped/duplicated pairs for sufficiently large arrays.
     */
-    const unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    const unsigned long long idx =
+        static_cast<unsigned long long>(threadIdx.x) +
+        static_cast<unsigned long long>(blockDim.x) * blockIdx.x;
 
     if(idx >= TOTAL_PCOLLISION_THREADS)
         return;
-    
-    const unsigned int row = ceil((-1.0+sqrt((dfloat)1+8*(idx+1)))/2);
-    const unsigned int column = idx - ((row-1)*row)/2;
+
+    const CollisionPairIndex pair = collisionPairFromLinearIndex(idx);
+    const unsigned int row = pair.row;
+    const unsigned int column = pair.column;
+
+    if (row >= NUM_PARTICLES || column >= row)
+        return;
+
+    const unsigned char pairMask = PARTICLE_COLLISION_WITH_PARTICLES;
+    if ((collisionFlags[column] & pairMask) == 0 ||
+        (collisionFlags[row] & pairMask) == 0)
+        return;
 
     ParticleCenter* pc_i = &pArray[column];
     ParticleShape* shape_i = &shape[column];
-   
-    //collision against walls
-    if(row == NUM_PARTICLES){
-        if(!pc_i->getMovable())
-            return;
-        checkCollisionWalls(shape_i,pc_i,d_pwForces,step);
-    }else{    //Collision between particles
-        ParticleCenter* pc_j = &pArray[row]; 
-        ParticleShape* shape_j = &shape[row];
-        if(!pc_i->getMovable() && !pc_j->getMovable())
-            return;
-        checkCollisionBetweenParticles(column,row,shape_i,shape_j,pc_i,pc_j,step);
-    }
+    ParticleCenter* pc_j = &pArray[row];
+    ParticleShape* shape_j = &shape[row];
+    if(!pc_i->getMovable() && !pc_j->getMovable())
+        return;
+    checkCollisionBetweenParticles(column,row,shape_i,shape_j,pc_i,pc_j,step);
+}
+
+__global__
+void particleWallCollisionHandler(
+    ParticleShape *shape,
+    ParticleCenter *pArray,
+    const unsigned char *collisionFlags,
+    ParticleWallForces *d_pwForces,
+    unsigned int step){
+    const unsigned int particle = threadIdx.x + blockDim.x * blockIdx.x;
+    if (particle >= NUM_PARTICLES ||
+        (collisionFlags[particle] & PARTICLE_COLLISION_WITH_WALLS) == 0)
+        return;
+
+    ParticleCenter* pc = &pArray[particle];
+    if (!pc->getMovable())
+        return;
+    checkCollisionWalls(&shape[particle], pc, d_pwForces, step);
 }
 
 __device__

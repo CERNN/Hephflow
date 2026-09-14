@@ -18,17 +18,15 @@
 #endif
 #define MAX_ACTIVE_COLLISIONS (FIRST_PARTICLE_COLLISION_SLOT + MAX_ACTIVE_PARTICLE_COLLISIONS)
 
-// For IBM particles collision, the total of threads must be 
-// totalThreads = NUM_PARTICLES*(NUM_PARTICLES+1)/2
-constexpr unsigned int TOTAL_PCOLLISION_THREADS = (NUM_PARTICLES*(NUM_PARTICLES+1))/2;
-// Threads for IBM particles collision 
-constexpr unsigned int TOTAL_PCOLLISION = (TOTAL_PCOLLISION_THREADS > 64) ? 
-    64 : TOTAL_PCOLLISION_THREADS;
-// Grid for IBM particles collision
-constexpr unsigned int GRID_PCOLLISION = 
-    (TOTAL_PCOLLISION_THREADS % TOTAL_PCOLLISION ? 
-        (TOTAL_PCOLLISION_THREADS / TOTAL_PCOLLISION + 1)
-        : (TOTAL_PCOLLISION_THREADS / TOTAL_PCOLLISION));
+// One thread per unique particle pair. Wall checks use the ordinary
+// one-thread-per-particle launch and are intentionally kept separate.
+constexpr unsigned long long TOTAL_PCOLLISION_THREADS =
+    (static_cast<unsigned long long>(NUM_PARTICLES) * (NUM_PARTICLES - 1ULL)) / 2ULL;
+constexpr unsigned int TOTAL_PCOLLISION =
+    TOTAL_PCOLLISION_THREADS > 64ULL ? 64U : static_cast<unsigned int>(TOTAL_PCOLLISION_THREADS);
+constexpr unsigned int GRID_PCOLLISION = TOTAL_PCOLLISION_THREADS == 0ULL ? 0U :
+    static_cast<unsigned int>((TOTAL_PCOLLISION_THREADS + TOTAL_PCOLLISION - 1ULL) /
+                              TOTAL_PCOLLISION);
 
 
 

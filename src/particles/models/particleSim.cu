@@ -143,8 +143,16 @@ void particleSimulation(
     // Calculate collision force between particles
     ParticleCenter* pArray = particles->getPCenterArray();
     ParticleShape* shape = particles->getPShape();
+    const unsigned char* collisionFlags = particles->getCollisionFlags();
     updateParticleOldValues<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(pArray,step);
-    particlesCollisionHandler<<<GRID_PCOLLISION, TOTAL_PCOLLISION, 0, streamParticles[0]>>>(shape,pArray,d_pwForces,step);
+    if (particles->hasWallCollisions()) {
+        particleWallCollisionHandler<<<GRID_PARTICLES, THREADS_PARTICLES, 0, streamParticles[0]>>>(
+            shape, pArray, collisionFlags, d_pwForces, step);
+    }
+    if (particles->hasParticleCollisions() && TOTAL_PCOLLISION_THREADS > 0ULL) {
+        particlesCollisionHandler<<<GRID_PCOLLISION, TOTAL_PCOLLISION, 0, streamParticles[0]>>>(
+            shape, pArray, collisionFlags, step);
+    }
     #ifdef PARTICLE_FORCE_DEBUG
     checkCudaErrors(cudaStreamSynchronize(streamParticles[0]));
     captureCollisionSnapshot(pArray, particles->getCollisionDataArray(), step);

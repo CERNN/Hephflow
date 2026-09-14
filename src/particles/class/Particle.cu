@@ -53,6 +53,9 @@ ParticlesSoA::ParticlesSoA() {
     collisionDataArray = nullptr;
     pShape = nullptr;
     pMethod = nullptr;
+    collisionFlags = nullptr;
+    particleCollisionsEnabled = false;
+    wallCollisionsEnabled = false;
 }
 
 __host__ 
@@ -72,6 +75,10 @@ ParticlesSoA::~ParticlesSoA() {
     if (pMethod) {
         cudaFree(pMethod);
         pMethod = nullptr;
+    }
+    if (collisionFlags) {
+        cudaFree(collisionFlags);
+        collisionFlags = nullptr;
     }
 }
 
@@ -100,6 +107,10 @@ __host__ __device__ void ParticlesSoA::setPShape(ParticleShape* pShape) {this->p
 
 __host__ __device__ ParticleMethod* ParticlesSoA::getPMethod() const {return this->pMethod;}
 __host__ __device__ void ParticlesSoA::setPMethod(ParticleMethod* pMethod) {this->pMethod = pMethod;}
+__host__ __device__ const unsigned char* ParticlesSoA::getCollisionFlags() const {return this->collisionFlags;}
+__host__ __device__ dfloat3* ParticlesSoA::getPibmForceArray() const {return this->pibmForceArray;}
+__host__ bool ParticlesSoA::hasParticleCollisions() const {return this->particleCollisionsEnabled;}
+__host__ bool ParticlesSoA::hasWallCollisions() const {return this->wallCollisionsEnabled;}
 
 __host__
 const MethodRange& ParticlesSoA::getMethodRange(ParticleMethod method) const {
@@ -214,8 +225,10 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
     checkCudaErrors(cudaMalloc((void**)&this->collisionDataArray,        sizeof(CollisionData)  * NUM_PARTICLES));
     checkCudaErrors(cudaMalloc((void**)&this->pShape,                    sizeof(ParticleShape)  * NUM_PARTICLES));
     checkCudaErrors(cudaMallocManaged((void**)&this->pMethod,            sizeof(ParticleMethod) * NUM_PARTICLES));
+    checkCudaErrors(cudaMalloc((void**)&this->collisionFlags,            sizeof(unsigned char)  * NUM_PARTICLES));
 
     if (!this->pCenterArray || !this->collisionDataArray ||
+        !this->pShape || !this->pMethod || !this->collisionFlags ||
         !this->pShape || !this->pMethod) {
         printf("ERRO: Memory allocation failed!!\n"); fflush(stdout);
         return;
@@ -223,6 +236,9 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
 
     std::vector<CollisionData> collisionDataHost(NUM_PARTICLES);
     std::vector<ParticleShape> shapeHost(NUM_PARTICLES);
+    std::vector<unsigned char> collisionFlagsHost(NUM_PARTICLES, PARTICLE_COLLISION_DISABLED);
+    particleCollisionsEnabled = false;
+    wallCollisionsEnabled = false;
 
     auto insertByMethod = [&](ParticleMethod method) {
         int firstIndex = -1;
@@ -243,6 +259,14 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
             collisionDataHost[p]        = CollisionData();
             shapeHost[p]                = *(particles[p].getShape());
             this->pMethod[p]            = particles[p].getMethod();
+            if (particles[p].getCollideParticle()) {
+                collisionFlagsHost[p] |= PARTICLE_COLLISION_WITH_PARTICLES;
+                particleCollisionsEnabled = true;
+            }
+            if (particles[p].getCollideWall()) {
+                collisionFlagsHost[p] |= PARTICLE_COLLISION_WITH_WALLS;
+                wallCollisionsEnabled = true;
+            }
             if (usesResolvedIbmMarkers(method))
                 this->nodesSoA[0].copyNodesFromParticle(&particles[p], p, this->pCenterArray, 0);
             if (firstIndex == -1) firstIndex = p;
@@ -260,6 +284,9 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
         sizeof(CollisionData) * NUM_PARTICLES, cudaMemcpyHostToDevice));
     checkCudaErrors(cudaMemcpy(this->pShape, shapeHost.data(),
         sizeof(ParticleShape) * NUM_PARTICLES, cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(this->collisionFlags, collisionFlagsHost.data(),
+        sizeof(unsigned char) * NUM_PARTICLES, cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemset(this->pibmForceArray, 0, sizeof(dfloat3) * NUM_PARTICLES));
 }
 
 void ParticlesSoA::freeNodesAndCenters(){
@@ -276,6 +303,10 @@ void ParticlesSoA::freeNodesAndCenters(){
     this->pShape = nullptr;
     cudaFree(this->pMethod);
     this->pMethod = nullptr;
+    cudaFree(this->collisionFlags);
+    this->collisionFlags = nullptr;
+    this->particleCollisionsEnabled = false;
+    this->wallCollisionsEnabled = false;
 }
 
 #ifdef PIBM_METHOD

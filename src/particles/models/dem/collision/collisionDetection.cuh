@@ -18,6 +18,7 @@
 #include "../../../class/Particle.cuh"
 #include "collision.cuh"
 #include "nearFieldForces.cuh"
+#include "collisionPairIndex.cuh"
 
 #ifdef PARTICLE_MODEL
 
@@ -42,7 +43,19 @@
  *  @param step: The current time step for collision processing.
  */
 __global__
-void particlesCollisionHandler(ParticleShape *shape, ParticleCenter *pArray, ParticleWallForces *d_pwForces, unsigned int step);
+void particlesCollisionHandler(
+    ParticleShape *shape,
+    ParticleCenter *pArray,
+    const unsigned char *collisionFlags,
+    unsigned int step);
+
+__global__
+void particleWallCollisionHandler(
+    ParticleShape *shape,
+    ParticleCenter *pArray,
+    const unsigned char *collisionFlags,
+    ParticleWallForces *d_pwForces,
+    unsigned int step);
 
 // collision between particles themselves
 /**
