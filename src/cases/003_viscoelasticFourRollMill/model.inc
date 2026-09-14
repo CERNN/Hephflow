@@ -31,6 +31,7 @@
                                // (useful for turbulence)
 
 #define TREAT_DATA_INCLUDE     // Include data treatment routines
+#define FORCE_FIELD_INCLUDE    // Include spatially-varying body force field
 
 
 

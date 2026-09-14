@@ -15,6 +15,8 @@
 
 #ifdef PARTICLE_MODEL
 
+#include <new>
+
 #include "particles/class/Particle.cuh"
 #include "particles/utils/particlesReport.cuh"
 #include "particles/models/particleSim.cuh"

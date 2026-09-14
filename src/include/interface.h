@@ -16,8 +16,7 @@
 #define INTERFACE_BC_BACK_PERIO (threadIdx.z == 0)
 #define INTERFACE_BC_BACK_BLOCK (threadIdx.z == 0 && z !=0)
 #define INTERFACE_BC_FRONT_PERIO (threadIdx.z == (BLOCK_NZ - 1))
-#define INTERFACE_BC_FRONT_BLOCK (threadIdx.z == (BLOCK_NZ - 1) && z!=(NZ-1))
-
+#define INTERFACE_BC_FRONT_BLOCK (threadIdx.z == (BLOCK_NZ - 1) && z!=((NZ/N_GPUS)-1))
 
 #ifdef BC_X_WALL
     #define INTERFACE_BC_WEST   INTERFACE_BC_WEST_BLOCK

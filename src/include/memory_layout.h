@@ -16,19 +16,23 @@
 /* ============================= VELOCITY SETS ============================= */
 
 #ifdef D3Q19
-    #include "fragments/velocitySets/D3Q19.inc"
+    #include "../fragments/velocitySets/D3Q19.inc"
 #endif //D3Q19
 #ifdef D3Q27
-    #include "fragments/velocitySets/D3Q27.inc"
+    #include "../fragments/velocitySets/D3Q27.inc"
 #endif //D3Q27
 
 // #define SECOND_DIST
 #ifdef D3G7
-    #include "fragments/velocitySets/D3G7.inc"
+    #include "../fragments/velocitySets/D3G7.inc"
 #endif //D3G7
 #ifdef D3G19
-    #include "fragments/velocitySets/D3G19.inc"
+    #include "../fragments/velocitySets/D3G19.inc"
 #endif //D3G19
+#ifdef D3G27
+    #include "fragments/velocitySets/D3G27.inc"
+#endif //D3G27
+
 
 
 /* ========================== MEMORY SIZE CONSTANTS ======================== */
@@ -70,6 +74,12 @@ constexpr BlockDim optimalBlockDimArray = findOptimalBlockDimensions(MAX_ELEMENT
 #define BLOCK_LBM_SIZE (BLOCK_NX * BLOCK_NY * BLOCK_NZ)
 
 const size_t BLOCK_LBM_SIZE_POP = BLOCK_LBM_SIZE * (Q - 1);
+#ifdef SECOND_DIST
+    const size_t BLOCK_LBM_G_SIZE_POP = BLOCK_LBM_SIZE * (GQ - 1);    
+#else
+    const size_t BLOCK_LBM_G_SIZE_POP = 0;
+#endif //SECOND_DIST
+
 
 const size_t BLOCK_FACE_XY = BLOCK_NX * BLOCK_NY;
 const size_t BLOCK_FACE_XZ = BLOCK_NX * BLOCK_NZ;
@@ -85,13 +95,25 @@ const size_t BLOCK_SIZE = BLOCK_LBM_SIZE + BLOCK_GHOST_SIZE;
 const size_t NUM_BLOCK_X = (NX / BLOCK_NX) + (NX % BLOCK_NX > 0 ? 1 : 0);
 const size_t NUM_BLOCK_Y = (NY / BLOCK_NY) + (NY % BLOCK_NY > 0 ? 1 : 0);
 const size_t NUM_BLOCK_Z = (NZ / BLOCK_NZ) + (NZ % BLOCK_NZ > 0 ? 1 : 0);
+const size_t NUM_BLOCK_Z_LOCAL = ((NZ/N_GPUS) / BLOCK_NZ) + ((NZ/N_GPUS)  % BLOCK_NZ > 0 ? 1 : 0);
 
 const size_t NUM_BLOCK = NUM_BLOCK_X * NUM_BLOCK_Y * NUM_BLOCK_Z;
+const size_t NUM_BLOCK_LOCAL = NUM_BLOCK_X * NUM_BLOCK_Y * NUM_BLOCK_Z_LOCAL;
 
 const size_t NUMBER_LBM_NODES = NUM_BLOCK * BLOCK_LBM_SIZE;
+const size_t NUMBER_LBM_NODES_LOCAL = NUM_BLOCK_LOCAL * BLOCK_LBM_SIZE;
+
 const size_t NUMBER_GHOST_FACE_XY = BLOCK_NX*BLOCK_NY*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z;
 const size_t NUMBER_GHOST_FACE_XZ = BLOCK_NX*BLOCK_NZ*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z;
 const size_t NUMBER_GHOST_FACE_YZ = BLOCK_NY*BLOCK_NZ*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z;
+
+const size_t NUMBER_GHOST_FACE_XY_LOCAL = BLOCK_NX*BLOCK_NY*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z_LOCAL;
+const size_t NUMBER_GHOST_FACE_XZ_LOCAL = BLOCK_NX*BLOCK_NZ*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z_LOCAL;
+const size_t NUMBER_GHOST_FACE_YZ_LOCAL = BLOCK_NY*BLOCK_NZ*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z_LOCAL;
+
+// Single-plane size for P2P inbox buffers (Aux). Only 1 plane is ever received
+// from a neighbor GPU; allocating NUM_BLOCK_Z_LOCAL planes is wasteful.
+const size_t NUMBER_GHOST_FACE_XY_AUX = BLOCK_NX*BLOCK_NY*NUM_BLOCK_X*NUM_BLOCK_Y;
 
 /* ======================== MEMORY ALLOCATION SIZES ======================== */
 
@@ -103,8 +125,11 @@ const size_t NUMBER_LBM_POP_NODES = NX * NY * NZ;
 
 //memory size
 const size_t MEM_SIZE_SCALAR = sizeof(dfloat) * NUMBER_LBM_NODES;
+const size_t MEM_SIZE_SCALAR_LOCAL = sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL;
 const size_t MEM_SIZE_POP = sizeof(dfloat) * NUMBER_LBM_POP_NODES * Q;
 const size_t MEM_SIZE_MOM = sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS;
+const size_t MEM_SIZE_MOM_LOCAL = sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL * NUMBER_MOMENTS;
+
 
 const size_t MEM_SIZE_MAP_BC = sizeof(uint32_t) * NUMBER_LBM_NODES;
 
@@ -128,6 +153,10 @@ const size_t MEM_SIZE_MAP_BC = sizeof(uint32_t) * NUMBER_LBM_NODES;
     const size_t CONFORMATION_GRAD_BLOCK_SIZE = 0;
 #endif //COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
 
-constexpr int MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_SIZE_POP, myMax(VEL_GRAD_BLOCK_SIZE, CONFORMATION_GRAD_BLOCK_SIZE))*sizeof(dfloat);
+
+constexpr int LBM_MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_SIZE_POP, myMax(VEL_GRAD_BLOCK_SIZE, CONFORMATION_GRAD_BLOCK_SIZE))*sizeof(dfloat);
+constexpr int LBM_G_MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_G_SIZE_POP,1)*sizeof(dfloat);
+
+constexpr int MAX_SHARED_MEMORY_SIZE = myMax(LBM_MAX_SHARED_MEMORY_SIZE, LBM_G_MAX_SHARED_MEMORY_SIZE);
 
 #endif //__MEMORY_LAYOUT_H

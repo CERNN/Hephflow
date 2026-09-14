@@ -98,7 +98,7 @@ constexpr dfloat PW_REST_COEF = 0.9;        // Particle-wall restitution
 
 /* --------------------- MATERIAL PROPERTIES --------------------- */
 // Particle material properties
-constexpr dfloat PARTICLE_YOUNG_MODULUS = 0.5;  // Young's modulus (Pa)
+constexpr dfloat PARTICLE_YOUNG_MODULUS = 10;  // Young's modulus (Pa)
 constexpr dfloat PARTICLE_POISSON_RATIO = 0.3; // Poisson's ratio
 
 // Wall material properties
@@ -106,3 +106,12 @@ constexpr dfloat WALL_YOUNG_MODULUS = 100.0;    // Young's modulus (Pa)
 constexpr dfloat WALL_POISSON_RATIO = 0.3;     // Poisson's ratio
 
 /* ----- END CONSTANTS CONFIGURATION ----- */
+
+
+/* --------------------- COLLISION DAMPING CONSTANTS --------------------- */
+// Sphere-wall collision constants (compile-time)
+
+constexpr dfloat SPHERE_WALL_DAMPING_CONST = (-2.0 * constexprLn(PW_REST_COEF) / (sqrtt(M_PI * M_PI + constexprLn(PW_REST_COEF) * constexprLn(PW_REST_COEF))));
+//constexpr dfloat SPHERE_WALL_DAMPING_CONST = 0.0; 
+constexpr dfloat SPHERE_SPHERE_DAMPING_CONST = (-2.0 * constexprLn(PP_REST_COEF) / (sqrtt(M_PI * M_PI + constexprLn(PP_REST_COEF) * constexprLn(PP_REST_COEF))));
+//constexpr dfloat SPHERE_SPHERE_DAMPING_CONST = 0.0;

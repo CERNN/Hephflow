@@ -34,9 +34,8 @@ void ParticleField::allocateMemory() {
         printf("Warning: ParticleField memory already allocated\n");
         return;
     }
-
-    // Allocate host memory for particles (using new[] to call constructors)
-    particles = new Particle[NUM_PARTICLES];
+    // Allocate host memory for particles
+    particles = new (std::nothrow) Particle[NUM_PARTICLES];
     if (particles == nullptr) {
         printf("Error: Failed to allocate memory for particles\n");
         exit(EXIT_FAILURE);
@@ -48,6 +47,7 @@ void ParticleField::allocateMemory() {
         printf("Error: Failed to allocate device memory for wall forces: %s\n", 
                cudaGetErrorString(err));
         delete[] particles;
+        particles = nullptr;
         exit(EXIT_FAILURE);
     }
 

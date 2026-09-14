@@ -24,8 +24,8 @@
 
 /* --------------------- OUTPUT CONTROL --------------------- */
 #define ONLY_FINAL_MACRO (false)            // Save only final timestep macroscopic
-#define MACR_SAVE ((int)t_c/20)             // Macroscopic save frequency (steps)
-#define REPORT_SAVE (false)                 // Console report frequency (steps)
+#define MACR_SAVE ((int)t_c)             // Macroscopic save frequency (steps)
+#define REPORT_SAVE ((int)t_c/20)                // Console report frequency (steps)
 #define VTK_SAVE (true)                     // Enable VTK output for visualization
 #define BIN_SAVE (false)                    // Enable binary output
 

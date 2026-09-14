@@ -5,14 +5,18 @@
  * ========================================================================== */
 
 /* --------------------- OUTPUT FILES --------------------- */
+#ifdef TESTS
+#define ID_SIM "test"                     // Isolated physics-regression output
+#else
 #define ID_SIM "000"                      // Prefix for simulation's files
+#endif
 #define PATH_FILES "SingleParticleSettling" // Path to save simulation's files
 
 /* --------------------- OUTPUT FORMATS --------------------- */
-#define VTK_SAVE (true)                   // Save VTK format (ParaView)
+#define VTK_SAVE (false)                  // Save VTK format (ParaView)
 #define BIN_SAVE (false)                  // Save binary format
 #define ONLY_FINAL_MACRO (false)          // Save only last time step macroscopic
-#define MACR_SAVE (1000)                  // Save macroscopic fields every # timesteps
+#define MACR_SAVE (false)                 // Save macroscopic fields every # timesteps
 #define REPORT_SAVE (false)               // Console report frequency (steps)
 
 /* --------------------- DATA TREATMENT --------------------- */
@@ -27,7 +31,7 @@
 /* --------------------- PARTICLE OUTPUT --------------------- */
 #define PARTICLES_SAVE (100)               // Save particles info every given steps
 #define PARTICLES_DATA_REPORT (false)      // Report IBM treated data every given steps
-#define IBM_PARTICLES_NODES_SAVE true      // Saves particles nodes data
+#define IBM_PARTICLES_NODES_SAVE false     // Saves particles nodes data
 
 //#define PARTICLE_DEBUG
 //#define BC_FORCES                        // Create scalar field for BC reaction forces

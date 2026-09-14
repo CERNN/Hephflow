@@ -1,0 +1,60 @@
+const dfloat3 b = dfloat3(x, y, z);
+h_curvedBC_array[curvedBCCount].b = b;
+
+const dfloat3 duct_center = dfloat3(DUCT_CENTER_X, DUCT_CENTER_Y, z); // cylnder is on the z direction
+const dfloat max_radius = OUTER_RADIUS; 
+const dfloat lattice_dx = sqrt(2.0); // TODO: evaluate its effect
+
+const dfloat3 center_to_b = b - duct_center;
+const dfloat3 unit_normal = vector_normalize(center_to_b);
+
+const dfloat3 wall = duct_center + unit_normal * max_radius;
+
+h_curvedBC_array[curvedBCCount].w = wall;
+
+// OUTER_ROTATION is the angular velocity around the duct axis and
+// OUTER_VELOCITY is an axial wall velocity. Both are zero for this case.
+h_curvedBC_array[curvedBCCount].wallVel = dfloat3(
+    -OUTER_ROTATION * (wall.y - duct_center.y),
+     OUTER_ROTATION * (wall.x - duct_center.x),
+     OUTER_VELOCITY);
+h_curvedBC_array[curvedBCCount].vel = dfloat3(0.0_df, 0.0_df, 0.0_df);
+
+#ifdef CONFORMATION_TENSOR
+h_curvedBC_array[curvedBCCount].conformation[0] = CONF_ZERO + 1.0_df;
+h_curvedBC_array[curvedBCCount].conformation[1] = CONF_ZERO;
+h_curvedBC_array[curvedBCCount].conformation[2] = CONF_ZERO;
+h_curvedBC_array[curvedBCCount].conformation[3] = CONF_ZERO + 1.0_df;
+h_curvedBC_array[curvedBCCount].conformation[4] = CONF_ZERO;
+h_curvedBC_array[curvedBCCount].conformation[5] = CONF_ZERO + 1.0_df;
+for (int component = 0; component < 6; ++component) {
+    for (int direction = 0; direction < 3; ++direction) {
+        h_curvedBC_array[curvedBCCount]
+            .conformationFluxT30[3 * component + direction] = 0.0_df;
+    }
+}
+h_curvedBC_array[curvedBCCount].conformationInteriorVelocityT30[0] = 0.0_df;
+h_curvedBC_array[curvedBCCount].conformationInteriorVelocityT30[1] = 0.0_df;
+h_curvedBC_array[curvedBCCount].conformationInteriorVelocityT30[2] = 0.0_df;
+#endif
+
+h_curvedBC_array[curvedBCCount].delta = vector_length(wall - b);
+h_curvedBC_array[curvedBCCount].delta_r = lattice_dx;
+
+// For concave boundary (duct), fluid points go INWARD (opposite to outward normal)
+const dfloat3 inward_normal = -unit_normal;
+
+const dfloat3 pf1 = wall + inward_normal * (1.0 * lattice_dx);
+h_curvedBC_array[curvedBCCount].pf1 = pf1;
+
+const dfloat3 pf2 = wall + inward_normal * (2.0 * lattice_dx);
+h_curvedBC_array[curvedBCCount].pf2 = pf2;
+
+const dfloat3 pf3 = wall + inward_normal * (3.0 * lattice_dx);
+h_curvedBC_array[curvedBCCount].pf3 = pf3;
+
+
+dfloat theta = atan2f(center_to_b.y, center_to_b.x);
+if (theta < 0.0){theta += 2.0 * M_PI;}
+h_curvedBC_array[curvedBCCount].theta = theta;
+

@@ -29,6 +29,7 @@
 #include <sstream>
 #include <iostream>     // std::cout, std::fixed
 #include <iomanip>      // std::setprecision
+#include <filesystem>
 
 /**
  *  @brief Handles the functions which will do post processing opeations during simulation for faster execution
@@ -92,12 +93,48 @@ void turbulentKineticEnergy(
  *  @param d_BC_Fz: device boundary condition force field
  *  @param step: Current time step
  */
-__host__ 
+__host__
 void totalBcDrag(dfloat *d_BC_Fx, dfloat* d_BC_Fy, dfloat* d_BC_Fz, size_t step);
  
 /**
+ *  @brief Save the local body force profile along a line (total effective body force)
+ *  @param d_Local_Fx: host local force X component
+ *  @param d_Local_Fy: host local force Y component
+ *  @param d_Local_Fz: host local force Z component
+ *  @param dir_index: Which direction to traverse (1=y-dir, 2=x-dir, 3=z-dir)
+ *  @param x0, y0, z0: Coordinates where the profile will be extracted
+ *  @param step: Current time step
+ */
+__host__
+void forceProfile(
+    dfloat* d_Local_Fx,
+    dfloat* d_Local_Fy,
+    dfloat* d_Local_Fz,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
+);
+
+/**
+ *  @brief Save a scalar source term profile along a line
+ *  @param dArray: host array holding the scalar source field
+ *  @param baseName: base name for the output file (suffix _dy/_dx/_dz appended automatically)
+ *  @param dir_index: Which direction to traverse (1=y-dir, 2=x-dir, 3=z-dir)
+ *  @param x0, y0, z0: Coordinates where the profile will be extracted
+ *  @param step: Current time step
+ */
+__host__
+void sourceProfile(
+    dfloat* dArray,
+    const char* baseName,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
+);
+
+/**
  *  @brief Save the rho profile in the middle of the domian
- *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param fMom: Pointer to the host array containing the current macroscopic moments.
  *  @param moment_index: Which direction will be saved
  *  @param x0, y0, z0: Coordinates where the profile will be extracted
  *  @param step: Current time step
@@ -114,7 +151,7 @@ void rhoProfile(
 
 /**
  *  @brief Save the velocity profile in the middle of the domian
- *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param fMom: Pointer to the host array containing the current macroscopic moments.
  *  @param moment_index: Which velocity and direction will be saved
  *  @param x0, y0, z0: Coordinates where the profile will be extracted
  *  @param step: Current time step
@@ -129,7 +166,7 @@ void velocityProfile(
 
 /**
  *  @brief Save the omega profile in the middle of the domian
- *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param fMom: Pointer to the host array containing the current macroscopic moments.
  *  @param moment_index: Which direction will be saved
  *  @param x0, y0, z0: Coordinates where the profile will be extracted
  *  @param step: Current time step
@@ -142,18 +179,52 @@ void omegaProfile(
     unsigned int step
 );
 
+/**
+ *  @brief Save the phi profile in the middle of the domian
+ *  @param fMom: Pointer to the host array containing the current macroscopic moments.
+ *  @param moment_index: Which direction will be saved
+ *  @param x0, y0, z0: Coordinates where the profile will be extracted
+ *  @param step: Current time step
+ */
+__host__
+void phiProfile(
+    dfloat* fMom,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
+);
+
+#ifdef CONFORMATION_TENSOR
+/**
+ *  @brief Save conformation-tensor component profiles in the middle of the domain.
+ *  @param fMom: Pointer to the host array containing the current macroscopic moments.
+ *  @param dir_index: Which line direction will be saved.
+ *  @param x0, y0, z0: Coordinates where the profile will be extracted.
+ *  @param step: Current time step.
+ */
+__host__
+void conformationProfile(
+    dfloat* fMom,
+    int dir_index,
+    int x0, int y0, int z0,
+    unsigned int step
+);
+#endif //CONFORMATION_TENSOR
+
 
 /**
  *  @brief Calculate the Nusselt number based on the temperature field
  *  @param h_fMom: Pointer to the host array containing the current macroscopic moments.
  *  @param fMom: Pointer to the device array containing the current macroscopic moments.
  *  @param step: Current time step
+ *  @param zOffset: Offset within a global vector
  */
 __host__
 void computeNusseltNumber(
     dfloat* h_fMom,
     dfloat* fMom,
-    unsigned int step
+    unsigned int step,
+    size_t zOffset
 );
 
 /**
@@ -169,6 +240,21 @@ void computeTurbulentEnergies(
     dfloat* fMom,
     dfloat* fMom_mean,
     unsigned int step
+);
+
+/**
+ *  @brief //copy full macroscopic field
+ *  @param h_fMom: Pointer to the host array containing the current macroscopic moments.
+ *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param step: Current time step
+ *  @param zOffset: Offset within a global vector
+ */
+__host__
+void copyMacroscopic(
+    dfloat* h_fMom,
+    dfloat* fMom,
+    unsigned int step,
+    size_t zOffset
 );
 
 #endif // !__TREAT_DATA_CUH

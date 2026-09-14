@@ -2,10 +2,6 @@ dfloat3 pos = {(NX-1)/2.0,(NY-1)/2.0,(NZ-1)/2.0};
 dfloat3 vel = {0.0, 0.0, 0.0};
 dfloat3 w = {0.0, 0.0, 0.0};
 
-dfloat3 sa = {a_semi/2, b_semi/2, c_semi/2};
-
-
-
 
 for (int i = 0; i<NUM_PARTICLES;i++){
     ParticleCenter& center = centerStorage[i];
@@ -17,9 +13,9 @@ for (int i = 0; i<NUM_PARTICLES;i++){
     center.setVel(vel);
     center.setVel_old(vel);
     center.setDensity(1.0);
-    dfloat3 sa1 = {10, 0, 0};
-    dfloat3 sa2 = {0, 20, 0};
-    dfloat3 sa3 = {0, 0, 30};
+    dfloat3 sa1 = {a_semi, 0, 0};
+    dfloat3 sa2 = {0, b_semi, 0};
+    dfloat3 sa3 = {0, 0, c_semi};
     center.setSemiAxis1(sa1);
     center.setSemiAxis2(sa2);
     center.setSemiAxis3(sa3);

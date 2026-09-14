@@ -23,7 +23,7 @@
 #define NODE_TYPE_SAVE (false)              // Save boundary condition node types
 
 /* --------------------- OUTPUT CONTROL --------------------- */
-#define ONLY_FINAL_MACRO (true)             // Save only final timestep macroscopic
+#define ONLY_FINAL_MACRO (false)             // Save only final timestep macroscopic
 #define MACR_SAVE (2560)                    // Macroscopic save frequency (steps)
 #define REPORT_SAVE (32)                    // Console report frequency (steps)
 #define VTK_SAVE (true)                     // Enable VTK output for visualization

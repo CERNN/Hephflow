@@ -1,12 +1,16 @@
 // Fetch neighboring values for Axx, Axy, Axz, Ayy, Ayz, Azz
+const int topConf = NUM_BLOCK_Z_LOCAL - 1;
+
+const int planeIdxConf = x + y * NX;
+
 dfloat Axx_xm1 = fMom[idxMom(txm1, ty, tz, A_XX_C_INDEX, ((tx == 0) ? bxm1 : bx) , by, bz)];
 dfloat Axx_xp1 = fMom[idxMom(txp1, ty, tz, A_XX_C_INDEX, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx), by, bz)];
 
 dfloat Axy_ym1 = fMom[idxMom(tx, tym1, tz, A_XY_C_INDEX, bx, ((ty == 0) ? bym1 : by), bz)];
 dfloat Axy_yp1 = fMom[idxMom(tx, typ1, tz, A_XY_C_INDEX, bx, ((ty == (BLOCK_NY - 1)) ? byp1 : by) , bz)];
 
-dfloat Axz_zm1 = fMom[idxMom(tx, ty, tzm1, A_XZ_C_INDEX, bx, by, ((tz == 0) ? bzm1 : bz))];
-dfloat Axz_zp1 = fMom[idxMom(tx, ty, tzp1, A_XZ_C_INDEX, bx, by, ((tz == (BLOCK_NZ - 1)) ? bzp1 : bz))];
+dfloat Axz_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUAxz.auxZ_1[planeIdxConf] : fMom[idxMom(tx, ty, tzm1, A_XZ_C_INDEX, bx, by, ((tz == 0) ? bzm1 : bz))];
+dfloat Axz_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topConf)) ? macroInterfaceGPUAxz.auxZ_0[planeIdxConf] : fMom[idxMom(tx, ty, tzp1, A_XZ_C_INDEX, bx, by, ((tz == (BLOCK_NZ - 1)) ? bzp1 : bz))];
 
 dfloat Axy_xm1 = fMom[idxMom(txm1, ty, tz, A_XY_C_INDEX, ((tx == 0) ? bxm1 : bx) , by, bz)];
 dfloat Axy_xp1 = fMom[idxMom(txp1, ty, tz, A_XY_C_INDEX, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx), by, bz)];
@@ -14,8 +18,8 @@ dfloat Axy_xp1 = fMom[idxMom(txp1, ty, tz, A_XY_C_INDEX, ((tx == (BLOCK_NX - 1))
 dfloat Ayy_ym1 = fMom[idxMom(tx, tym1, tz, A_YY_C_INDEX, bx, ((ty == 0) ? bym1 : by), bz)];
 dfloat Ayy_yp1 = fMom[idxMom(tx, typ1, tz, A_YY_C_INDEX, bx, ((ty == (BLOCK_NY - 1)) ? byp1 : by) , bz)];
 
-dfloat Ayz_zm1 = fMom[idxMom(tx, ty, tzm1, A_YZ_C_INDEX, bx, by, ((tz == 0) ? bzm1 : bz))];
-dfloat Ayz_zp1 = fMom[idxMom(tx, ty, tzp1, A_YZ_C_INDEX, bx, by, ((tz == (BLOCK_NZ - 1)) ? bzp1 : bz))];
+dfloat Ayz_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUAyz.auxZ_1[planeIdxConf] : fMom[idxMom(tx, ty, tzm1, A_YZ_C_INDEX, bx, by, ((tz == 0) ? bzm1 : bz))];
+dfloat Ayz_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topConf)) ? macroInterfaceGPUAyz.auxZ_0[planeIdxConf] : fMom[idxMom(tx, ty, tzp1, A_YZ_C_INDEX, bx, by, ((tz == (BLOCK_NZ - 1)) ? bzp1 : bz))];
 
 dfloat Axz_xm1 = fMom[idxMom(txm1, ty, tz, A_XZ_C_INDEX, ((tx == 0) ? bxm1 : bx) , by, bz)];
 dfloat Axz_xp1 = fMom[idxMom(txp1, ty, tz, A_XZ_C_INDEX, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx), by, bz)];
@@ -23,8 +27,8 @@ dfloat Axz_xp1 = fMom[idxMom(txp1, ty, tz, A_XZ_C_INDEX, ((tx == (BLOCK_NX - 1))
 dfloat Ayz_ym1 = fMom[idxMom(tx, tym1, tz, A_YZ_C_INDEX, bx, ((ty == 0) ? bym1 : by), bz)];
 dfloat Ayz_yp1 = fMom[idxMom(tx, typ1, tz, A_YZ_C_INDEX, bx, ((ty == (BLOCK_NY - 1)) ? byp1 : by) , bz)];
 
-dfloat Azz_zm1 = fMom[idxMom(tx, ty, tzm1, A_ZZ_C_INDEX, bx, by, ((tz == 0) ? bzm1 : bz))];
-dfloat Azz_zp1 = fMom[idxMom(tx, ty, tzp1, A_ZZ_C_INDEX, bx, by, ((tz == (BLOCK_NZ - 1)) ? bzp1 : bz))];
+dfloat Azz_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUAzz.auxZ_1[planeIdxConf] : fMom[idxMom(tx, ty, tzm1, A_ZZ_C_INDEX, bx, by, ((tz == 0) ? bzm1 : bz))];
+dfloat Azz_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topConf)) ? macroInterfaceGPUAzz.auxZ_0[planeIdxConf] : fMom[idxMom(tx, ty, tzp1, A_ZZ_C_INDEX, bx, by, ((tz == (BLOCK_NZ - 1)) ? bzp1 : bz))];
 
 // Compute derivatives
 dfloat dAxxdx = (Axx_xp1 - Axx_xm1) *0.5_df;

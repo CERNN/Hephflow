@@ -1,5 +1,6 @@
-#include "particle.cuh"
+#include "Particle.cuh"
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 
 #ifdef PARTICLE_MODEL
@@ -7,6 +8,10 @@
 __host__ __device__ Particle::Particle(){
     method = none; // Initialize method
     numNodes = 0; // Initialize numNodes
+    pCenter = nullptr;
+    collideParticle = false;
+    collideWall = false;
+    shape = nullptr;
     nodes = nullptr; // Initialize nodes
     pCenter = nullptr; // Initialize pCenter
     shape = nullptr; // Initialize shape
@@ -15,14 +20,11 @@ __host__ __device__ Particle::Particle(){
 }
 
 __host__ Particle::~Particle(){
-    // pCenter and shape are borrowed pointers (owned by ParticlesSoA),
-    // so we must NOT delete them here.
+    // pCenter and shape point into ParticlesSoA-owned vectors.
     pCenter = nullptr;
     shape = nullptr;
-
-    // nodes is allocated with malloc in IBM methods
     if (nodes) {
-        free(nodes);
+        delete[] nodes;
         nodes = nullptr;
     }
 }
@@ -52,12 +54,9 @@ __host__ __device__ void Particle::setShape(ParticleShape* shape) { this->shape 
 __host__ 
 ParticlesSoA::ParticlesSoA() {
     pCenterArray = nullptr;
-    pCenterLastPos = nullptr;
-    pCenterLastWPos = nullptr;
+    collisionDataArray = nullptr;
     pShape = nullptr;
     pMethod = nullptr;
-    pCollideWall = nullptr;
-    pCollideParticle = nullptr;
 }
 
 __host__ 
@@ -66,13 +65,9 @@ ParticlesSoA::~ParticlesSoA() {
         cudaFree(pCenterArray);
         pCenterArray = nullptr;
     }
-    if (pCenterLastPos) {
-        cudaFree(pCenterLastPos);
-        pCenterLastPos = nullptr;
-    }
-    if (pCenterLastWPos) {
-        cudaFree(pCenterLastWPos);
-        pCenterLastWPos = nullptr;
+    if (collisionDataArray) {
+        cudaFree(collisionDataArray);
+        collisionDataArray = nullptr;
     }
     if (pShape) {
         cudaFree(pShape);
@@ -81,14 +76,6 @@ ParticlesSoA::~ParticlesSoA() {
     if (pMethod) {
         cudaFree(pMethod);
         pMethod = nullptr;
-    }
-    if (pCollideWall) {
-        cudaFree(pCollideWall);
-        pCollideWall = nullptr;
-    }
-    if (pCollideParticle) {
-        cudaFree(pCollideParticle);
-        pCollideParticle = nullptr;
     }
 }
 
@@ -104,24 +91,19 @@ __host__ __device__ void ParticlesSoA::setNodesSoA(const IbmNodesSoA* nodes) {
 
 __host__ __device__ ParticleCenter* ParticlesSoA::getPCenterArray() const {return this->pCenterArray;}
 __host__ __device__ void ParticlesSoA::setPCenterArray(ParticleCenter* pArray) {this->pCenterArray = pArray;}
+__host__ __device__ CollisionData* ParticlesSoA::getCollisionDataArray() const {return this->collisionDataArray;}
 
-__host__ __device__ dfloat3* ParticlesSoA::getPCenterLastPos() const {return this->pCenterLastPos;}
-__host__ __device__ void ParticlesSoA::setPCenterLastPos(dfloat3* pLastPos) {this->pCenterLastPos = pLastPos;}
-
-__host__ __device__ dfloat3* ParticlesSoA::getPCenterLastWPos() const {return this->pCenterLastWPos;}
-__host__ __device__ void ParticlesSoA::setPCenterLastWPos(dfloat3* pLastWPos) {this->pCenterLastWPos = pLastWPos;}
+__host__ void ParticlesSoA::bindCollisionData() {
+    if (pCenterArray == nullptr || collisionDataArray == nullptr) return;
+    for (int p = 0; p < NUM_PARTICLES; ++p)
+        pCenterArray[p].bindCollisionData(&collisionDataArray[p]);
+}
 
 __host__ __device__ ParticleShape* ParticlesSoA::getPShape() const {return this->pShape;}
 __host__ __device__ void ParticlesSoA::setPShape(ParticleShape* pShape) {this->pShape = pShape;}
 
 __host__ __device__ ParticleMethod* ParticlesSoA::getPMethod() const {return this->pMethod;}
 __host__ __device__ void ParticlesSoA::setPMethod(ParticleMethod* pMethod) {this->pMethod = pMethod;}
-
-__host__ __device__ bool* ParticlesSoA::getPCollideWall() const {return this->pCollideWall;}
-__host__ __device__ void ParticlesSoA::setPCollideWall(bool* pMethod) {this->pCollideWall = pCollideWall;}
-
-__host__ __device__ bool* ParticlesSoA::getPCollideParticle() const {return this->pCollideParticle;}
-__host__ __device__ void ParticlesSoA::setPCollideParticle(bool* pMethod) {this->pCollideParticle = pCollideParticle;}
 
 __host__
 const MethodRange& ParticlesSoA::getMethodRange(ParticleMethod method) const {
@@ -146,17 +128,13 @@ int ParticlesSoA::getMethodCount(ParticleMethod method) const {
 __host__ void ParticlesSoA::createParticles(Particle *particles){
    
     centerStorage.resize(NUM_PARTICLES);
-    pShape = new ParticleShape[NUM_PARTICLES];
+    shapeStorage.assign(NUM_PARTICLES, SPHERE);
+    pShape = shapeStorage.data();
+    for (int i = 0; i < NUM_PARTICLES; ++i) {
+        particles[i].setShape(&pShape[i]);
+    }
 
     #include CASE_PARTICLE_CREATE
-
-    if (pShape == nullptr) {
-        pShape = new ParticleShape[NUM_PARTICLES]; 
-        for (int i = 0; i < NUM_PARTICLES; i++) {
-            pShape[i] = SPHERE;
-            particles[i].setShape(&pShape[i]);
-        }
-    }
 
 
     for(int i = 0; i <NUM_PARTICLES ; i++){
@@ -216,15 +194,18 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
 
     unsigned int totalIbmNodes = 0;
 
-    // Determine the total number of nodes
+    // Only fully resolved IBM particles use this marker storage. Point IBM and
+    // tracer particles keep their state in the particle-center arrays.
     for (int p = 0; p < NUM_PARTICLES; p++)
     {
-        totalIbmNodes += particles[p].getNumNodes();
+        if (usesResolvedIbmMarkers(particles[p].getMethod()))
+            totalIbmNodes += particles[p].getNumNodes();
     }
 
     printf("Total number of nodes: %u\n", totalIbmNodes);
     printf("Total memory used for Particles: %lu Mb\n",
-           (unsigned long)((totalIbmNodes * sizeof(IbmNodes) * N_GPUS + NUM_PARTICLES * sizeof(ParticleCenter)) / BYTES_PER_MB));
+           (unsigned long)((totalIbmNodes * sizeof(IbmNodes) * N_GPUS +
+               NUM_PARTICLES * (sizeof(ParticleCenter) + sizeof(CollisionData))) / BYTES_PER_MB));
     fflush(stdout);
 
     printf("Allocating particles in GPU... \t"); fflush(stdout);
@@ -234,18 +215,18 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
     printf("Success \n"); fflush(stdout);
 
     checkCudaErrors(cudaMallocManaged((void**)&this->pCenterArray,       sizeof(ParticleCenter) * NUM_PARTICLES));
-    checkCudaErrors(cudaMallocManaged((void**)&this->pCenterLastPos,     sizeof(dfloat3)        * NUM_PARTICLES));
-    checkCudaErrors(cudaMallocManaged((void**)&this->pCenterLastWPos,    sizeof(dfloat3)        * NUM_PARTICLES));
-    checkCudaErrors(cudaMallocManaged((void**)&this->pShape,             sizeof(ParticleShape)  * NUM_PARTICLES));
+    checkCudaErrors(cudaMalloc((void**)&this->collisionDataArray,        sizeof(CollisionData)  * NUM_PARTICLES));
+    checkCudaErrors(cudaMalloc((void**)&this->pShape,                    sizeof(ParticleShape)  * NUM_PARTICLES));
     checkCudaErrors(cudaMallocManaged((void**)&this->pMethod,            sizeof(ParticleMethod) * NUM_PARTICLES));
-    checkCudaErrors(cudaMallocManaged((void**)&this->pCollideWall,       sizeof(bool)           * NUM_PARTICLES));
-    checkCudaErrors(cudaMallocManaged((void**)&this->pCollideParticle,   sizeof(bool)           * NUM_PARTICLES));
 
-    if (!this->pCenterArray || !pCenterLastPos || !pCenterLastWPos ||
-        !this->pShape || !this->pMethod || !this->pCollideWall || !this->pCollideParticle) {
+    if (!this->pCenterArray || !this->collisionDataArray ||
+        !this->pShape || !this->pMethod) {
         printf("ERRO: Memory allocation failed!!\n"); fflush(stdout);
         return;
     }
+
+    std::vector<CollisionData> collisionDataHost(NUM_PARTICLES);
+    std::vector<ParticleShape> shapeHost(NUM_PARTICLES);
 
     auto insertByMethod = [&](ParticleMethod method) {
         int firstIndex = -1;
@@ -262,13 +243,12 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
             }
 
             this->pCenterArray[p]       = *pc;
-            this->pCenterLastPos[p]     = pc->getPos_old();
-            this->pCenterLastWPos[p]    = pc->getW_old();
-            this->pShape[p]             = *(particles[p].getShape());
+            this->pCenterArray[p].bindCollisionData(&this->collisionDataArray[p]);
+            collisionDataHost[p]        = CollisionData();
+            shapeHost[p]                = *(particles[p].getShape());
             this->pMethod[p]            = particles[p].getMethod();
-            this->pCollideWall[p]       = particles[p].getCollideWall();
-            this->pCollideParticle[p]   = particles[p].getCollideParticle();
-            this->nodesSoA[0].copyNodesFromParticle(&particles[p], p, this->pCenterArray, 0);
+            if (usesResolvedIbmMarkers(method))
+                this->nodesSoA[0].copyNodesFromParticle(&particles[p], p, this->pCenterArray, 0);
             if (firstIndex == -1) firstIndex = p;
             lastIndex = p;
         }
@@ -280,6 +260,10 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
     insertByMethod(IBM);
     insertByMethod(PIBM);
     insertByMethod(TRACER);
+    checkCudaErrors(cudaMemcpy(this->collisionDataArray, collisionDataHost.data(),
+        sizeof(CollisionData) * NUM_PARTICLES, cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(this->pShape, shapeHost.data(),
+        sizeof(ParticleShape) * NUM_PARTICLES, cudaMemcpyHostToDevice));
 }
 
 void ParticlesSoA::freeNodesAndCenters(){
@@ -290,18 +274,12 @@ void ParticlesSoA::freeNodesAndCenters(){
     checkCudaErrors(cudaSetDevice(GPUS_TO_USE[0]));
     cudaFree(this->pCenterArray);
     this->pCenterArray = nullptr;
-    cudaFree(this->pCenterLastPos);
-    this->pCenterLastPos = nullptr;
-    cudaFree(this->pCenterLastWPos);
-    this->pCenterLastWPos = nullptr;
+    cudaFree(this->collisionDataArray);
+    this->collisionDataArray = nullptr;
     cudaFree(this->pShape);
     this->pShape = nullptr;
     cudaFree(this->pMethod);
     this->pMethod = nullptr;
-    cudaFree(this->pCollideWall);
-    this->pCollideWall = nullptr;
-    cudaFree(this->pCollideParticle);
-    this->pCollideParticle = nullptr;
 }
 
 #ifdef PIBM_METHOD
@@ -423,6 +401,10 @@ void Particle::makeUniformBox(ParticleCenter *particleCenter)
     pCenter->setIXY(0.0_df);
     pCenter->setIXZ(0.0_df);
     pCenter->setIYZ(0.0_df);
+    pCenter->setI_body(pCenter->getI());
+    pCenter->setPrincipalInertia(dfloat3(1.0_df, 1.0_df, 1.0_df));
+    pCenter->setQ_inertia_reference(dfloat4(0.0_df, 0.0_df, 0.0_df, 1.0_df));
+    pCenter->setRotationFaulted(false);
 
     pCenter->setFX(0.0_df);
     pCenter->setFY(0.0_df);
@@ -457,7 +439,7 @@ void Particle::makeUniformBox(ParticleCenter *particleCenter)
     int Ny = n;
     int Nz = n;
     this->numNodes = Nx * Ny * Nz;
-    this->nodes = (IbmNodes*) malloc(sizeof(IbmNodes) * this->numNodes);
+    this->nodes = new IbmNodes[this->numNodes];
 
     unsigned int nodeIndex = 0;
 
@@ -514,6 +496,10 @@ void Particle::makeRandomBox(ParticleCenter *particleCenter)
     pCenter->setIXY(0.0_df);
     pCenter->setIXZ(0.0_df);
     pCenter->setIYZ(0.0_df);
+    pCenter->setI_body(pCenter->getI());
+    pCenter->setPrincipalInertia(dfloat3(1.0_df, 1.0_df, 1.0_df));
+    pCenter->setQ_inertia_reference(dfloat4(0.0_df, 0.0_df, 0.0_df, 1.0_df));
+    pCenter->setRotationFaulted(false);
 
     pCenter->setFX(0.0_df);
     pCenter->setFY(0.0_df);
@@ -538,7 +524,7 @@ void Particle::makeRandomBox(ParticleCenter *particleCenter)
     int Npoints = particleCenter->getDiameter(); // USING DIAMETER TO PASS THE NUMBER OF NODES
 
     this->numNodes = Npoints;
-    this->nodes = (IbmNodes*) malloc(sizeof(IbmNodes) * this->numNodes);
+    this->nodes = new IbmNodes[this->numNodes];
 
     unsigned int nodeIndex = 0;
 
@@ -618,6 +604,10 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
     pCenter->setIXY(0.0_df);
     pCenter->setIXZ(0.0_df);
     pCenter->setIYZ(0.0_df);
+    pCenter->setI_body(pCenter->getI());
+    pCenter->setPrincipalInertia(dfloat3(pCenter->getIXX(), pCenter->getIYY(), pCenter->getIZZ()));
+    pCenter->setQ_inertia_reference(dfloat4(0.0_df, 0.0_df, 0.0_df, 1.0_df));
+    pCenter->setRotationFaulted(false);
 
     pCenter->setFX(0.0_df);
     pCenter->setFY(0.0_df);
@@ -649,8 +639,6 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
     //     this->pCenter.collision.lastCollisionStep[i] = -1;
     // }
     
-    pCenter->getCollision().reset(); 
-
     // for (int i = 0; i < MAX_ACTIVE_COLLISIONS; ++i) {
     //     dfloat3 displacement = pCenter->getCollision().getTangentialDisplacement(i);
     // }
@@ -694,7 +682,7 @@ void Particle::makeSpherePolar(ParticleCenter *particleCenter)
     S[0] = S[nLayer];
     
 
-    this->nodes = (IbmNodes*) malloc(sizeof(IbmNodes) * this->numNodes);
+    this->nodes = new IbmNodes[this->numNodes];
 
     IbmNodes* first_node = &(this->nodes[0]);
 
@@ -1068,6 +1056,10 @@ void Particle::makeCapsule(ParticleCenter *particleCenter){
     dfloat4 q1 = compute_rotation_quart(dfloat3(1,0,0),vec);
     //rotate inertia 
     pCenter->setI(rotate_inertia_by_quart(q1,In));
+    pCenter->setI_body(pCenter->getI());
+    pCenter->setPrincipalInertia(dfloat3(In.xx, In.yy, In.zz));
+    pCenter->setQ_inertia_reference(q1);
+    pCenter->setRotationFaulted(false);
 
     pCenter->setQPosW(qf.w);
     pCenter->setQPosX(qf.x);
@@ -1109,7 +1101,7 @@ void Particle::makeCapsule(ParticleCenter *particleCenter){
 
     this->numNodes = nTotalPoints;
 
-    this->nodes = (IbmNodes*) malloc(sizeof(IbmNodes) * this->numNodes);
+    this->nodes = new IbmNodes[this->numNodes];
 
     //convert nodes info
 
@@ -1159,8 +1151,8 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
     unsigned int i;
 
     a = particleCenter->getSemiAxis1().x;
-    b = particleCenter->getSemiAxis1().y;
-    c = particleCenter->getSemiAxis1().z;
+    b = particleCenter->getSemiAxis2().y;
+    c = particleCenter->getSemiAxis3().z;
 
     pCenter->setRadius(POW_FUNCTION(a*b*c,1.0_df/3.0_df));
     pCenter->setVolume(a*b*c*4*M_PI/3);
@@ -1216,6 +1208,10 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
 
     //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+    dfloat a_orig = a;
+    dfloat b_orig = b;
+    dfloat c_orig = c;
+
     dfloat scaling = myMin(myMin(a, b), c);
     
     a /= scaling;
@@ -1233,98 +1229,122 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
 
     //#############################################################################
 
-    // Allocate memory for positions and forces
-    dfloat *phi = (dfloat *)malloc(numberNodes * sizeof(dfloat));
-    dfloat *theta = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+    // --- Static cache for identical ellipsoids ---
+    static dfloat cache_a = -1, cache_b = -1, cache_c = -1;
+    static int    cache_numNodes = 0;
+    static std::vector<dfloat> cache_posx;
+    static std::vector<dfloat> cache_posy;
+    static std::vector<dfloat> cache_posz;
+
+    bool sameShape = (a_orig == cache_a && b_orig == cache_b && c_orig == cache_c && cache_numNodes > 0);
+
+    // posx/posy/posz always needed (freed at end)
     dfloat* posx = (dfloat *)malloc(numberNodes * sizeof(dfloat));
-    dfloat* posy = (dfloat *)malloc(numberNodes* sizeof(dfloat));
+    dfloat* posy = (dfloat *)malloc(numberNodes * sizeof(dfloat));
     dfloat* posz = (dfloat *)malloc(numberNodes * sizeof(dfloat));
-    dfloat* fx = (dfloat *)malloc(numberNodes* sizeof(dfloat));
-    dfloat* fy = (dfloat *)malloc(numberNodes* sizeof(dfloat));
-    dfloat* fz = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+
+    dfloat *phi   = nullptr;
+    dfloat *theta = nullptr;
+    dfloat *fx    = nullptr;
+    dfloat *fy    = nullptr;
+    dfloat *fz    = nullptr;
+
+    if (!sameShape)
+    {
+        // Allocate Coulomb working arrays
+        phi   = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+        theta = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+        fx    = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+        fy    = (dfloat *)malloc(numberNodes * sizeof(dfloat));
+        fz    = (dfloat *)malloc(numberNodes * sizeof(dfloat));
     
-    // Initialize random positions of charges on the ellipsoid surface
-    for (int i = 0; i < numberNodes; i++) {
-        phi[i] = 2 * M_PI * ((dfloat)rand() / (dfloat)RAND_MAX);   // Angle in XY plane
-        theta[i] = M_PI * ((dfloat)rand() / (dfloat)RAND_MAX);     // Angle from Z axis
-
-        posx[i] = 1 * sin(theta[i]) * cos(phi[i]); // x coordinate
-        posy[i] = 1 * sin(theta[i]) * sin(phi[i]); // y coordinate
-        posz[i] = 1 * cos(theta[i]);               // z coordinate
-    }
-
-    // Constants
-    dfloat base_k = 1.0_df; // Base Coulomb's constant (assuming unit charge)
-    dfloat rij[3];
-    dfloat r;
-    dfloat F;
-    dfloat unit_rij[3];
-    dfloat force_scale_factor;
-
-    for (int iter = 0; iter < 300; iter++) {
-        // Initialize force accumulator
+        // Initialize random positions of charges on the unit sphere
         for (int i = 0; i < numberNodes; i++) {
-            fx[i] = 0.0_df;
-            fy[i] = 0.0_df;
-            fz[i] = 0.0_df;
+            phi[i]   = 2 * M_PI * ((dfloat)rand() / (dfloat)RAND_MAX);
+            theta[i] =       M_PI * ((dfloat)rand() / (dfloat)RAND_MAX);
+            posx[i]  = sin(theta[i]) * cos(phi[i]);
+            posy[i]  = sin(theta[i]) * sin(phi[i]);
+            posz[i]  = cos(theta[i]);
         }
 
-        // Compute pairwise forces and update positions
-        for (int i = 0; i < numberNodes; i++) {
-            for (int j = 0; j < numberNodes; j++) {
-                if (i != j) { // not the same node
-                    // Vector from node j to node i
+        printf("  Ellipsoid at (%.1f,%.1f,%.1f): %d nodes, Coulomb 300 iters...\n",
+               particleCenter->getPosX(), particleCenter->getPosY(), particleCenter->getPosZ(), numberNodes);
+        fflush(stdout);
 
+        // --- Coulomb optimisation ---
+        dfloat base_k = 1.0_df;
+        dfloat rij[3], r, F, unit_rij[3], force_scale_factor;
+
+        for (int iter = 0; iter < 300; iter++) {
+            for (int i = 0; i < numberNodes; i++) {
+                fx[i] = 0.0_df; fy[i] = 0.0_df; fz[i] = 0.0_df;
+            }
+            for (int i = 0; i < numberNodes; i++) {
+                for (int j = 0; j < numberNodes; j++) {
+                    if (i == j) continue;
                     rij[0] = posx[i] - posx[j];
                     rij[1] = posy[i] - posy[j];
                     rij[2] = posz[i] - posz[j];
-
-                    // Distance between node i and node j
-                    r = sqrt(rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2]);
-
-                    // Coulomb's force magnitude
+                    r = sqrt(rij[0]*rij[0] + rij[1]*rij[1] + rij[2]*rij[2]);
                     F = base_k / (r * r);
-
-                    // Direction of force
                     unit_rij[0] = rij[0] / r;
                     unit_rij[1] = rij[1] / r;
                     unit_rij[2] = rij[2] / r;
-
-                    // Accumulate force on nodes i
                     fx[i] += F * unit_rij[0];
                     fy[i] += F * unit_rij[1];
                     fz[i] += F * unit_rij[2];
                 }
             }
+            for (int i = 0; i < numberNodes; i++) {
+                posx[i] += 10 * fx[i] / (numberNodes * numberNodes);
+                posy[i] += 10 * fy[i] / (numberNodes * numberNodes);
+                posz[i] += 10 * fz[i] / (numberNodes * numberNodes);
+            }
+            // Project back onto unit sphere
+            for (int i = 0; i < numberNodes; i++) {
+                force_scale_factor = sqrt(posx[i]*posx[i] + posy[i]*posy[i] + posz[i]*posz[i]);
+                posx[i] /= force_scale_factor;
+                posy[i] /= force_scale_factor;
+                posz[i] /= force_scale_factor;
+            }
+            if (iter % 50 == 0) {
+                printf("    Coulomb iter %d/300\n", iter);
+                fflush(stdout);
+            }
         }
-        // Update positions of nodes
+        printf("    Coulomb done\n");
+        fflush(stdout);
+
+        // Scale unit sphere → ellipsoid
         for (int i = 0; i < numberNodes; i++) {
-            posx[i] += 10 * fx[i] / (numberNodes * numberNodes);
-            posy[i] += 10 * fy[i] / (numberNodes * numberNodes);
-            posz[i] += 10 * fz[i] / (numberNodes * numberNodes);
+            posx[i] *= a*scaling;
+            posy[i] *= b*scaling;
+            posz[i] *= c*scaling;
         }
 
-        // Project updated positions back onto the ellipsoid surface
-        for (int i = 0; i < numberNodes; i++) {
-            // Calculate the current point's distance to the center along each axis
-            force_scale_factor = sqrt(posx[i]*posx[i] +
-                                posy[i]*posy[i] +
-                                posz[i]*posz[i]);
-            // Rescale to ensure it lies on the ellipsoid surface
-            posx[i] /= force_scale_factor;
-            posy[i] /= force_scale_factor;
-            posz[i] /= force_scale_factor;
-        }
+        // Update cache
+        cache_a = a_orig; cache_b = b_orig; cache_c = c_orig;
+        cache_numNodes = numberNodes;
+        cache_posx.assign(posx, posx + numberNodes);
+        cache_posy.assign(posy, posy + numberNodes);
+        cache_posz.assign(posz, posz + numberNodes);
+
+        free(phi); free(theta); free(fx); free(fy); free(fz);
+        phi = nullptr; theta = nullptr; fx = nullptr; fy = nullptr; fz = nullptr;
     }
-    //convert into elipsoid 
-    for (int i = 0; i < numberNodes; i++) {
-    posx[i] *= a*scaling;
-    posy[i] *= b*scaling;
-    posz[i] *= c*scaling;
+    else
+    {
+        // Reuse cached node positions from previous identical ellipsoid
+        printf("  Ellipsoid at (%.1f,%.1f,%.1f): %d nodes (reusing cached layout)\n",
+               particleCenter->getPosX(), particleCenter->getPosY(), particleCenter->getPosZ(), numberNodes);
+        fflush(stdout);
+        memcpy(posx, cache_posx.data(), numberNodes * sizeof(dfloat));
+        memcpy(posy, cache_posy.data(), numberNodes * sizeof(dfloat));
+        memcpy(posz, cache_posz.data(), numberNodes * sizeof(dfloat));
     }
       
 
-    this->nodes = (IbmNodes*) malloc(sizeof(IbmNodes) * this->numNodes);
+    this->nodes = new IbmNodes[this->numNodes];
 
     for (int nodeIndex = 0; nodeIndex < numberNodes; nodeIndex++) {
         this->nodes[nodeIndex].setPos(dfloat3(posx[nodeIndex],posy[nodeIndex],posz[nodeIndex]));
@@ -1351,6 +1371,10 @@ void Particle::makeEllipsoid(ParticleCenter *particleCenter)
 
     //rotate inertia 
     pCenter->setI(rotate_inertia_by_quart(q2,In));
+    pCenter->setI_body(pCenter->getI());
+    pCenter->setPrincipalInertia(dfloat3(In.xx, In.yy, In.zz));
+    pCenter->setQ_inertia_reference(q2);
+    pCenter->setRotationFaulted(false);
 
     dfloat3 new_pos;
     for (i = 0; i < numberNodes; i++) {

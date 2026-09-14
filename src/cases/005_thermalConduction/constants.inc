@@ -12,13 +12,12 @@ constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int N_STEPS = 10000;              // Total simulation steps
-constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
 constexpr int N = 256 * SCALE;              // Reference grid size
 constexpr int NX = N;                       // Grid size in X
 constexpr int NY = N;                       // Grid size in Y
-constexpr int NZ = 8;                       // Grid size in Z
+constexpr int NZ = 8*N_GPUS;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */
@@ -64,6 +63,7 @@ constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 #define D3G19
 
 /* --------------------- THERMAL PARAMETERS --------------------- */
+#ifdef THERMAL_MODEL
 constexpr bool T_BOUYANCY = true;           // Enable buoyancy
 constexpr dfloat T_PR_NUMBER = 0.71;        // Prandtl number
 constexpr dfloat T_RA_NUMBER = 10000.0;     // Rayleigh number

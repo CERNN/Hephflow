@@ -9,7 +9,6 @@ constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int N_STEPS = 10000;              // Total simulation steps
-constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
 constexpr int N = 64 * SCALE;               // Reference grid size
@@ -61,6 +60,7 @@ constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 #define D3G19
 
 /* --------------------- THERMAL PARAMETERS --------------------- */
+#ifdef THERMAL_MODEL
 constexpr bool T_BOUYANCY = true;           // Enable buoyancy
 constexpr dfloat T_PR_NUMBER = 10;          // Prandtl number
 constexpr dfloat T_RA_NUMBER = 100000.0;    // Rayleigh number

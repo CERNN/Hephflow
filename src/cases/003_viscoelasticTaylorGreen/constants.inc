@@ -80,25 +80,35 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 #define COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
 
-    constexpr dfloat CONF_ZERO = (dfloat)(10.0);
+    constexpr dfloat CONF_ZERO = (dfloat)(1.0);
 
     constexpr dfloat nu_p = SUM_VISC - VISC;
-    constexpr dfloat Weissenberg_number = 10.0;
+    constexpr dfloat Weissenberg_number = 1.0;
 
     constexpr dfloat LAMBDA = Weissenberg_number*t_c;
     constexpr dfloat inv_lambda = 1.0/LAMBDA;
     constexpr dfloat fenep_re = 10.0;
 
     //ADVECTION-DIFFUSIONS CONSTANTS
-    constexpr dfloat CONF_DIFFUSIVITY_RATIO = 100; //OR Pr in malaspinas
+    constexpr dfloat CONF_DIFFUSIVITY_RATIO = 1000; //OR Pr in malaspinas
     constexpr dfloat CONF_DIFFUSIVITY = VISC/CONF_DIFFUSIVITY_RATIO; // alpha
 
     constexpr dfloat CONF_DIFF_REF = (1.0/6);
-    constexpr dfloat CONF_TAU = CONF_DIFF_REF*3+0.5;
+    constexpr dfloat CONF_TAU = CONF_DIFFUSIVITY*3+0.5;
     constexpr dfloat CONF_OMEGA  = 1.0/CONF_TAU;
     constexpr dfloat CONF_TT_OMEGA = 1.0-0.5*CONF_OMEGA;
 
     constexpr dfloat CONF_DIFF_FLUC = CONF_DIFFUSIVITY - CONF_DIFF_REF;
     constexpr dfloat CONF_AAA = (3*CONF_DIFF_FLUC*CONF_OMEGA);
     constexpr dfloat CONF_DIFF_FLUC_COEF = CONF_AAA/(1.0+CONF_AAA);
+
+    static inline fluidPhaseProps makeCasePhaseProps() {
+        fluidPhaseProps pp{};
+        pp.nnf.type      = FLUID_NEWTONIAN;
+        pp.ve.type       = VE_OLDROYD_B;
+        pp.ve.eta_p      = nu_p;
+        pp.ve.lambda     = LAMBDA;
+        return pp;
+    }
+    #define CASE_PHASE_PROPS makeCasePhaseProps()
 #endif

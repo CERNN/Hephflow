@@ -14,17 +14,25 @@
 #include "globalFunctions.h"
 
 #ifdef CURVED_BOUNDARY_CONDITION
-
-const int curvedBCBlockSize = 256;
-const int curvedBCGridSize = (numberCurvedBoundaryNodes + curvedBCBlockSize - 1) / curvedBCBlockSize;
-
 #ifndef __CURVED_BC_CUH
 #define __CURVED_BC_CUH
 
 __host__ __device__
-dfloat curvedBoundaryExtrapolation(dfloat delta, dfloat delta_r, dfloat pf1_value, dfloat pf2_value) {
-	return (delta * (delta - 2.0_df * delta_r) / (delta_r * delta_r)) * pf1_value 
-	     - (delta * (delta - delta_r) / (2.0_df * delta_r * delta_r)) * pf2_value;
+dfloat curvedBoundaryExtrapolation(
+    dfloat delta,
+    dfloat delta_r,
+    dfloat wall_value,
+    dfloat pf1_value,
+    dfloat pf2_value)
+{
+    const dfloat inv_delta_r_sq = 1.0_df / (delta_r * delta_r);
+    const dfloat wall_weight =
+        (2.0_df * delta_r * delta_r - delta * delta + 3.0_df * delta * delta_r)
+        * 0.5_df * inv_delta_r_sq;
+    const dfloat pf1_weight = delta * (delta - 2.0_df * delta_r) * inv_delta_r_sq;
+    const dfloat pf2_weight = -delta * (delta - delta_r) * 0.5_df * inv_delta_r_sq;
+
+    return wall_weight * wall_value + pf1_weight * pf1_value + pf2_weight * pf2_value;
 }
 
 __device__ inline
@@ -76,15 +84,15 @@ void curvedBoundaryInterpExtrapStore(
     // Get scaled velocities from fMom and unscale them
     val1 = curvedBC_interp_moment(pf1, M_UX_INDEX, fMom, same_x, same_y, same_z, const_x, const_y, const_z) / F_M_I_SCALE;
     val2 = curvedBC_interp_moment(pf2, M_UX_INDEX, fMom, same_x, same_y, same_z, const_x, const_y, const_z) / F_M_I_SCALE;
-    dfloat ux_e = curvedBoundaryExtrapolation(delta, delta_r, val1, val2);
+    dfloat ux_e = curvedBoundaryExtrapolation(delta, delta_r, tempCBC->wallVel.x, val1, val2);
 
     val1 = curvedBC_interp_moment(pf1, M_UY_INDEX, fMom, same_x, same_y, same_z, const_x, const_y, const_z) / F_M_I_SCALE;
     val2 = curvedBC_interp_moment(pf2, M_UY_INDEX, fMom, same_x, same_y, same_z, const_x, const_y, const_z) / F_M_I_SCALE;
-    dfloat uy_e = curvedBoundaryExtrapolation(delta, delta_r, val1, val2);
+    dfloat uy_e = curvedBoundaryExtrapolation(delta, delta_r, tempCBC->wallVel.y, val1, val2);
 
     val1 = curvedBC_interp_moment(pf1, M_UZ_INDEX, fMom, same_x, same_y, same_z, const_x, const_y, const_z) / F_M_I_SCALE;
     val2 = curvedBC_interp_moment(pf2, M_UZ_INDEX, fMom, same_x, same_y, same_z, const_x, const_y, const_z) / F_M_I_SCALE;
-    dfloat uz_e = curvedBoundaryExtrapolation(delta, delta_r, val1, val2);
+    dfloat uz_e = curvedBoundaryExtrapolation(delta, delta_r, tempCBC->wallVel.z, val1, val2);
 
     tempCBC->vel = dfloat3(ux_e, uy_e, uz_e);
 }
@@ -123,6 +131,79 @@ void updateCurvedBoundaryVelocities(
     // Perform interpolation, extrapolation, and store result
     curvedBoundaryInterpExtrapStore(delta, delta_r, pf1, pf2, tx, ty, tz, bx, by, bz, fMom, tempCBC, idx);
 }
+
+#if defined(CONFORMATION_TENSOR) && defined(D3G19)
+__global__
+void updateCurvedBoundaryConformation(
+    CurvedBoundary* d_curvedBC_array,
+    dfloat* fMom,
+    unsigned int numberCurvedBoundaryNodes)
+{
+    const int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    if (idx >= numberCurvedBoundaryNodes) return;
+
+    CurvedBoundary* curvedBC = &d_curvedBC_array[idx];
+#ifndef CURVED_CONF_COUPLED_MOMENT_BC
+    const dfloat delta = curvedBC->delta;
+    const dfloat dr = curvedBC->delta_r;
+    const dfloat invTwoDrSq = 0.5_df / (dr * dr);
+    const dfloat w1 = (delta - 2.0_df * dr) * (delta - 3.0_df * dr) * invTwoDrSq;
+    const dfloat w2 = -(delta - dr) * (delta - 3.0_df * dr) / (dr * dr);
+    const dfloat w3 = (delta - dr) * (delta - 2.0_df * dr) * invTwoDrSq;
+#endif
+    const int z = (int)floor(curvedBC->pf1.z);
+    const int scalarMoments[6] = {
+        A_XX_C_INDEX, A_XY_C_INDEX, A_XZ_C_INDEX,
+        A_YY_C_INDEX, A_YZ_C_INDEX, A_ZZ_C_INDEX
+    };
+#ifdef CURVED_CONF_COUPLED_MOMENT_BC
+    const int fluxMoments[18] = {
+        A_XX_CX_INDEX, A_XX_CY_INDEX, A_XX_CZ_INDEX,
+        A_XY_CX_INDEX, A_XY_CY_INDEX, A_XY_CZ_INDEX,
+        A_XZ_CX_INDEX, A_XZ_CY_INDEX, A_XZ_CZ_INDEX,
+        A_YY_CX_INDEX, A_YY_CY_INDEX, A_YY_CZ_INDEX,
+        A_YZ_CX_INDEX, A_YZ_CY_INDEX, A_YZ_CZ_INDEX,
+        A_ZZ_CX_INDEX, A_ZZ_CY_INDEX, A_ZZ_CZ_INDEX
+    };
+
+    curvedBC->conformationInteriorVelocityT30[0] = mom_bilinear_interp_xy(
+        curvedBC->pf1.x, curvedBC->pf1.y, z, M_UX_INDEX, fMom);
+    curvedBC->conformationInteriorVelocityT30[1] = mom_bilinear_interp_xy(
+        curvedBC->pf1.x, curvedBC->pf1.y, z, M_UY_INDEX, fMom);
+    curvedBC->conformationInteriorVelocityT30[2] = mom_bilinear_interp_xy(
+        curvedBC->pf1.x, curvedBC->pf1.y, z, M_UZ_INDEX, fMom);
+#endif
+
+    #pragma unroll
+    for (int component = 0; component < 6; ++component) {
+        const int moment = scalarMoments[component];
+        const dfloat a1 = mom_bilinear_interp_xy(
+            curvedBC->pf1.x, curvedBC->pf1.y, z, moment, fMom);
+#ifdef CURVED_CONF_COUPLED_MOMENT_BC
+        // A nearest-interior, bilinearly interpolated tensor is a convex
+        // combination of interior tensors and therefore does not introduce
+        // the negative-weight overshoot of quadratic extrapolation.
+        curvedBC->conformation[component] = a1;
+#else
+        const dfloat a2 = mom_bilinear_interp_xy(
+            curvedBC->pf2.x, curvedBC->pf2.y, z, moment, fMom);
+        const dfloat a3 = mom_bilinear_interp_xy(
+            curvedBC->pf3.x, curvedBC->pf3.y, z, moment, fMom);
+        curvedBC->conformation[component] = w1 * a1 + w2 * a2 + w3 * a3;
+#endif
+
+#ifdef CURVED_CONF_COUPLED_MOMENT_BC
+        #pragma unroll
+        for (int direction = 0; direction < 3; ++direction) {
+            curvedBC->conformationFluxT30[3 * component + direction] =
+                mom_bilinear_interp_xy(
+                    curvedBC->pf1.x, curvedBC->pf1.y, z,
+                    fluxMoments[3 * component + direction], fMom);
+        }
+#endif
+    }
+}
+#endif
 
 
 #endif //!__CURVED_BC_CUH

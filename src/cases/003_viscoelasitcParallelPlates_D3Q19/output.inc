@@ -9,11 +9,11 @@
 #define PATH_FILES "ViscoelasticParallelPlates"  // Output folder name
 
 /* --------------------- DATA TREATMENT --------------------- */
-//#define TREAT_DATA                        // Enable custom data treatment (see treatData.cu)
+#define TREAT_DATA                        // Enable custom data treatment (see treatData.cu)
 #define TREATFIELD (false)                  // Treat data over entire field
 #define TREATPOINT (false)                  // Treat data at specific points
-#define TREATLINE (false)                   // Save macroscopic along a line
-#define SAVEDATA (false)                    // Save treated data to file
+#define TREATLINE (true)                   // Save macroscopic along a line
+#define SAVEDATA (true)                    // Save treated data to file
 #define CONSOLEPRINT (false)                // Print treated data to console
 
 /* --------------------- FLOW STATISTICS --------------------- */
@@ -24,11 +24,15 @@
 
 /* --------------------- OUTPUT CONTROL --------------------- */
 #define ONLY_FINAL_MACRO (false)            // Save only final timestep macroscopic
-#define MACR_SAVE (64000)                   // Macroscopic save frequency (steps)
-#define REPORT_SAVE (false)                 // Console report frequency (steps), false = disabled
+#define MACR_SAVE ((int)t_c*4)                      // Macroscopic save frequency (steps)
+#define REPORT_SAVE ((int)t_c/20)           // Console report frequency (steps)
 #define VTK_SAVE (true)                     // Enable VTK output for visualization
 #define BIN_SAVE (false)                    // Enable binary output
 
 /* --------------------- BOUNDARY FORCES --------------------- */
 //#define BC_FORCES                         // Compute boundary forces
 //#define SAVE_BC_FORCES                    // Save boundary forces to file
+
+
+/* --------------------- FORCE OUTPUT --------------------- */
+#define SAVE_LOCAL_FORCES                 // Export local body force field

@@ -30,6 +30,7 @@ We welcome code contributions, including bug fixes, performance improvements, an
 - Write clear, modular, and well-documented code.
 - Include relevant comments explaining complex logic.
 - Keep functions concise and focused on a single task.
+- Use exact filename casing in local quoted includes. Class headers use `PascalCase` matching the class name; utility and model headers retain their established lower-camel or lowercase names.
 
 #### d. Commit Messages
 - Use meaningful commit messages, e.g., `Fix boundary condition issue in D2Q9 implementation for case X`.

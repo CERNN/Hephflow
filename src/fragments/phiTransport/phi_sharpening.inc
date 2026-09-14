@@ -1,17 +1,26 @@
-// s = beta nabla .(phi(1-phi)n)
-// s = beta [nabla (phi(1-phi)).n + phi(1-phi)nabla .n]
-// s = beta [(1-2phi)|nabla phi| + phi(1-phi)kappa]
+// ---------------------------------------------------------
+// FILE: phi_sharpening.inc
+// ---------------------------------------------------------
 
 dfloat phiSharpSource = 0.0_df;
 
-dfloat phi_factor = phi_for_sharp * (1.0_df - phi_for_sharp);  // phi(1-phi)
-dfloat sign_term = 1.0_df - 2.0_df * phi_for_sharp ;  // (1-2phi)
 
-// (1-2phi)|nabla phi|
-dfloat sharp_antidiff = sign_term * mod_grad;
+    // -----------------------------------------------------
+    // CASE 1: Cahn-Hilliard (Mass Conserving)
+    // -----------------------------------------------------
+    // Logic: S = Mobility * Laplacian(Chemical Potential)
+    // Requires: M_CH (Mobility constant)
+    // Requires: M3_LM_INDEX (Precomputed in gpuComputeLaplacianMu)
+    
+    dfloat laplacian_mu = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_LM_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+    // laplacian_phi already declared in phase_gradient.inc
+    
+   /* CH diffusion */
+    dfloat S_CH = M_CH * laplacian_mu;
 
-// phi(1-phi)kappa
-dfloat sharp_curv = phi_factor * curvature;
+    /* Counteract bare LBM diffusion */
+    dfloat S_counter = -PHI_LBM_DIFF * laplacian_phi;
 
-// s = beta [(1-2phi)|nabla phi| + phi(1-phi)kappa]
-phiSharpSource = - phi_sharp_c * (sharp_antidiff - sharp_curv);
+    /* Total source */
+    phiSharpSource = S_CH + S_counter;
+

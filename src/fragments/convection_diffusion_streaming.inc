@@ -20,6 +20,29 @@ s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 15)] = gNode[16];
 s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 16)] = gNode[17];
 s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 17)] = gNode[18];
 #endif
+#ifdef D3G27
+// Edge neighbors (directions 7-18) only for D3G19
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z,  6)] = gNode[ 7];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z,  7)] = gNode[ 8];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z,  8)] = gNode[ 9];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z,  9)] = gNode[10];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 10)] = gNode[11];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 11)] = gNode[12];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 12)] = gNode[13];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 13)] = gNode[14];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 14)] = gNode[15];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 15)] = gNode[16];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 16)] = gNode[17];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 17)] = gNode[18];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 18)] = gNode[19];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 19)] = gNode[20];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 20)] = gNode[21];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 21)] = gNode[22];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 22)] = gNode[23];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 23)] = gNode[24];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 24)] = gNode[25];
+s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 25)] = gNode[26];
+#endif
 
 
 //sync threads of the block so all populations are saved

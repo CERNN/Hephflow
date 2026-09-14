@@ -16,13 +16,15 @@
 #ifdef SINGLE_PRECISION
     typedef float dfloat;      // single precision
     #define VTK_DFLOAT_TYPE "float"
-    #define POW_FUNCTION powf 
+    #define POW_FUNCTION powf
+    #define EXP_FUNCTION expf
 #endif //SINGLE_PRECISION
 
 #ifdef DOUBLE_PRECISION
     typedef double dfloat;      // double precision
     #define VTK_DFLOAT_TYPE "double"
     #define POW_FUNCTION pow
+    #define EXP_FUNCTION exp
 #endif //DOUBLE_PRECISION
 
 // User-defined literal for dfloat type

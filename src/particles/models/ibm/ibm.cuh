@@ -25,6 +25,30 @@
 
 #ifdef PARTICLE_MODEL
 
+enum IbmNodeDebugStatus {
+    IBM_DEBUG_VALID = 0,
+    IBM_DEBUG_NONFINITE_POSITION = 1,
+    IBM_DEBUG_OUTSIDE_DOMAIN = 2,
+    IBM_DEBUG_INVALID_STENCIL = 3,
+    IBM_DEBUG_INVALID_EULERIAN_STATE = 4
+};
+
+struct IbmNodeDebugRecord {
+    int nodeIndex;
+    int particleIndex;
+    int stencilStatus;
+    int clippedPoints;
+    int minIdx[3];
+    int maxIdx[3];
+    dfloat3 position;
+    dfloat3 fluidVelocity;
+    dfloat3 rigidVelocity;
+    dfloat3 deltaForce;
+    dfloat rho;
+    dfloat forceScale;
+    dfloat stencilWeightSum;
+};
+
 
 /**
  *  @brief Perform IBM simulation steps including force interpolation and spreading.
@@ -41,19 +65,19 @@ void ibmSimulation(
 );
 
 /**
- *  @brief Reset the forces on IBM nodes to zero.
- *  @param particlesNodes: Pointer to the IbmNodesSoA structure containing IBM node data.
- *  @param step: The current simulation time step for collision checking.
+ *  @brief Reset marker forces, reconstruct marker positions, and cache the
+ *         separable interpolation stencil for the current time step.
  */
 __global__ 
-void ibmResetNodesForces(
-    IbmNodesSoA* particlesNodes,
-    unsigned int step
+void ibmPrepareNodes(
+    IbmNodesView particlesNodes,
+    ParticleCenter* pArray
 );
 
 
 /**
- *  @brief Interpolate forces from the fluid to the IBM nodes and spread forces from the IBM nodes back to the fluid.
+ *  @brief Interpolate the predicted fluid velocity and compute one relaxed
+ *         Lagrangian force correction.
  *  @param particlesNodes: Pointer to the IbmNodesSoA structure containing IBM node data.
  *  @param pArray: Pointer to the array of ParticleCenter objects.
  *  @param fMom: Pointer to the device array containing the current macroscopic moments.
@@ -61,31 +85,23 @@ void ibmResetNodesForces(
  */
 __global__
 void ibmForceInterpolationSpread(
-    IbmNodesSoA* particlesNodes,
+    IbmNodesView particlesNodes,
     ParticleCenter *pArray,
     dfloat *fMom,
-    unsigned int step
+    unsigned int step,
+    IbmNodeDebugRecord* debugRecords
 );
 
 /**
- *  @brief 
- *  @param particlesNodes: Pointer to the IbmNodesSoA structure containing IBM node data.
- *  @param pArray: Pointer to the array of ParticleCenter objects.
- *  @param firstIndex: The first index of the particle array to be processed.
- *  @param lastIndex: The last index of the particle array to be processed.
- *  @param step: The current simulation time step for collision checking.
+ *  @brief Spread the current Lagrangian force correction to the Eulerian
+ *         force moments. This is deliberately separate from interpolation so
+ *         every IBM node in an iteration observes the same force field.
  */
 __global__
-void ibmParticleNodeMovement(
-    IbmNodesSoA* particlesNodes,
-    ParticleCenter *pArray,
-    int firstIndex,
-    int lastIndex,
-    unsigned int step
+void ibmSpreadForceCorrection(
+    IbmNodesView particlesNodes,
+    dfloat *fMom
 );
 
 #endif //PARTICLE_MODEL
 #endif
-
-
-

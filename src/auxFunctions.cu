@@ -5,7 +5,8 @@ __host__
 void mean_rho(
     dfloat *fMom, 
     size_t step,
-    dfloat *d_mean_rho
+    dfloat *d_mean_rho,
+    cudaStream_t stream
 ){
     dfloat* sumRho;
     cudaMalloc((void**)&sumRho, NUM_BLOCK * sizeof(dfloat));
@@ -17,7 +18,7 @@ void mean_rho(
     int nb_y = NY / nt_y;
     int nb_z = NZ / nt_z;
 
-    sumReductionThread_rho << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom, sumRho);
+    sumReductionThread_rho << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ), 0, stream >> > (fMom, sumRho);
 
     nb_x = NUM_BLOCK_X;
     nb_y = NUM_BLOCK_Y;
@@ -28,7 +29,7 @@ void mean_rho(
     while (true) {
         current_block_size = nb_x * nb_y * nb_z;
         if (current_block_size <= BLOCK_LBM_SIZE) { // last reduction
-            sumReductionBlock << <1, dim3(nb_x, nb_y, nb_z) >> > (sumRho, sumRho);
+            sumReductionBlock << <1, dim3(nb_x, nb_y, nb_z), 0, stream >> > (sumRho, sumRho);
             break;
         }
         else {
@@ -43,11 +44,11 @@ void mean_rho(
                 else
                     nt_z /= 2;
             }
-            sumReductionBlock << <dim3(nb_x, nb_y, nb_z), dim3(nt_x, nt_y, nt_z) >> > (sumRho, sumRho);
+            sumReductionBlock << <dim3(nb_x, nb_y, nb_z), dim3(nt_x, nt_y, nt_z), 0, stream >> > (sumRho, sumRho);
         }
     }
 
-    checkCudaErrors(cudaDeviceSynchronize());
+    checkCudaErrors(cudaStreamSynchronize(stream));
     dfloat temp;
     
     checkCudaErrors(cudaMemcpy(&temp, sumRho, sizeof(dfloat), cudaMemcpyDeviceToHost)); 

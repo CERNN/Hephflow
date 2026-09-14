@@ -19,7 +19,7 @@ constexpr int NZ = N;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */
-constexpr dfloat U_MAX = 0.0;               // Maximum/reference velocity
+constexpr dfloat U_MAX = 0.1;               // Maximum/reference velocity
 constexpr dfloat L = N;                     // Reference length
 
 /* --------------------- BODY FORCES --------------------- */
@@ -64,10 +64,19 @@ constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
 #define BINGHAM
 constexpr dfloat Bn = 0.08;                 // Bingham number
 constexpr dfloat S_Y = Bn*L/(U_MAX*VISC); // Yield stress
-// Fluid properties macro for this case - expands to initializer list
-#define CASE_NNF_PROPS { FLUID_BINGHAM, false, { S_Y, 1.0 / TAU } }
+static inline fluidPhaseProps makeCasePhaseProps(){
+        fluidPhaseProps pp{};
+        pp.nnf.type = FLUID_BINGHAM;
+        pp.nnf.hasLambda = false;
+        pp.nnf.u.bingham.s_y = S_Y;
+        pp.nnf.u.bingham.omega_p = 1.0 / TAU;
+        pp.ve.type = VE_NEWTONIAN;
+        return pp;
+}
+#define CASE_PHASE_PROPS makeCasePhaseProps()
 
 /* --------------------- THERMAL PARAMETERS --------------------- */
+#ifdef THERMAL_MODEL
 constexpr bool T_BOUYANCY = true;           // Enable buoyancy
 constexpr dfloat T_PR_NUMBER = 10;          // Prandtl number
 constexpr dfloat T_RA_NUMBER = 1e6;         // Rayleigh number

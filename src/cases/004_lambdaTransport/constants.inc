@@ -16,9 +16,9 @@ constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
 constexpr int N = 128 * SCALE;              // Reference grid size
-constexpr int NX = 8;                       // Grid size in X (thin channel)
+constexpr int NX = 32;                       // Grid size in X (thin channel)
 constexpr int NY = N;                       // Grid size in Y (channel height)
-constexpr int NZ = 8;                       // Grid size in Z (thin channel)
+constexpr int NZ = 32;                       // Grid size in Z (thin channel)
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */
@@ -72,7 +72,7 @@ constexpr dfloat LAMBDA_DIFFUSIVITY = VISC/LAMBDA_DIFFUSIVITY_RATIO;
 constexpr dfloat LAMBDA_DIFF_REF = (1.0/6);    // Reference diffusion
 constexpr dfloat LAMBDA_TAU = LAMBDA_DIFF_REF*3+0.5;    // Lambda relaxation time
 constexpr dfloat LAMBDA_OMEGA  = 1.0/LAMBDA_TAU;        // Lambda collision frequency
-constexpr dfloat LAMBDA_TT_OMEGA = 1.0-0.5*LAMBDA_OMEGA; // TRT parameter
+constexpr dfloat LAMBDA_TT_OMEGA = 1.0-0.5*LAMBDA_OMEGA; 
 
 // Diffusivity fluctuation correction
 constexpr dfloat LAMBDA_DIFF_FLUC = LAMBDA_DIFFUSIVITY - LAMBDA_DIFF_REF;
@@ -81,19 +81,19 @@ constexpr dfloat LAMBDA_DIFF_FLUC_COEF = LAMBDA_AAA/(1.0+LAMBDA_AAA);
 
 /* --------------------- NON-NEWTONIAN FLUID PROPERTIES --------------------- */
 // Moore1959 thixotropic model: k1 (breakdown), k2 (build), lambda_0 (eq struct param)
-static inline fluidProps makeCaseNnfProps()
+static inline fluidPhaseProps makeCasePhaseProps()
 {
-	fluidProps fp{};
-	fp.type = FLUID_THIXO;
-	fp.hasLambda = true;
-	fp.u.thixo.model = THIXO_MOORE1959;
-	fp.u.thixo.u.moore1959.k1 = LAMBDA_K1;
-	fp.u.thixo.u.moore1959.k2 = LAMBDA_K2;
-	fp.u.thixo.u.moore1959.lambda_0 = THIXO_LAMBDA_0;
-	fp.u.thixo.u.moore1959.eta_0 = 1.0_df;
-	return fp;
+        fluidPhaseProps pp{};
+        pp.nnf.type = FLUID_THIXO;
+        pp.nnf.hasLambda = true;
+        pp.nnf.u.thixo.model = THIXO_MOORE1959;
+        pp.nnf.u.thixo.u.moore1959.k1 = LAMBDA_K1;
+        pp.nnf.u.thixo.u.moore1959.k2 = LAMBDA_K2;
+        pp.nnf.u.thixo.u.moore1959.lambda_0 = THIXO_LAMBDA_0;
+        pp.nnf.u.thixo.u.moore1959.eta_0 = 1.0_df;
+        pp.ve.type = VE_NEWTONIAN;
+        return pp;
 }
 
-#define CASE_NNF_PROPS makeCaseNnfProps()
-
+#define CASE_PHASE_PROPS makeCasePhaseProps()
 /* ----- END CONSTANTS CONFIGURATION ----- */

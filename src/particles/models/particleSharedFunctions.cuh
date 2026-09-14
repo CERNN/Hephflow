@@ -40,7 +40,7 @@ __device__ __forceinline__  dfloat stencil(dfloat x) {
             return 0.0_df;
         }
         else {
-            return (1 - x);
+            return (1.0_df - absX);
         }
     #elif defined STENCIL_4
         if (absX <= 1) {

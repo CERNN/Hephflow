@@ -16,11 +16,41 @@
 #include "../../models/ibm/ibmVar.h"
 // #include "../../class/Particle.cuh"
 #include "../../class/ParticleCenter.cuh"
+#include <type_traits>
 #pragma once
 
 #ifdef PARTICLE_MODEL
 class Particle;
 class ParticleCenter;
+
+constexpr int IBM_CACHED_STENCIL_WIDTH = 4;
+
+struct IbmVectorView
+{
+    dfloat* x;
+    dfloat* y;
+    dfloat* z;
+};
+
+/**
+ * Lightweight kernel-facing view of the IBM marker arrays.  The view owns no
+ * memory and is safe to pass to CUDA kernels by value.
+ */
+struct IbmNodesView
+{
+    unsigned int numNodes;
+    unsigned int* particleCenterIdx;
+    IbmVectorView pos;
+    IbmVectorView f;
+    IbmVectorView deltaF;
+    IbmVectorView originalRelativePos;
+    dfloat* S;
+    int3* stencilBase;
+    dfloat* stencilWeights;
+};
+
+static_assert(std::is_trivially_copyable<IbmNodesView>::value,
+    "IbmNodesView must remain safe to pass to CUDA kernels by value");
 
 /*
 *   Class describe the IBM node properties
@@ -86,6 +116,8 @@ protected:
     dfloat3SoA deltaF;  // vectors with nodes forces variations
     dfloat3SoA originalRelativePos; // vectors with original relative positions (node_pos - particle_center_pos) - immutable reference for precision
     dfloat* S; // vector node surface area
+    int3* stencilBase; // first lattice coordinate in each marker stencil
+    dfloat* stencilWeights; // axis-major cached 1D weights, [axis][offset][node]
 
 public:
     __host__ __device__
@@ -112,10 +144,9 @@ public:
      */
     __host__ void copyNodesFromParticle(Particle *particle, unsigned int pCenterIdx, ParticleCenter* pArray, unsigned int n_gpu);
  
-    __host__ void updateNodesGPUs();
-    __host__ void freeNodesAndCenters();
-
     __host__ void leftShiftNodesSoA(int idx, int left_shit);
+
+    __host__ IbmNodesView getView() const;
 
     __host__ __device__  unsigned int getNumNodes() const;
     __host__ __device__ void setNumNodes(const int numNodes); 

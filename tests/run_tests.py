@@ -15,6 +15,12 @@ Usage:
 import sys
 import subprocess
 import re
+import csv
+import math
+import os
+import shutil
+import statistics
+import stat
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -34,6 +40,13 @@ TEST_SUITE = {
         'velocity_set': 'D3Q27',
         'case_number': '011',
         'block_size': (8, 8, 4)  # Smaller blocks for D3Q27 to fit shared memory
+    },
+    '006_singleParticleSettling': {
+        'velocity_set': 'D3Q19',
+        'case_number': '006_settling_test_',
+        'block_size': (8, 8, 8),
+        'validation': 'particle_trajectory',
+        'output_dir': 'SingleParticleSettling/test'
     },
     # Add more test cases here as needed:
     # '001_lidDrivenCavity_2D': {
@@ -113,12 +126,13 @@ class TestRunner:
             results['errors'].append("Failed to parse test results")
             return False, results
         
-        # Compare with tolerances
-        passed, comparison = self._validate_results(
-            test_results, 
-            reference, 
-            tolerances
-        )
+        config = TEST_SUITE[case_name]
+        if config.get('validation') == 'particle_trajectory':
+            passed, comparison = self._validate_particle_trajectory(
+                case_dir, config, test_results, reference, tolerances)
+        else:
+            passed, comparison = self._validate_results(
+                test_results, reference, tolerances)
         
         results.update(comparison)
         results['passed'] = passed
@@ -240,11 +254,11 @@ class TestRunner:
             
             print(f"  Updated BC_PROBLEM to {case_name} and enabled TESTS in var.h", flush=True)
             print(f"  Updated block size to {block_nx}x{block_ny}x{block_nz} in memory_layout.h", flush=True)
-            print(f"  Compiling with {velocity_set} {case_number}...", flush=True)
+            print(f"  Compiling with output prefix {case_number}...", flush=True)
             
             # Run compile script with case-specific parameters
             result = subprocess.run(
-                ["bash", str(self.src_dir / "compile.sh"), velocity_set, case_number],
+                ["bash", str(self.src_dir / "compile.sh"), case_number],
                 cwd=str(self.src_dir),
                 capture_output=True,
                 timeout=300
@@ -282,20 +296,10 @@ class TestRunner:
         finally:
             # Restore var.h to original state
             try:
-                with open(var_h_path, 'r') as f:
-                    var_h_content = f.read()
-                
-                # Remove the TESTS define line
-                var_h_restored = re.sub(
-                    r'#define TESTS 1\n',
-                    '',
-                    var_h_content
-                )
-                
                 with open(var_h_path, 'w') as f:
-                    f.write(var_h_restored)
+                    f.write(var_h_original)
                 
-                print(f"  Restored var.h (removed TESTS define)")
+                print(f"  Restored var.h exactly")
             except Exception as e:
                 print(f"  [WARNING] Failed to restore var.h: {e}")
             
@@ -316,6 +320,16 @@ class TestRunner:
             velocity_set = config['velocity_set']
             case_number = config['case_number']
             sim_executable = self.bin_dir / f"{case_number}sim_{velocity_set}_sm86.exe"
+
+            output_dir = config.get('output_dir')
+            if output_dir:
+                output_path = self.bin_dir / output_dir
+                if output_path.exists():
+                    def remove_readonly(function, path, _error):
+                        os.chmod(path, stat.S_IWRITE)
+                        function(path)
+
+                    shutil.rmtree(output_path, onerror=remove_readonly)
             
             if not sim_executable.exists():
                 print(f"  [ERROR] Executable not found: {sim_executable}")
@@ -418,6 +432,129 @@ class TestRunner:
         
         passed = len(comparison['violations']) == 0
         return passed, comparison
+
+    def _validate_particle_trajectory(
+            self, case_dir: Path, config: Dict, test_results: Dict,
+            reference: Dict, tolerances: Dict) -> Tuple[bool, Dict]:
+        reference_path = case_dir / "_test" / "reference_trajectory.csv"
+        output_path = self.bin_dir / config['output_dir']
+        output_files = sorted(output_path.glob("*pCenters*.csv"))
+
+        with open(reference_path, newline='') as handle:
+            reference_rows = list(csv.DictReader(handle))
+        measured_rows = []
+        for path in output_files:
+            with open(path, newline='') as handle:
+                measured_rows.append(next(csv.DictReader(handle)))
+
+        measured_steps = [int(row['step']) for row in measured_rows]
+        measured_step_set = set(measured_steps)
+        reference_rows = [
+            row for row in reference_rows
+            if int(row['step']) in measured_step_set
+        ]
+
+        comparison = {
+            'test_metrics': test_results,
+            'reference_metrics': reference,
+            'violations': [],
+            'requires_literature_review': False
+        }
+        if len(reference_rows) != len(measured_rows):
+            comparison['violations'].append(
+                f"trajectory sample count: {len(measured_rows)} != {len(reference_rows)}")
+            return False, comparison
+
+        reference_steps = [int(row['step']) for row in reference_rows]
+        if reference_steps != measured_steps:
+            comparison['violations'].append(
+                f"trajectory sample steps: {measured_steps} != {reference_steps}")
+            return False, comparison
+
+        ref_vel = [float(row['vel_y']) for row in reference_rows]
+        got_vel = [float(row['vel_y']) for row in measured_rows]
+        ref_pos = [float(row['pos_y']) for row in reference_rows]
+        got_pos = [float(row['pos_y']) for row in measured_rows]
+        steps = reference_steps
+        diameter = tolerances.get('PARTICLE_DIAMETER', 15.0)
+        radius = diameter / 2.0
+
+        velocity_l2 = math.sqrt(
+            sum((a - b) ** 2 for a, b in zip(ref_vel, got_vel)) /
+            max(sum(value ** 2 for value in ref_vel), 1.0e-30))
+        ref_peak = max(map(abs, ref_vel))
+        got_peak = max(map(abs, got_vel))
+        peak_change = (got_peak - ref_peak) / max(ref_peak, 1.0e-30)
+        max_position_diff = max(
+            abs(a - b) for a, b in zip(ref_pos, got_pos))
+
+        def first_contact_index(position):
+            return next(
+                (index for index, y in enumerate(position) if y <= radius), None)
+
+        ref_contact_index = first_contact_index(ref_pos)
+        got_contact_index = first_contact_index(got_pos)
+        if ref_contact_index is None or got_contact_index is None:
+            contact_difference = (
+                0 if ref_contact_index == got_contact_index else math.inf)
+        else:
+            contact_difference = abs(
+                steps[got_contact_index] - steps[ref_contact_index])
+
+        # Estimate terminal settling speed from the pre-contact plateau.  The
+        # final samples are a wall-rest state with near-zero velocity, where a
+        # relative metric would amplify harmless floating-point noise.
+        plateau_end = (
+            max(ref_contact_index - 2, 1)
+            if ref_contact_index is not None else len(ref_vel))
+        plateau_start = max(1, plateau_end - 5)
+        ref_terminal = statistics.mean(
+            map(abs, ref_vel[plateau_start:plateau_end]))
+        got_terminal = statistics.mean(
+            map(abs, got_vel[plateau_start:plateau_end]))
+        terminal_change = (
+            (got_terminal - ref_terminal) / max(ref_terminal, 1.0e-30))
+
+        metrics = {
+            'VELOCITY_L2_REL': velocity_l2,
+            'PEAK_VELOCITY_REL_CHANGE': peak_change,
+            'TERMINAL_VELOCITY_REL_CHANGE': terminal_change,
+            'MAX_POSITION_DIFF': max_position_diff,
+            'CONTACT_STEP_DIFFERENCE': contact_difference,
+            'FINAL_REST_POSITION_DIFF': abs(got_pos[-1] - ref_pos[-1])
+        }
+        comparison['trajectory_metrics'] = metrics
+
+        checks = [
+            ('VELOCITY_L2_REL', velocity_l2,
+             tolerances['VELOCITY_L2_REL_TOL']),
+            ('PEAK_VELOCITY_REL_CHANGE', abs(peak_change),
+             tolerances['PEAK_VELOCITY_REL_TOL']),
+            ('TERMINAL_VELOCITY_REL_CHANGE', abs(terminal_change),
+             tolerances['TERMINAL_VELOCITY_REL_TOL']),
+            ('MAX_POSITION_DIFF_DIAMETER', max_position_diff / diameter,
+             tolerances['MAX_POSITION_DIFF_DIAMETER_TOL']),
+            ('CONTACT_STEP_DIFFERENCE', contact_difference,
+             tolerances['CONTACT_STEP_TOL']),
+            ('FINAL_REST_POSITION_DIFF', abs(got_pos[-1] - ref_pos[-1]),
+             tolerances['FINAL_REST_POSITION_TOL'])
+        ]
+        for name, value, limit in checks:
+            print(f"  {name}: {value:.6e} (limit {limit:.6e})")
+            if not math.isfinite(value) or value > limit:
+                comparison['violations'].append(
+                    f"{name}: {value:.6e} > {limit:.6e}")
+
+        report_threshold = tolerances['VELOCITY_INCREASE_REPORT_THRESHOLD']
+        if peak_change >= report_threshold or terminal_change >= report_threshold:
+            comparison['requires_literature_review'] = True
+            comparison['violations'].append(
+                "settling velocity increased by at least 10%; literature review required")
+
+        if test_results.get('FINITE_STATE') != 1.0:
+            comparison['violations'].append("final particle state is non-finite")
+
+        return len(comparison['violations']) == 0, comparison
     
     def run_all_tests(self, test_cases: list = None) -> Tuple[int, int]:
         """Run all specified test cases"""

@@ -8,12 +8,12 @@
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- TIME STEPPING --------------------- */
-constexpr int N_STEPS = 5000;               // Total simulation steps
+constexpr int N_STEPS = 100000;               // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
 constexpr int N = 128 * SCALE;              // Reference grid size
-constexpr int NX = N;                       // Grid size in X
+constexpr int NX = 3*N;                       // Grid size in X
 constexpr int NY = N;                       // Grid size in Y
 constexpr int NZ = N;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
@@ -45,9 +45,54 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 #define BC_Z_PERIODIC
 
 /* --------------------- FLUID PROPERTIES --------------------- */
-constexpr dfloat TAU = 0.55;                // Relaxation time
-constexpr dfloat VISC = (TAU - 0.5) / 3;    // Kinematic viscosity
-constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
+
+constexpr dfloat PHI_RHO_PHASE2 = 1.0_df;  // Phase 2 density (heavier phase)
+constexpr dfloat PHI_RHO_PHASE1 = 0.9_df;  // Phase 1 density (lighter phase)
+constexpr dfloat PHI_DRHO_PHASE12 = PHI_RHO_PHASE2 - PHI_RHO_PHASE1;
+
+constexpr dfloat RHO_MID_REF = (PHI_RHO_PHASE1 + PHI_RHO_PHASE2) / 2.0_df;
+
+// Paper setup uses viscosity ratio = 1 as kinematic viscosity ratio (nu_l/nu_g).
+constexpr dfloat KINEMATIC_VISCOSITY_RATIO = 1.0_df;
+constexpr dfloat TAU = 0.55; 
+constexpr dfloat VISC  = (TAU - 0.5_df) / 3.0_df;
+constexpr dfloat NU_PHASE2 = VISC;
+constexpr dfloat NU_PHASE1 = VISC;
+
+constexpr dfloat MU_PHASE1 = PHI_RHO_PHASE1 * NU_PHASE1;
+constexpr dfloat MU_PHASE2 = PHI_RHO_PHASE2 * NU_PHASE2;
+
+constexpr dfloat DYNAMIC_VISCOSITY_RATIO = MU_PHASE2 / MU_PHASE1;
+
+// Multiphase blending uses h_phi in [0,1]: h_phi=0 -> Phase 1, h_phi=1 -> Phase 2.
+constexpr dfloat TAU_PHASE1 = 0.5_df + 3.0_df * NU_PHASE1;
+constexpr dfloat TAU_PHASE2 = 0.5_df + 3.0_df * NU_PHASE2;
+
+constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962_df;
+
+// Explicit phase properties keep this case compatible with two-phase setup utilities.
+static inline fluidPhaseProps makeCasePhasePropsPhase1(){
+	fluidPhaseProps pp{};
+	pp.nnf.type = FLUID_BINGHAM;
+	pp.nnf.hasLambda = false;
+	pp.nnf.u.bingham.s_y = 0.0_df;
+	pp.nnf.u.bingham.omega_p = 1.0_df / TAU_PHASE1;
+	pp.ve.type = VE_NEWTONIAN;
+	return pp;
+}
+
+static inline fluidPhaseProps makeCasePhasePropsPhase2(){
+	fluidPhaseProps pp{};
+	pp.nnf.type = FLUID_BINGHAM;
+	pp.nnf.hasLambda = false;
+	pp.nnf.u.bingham.s_y = 0.0_df;
+	pp.nnf.u.bingham.omega_p = 1.0_df / TAU_PHASE2;
+	pp.ve.type = VE_NEWTONIAN;
+	return pp;
+}
+
+#define CASE_PHASE_PROPS_PHASE1 makeCasePhasePropsPhase1()
+#define CASE_PHASE_PROPS_PHASE2 makeCasePhasePropsPhase2()
 
 /* --------------------- CHECKPOINT AND INITIALIZATION --------------------- */
 #define LOAD_CHECKPOINT false               // Load simulation checkpoint
@@ -62,55 +107,56 @@ constexpr dfloat MACH_NUMBER = U_MAX / 0.57735026918962; // Mach number
  * Uses second distribution for phase field tracking
  * ========================================================================== */
 
-#define PHASE_MODEL                         // Enable phase field model
-#define INTERFACE_SHARPENING               // Enable interface sharpening
-#define CONVECTION_DIFFUSION_TRANSPORT     // Transport equation method
-#define D3G19                              // 19-velocity phase field (D3Q19 weights, as2=3)
-//#define D3G7                              // 7-velocity phase field (D3Q7 weights, as2=4)
+#define PHASE_MODEL
+#define INTERFACE_SHARPENING
+#define CONVECTION_DIFFUSION_TRANSPORT
+#define D3G19
 
-/* --------------------- PHASE FIELD DISTRIBUTION --------------------- */
-#define PHI_DIST                           // Enable phase field distribution
+#define PHI_DIST
+#define METHOD_CAHN_HILLIARD
+
 
 /* --------------------- PHASE FIELD REFERENCE VALUES --------------------- */
-constexpr dfloat PHI_REFERENCE = (dfloat)(0.5);   // Reference phase value
-constexpr dfloat PHI_DELTA_PHI = 1;                // Phase field range
-constexpr dfloat PHI_ONE = PHI_REFERENCE - PHI_DELTA_PHI/2.0;   // Phase 1 value
-constexpr dfloat PHI_TWO = PHI_REFERENCE + PHI_DELTA_PHI/2.0;   // Phase 2 value
-constexpr dfloat PHI_ALPHA = 0.05;                 // Regularization parameter
-constexpr dfloat PHI_ZERO = (dfloat)(10.0);        // Initial phase value
+constexpr dfloat PHI_REFERENCE = 0.0_df;
+constexpr dfloat PHI_DELTA_PHI = 2.0_df;
+constexpr dfloat PHI_ONE = PHI_REFERENCE - PHI_DELTA_PHI / 2.0_df;
+constexpr dfloat PHI_TWO = PHI_REFERENCE + PHI_DELTA_PHI / 2.0_df;
+constexpr dfloat PHI_ZERO = 0.0_df;
+constexpr dfloat PHI_SCALE = 2.0_df / PHI_DELTA_PHI;
 
 /* --------------------- SURFACE TENSION AND INTERFACE PARAMETERS --------------------- */
-// Model constants
-constexpr dfloat phi_sigma = 1e-2;         // Surface tension coefficient
-constexpr dfloat phi_del = 3;              // Interface width
-constexpr dfloat phi_beta = 12.0*phi_sigma / phi_del;  // Beta parameter
-constexpr dfloat phi_kappa = 3.0*phi_sigma*phi_del/2;  // Kappa parameter
+constexpr dfloat phi_del = 4.0_df;  // Interface width (in lattice units)
 
-// Density coupling constants
-constexpr dfloat phi_rho_l = 1.0;          // Liquid density
-constexpr dfloat phi_rho_g = 0.9;          // Gas density (10% difference)
-constexpr dfloat phi_drho = phi_rho_l - phi_rho_g; // Density difference
 
-// Interface sharpening coefficient (larger = sharper interface)
-constexpr dfloat phi_sharp_c = 0.45;       // Sharpening coefficient
+// Derived transport coefficients from target Ca and Pe.
+constexpr dfloat phi_sigma = 0.0003;
+constexpr dfloat phi_xi = phi_del / 2.94;
+constexpr dfloat M_CH = 1.0_df / (2.0_df * 1.41421356237309_df * phi_xi);
+constexpr dfloat kappa_CH =  0.75_df * phi_sigma * phi_del;
+constexpr dfloat A_CH = 6.0_df * phi_sigma / phi_del;
+
+/* --------------------- DENSITY COUPLING --------------------- */
+// g is derived from U_ref = sqrt(gL).
+constexpr dfloat g_value = 0.0_df;
+// Downward gravity in y to destabilize heavy-over-light stratification.
+__device__ const dfloat gravity_vector[3] = {0.0_df, 0.0_df, 0.0_df};
+
+constexpr dfloat R0 = 20.0_df;
 
 /* --------------------- FORCE COUPLING CONTROL FLAGS --------------------- */
-#define PHI_FORCE_FS_ENABLED 1             // Surface tension force (DISABLED for test)
-#define PHI_FORCE_FP_ENABLED 0             // Pressure gradient force (DISABLED)
-#define PHI_FORCE_FN_ENABLED 0             // Viscous stress force (DISABLED)
+#define PHI_FORCE_FS_ENABLED 1
+#define PHI_FORCE_FP_ENABLED 1
+#define PHI_FORCE_FN_ENABLED 1
+#define PHI_FORCE_FB_ENABLED 1
 
-/* --------------------- PHASE FIELD ADVECTION-DIFFUSION PARAMETERS --------------------- */
-constexpr dfloat PHI_DIFFUSIVITY_RATIO = 1; // Diffusivity ratio (like Prandtl number)
-constexpr dfloat PHI_DIFFUSIVITY = VISC/PHI_DIFFUSIVITY_RATIO; // Thermal diffusivity
+/* --------------------- PHASE-FIELD TRANSPORT (LBM) --------------------- */
+constexpr dfloat PECLET_NUMBER = 10.0_df;
+constexpr dfloat PHI_DIFF_REF = VISC / PECLET_NUMBER;
+constexpr dfloat PHI_DIFFUSIVITY = VISC / PECLET_NUMBER;
+constexpr dfloat PHI_DIFFUSIVITY_RATIO = PECLET_NUMBER;
 
-constexpr dfloat PHI_DIFF_REF = (1.0/6);    // Reference diffusion
-constexpr dfloat PHI_TAU = PHI_DIFF_REF*3+0.5;    // Phase field relaxation time
-constexpr dfloat PHI_OMEGA  = 1.0/PHI_TAU;        // Phase field collision frequency
-constexpr dfloat PHI_TT_OMEGA = 1.0-0.5*PHI_OMEGA; // TRT parameter
-
-// Diffusivity fluctuation correction
-constexpr dfloat PHI_DIFF_FLUC = PHI_DIFFUSIVITY - PHI_DIFF_REF;
-constexpr dfloat PHI_AAA = (3*PHI_DIFF_FLUC*PHI_OMEGA);
-constexpr dfloat PHI_DIFF_FLUC_COEF = PHI_AAA/(1.0+PHI_AAA); // Diffusivity correction
+constexpr dfloat PHI_TAU = 0.5_df + 3.0_df * PHI_DIFF_REF;
+constexpr dfloat PHI_OMEGA = 1.0_df / PHI_TAU;
 
 /* ----- END CONSTANTS CONFIGURATION ----- */
+

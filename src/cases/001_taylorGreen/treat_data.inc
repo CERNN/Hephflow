@@ -1,1 +1,1 @@
-totalKineticEnergy(fMom,step);
+//totalKineticEnergy(fMom,step);

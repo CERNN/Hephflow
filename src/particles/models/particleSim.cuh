@@ -11,7 +11,7 @@
 #ifndef __PARTICLE_SIM_CUH
 #define __PARTICLE_SIM_CUH
 
-#include "./../class/particle.cuh"
+#include "./../class/Particle.cuh"
 
 //models
 #include "ibm/ibm.cuh"

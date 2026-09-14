@@ -30,5 +30,7 @@
 //#define RANDOM_NUMBERS true    // to generate random numbers 
                                // (useful for turbulence)
 
+#define TREAT_DATA_INCLUDE
+
 
 

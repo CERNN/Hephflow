@@ -36,7 +36,7 @@
  *  @param step: Current time step
 */
 __host__ 
-void mean_rho(dfloat *fMom, size_t step, dfloat *d_mean_rho);
+void mean_rho(dfloat *fMom, size_t step, dfloat *d_mean_rho, cudaStream_t stream = 0);
 
 /** 
  *  @brief Compute and update the mean flow values (velocity and temperature if applicable) over time.

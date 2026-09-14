@@ -33,6 +33,10 @@
 //#define BC_FORCES                         // Compute boundary forces
 //#define SAVE_BC_FORCES                    // Save boundary forces to file
 
+/* --------------------- LOCAL FORCES --------------------- */
+//#define SAVE_LOCAL_FORCES                 // Save total local body force field to file
+                                           // (captures external + phase + thermal contributions)
+
 /* --------------------- PARTICLE OUTPUT --------------------- */
 #ifdef PARTICLE_MODEL
 #define PARTICLES_SAVE (100)                // Save particles every # steps

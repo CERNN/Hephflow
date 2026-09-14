@@ -8,13 +8,19 @@
 #ifndef __FEATURE_CONFIG_H
 #define __FEATURE_CONFIG_H
 
+/* ==================== POPULATION REPRESENTATION ==================== */
+
+// Enable f_i - w_i*RHO_0 storage/streaming for the supported hydrodynamic
+// moment reconstruction. Comment this definition for unshifted A/B tests.
+// #define SHIFTED_HYDRO_POP
+
 /* ============================== MODEL MACROS ============================= */
 
-#if defined(POWERLAW) || defined(BINGHAM) || defined(BI_VISCOSITY)
+#if defined(POWERLAW) || defined(BINGHAM) || defined(BI_VISCOSITY) || defined(HERSCHEL_BULKLEY) || defined(KEE_TURCOTEE)
     #define OMEGA_FIELD
     #define NON_NEWTONIAN_FLUID
     #define COMPUTE_SHEAR
-#endif  //POWERLAW || BINGHAM || BI_VISCOSITY
+#endif  //POWERLAW || BINGHAM || BI_VISCOSITY || HERSCHEL_BULKLEY || KEE_TURCOTEE
 
 #if defined(LAMBDA_MODEL)
     #define OMEGA_FIELD
@@ -27,8 +33,23 @@
     #define COMPUTE_SHEAR
 #endif //LES_MODEL
 
+#if defined(PHI_DIST)
+    #define COMPUTE_SHEAR
+    #define NON_NEWTONIAN_FLUID
+    #define OMEGA_FIELD
+#endif //PHI_DIST
+
+
 #if defined(HO_RR) || defined(HOME_LBM)
     #define HIGH_ORDER_COLLISION
 #endif // HO_RR || HOME_LBM
+
+/* ======================= GHOST INTERFACE OPTIMIZATION ====================== */
+
+// Enable shared memory staging for ghost interface I/O.
+// All 512 threads cooperatively load/store ghost face data through s_pop,
+// replacing scattered surface-thread-only global memory access with coalesced
+// block-wide transfers. Adds 3 extra __syncthreads() per timestep.
+// #define USE_SHARED_GHOST_STAGING
 
 #endif //__FEATURE_CONFIG_H

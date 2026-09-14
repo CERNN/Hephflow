@@ -136,68 +136,50 @@ void writeFileIntoArray(void* arr, const std::string filename, const size_t arr_
 
 __host__ 
 void writeFilesIntoDfloat3SoA(dfloat3SoA arr, const std::string foldername, const size_t arr_size_bytes, void* tmp){
-    // Write x, y and z to files
-    createFolder(foldername);
-    #ifdef _WIN32
-    writeFileIntoArray(arr.x, foldername + "\\\\x", arr_size_bytes, tmp);
-    writeFileIntoArray(arr.y, foldername + "\\\\y", arr_size_bytes, tmp);
-    writeFileIntoArray(arr.z, foldername + "\\\\z", arr_size_bytes, tmp);
-    #else
-    writeFileIntoArray(arr.x, foldername + "/x", arr_size_bytes, tmp);
-    writeFileIntoArray(arr.y, foldername + "/y", arr_size_bytes, tmp);
-    writeFileIntoArray(arr.z, foldername + "/z", arr_size_bytes, tmp);
-    #endif //_WIN32
-}
+    // Write x, y and z to files (portable)
+    std::filesystem::path folder(foldername);
+    createFolder(folder.string());
+    writeFileIntoArray(arr.x, (folder / "x").string(), arr_size_bytes, tmp);
+    writeFileIntoArray(arr.y, (folder / "y").string(), arr_size_bytes, tmp);
+    writeFileIntoArray(arr.z, (folder / "z").string(), arr_size_bytes, tmp);
+} 
 
 __host__
-std::string getCheckpointFilenameRead(std::string name){
-    std::string filename = SIMULATION_FOLDER_LOAD_CHECKPOINT;
-    #ifdef _WIN32
-    return filename + "\\\\" + ID_SIM + "\\\\checkpoint\\\\" +
-        "_" + name;
-    #else
-    return filename + "/" + ID_SIM + "/checkpoint/" + 
-        "_" + name;
-    #endif //_WIN32
-}
+std::string getCheckpointFilenameRead(std::string name, int gpu_index){
+    std::filesystem::path p = std::filesystem::path(SIMULATION_FOLDER_LOAD_CHECKPOINT) / ID_SIM / "checkpoint" / (std::to_string(gpu_index) + "_" + name);
+    return p.string();
+} 
 
 __host__
 void readFilesIntoDfloat3SoA(dfloat3SoA arr, const std::string foldername, const size_t arr_size_bytes, void* tmp){
-    // Read to x, y and z in dfloat3SoA
-    #ifdef _WIN32
-    readFileIntoArray(arr.x, foldername + "\\\\x", arr_size_bytes, tmp);
-    readFileIntoArray(arr.y, foldername + "\\\\y", arr_size_bytes, tmp);
-    readFileIntoArray(arr.z, foldername + "\\\\z", arr_size_bytes, tmp);
-    #else
-    readFileIntoArray(arr.x, foldername + "/x", arr_size_bytes, tmp);
-    readFileIntoArray(arr.y, foldername + "/y", arr_size_bytes, tmp);
-    readFileIntoArray(arr.z, foldername + "/z", arr_size_bytes, tmp);
-    #endif //_WIN32
-}
+    // Read to x, y and z in dfloat3SoA (portable)
+    std::filesystem::path folder(foldername);
+    readFileIntoArray(arr.x, (folder / "x").string(), arr_size_bytes, tmp);
+    readFileIntoArray(arr.y, (folder / "y").string(), arr_size_bytes, tmp);
+    readFileIntoArray(arr.z, (folder / "z").string(), arr_size_bytes, tmp);
+} 
 
 __host__
-std::string getCheckpointFilenameWrite(std::string name){
-    std::string filename = PATH_FILES;
-    #ifdef _WIN32
-    return filename + "\\\\" + ID_SIM + "\\\\checkpoint\\\\" + 
-        "_" + name;
-    #else
-    return filename + "/" + ID_SIM + "/checkpoint/" + 
-        "_" + name;
-    #endif //_WIN32
-}
+std::string getCheckpointFilenameWrite(std::string name, int gpu_index){
+    std::filesystem::path exePath = getExecutablePathCheckpoint();
+    std::filesystem::path binDir = exePath.parent_path();
+    std::filesystem::path p = binDir / PATH_FILES / ID_SIM / "checkpoint" / (std::to_string(gpu_index) + "_" + name);
+    return p.string();
+} 
 
 __host__
 void operateSimCheckpoint( 
     int oper,
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
-    int* step
+    int* step,
+    int gpu_index
     )
 {
     // Defining what functions to use (read or write to files)
+    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[gpu_index]));
     void (*f_arr)(void*, const std::string, size_t, void*);
-    std::string (*f_filename)(std::string);
+    std::string (*f_filename)(std::string , int);
 
     if(oper == __LOAD_CHECKPOINT){
         f_arr = &readFileIntoArray;
@@ -211,158 +193,155 @@ void operateSimCheckpoint(
     }
 
     // Everything will fit in this array
-    dfloat* tmp = (dfloat*)malloc(MEM_SIZE_MOM);
+    dfloat* tmp = (dfloat*)malloc(MEM_SIZE_MOM_LOCAL);
 
     // Load/save current step
-    f_arr(step, f_filename("curr_step"), sizeof(int), tmp);
+    f_arr(step, f_filename("curr_step", gpu_index), sizeof(int), tmp);
 
     if(oper == __LOAD_CHECKPOINT){
-        step[0]++;
-        printf("Loaded checkpoint: step %d \n",step[0]);
+        printf("Loaded checkpoint: step %d | N_GPU: %d \n",step[0], gpu_index);
     }else if(oper == __SAVE_CHECKPOINT){
-        printf("Saved checkpoint: step %d \n",step[0]);
+        printf("Saved checkpoint: step %d | N_GPU: %d \n",step[0], gpu_index);
     }
 
-
-    checkCudaErrors(cudaSetDevice(GPU_INDEX));
     // Load/save pop
-    f_arr(fMom, f_filename("fMom"), MEM_SIZE_MOM, tmp);
+    f_arr(fMom, f_filename("fMom", gpu_index), MEM_SIZE_MOM_LOCAL, tmp);
     
     if(oper == __LOAD_CHECKPOINT){
-        printf("Loaded checkpoint: moments \n");
+        printf("Loaded checkpoint: moments | N_GPU: %d \n", gpu_index);
     }else if(oper == __SAVE_CHECKPOINT){
-        printf("Saved checkpoint: moments \n");
+        printf("Saved checkpoint: moments | N_GPU: %d \n", gpu_index);
     }
 
     // Load/save auxilary populations
-    f_arr(ghostInterface.h_fGhost.X_0, f_filename("fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * QF, tmp);
-    f_arr(ghostInterface.h_fGhost.X_1, f_filename("fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * QF, tmp);
-    f_arr(ghostInterface.h_fGhost.Y_0, f_filename("fGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF, tmp);
-    f_arr(ghostInterface.h_fGhost.Y_1, f_filename("fGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF, tmp);
-    f_arr(ghostInterface.h_fGhost.Z_0, f_filename("fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * QF, tmp);
-    f_arr(ghostInterface.h_fGhost.Z_1, f_filename("fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * QF, tmp);
+    f_arr(ghostInterface.h_pop.X_0, f_filename("ghost.X_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * QF, tmp);
+    f_arr(ghostInterface.h_pop.X_1, f_filename("ghost.X_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * QF, tmp);
+    f_arr(ghostInterface.h_pop.Y_0, f_filename("ghost.Y_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF, tmp);
+    f_arr(ghostInterface.h_pop.Y_1, f_filename("ghost.Y_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF, tmp);
+    f_arr(ghostInterface.h_pop.Z_0, f_filename("ghost.Z_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF, tmp);
+    f_arr(ghostInterface.h_pop.Z_1, f_filename("ghost.Z_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF, tmp);
     if(oper == __LOAD_CHECKPOINT){
-        printf("Loaded checkpoint: f_pops \n");
+        printf("Loaded checkpoint: f_pops | N_GPU: %d \n", gpu_index);
     }else if(oper == __SAVE_CHECKPOINT){
-        printf("Saved checkpoint: f_pops \n");
+        printf("Saved checkpoint: f_pops | N_GPU: %d \n", gpu_index);
     }
 
     #ifdef SECOND_DIST 
-    f_arr(ghostInterface.g_h_fGhost.X_0, f_filename("g_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.g_h_fGhost.X_1, f_filename("g_fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.g_h_fGhost.Y_0, f_filename("g_fGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.g_h_fGhost.Y_1, f_filename("g_fGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.g_h_fGhost.Z_0, f_filename("g_fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
-    f_arr(ghostInterface.g_h_fGhost.Z_1, f_filename("g_fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
+    f_arr(ghostInterface.h_g.X_0, f_filename("g.X_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_g.X_1, f_filename("g.X_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_g.Y_0, f_filename("g.Y_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_g.Y_1, f_filename("g.Y_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_g.Z_0, f_filename("g.Z_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
+    f_arr(ghostInterface.h_g.Z_1, f_filename("g.Z_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
     if(oper == __LOAD_CHECKPOINT){
-        printf("Loaded checkpoint: g_pop \n");
+        printf("Loaded checkpoint: g_pop | N_GPU: %d \n", gpu_index);
     }else if(oper == __SAVE_CHECKPOINT){
-        printf("Saved checkpoint: g_pop \n");
+        printf("Saved checkpoint: g_pop | N_GPU: %d \n", gpu_index);
     }
 
     #endif //SECOND_DIST
 
     #ifdef PHI_DIST 
-    f_arr(ghostInterface.phi_h_fGhost.X_0, f_filename("phi_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.phi_h_fGhost.X_1, f_filename("phi_fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.phi_h_fGhost.Y_0, f_filename("phi_fGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.phi_h_fGhost.Y_1, f_filename("phi_fGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.phi_h_fGhost.Z_0, f_filename("phi_fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
-    f_arr(ghostInterface.phi_h_fGhost.Z_1, f_filename("phi_fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
+    f_arr(ghostInterface.h_phi.X_0, f_filename("phi.X_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_phi.X_1, f_filename("phi.X_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_phi.Y_0, f_filename("phi.Y_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_phi.Y_1, f_filename("phi.Y_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_phi.Z_0, f_filename("phi.Z_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
+    f_arr(ghostInterface.h_phi.Z_1, f_filename("phi.Z_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
     if(oper == __LOAD_CHECKPOINT){
-        printf("Loaded checkpoint: phi_pop \n");
+        printf("Loaded checkpoint: phi_pop | N_GPU: %d \n", gpu_index);
     }else if(oper == __SAVE_CHECKPOINT){
-        printf("Saved checkpoint: phi_pop \n");
+        printf("Saved checkpoint: phi_pop | N_GPU: %d \n", gpu_index);
     }
 
     #endif //PHI_DIST
 
     #ifdef A_XX_DIST 
-    f_arr(ghostInterface.Axx_h_fGhost.X_0, f_filename("Axx_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.Axx_h_fGhost.X_1, f_filename("Axx_fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.Axx_h_fGhost.Y_0, f_filename("Axx_fGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.Axx_h_fGhost.Y_1, f_filename("Axx_fGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.Axx_h_fGhost.Z_0, f_filename("Axx_fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
-    f_arr(ghostInterface.Axx_h_fGhost.Z_1, f_filename("Axx_fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
+    f_arr(ghostInterface.h_Axx.X_0, f_filename("Axx.X_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_Axx.X_1, f_filename("Axx.X_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_Axx.Y_0, f_filename("Axx.Y_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_Axx.Y_1, f_filename("Axx.Y_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_Axx.Z_0, f_filename("Axx.Z_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
+    f_arr(ghostInterface.h_Axx.Z_1, f_filename("Axx.Z_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
     if(oper == __LOAD_CHECKPOINT){
-        printf("Loaded checkpoint: Axx_pop \n");
+        printf("Loaded checkpoint: Axx_pop | N_GPU: %d \n", gpu_index);
     }else if(oper == __SAVE_CHECKPOINT){
-        printf("Saved checkpoint: Axx_pop \n");
+        printf("Saved checkpoint: Axx_pop | N_GPU: %d \n", gpu_index);
     }
 
     #endif //A_XX_DIST
 
     #ifdef A_XY_DIST 
-    f_arr(ghostInterface.Axy_h_fGhost.X_0, f_filename("Axy_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.Axy_h_fGhost.X_1, f_filename("Axy_fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.Axy_h_fGhost.Y_0, f_filename("Axy_fGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.Axy_h_fGhost.Y_1, f_filename("Axy_fGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.Axy_h_fGhost.Z_0, f_filename("Axy_fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
-    f_arr(ghostInterface.Axy_h_fGhost.Z_1, f_filename("Axy_fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
+    f_arr(ghostInterface.h_Axy.X_0, f_filename("Axy.X_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_Axy.X_1, f_filename("Axy.X_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_Axy.Y_0, f_filename("Axy.Y_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_Axy.Y_1, f_filename("Axy.Y_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_Axy.Z_0, f_filename("Axy.Z_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
+    f_arr(ghostInterface.h_Axy.Z_1, f_filename("Axy.Z_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
     if(oper == __LOAD_CHECKPOINT){
-        printf("Loaded checkpoint: Axy_pop \n");
+        printf("Loaded checkpoint: Axy_pop | N_GPU: %d \n", gpu_index);
     }else if(oper == __SAVE_CHECKPOINT){
-        printf("Saved checkpoint: Axy_pop \n");
+        printf("Saved checkpoint: Axy_pop | N_GPU: %d \n", gpu_index);
     }
 
     #endif //A_XY_DIST
 
     #ifdef A_XZ_DIST 
-    f_arr(ghostInterface.Axz_h_fGhost.X_0, f_filename("Axz_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.Axz_h_fGhost.X_1, f_filename("Axz_fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.Axz_h_fGhost.Y_0, f_filename("Axz_fGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.Axz_h_fGhost.Y_1, f_filename("Axz_fGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.Axz_h_fGhost.Z_0, f_filename("Axz_fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
-    f_arr(ghostInterface.Axz_h_fGhost.Z_1, f_filename("Axz_fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
+    f_arr(ghostInterface.h_Axz.X_0, f_filename("Axz.X_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_Axz.X_1, f_filename("Axz.X_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_Axz.Y_0, f_filename("Axz.Y_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_Axz.Y_1, f_filename("Axz.Y_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_Axz.Z_0, f_filename("Axz.Z_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
+    f_arr(ghostInterface.h_Axz.Z_1, f_filename("Axz.Z_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
     if(oper == __LOAD_CHECKPOINT){
-        printf("Loaded checkpoint: Axz_pop \n");
+        printf("Loaded checkpoint: Axz_pop | N_GPU: %d \n", gpu_index);
     }else if(oper == __SAVE_CHECKPOINT){
-        printf("Saved checkpoint: Axz_pop \n");
+        printf("Saved checkpoint: Axz_pop | N_GPU: %d \n", gpu_index);
     }
 
     #endif //A_XZ_DIST
 
     #ifdef A_YY_DIST 
-    f_arr(ghostInterface.Ayy_h_fGhost.X_0, f_filename("Ayy_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.Ayy_h_fGhost.X_1, f_filename("Ayy_fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.Ayy_h_fGhost.Y_0, f_filename("Ayy_fGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.Ayy_h_fGhost.Y_1, f_filename("Ayy_fGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.Ayy_h_fGhost.Z_0, f_filename("Ayy_fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
-    f_arr(ghostInterface.Ayy_h_fGhost.Z_1, f_filename("Ayy_fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
+    f_arr(ghostInterface.h_Ayy.X_0, f_filename("Ayy.X_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_Ayy.X_1, f_filename("Ayy.X_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_Ayy.Y_0, f_filename("Ayy.Y_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_Ayy.Y_1, f_filename("Ayy.Y_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_Ayy.Z_0, f_filename("Ayy.Z_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
+    f_arr(ghostInterface.h_Ayy.Z_1, f_filename("Ayy.Z_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
     if(oper == __LOAD_CHECKPOINT){
-        printf("Loaded checkpoint: Ayy_pop \n");
+        printf("Loaded checkpoint: Ayy_pop | N_GPU: %d \n", gpu_index);
     }else if(oper == __SAVE_CHECKPOINT){
-        printf("Saved checkpoint: Ayy_pop \n");
+        printf("Saved checkpoint: Ayy_pop | N_GPU: %d \n", gpu_index);
     }
 
     #endif //A_YY_DIST
 
     #ifdef A_YZ_DIST 
-    f_arr(ghostInterface.Ayz_h_fGhost.X_0, f_filename("Ayz_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.Ayz_h_fGhost.X_1, f_filename("Ayz_fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.Ayz_h_fGhost.Y_0, f_filename("Ayz_fGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.Ayz_h_fGhost.Y_1, f_filename("Ayz_fGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.Ayz_h_fGhost.Z_0, f_filename("Ayz_fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
-    f_arr(ghostInterface.Ayz_h_fGhost.Z_1, f_filename("Ayz_fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
+    f_arr(ghostInterface.h_Ayz.X_0, f_filename("Ayz.X_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_Ayz.X_1, f_filename("Ayz.X_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_Ayz.Y_0, f_filename("Ayz.Y_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_Ayz.Y_1, f_filename("Ayz.Y_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_Ayz.Z_0, f_filename("Ayz.Z_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
+    f_arr(ghostInterface.h_Ayz.Z_1, f_filename("Ayz.Z_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * GF, tmp);
     if(oper == __LOAD_CHECKPOINT){
-        printf("Loaded checkpoint: Ayz_pop \n");
+        printf("Loaded checkpoint: Ayz_pop | N_GPU: %d \n", gpu_index);
     }else if(oper == __SAVE_CHECKPOINT){
-        printf("Saved checkpoint: Ayz_pop \n");
+        printf("Saved checkpoint: Ayz_pop | N_GPU: %d \n", gpu_index);
     }
 
     #endif //A_YZ_DIST
 
     #ifdef A_ZZ_DIST 
-    f_arr(ghostInterface.Azz_h_fGhost.X_0, f_filename("Ayz_fGhost.X_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.Azz_h_fGhost.X_1, f_filename("Ayz_fGhost.X_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
-    f_arr(ghostInterface.Azz_h_fGhost.Y_0, f_filename("Ayz_fGhost.Y_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.Azz_h_fGhost.Y_1, f_filename("Ayz_fGhost.Y_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
-    f_arr(ghostInterface.Azz_h_fGhost.Z_0, f_filename("Ayz_fGhost.Z_0"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
-    f_arr(ghostInterface.Azz_h_fGhost.Z_1, f_filename("Ayz_fGhost.Z_1"), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
+    f_arr(ghostInterface.h_Azz.X_0, f_filename("Azz.X_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_Azz.X_1, f_filename("Azz.X_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF, tmp);
+    f_arr(ghostInterface.h_Azz.Y_0, f_filename("Azz.Y_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_Azz.Y_1, f_filename("Azz.Y_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * GF, tmp);
+    f_arr(ghostInterface.h_Azz.Z_0, f_filename("Azz.Z_0", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
+    f_arr(ghostInterface.h_Azz.Z_1, f_filename("Azz.Z_1", gpu_index), sizeof(dfloat) * NUMBER_GHOST_FACE_XY * GF, tmp);
     if(oper == __LOAD_CHECKPOINT){
-        printf("Loaded checkpoint: Azz_pop \n");
+        printf("Loaded checkpoint: Azz_pop | N_GPU: %d \n", gpu_index);
     }else if(oper == __SAVE_CHECKPOINT){
-        printf("Saved checkpoint: Azz_pop \n");
+        printf("Saved checkpoint: Azz_pop | N_GPU: %d \n", gpu_index);
     }
 
     #endif //A_ZZ_DIST
@@ -373,14 +352,17 @@ void operateSimCheckpoint(
 
 
 __host__
-int getStep(){
+int getStep(int gpu_index,  int* step){
     std::string filename = SIMULATION_FOLDER_LOAD_CHECKPOINT;
-    std::string DIR_PATH = "..\\\\bin\\\\" + filename + "\\\\" + ID_SIM + "\\\\checkpoint\\\\" + "_";
 
-    std::ifstream fileread(DIR_PATH + "curr_step.bin", std::ios::binary);
+    // Build a portable path to the checkpoint file using std::filesystem
+    std::filesystem::path dir = std::filesystem::path("..") / "bin" / filename / ID_SIM / "checkpoint";
+    std::filesystem::path filePath = dir /(std::to_string(gpu_index) + "_curr_step.bin");
+
+    std::ifstream fileread(filePath.string(), std::ios::binary);
 
     if (!fileread) {
-        std::cerr << "Error opening file: " << (DIR_PATH + "curr_step.bin") << std::endl;
+        std::cerr << "Error opening file: " << filePath << std::endl;
         return -1;
     }
 
@@ -403,6 +385,7 @@ int getStep(){
     }
     
     fileread.close();
+
     return laststep+1;
 }
 
@@ -410,9 +393,11 @@ __host__
 int loadSimCheckpoint( 
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
-    int *step
+    int *step,
+    int gpu_index
     ){
-    step[0] = getStep();
+    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[gpu_index]));
+    step[0] = getStep(gpu_index, step);
 
     if(step[0] < INI_STEP)
         step[0]=INI_STEP;
@@ -421,7 +406,7 @@ int loadSimCheckpoint(
         std::cerr << "Starting from step " << step[0] << std::endl;
         return 0;
     }
-    operateSimCheckpoint(__LOAD_CHECKPOINT, fMom, ghostInterface,step);
+    operateSimCheckpoint(__LOAD_CHECKPOINT, fMom, ghostInterface,step, gpu_index);
     return 1;
 }
 
@@ -430,11 +415,12 @@ __host__
 void saveSimCheckpoint( 
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
-    int *step
+    int *step,
+    int gpu_index
     ){
     folderCheckpoint();
 
-    operateSimCheckpoint(__SAVE_CHECKPOINT, fMom,ghostInterface, step);
+    operateSimCheckpoint(__SAVE_CHECKPOINT, fMom,ghostInterface, step, gpu_index);
 }
 
 #ifdef PARTICLE_MODEL
@@ -449,7 +435,7 @@ void operateSimCheckpointParticle(
     // Defining what functions to use (read or write to files)
     void (*f_arr)(void*, const std::string, size_t, void*);
     void (*f_dfloat3SoA)(dfloat3SoA, const std::string, size_t, void*);
-    std::string (*f_filename)(std::string);
+    std::string (*f_filename)(std::string, int);
 
     if(oper == __LOAD_CHECKPOINT){
         f_arr = &readFileIntoArray;
@@ -468,7 +454,7 @@ void operateSimCheckpointParticle(
     dfloat* tmp = (dfloat*)malloc(MEM_SIZE_POP);
 
     // Load/save current step
-    f_arr(step, f_filename("curr_step_particle"), sizeof(int), tmp);
+    f_arr(step, f_filename("curr_step_particle", GPU_INDEX), sizeof(int), tmp);
     
     ParticleMethod* methodArray = particlesSoA.getPMethod();
     ParticleMethod& method = methodArray[GPU_INDEX];
@@ -476,8 +462,12 @@ void operateSimCheckpointParticle(
     if(method == IBM){
         // Load particles centers positions
         checkCudaErrors(cudaSetDevice(GPU_INDEX));
-        f_arr(particlesSoA.getPCenterArray(), f_filename("IBM_particles_centers"), 
+        f_arr(particlesSoA.getPCenterArray(), f_filename("IBM_particles_centers", GPU_INDEX),
             NUM_PARTICLES*sizeof(ParticleCenter), tmp);
+        f_arr(particlesSoA.getCollisionDataArray(),
+            f_filename("IBM_particles_collision_history", GPU_INDEX),
+            NUM_PARTICLES*sizeof(CollisionData), tmp);
+        if (oper == __LOAD_CHECKPOINT) particlesSoA.bindCollisionData();
     }
     
     checkCudaErrors(cudaSetDevice(GPU_INDEX));
@@ -489,19 +479,19 @@ void operateSimCheckpointParticle(
 
         // IBM nodes bytes size
         if(oper == __LOAD_CHECKPOINT){
-            size_t filesize = getFileSize(f_filename("IBM_nodes_centers_idx.bin"));
+            size_t filesize = getFileSize(f_filename("IBM_nodes_centers_idx.bin", GPU_INDEX));
             nSoA.setNumNodes(filesize / sizeof(unsigned int));
         }
         size_t ibm_nodes_arr_size = nSoA.getNumNodes() * sizeof(dfloat);
         size_t ibm_nodes_arr_size_uint = nSoA.getNumNodes() * sizeof(unsigned int);
         // Load/save IBM nodes values
-        f_arr(nSoA.getParticleCenterIdx(), f_filename("IBM_nodes_centers_idx"), ibm_nodes_arr_size_uint, tmp);
-        f_dfloat3SoA(nSoA.getPos(), f_filename("IBM_nodes_pos"), ibm_nodes_arr_size, tmp);
-        f_dfloat3SoA(nSoA.getVel(), f_filename("IBM_nodes_vel"), ibm_nodes_arr_size, tmp);
-        f_dfloat3SoA(nSoA.getVelOld(), f_filename("IBM_nodes_vel_old"), ibm_nodes_arr_size, tmp);
-        f_dfloat3SoA(nSoA.getF(), f_filename("IBM_nodes_f"), ibm_nodes_arr_size, tmp);
-        f_dfloat3SoA(nSoA.getDeltaF(), f_filename("IBM_nodes_deltaF"), ibm_nodes_arr_size, tmp);
-        f_arr(nSoA.getS(), f_filename("IBM_nodes_S"), ibm_nodes_arr_size, tmp);
+        f_arr(nSoA.getParticleCenterIdx(), f_filename("IBM_nodes_centers_idx", GPU_INDEX), ibm_nodes_arr_size_uint, tmp);
+        f_dfloat3SoA(nSoA.getPos(), f_filename("IBM_nodes_pos", GPU_INDEX), ibm_nodes_arr_size, tmp);
+        f_dfloat3SoA(nSoA.getVel(), f_filename("IBM_nodes_vel", GPU_INDEX), ibm_nodes_arr_size, tmp);
+        f_dfloat3SoA(nSoA.getVelOld(), f_filename("IBM_nodes_vel_old", GPU_INDEX), ibm_nodes_arr_size, tmp);
+        f_dfloat3SoA(nSoA.getF(), f_filename("IBM_nodes_f", GPU_INDEX), ibm_nodes_arr_size, tmp);
+        f_dfloat3SoA(nSoA.getDeltaF(), f_filename("IBM_nodes_deltaF", GPU_INDEX), ibm_nodes_arr_size, tmp);
+        f_arr(nSoA.getS(), f_filename("IBM_nodes_S", GPU_INDEX), ibm_nodes_arr_size, tmp);
     }
     
     free(tmp);
@@ -512,7 +502,7 @@ int loadSimCheckpointParticle(
     ParticlesSoA& particlesSoA,
     int *step
     ){
-    step[0] = getStep();
+    step[0] = getStep(GPU_INDEX, step);
 
     if(step[0] < INI_STEP)
         step[0]=INI_STEP;

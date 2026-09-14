@@ -10,8 +10,8 @@
 
 
 /* --------------------- OUTPUT FORMATS --------------------- */
-#define VTK_SAVE (false)                // Save VTK format (ParaView)
-#define BIN_SAVE (true)                 // Save binary format
+#define VTK_SAVE (true)                // Save VTK format (ParaView)
+#define BIN_SAVE (false)                 // Save binary format
 #define MACR_SAVE (500)               // Save macroscopic/binary every 500 steps
 #define REPORT_SAVE (false)             // Save report files
 #define NODE_TYPE_SAVE (false)          // Save BC conditions for visualization

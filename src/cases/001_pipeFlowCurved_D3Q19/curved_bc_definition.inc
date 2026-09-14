@@ -12,6 +12,14 @@ const dfloat3 wall = duct_center + unit_normal * max_radius;
 
 h_curvedBC_array[curvedBCCount].w = wall;
 
+// OUTER_ROTATION is the angular velocity around the duct axis and
+// OUTER_VELOCITY is an axial wall velocity. Both are zero for this case.
+h_curvedBC_array[curvedBCCount].wallVel = dfloat3(
+    -OUTER_ROTATION * (wall.y - duct_center.y),
+     OUTER_ROTATION * (wall.x - duct_center.x),
+     OUTER_VELOCITY);
+h_curvedBC_array[curvedBCCount].vel = dfloat3(0.0_df, 0.0_df, 0.0_df);
+
 h_curvedBC_array[curvedBCCount].delta = vector_length(wall - b);
 h_curvedBC_array[curvedBCCount].delta_r = lattice_dx;
 

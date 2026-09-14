@@ -22,6 +22,7 @@
 #include "nodeTypeMap.h"
 #include "non_newtonian/nnf.h"
 #include "fragments/lambdaTransport/lambda_evolution.cuh"
+#include "non_newtonian/propertyInterpolation.cuh"
 
 
 /**
@@ -55,8 +56,30 @@ void gpuResetMacroForces(dfloat *fMom);
  */
 __global__ void gpuComputePhaseNormals(
     dfloat *fMom, 
-    unsigned int *dNodeType
+    unsigned int *dNodeType, 
+    macroInterfaceGPUData macroInterfaceGPU,
+    size_t localNZ, 
+    int zStart
 );
 
+__global__ void gpuComputeChemicalPotential(
+    dfloat *fMom, 
+    unsigned int *dNodeType, 
+    size_t localNZ, 
+    int zStart
+);
+
+
+__global__ void gpuComputeLaplacianMu(
+    dfloat *fMom, 
+    unsigned int *dNodeType, 
+    macroInterfaceGPUData macroInterfaceGPU,
+    size_t localNZ, 
+    int zStart
+);
+
+// Launch with a 1D plane grid and grid.y == 2 (bottom/top).
+__global__ void gpuPackMacroHalos(const dfloat *fMom,
+    macroInterfaceGPUData halos, size_t localNZ);
 
 #endif //__MLBM_H

@@ -13,8 +13,9 @@ uz = U_0_Z;
 
 // Add random perturbations for turbulence
 dfloat pert = 0.01;
-int l = idxScalarGlobal(x, y, z);
-int Nt = NUMBER_LBM_NODES;
+// randomNumbers is allocated per partition, so its index must use local z.
+int l = idxScalarGlobal(x, y, z_local);
+int Nt = NUMBER_LBM_NODES_LOCAL;
 dfloat xc = (NX-1)/2.0;
 dfloat yc = (NY-1)/2.0;
 

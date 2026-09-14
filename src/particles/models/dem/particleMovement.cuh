@@ -22,6 +22,22 @@
 #include "../../../saveData.cuh"
 #include "../../class/Particle.cuh"
 
+#ifndef PARTICLE_ROTATION_SUBSTEPS
+#define PARTICLE_ROTATION_SUBSTEPS 1
+#endif
+
+#ifndef PARTICLE_ROTATION_MAX_ITERS
+#define PARTICLE_ROTATION_MAX_ITERS 5
+#endif
+
+#ifndef PARTICLE_ROTATION_REL_TOL
+#define PARTICLE_ROTATION_REL_TOL 1.0e-5f
+#endif
+
+static_assert(PARTICLE_ROTATION_SUBSTEPS > 0, "PARTICLE_ROTATION_SUBSTEPS must be positive");
+static_assert(PARTICLE_ROTATION_MAX_ITERS > 0, "PARTICLE_ROTATION_MAX_ITERS must be positive");
+static_assert(PARTICLE_ROTATION_REL_TOL > 0.0f, "PARTICLE_ROTATION_REL_TOL must be positive");
+
 #ifdef PARTICLE_MODEL
 
 /**
@@ -58,6 +74,16 @@ void updateParticlePosition(
 );
 
 /**
+ * @brief Advance particle velocity, rotation, position, and oriented geometry
+ *        in one per-particle kernel.
+ */
+__global__
+void updateParticleKinematics(
+    ParticleCenter* pArray,
+    unsigned int step
+);
+
+/**
  * @brief Update the semi-axis positions using cumulative rotation and original offsets.
  * Reconstructs semi-axis position from first principles each frame to avoid error accumulation.
  * Periodic wrapping is implicit through particle_center position (which is already wrapped).
@@ -75,5 +101,3 @@ dfloat3 updateSemiAxis(
 
 #endif //PARTICLE_MODEL
 #endif // !__PARTICLE_MOVEMENT_H
-
-
