@@ -162,6 +162,8 @@ class ParticlesSoA{
         __host__ __device__ void setPMethod(ParticleMethod* pMethod);
 
         __host__ __device__ const unsigned char* getCollisionFlags() const;
+        __host__ __device__ dfloat3* getPibmForceArray() const;
+        __host__ __device__ dfloat3* getPibmForceCorrectionArray() const;
         __host__ bool hasParticleCollisions() const;
         __host__ bool hasWallCollisions() const;
 
@@ -178,6 +180,8 @@ class ParticlesSoA{
         ParticleShape* pShape;
         ParticleMethod* pMethod;
         unsigned char* collisionFlags;
+        dfloat3* pibmForceArray;
+        dfloat3* pibmForceCorrectionArray;
         bool particleCollisionsEnabled;
         bool wallCollisionsEnabled;
         std::map<ParticleMethod, MethodRange> methodRanges;

@@ -54,6 +54,8 @@ ParticlesSoA::ParticlesSoA() {
     pShape = nullptr;
     pMethod = nullptr;
     collisionFlags = nullptr;
+    pibmForceArray = nullptr;
+    pibmForceCorrectionArray = nullptr;
     particleCollisionsEnabled = false;
     wallCollisionsEnabled = false;
 }
@@ -79,6 +81,14 @@ ParticlesSoA::~ParticlesSoA() {
     if (collisionFlags) {
         cudaFree(collisionFlags);
         collisionFlags = nullptr;
+    }
+    if (pibmForceArray) {
+        cudaFree(pibmForceArray);
+        pibmForceArray = nullptr;
+    }
+    if (pibmForceCorrectionArray) {
+        cudaFree(pibmForceCorrectionArray);
+        pibmForceCorrectionArray = nullptr;
     }
 }
 
@@ -109,6 +119,7 @@ __host__ __device__ ParticleMethod* ParticlesSoA::getPMethod() const {return thi
 __host__ __device__ void ParticlesSoA::setPMethod(ParticleMethod* pMethod) {this->pMethod = pMethod;}
 __host__ __device__ const unsigned char* ParticlesSoA::getCollisionFlags() const {return this->collisionFlags;}
 __host__ __device__ dfloat3* ParticlesSoA::getPibmForceArray() const {return this->pibmForceArray;}
+__host__ __device__ dfloat3* ParticlesSoA::getPibmForceCorrectionArray() const {return this->pibmForceCorrectionArray;}
 __host__ bool ParticlesSoA::hasParticleCollisions() const {return this->particleCollisionsEnabled;}
 __host__ bool ParticlesSoA::hasWallCollisions() const {return this->wallCollisionsEnabled;}
 
@@ -226,10 +237,12 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
     checkCudaErrors(cudaMalloc((void**)&this->pShape,                    sizeof(ParticleShape)  * NUM_PARTICLES));
     checkCudaErrors(cudaMallocManaged((void**)&this->pMethod,            sizeof(ParticleMethod) * NUM_PARTICLES));
     checkCudaErrors(cudaMalloc((void**)&this->collisionFlags,            sizeof(unsigned char)  * NUM_PARTICLES));
+    checkCudaErrors(cudaMalloc((void**)&this->pibmForceArray,            sizeof(dfloat3)         * NUM_PARTICLES));
+    checkCudaErrors(cudaMalloc((void**)&this->pibmForceCorrectionArray,  sizeof(dfloat3)         * NUM_PARTICLES));
 
     if (!this->pCenterArray || !this->collisionDataArray ||
         !this->pShape || !this->pMethod || !this->collisionFlags ||
-        !this->pShape || !this->pMethod) {
+        !this->pibmForceArray || !this->pibmForceCorrectionArray) {
         printf("ERRO: Memory allocation failed!!\n"); fflush(stdout);
         return;
     }
@@ -287,6 +300,7 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
     checkCudaErrors(cudaMemcpy(this->collisionFlags, collisionFlagsHost.data(),
         sizeof(unsigned char) * NUM_PARTICLES, cudaMemcpyHostToDevice));
     checkCudaErrors(cudaMemset(this->pibmForceArray, 0, sizeof(dfloat3) * NUM_PARTICLES));
+    checkCudaErrors(cudaMemset(this->pibmForceCorrectionArray, 0, sizeof(dfloat3) * NUM_PARTICLES));
 }
 
 void ParticlesSoA::freeNodesAndCenters(){
@@ -305,6 +319,10 @@ void ParticlesSoA::freeNodesAndCenters(){
     this->pMethod = nullptr;
     cudaFree(this->collisionFlags);
     this->collisionFlags = nullptr;
+    cudaFree(this->pibmForceArray);
+    this->pibmForceArray = nullptr;
+    cudaFree(this->pibmForceCorrectionArray);
+    this->pibmForceCorrectionArray = nullptr;
     this->particleCollisionsEnabled = false;
     this->wallCollisionsEnabled = false;
 }
