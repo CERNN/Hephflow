@@ -9,7 +9,7 @@
 #define PATH_FILES "MultiParticleSettlingPIBM" // Path to save simulation's files
 
 /* --------------------- OUTPUT FORMATS --------------------- */
-#define VTK_SAVE (true)          // Save VTK format (ParaView)
+#define VTK_SAVE (false)         // Disable large fluid-field output for this run
 #define BIN_SAVE (false)         // Save binary format
 #define ONLY_FINAL_MACRO (false) // Save only last time step macroscopic
 #define MACR_SAVE (1000)           // Save macroscopic fields every # timesteps
@@ -25,7 +25,7 @@
 #define NODE_TYPE_SAVE (false) // Save BC conditions for visualization
 
 /* --------------------- PARTICLE OUTPUT --------------------- */
-#define PARTICLES_SAVE (100)           // Save particles info every given steps
+#define PARTICLES_SAVE (500)           // Save particles info every given steps
 #define PARTICLES_DATA_REPORT (false) // Report IBM treated data every given steps
 #define IBM_PARTICLES_NODES_SAVE true // Saves particles nodes data
 

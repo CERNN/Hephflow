@@ -3,6 +3,7 @@ srand(12345);  // fixed seed for reproducibility
 
 dfloat diameter = 0.8;
 dfloat radius   = diameter / 2.0;
+dfloat margin   = 1.0;  // minimum distance from particle surface to wall (safety gap)
 
 for (int i = 0; i < NUM_PARTICLES; i++) {
     ParticleCenter& center = centerStorage[i];
@@ -10,9 +11,9 @@ for (int i = 0; i < NUM_PARTICLES; i++) {
     bool valid = false;
 
     while (!valid) {
-        pos.x = (dfloat)((dfloat)rand() / RAND_MAX) * (NX - 1 - 2*radius) + radius;
-        pos.y = (dfloat)((dfloat)rand() / RAND_MAX) * (NY - 1 - 2*radius) + radius;
-        pos.z = (dfloat)((dfloat)rand() / RAND_MAX) * (NZ - 1 - 2*radius) + radius;
+        pos.x = (dfloat)((dfloat)rand() / RAND_MAX) * (NX - 1 - 2*(radius + margin)) + (radius + margin);
+        pos.y = (dfloat)((dfloat)rand() / RAND_MAX) * (NY - 1 - 2*(radius + margin)) + (radius + margin);
+        pos.z = (dfloat)((dfloat)rand() / RAND_MAX) * (NZ - 1 - 2*(radius + margin)) + (radius + margin);
         
         valid = true;
 
@@ -33,9 +34,9 @@ for (int i = 0; i < NUM_PARTICLES; i++) {
 
 
     dfloat3 vel = {0.0, 0.0, 0.0};
-    dfloat3 sa1 = {10, 0, 0};
-    dfloat3 sa2 = {0, 10, 0};
-    dfloat3 sa3 = {0, 0, 10};
+    dfloat3 sa1 = {radius, 0, 0};
+    dfloat3 sa2 = {0, radius, 0};
+    dfloat3 sa3 = {0, 0, radius};
 
     this->pShape[i] = SPHERE;
     center.setPos(pos);
@@ -55,6 +56,6 @@ for (int i = 0; i < NUM_PARTICLES; i++) {
     particles[i].setMethod(PIBM);
     particles[i].setShape(&pShape[i]);
     particles[i].setPCenter(&center);
-    particles[i].setCollideParticle(false);
+    particles[i].setCollideParticle(true);
     particles[i].setCollideWall(true);
 }

@@ -1,7 +1,7 @@
 #define PARTICLE_MODEL 
 
 constexpr int SCALE = 1;
-constexpr int N_STEPS = 10000;
+constexpr int N_STEPS = 200000;
 constexpr int N = 96 * SCALE;
 constexpr int NX = N;        // size x of the grid 
 constexpr int NY = 2*N;        // size y of the grid
