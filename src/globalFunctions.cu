@@ -796,7 +796,7 @@ __host__ __device__
 dfloat mom_trilinear_interp(
     dfloat x, dfloat y, dfloat z,
     int mom,
-    dfloat *fMom)
+    const dfloat *fMom)
 {
     int i = (int)floor(x);
     int j = (int)floor(y);

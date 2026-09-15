@@ -12,6 +12,7 @@
 #include "cuda_utils.cuh"   // for BlockDim
 #include "utils.h"        // for myMax
 #include "../arrayIndex.h"   // for domain size definitions
+#include "moment_storage_config.h"
 
 /* ============================= VELOCITY SETS ============================= */
 
@@ -129,6 +130,8 @@ const size_t MEM_SIZE_SCALAR_LOCAL = sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL;
 const size_t MEM_SIZE_POP = sizeof(dfloat) * NUMBER_LBM_POP_NODES * Q;
 const size_t MEM_SIZE_MOM = sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS;
 const size_t MEM_SIZE_MOM_LOCAL = sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL * NUMBER_MOMENTS;
+const size_t MEM_SIZE_MOM_STORAGE = MOM_STORAGE_BYTES_PER_NODE * NUMBER_LBM_NODES;
+const size_t MEM_SIZE_MOM_STORAGE_LOCAL = MOM_STORAGE_BYTES_PER_NODE * NUMBER_LBM_NODES_LOCAL;
 
 
 const size_t MEM_SIZE_MAP_BC = sizeof(uint32_t) * NUMBER_LBM_NODES;

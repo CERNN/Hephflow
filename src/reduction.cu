@@ -181,7 +181,12 @@ void sumReductionThread_KE(dfloat* g_idata, dfloat* g_odata)
     //total number of threads in block
     unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
 
-    sdata[tid] = (g_idata[ip] + RHO_0)*(g_idata[ix]*g_idata[ix] + g_idata[iy]*g_idata[iy]+g_idata[iz]*g_idata[iz])/(2*F_M_I_SCALE*F_M_I_SCALE);
+    const dfloat rho = RHO_0 + loadMoment(g_idata, ip, M_RHO_INDEX);
+    const dfloat ux = loadMoment(g_idata, ix, M_UX_INDEX);
+    const dfloat uy = loadMoment(g_idata, iy, M_UY_INDEX);
+    const dfloat uz = loadMoment(g_idata, iz, M_UZ_INDEX);
+    sdata[tid] = rho * (ux*ux + uy*uy + uz*uz)
+        / (2*F_M_I_SCALE*F_M_I_SCALE);
     __syncthreads();
     
     // Reduction that handles non-power-of-2 block sizes

@@ -183,16 +183,20 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     unsigned int nodeType = dNodeType[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)];
     if (nodeType == 0b11111111)  return;
 
-    dfloat rhoVar = RHO_0 + fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat ux_t30     = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat uy_t30     = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat uz_t30     = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat m_xx_t45   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MXX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat m_xy_t90   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MXY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat m_xz_t90   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MXZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat m_yy_t45   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MYY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat m_yz_t90   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MYZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat m_zz_t45   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MZZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+    #define LOAD_HYDRO_MOMENT(moment) \
+        loadMoment(fMom, idxMom(threadIdx.x, threadIdx.y, threadIdx.z, moment, \
+            blockIdx.x, blockIdx.y, blockIdx.z), moment)
+    dfloat rhoVar = RHO_0 + LOAD_HYDRO_MOMENT(M_RHO_INDEX);
+    dfloat ux_t30     = LOAD_HYDRO_MOMENT(M_UX_INDEX);
+    dfloat uy_t30     = LOAD_HYDRO_MOMENT(M_UY_INDEX);
+    dfloat uz_t30     = LOAD_HYDRO_MOMENT(M_UZ_INDEX);
+    dfloat m_xx_t45   = LOAD_HYDRO_MOMENT(M_MXX_INDEX);
+    dfloat m_xy_t90   = LOAD_HYDRO_MOMENT(M_MXY_INDEX);
+    dfloat m_xz_t90   = LOAD_HYDRO_MOMENT(M_MXZ_INDEX);
+    dfloat m_yy_t45   = LOAD_HYDRO_MOMENT(M_MYY_INDEX);
+    dfloat m_yz_t90   = LOAD_HYDRO_MOMENT(M_MYZ_INDEX);
+    dfloat m_zz_t45   = LOAD_HYDRO_MOMENT(M_MZZ_INDEX);
+    #undef LOAD_HYDRO_MOMENT
 
   
 
@@ -1291,18 +1295,20 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     
     /* write to global mom */
 
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = rhoVar - RHO_0;
-
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = ux_t30;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = uy_t30;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = uz_t30;
-
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MXX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = m_xx_t45;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MXY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = m_xy_t90;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MXZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = m_xz_t90;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MYY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = m_yy_t45;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MYZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = m_yz_t90;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MZZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = m_zz_t45;
+    #define STORE_HYDRO_MOMENT(moment, value) \
+        storeMoment(fMom, idxMom(threadIdx.x, threadIdx.y, threadIdx.z, moment, \
+            blockIdx.x, blockIdx.y, blockIdx.z), moment, value)
+    STORE_HYDRO_MOMENT(M_RHO_INDEX, rhoVar - RHO_0);
+    STORE_HYDRO_MOMENT(M_UX_INDEX, ux_t30);
+    STORE_HYDRO_MOMENT(M_UY_INDEX, uy_t30);
+    STORE_HYDRO_MOMENT(M_UZ_INDEX, uz_t30);
+    STORE_HYDRO_MOMENT(M_MXX_INDEX, m_xx_t45);
+    STORE_HYDRO_MOMENT(M_MXY_INDEX, m_xy_t90);
+    STORE_HYDRO_MOMENT(M_MXZ_INDEX, m_xz_t90);
+    STORE_HYDRO_MOMENT(M_MYY_INDEX, m_yy_t45);
+    STORE_HYDRO_MOMENT(M_MYZ_INDEX, m_yz_t90);
+    STORE_HYDRO_MOMENT(M_MZZ_INDEX, m_zz_t45);
+    #undef STORE_HYDRO_MOMENT
     
     #ifdef OMEGA_FIELD
         fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_OMEGA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = omegaVar;
@@ -1874,8 +1880,9 @@ __global__ void gpuPackMacroHalos(const dfloat *fMom,
     const int z = blockIdx.y == 0 ? 0 : (int)localNZ - 1;
     auto pack = [&](gpuDirection field, int moment) {
         dfloat *face = blockIdx.y == 0 ? field.Z_0 : field.Z_1;
-        face[planeIdx] = fMom[idxMom(x % BLOCK_NX, y % BLOCK_NY, z % BLOCK_NZ,
-            moment, x / BLOCK_NX, y / BLOCK_NY, z / BLOCK_NZ)];
+        const size_t index = idxMom(x % BLOCK_NX, y % BLOCK_NY, z % BLOCK_NZ,
+            moment, x / BLOCK_NX, y / BLOCK_NY, z / BLOCK_NZ);
+        face[planeIdx] = loadMoment(fMom, index, moment);
     };
     pack(halos.rho, M_RHO_INDEX);
     pack(halos.ux, M_UX_INDEX);

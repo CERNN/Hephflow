@@ -117,10 +117,13 @@ __global__ void gpuInitialization_mom(
 
    
     // zeroth moment
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = rho-RHO_0;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = F_M_I_SCALE*ux;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = F_M_I_SCALE*uy;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = F_M_I_SCALE*uz;
+    #define STORE_INITIAL_MOMENT(moment, value) \
+        storeMoment(fMom, idxMom(threadIdx.x, threadIdx.y, threadIdx.z, moment, \
+            blockIdx.x, blockIdx.y, blockIdx.z), moment, value)
+    STORE_INITIAL_MOMENT(M_RHO_INDEX, rho-RHO_0);
+    STORE_INITIAL_MOMENT(M_UX_INDEX, F_M_I_SCALE*ux);
+    STORE_INITIAL_MOMENT(M_UY_INDEX, F_M_I_SCALE*uy);
+    STORE_INITIAL_MOMENT(M_UZ_INDEX, F_M_I_SCALE*uz);
 
     //second moments
     //define equilibrium populations
@@ -140,12 +143,13 @@ __global__ void gpuInitialization_mom(
     dfloat piyz = ((pop[11]+pop[12])-(pop[17]+pop[18])) * invRho;
     dfloat pizz =  (pop[5] + pop[6] + pop[9] + pop[10] + pop[11] + pop[12] + pop[15] + pop[16] + pop[17] + pop[18]) * invRho - cs2;
 
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MXX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = F_M_II_SCALE*pixx;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MXY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = F_M_IJ_SCALE*pixy;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MXZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = F_M_IJ_SCALE*pixz;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MYY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = F_M_II_SCALE*piyy;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MYZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = F_M_IJ_SCALE*piyz;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MZZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = F_M_II_SCALE*pizz;
+    STORE_INITIAL_MOMENT(M_MXX_INDEX, F_M_II_SCALE*pixx);
+    STORE_INITIAL_MOMENT(M_MXY_INDEX, F_M_IJ_SCALE*pixy);
+    STORE_INITIAL_MOMENT(M_MXZ_INDEX, F_M_IJ_SCALE*pixz);
+    STORE_INITIAL_MOMENT(M_MYY_INDEX, F_M_II_SCALE*piyy);
+    STORE_INITIAL_MOMENT(M_MYZ_INDEX, F_M_IJ_SCALE*piyz);
+    STORE_INITIAL_MOMENT(M_MZZ_INDEX, F_M_II_SCALE*pizz);
+    #undef STORE_INITIAL_MOMENT
 
     #ifdef OMEGA_FIELD
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_OMEGA_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = omega;
@@ -251,16 +255,20 @@ __global__ void gpuInitialization_pop(
     size_t index = idxScalarGlobal(x, y, z_local);
     // zeroth moment
 
-    dfloat rhoVar = RHO_0 + fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat ux_t30     = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat uy_t30     = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat uz_t30     = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_UZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat m_xx_t45   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MXX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat m_xy_t90   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MXY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat m_xz_t90   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MXZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat m_yy_t45   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MYY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat m_yz_t90   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MYZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
-    dfloat m_zz_t45   = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_MZZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+    #define LOAD_INITIAL_MOMENT(moment) \
+        loadMoment(fMom, idxMom(threadIdx.x, threadIdx.y, threadIdx.z, moment, \
+            blockIdx.x, blockIdx.y, blockIdx.z), moment)
+    dfloat rhoVar = RHO_0 + LOAD_INITIAL_MOMENT(M_RHO_INDEX);
+    dfloat ux_t30     = LOAD_INITIAL_MOMENT(M_UX_INDEX);
+    dfloat uy_t30     = LOAD_INITIAL_MOMENT(M_UY_INDEX);
+    dfloat uz_t30     = LOAD_INITIAL_MOMENT(M_UZ_INDEX);
+    dfloat m_xx_t45   = LOAD_INITIAL_MOMENT(M_MXX_INDEX);
+    dfloat m_xy_t90   = LOAD_INITIAL_MOMENT(M_MXY_INDEX);
+    dfloat m_xz_t90   = LOAD_INITIAL_MOMENT(M_MXZ_INDEX);
+    dfloat m_yy_t45   = LOAD_INITIAL_MOMENT(M_MYY_INDEX);
+    dfloat m_yz_t90   = LOAD_INITIAL_MOMENT(M_MYZ_INDEX);
+    dfloat m_zz_t45   = LOAD_INITIAL_MOMENT(M_MZZ_INDEX);
+    #undef LOAD_INITIAL_MOMENT
 
     dfloat pop[Q];
     dfloat multiplyTerm;

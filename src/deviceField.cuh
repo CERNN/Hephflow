@@ -108,11 +108,11 @@ typedef struct deviceField{
         cudaSetDevice(GPUS_TO_USE[g]);
         unsigned int memAllocated = 0;
 
-        cudaMalloc((void**)&d_fMom[g], MEM_SIZE_MOM_LOCAL);
+        cudaMalloc((void**)&d_fMom[g], MEM_SIZE_MOM_STORAGE_LOCAL);
         cudaMalloc((void**)&dNodeType[g], sizeof(int) * NUMBER_LBM_NODES_LOCAL);
         interfaceMalloc(ghostInterface[g], ghostInterfaceCopy[g], macroInterfaceGPU[g], macroInterfaceGPUCopy[g]);
 
-        memAllocated += MEM_SIZE_MOM_LOCAL + sizeof(int) * NUMBER_LBM_NODES_LOCAL;
+        memAllocated += MEM_SIZE_MOM_STORAGE_LOCAL + sizeof(int) * NUMBER_LBM_NODES_LOCAL;
 
         #ifdef BC_FORCES
         cudaMalloc((void**)&d_BC_Fx[g], MEM_SIZE_SCALAR);
@@ -378,7 +378,9 @@ typedef struct deviceField{
 
         // Synchronize and transfer data back to host if needed
         checkCudaErrors(cudaDeviceSynchronize());
-        checkCudaErrors(cudaMemcpy(hostField.h_fMom + zOffset, d_fMom[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL * NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(hostField.h_fMom + zOffset, d_fMom[g],
+            MEM_SIZE_MOM_STORAGE_LOCAL, cudaMemcpyDeviceToHost));
+        decodeMomentStorageInPlace(hostField.h_fMom + zOffset, NUM_BLOCK_LOCAL);
         checkCudaErrors(cudaDeviceSynchronize());
 
         printf("Syncing data back to host (g=%d) \n", g); if(console_flush) fflush(stdout);
@@ -1366,7 +1368,9 @@ typedef struct deviceField{
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         int zStart = g * slice;
         size_t zOffset = zStart * NX * NY * NUMBER_MOMENTS;
-        checkCudaErrors(cudaMemcpy(hostField.h_fMom + zOffset, d_fMom[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(hostField.h_fMom + zOffset, d_fMom[g],
+            MEM_SIZE_MOM_STORAGE_LOCAL, cudaMemcpyDeviceToHost));
+        decodeMomentStorageInPlace(hostField.h_fMom + zOffset, NUM_BLOCK_LOCAL);
         
         // Copy BC forces arrays if enabled
         #if defined BC_FORCES && defined SAVE_BC_FORCES
@@ -1432,7 +1436,9 @@ typedef struct deviceField{
             int zStart = g * slice;
             size_t zOffset = zStart * NX * NY * NUMBER_MOMENTS;
             size_t zOffsetScalar = zStart * NX * NY;
-            checkCudaErrors(cudaMemcpy(hostField.h_fMom+zOffset, allDevices[g].d_fMom[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL*NUMBER_MOMENTS, cudaMemcpyDeviceToHost));
+            checkCudaErrors(cudaMemcpy(hostField.h_fMom+zOffset, allDevices[g].d_fMom[g],
+                MEM_SIZE_MOM_STORAGE_LOCAL, cudaMemcpyDeviceToHost));
+            decodeMomentStorageInPlace(hostField.h_fMom + zOffset, NUM_BLOCK_LOCAL);
 
             // Local forces / source terms (scalar fields, assembled on host)
             #ifdef SAVE_LOCAL_FORCES
