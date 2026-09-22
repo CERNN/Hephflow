@@ -12,11 +12,17 @@ constexpr dfloat RE = 500;                  // Reynolds number
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- TIME STEPPING --------------------- */
-constexpr int N_STEPS = 10000;              // Total simulation steps
+#ifndef BENCHMARK_STEPS
+#define BENCHMARK_STEPS 10000
+#endif
+constexpr int N_STEPS = BENCHMARK_STEPS;    // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
-constexpr int N = 256 * SCALE;              // Reference grid size
+#ifndef BENCHMARK_N
+#define BENCHMARK_N 256
+#endif
+constexpr int N = BENCHMARK_N * SCALE;      // Reference grid size
 constexpr int NX = N;                       // Grid size in X
 constexpr int NY = N;                       // Grid size in Y
 constexpr int NZ = N;                       // Grid size in Z (single GPU)
@@ -89,20 +95,23 @@ constexpr dfloat T_DIFF_FLUC = T_DIFFUSIVITY - T_DIFF_REF;
 constexpr dfloat G_AAA = (3*T_DIFF_FLUC*G_OMEGA);
 constexpr dfloat G_DIFF_FLUC_COEF = G_AAA/(1.0+G_AAA);
 #endif
-// Optional, mutually exclusive Step 7 block-face streaming experiments.
-// Define one through the build flags; the default benchmark remains AA.
-// #define STEP7_ESOTERIC_PULL
-// #define STEP7_ESOTERIC_TWIST
-// #define STEP7_ESOTERIC_PUSH
+// Select the streaming process with compile.sh --streaming:
+// AB, AA, AA_PULL, AA_TWIST, or AA_PUSH. The default is AA.
+
+// Cooperative ghost-population variants are declared in feature_config.h and
+// remain default-off. Define at most one load variant and at most one save
+// variant through build flags:
+// X, Y, Z, XY, XZ, YZ, and ALL are available independently for loads/saves.
+// Examples: COOPERATIVE_GHOST_LOAD_Y, COOPERATIVE_GHOST_SAVE_XZ.
 
 // Queue the single-GPU timestep on its existing stream and synchronize only
 // at real host-consumption/timing boundaries. Multi-GPU behavior is unchanged.
-#define STEP8_QUEUE_SINGLE_GPU
+#define QUEUE_SINGLE_GPU_TIMESTEP
 
 // Split the local slab into one interior launch and one launch per Z boundary.
-// Step 11 keeps the current serialized dependencies; Step 12 adds events/overlap.
-#define STEP11_SPLIT_Z_KERNEL
+// Halo overlap can add events and concurrent transfers to this launch layout.
+#define SPLIT_Z_COLLISION_KERNEL
 
 // Compute boundaries first, then transfer their next-generation halos on a
 // separate stream while the current interior range runs.
-// #define STEP12_OVERLAP_HALOS
+// #define OVERLAP_HALO_TRANSFERS

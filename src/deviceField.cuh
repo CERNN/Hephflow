@@ -257,6 +257,12 @@ typedef struct deviceField{
             gpuInitialization_pop<<<gridBlock, threadBlock>>>(d_fMom[g], ghostInterface[g], localNZ, zStart);
         }
 
+        #ifdef STREAMING_AB
+        // Both AB generations start from the same reconstructed interface.
+        interfaceCudaMemcpy(ghostInterfaceCopy[g], ghostInterfaceCopy[g].pop,
+            ghostInterface[g].pop, cudaMemcpyDeviceToDevice, QF, g);
+        #endif
+
         // Mean flow initialization
         #if MEAN_FLOW
             // Copy mean baseline from device to host so mean flow accumulation starts from the initial state
@@ -441,6 +447,15 @@ typedef struct deviceField{
 
         params.popCopy.auxZ_0 = ghostInterfaceCopy[g].popAux.Z_0;
         params.popCopy.auxZ_1 = ghostInterfaceCopy[g].popAux.Z_1;
+
+        #ifdef STREAMING_AB
+        params.popCopy.X_0 = ghostInterfaceCopy[g].pop.X_0;
+        params.popCopy.X_1 = ghostInterfaceCopy[g].pop.X_1;
+        params.popCopy.Y_0 = ghostInterfaceCopy[g].pop.Y_0;
+        params.popCopy.Y_1 = ghostInterfaceCopy[g].pop.Y_1;
+        params.popCopy.Z_0 = ghostInterfaceCopy[g].pop.Z_0;
+        params.popCopy.Z_1 = ghostInterfaceCopy[g].pop.Z_1;
+        #endif
 
         params.step = step;
         params.save = save;
@@ -763,7 +778,7 @@ typedef struct deviceField{
         #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
         
         // Pass struct by value - CUDA handles this efficiently.
-        #ifdef STEP11_SPLIT_Z_KERNEL
+        #ifdef SPLIT_Z_COLLISION_KERNEL
         auto launchZRange = [&](unsigned int firstBlock, unsigned int blockCount) {
             if (blockCount == 0) return;
             params.zBlockOffset = firstBlock;
@@ -1090,8 +1105,12 @@ typedef struct deviceField{
         const size_t haloSize  = planeSize * sizeof(dfloat);
         const size_t topOffset = (size_t)(NUM_BLOCK_Z_LOCAL - 1) * planeSize;
 
+        #ifdef STREAMING_AB
+        auto& dstIface = allDevices[gNext].ghostInterface[gNext];
+        #else
         auto& dstIface = stepParity ? allDevices[gNext].ghostInterface[gNext]
                              : allDevices[gNext].ghostInterfaceCopy[gNext];
+        #endif
 
         checkCudaErrors(cudaMemcpyPeerAsync(
             dstIface.popAux.Z_1, GPUS_TO_USE[gNext],
@@ -1188,8 +1207,12 @@ typedef struct deviceField{
         const size_t planeSize = (size_t)BLOCK_NX * BLOCK_NY * NUM_BLOCK_X * NUM_BLOCK_Y * QF;
         const size_t haloSize  = planeSize * sizeof(dfloat);
 
+        #ifdef STREAMING_AB
+        auto& dstIface = allDevices[g].ghostInterface[g];
+        #else
         auto& dstIface = stepParity ? allDevices[g].ghostInterface[g]
                              : allDevices[g].ghostInterfaceCopy[g];
+        #endif
 
         checkCudaErrors(cudaMemcpyPeerAsync(
             dstIface.popAux.Z_0, GPUS_TO_USE[g],
@@ -1303,7 +1326,7 @@ typedef struct deviceField{
     #endif //PHI_DIST
 
     void swapGhostInterfacesDeviceField(int g){
-        swapGhostInterfaces(ghostInterface[g]);
+        swapGhostInterfaces(ghostInterface[g], ghostInterfaceCopy[g]);
     }
 
     void halfStepKernels(dim3 gridBlock, dim3 threadBlock, size_t step, int g, int slice, cudaStream_t stream){

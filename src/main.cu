@@ -8,8 +8,8 @@
 
 #include <chrono>
 
-#if defined(STEP12_OVERLAP_HALOS) && !defined(STEP11_SPLIT_Z_KERNEL)
-#error "STEP12_OVERLAP_HALOS requires STEP11_SPLIT_Z_KERNEL"
+#if defined(OVERLAP_HALO_TRANSFERS) && !defined(SPLIT_Z_COLLISION_KERNEL)
+#error "OVERLAP_HALO_TRANSFERS requires SPLIT_Z_COLLISION_KERNEL"
 #endif
 
 using namespace std;
@@ -69,7 +69,7 @@ int main() {
     ParticleField particleField;
     cudaEvent_t particleForceFieldReady;
     #endif
-    #ifdef STEP12_OVERLAP_HALOS
+    #ifdef OVERLAP_HALO_TRANSFERS
     cudaStream_t streamsBoundary[N_GPUS];
     cudaStream_t streamsHalo[N_GPUS];
     cudaEvent_t stepReady[N_GPUS];
@@ -105,7 +105,7 @@ int main() {
             /* -------------- Setup Streams ------------- */
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
             checkCudaErrors(cudaStreamCreateWithFlags(&streamsLBM[g], cudaStreamNonBlocking));
-            #ifdef STEP12_OVERLAP_HALOS
+            #ifdef OVERLAP_HALO_TRANSFERS
             int leastPriority = 0;
             int greatestPriority = 0;
             checkCudaErrors(cudaDeviceGetStreamPriorityRange(&leastPriority, &greatestPriority));
@@ -224,7 +224,7 @@ int main() {
     }
     #endif
 
-    #ifdef STEP12_OVERLAP_HALOS
+    #ifdef OVERLAP_HALO_TRANSFERS
     // Seed the first timestep's compute dependency.
     for (int g = 0; g < N_GPUS; ++g) {
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
@@ -282,7 +282,7 @@ int main() {
         stepParity = (step & 1u);
 
         /* -------------- Exchanging halos between neighboring GPUs using P2P ------------- */
-        #ifdef STEP12_OVERLAP_HALOS
+        #ifdef OVERLAP_HALO_TRANSFERS
         // Consume the incoming generation, then produce the next outgoing faces
         // first on a high-priority stream. Boundary and interior kernels operate
         // on disjoint block planes and were already unordered in the full grid.
@@ -375,8 +375,13 @@ int main() {
             checkCudaErrors(cudaDeviceSynchronize());
         }
         
-        // swap interface pointers
-        //deviceField.swapGhostInterfacesDeviceField();
+        // AB writes the alternate population generation; make it current only
+        // after every device has completed the collision--stream launch.
+        #ifdef STREAMING_AB
+        for (int g = 0; g < N_GPUS; ++g) {
+            devices[g].swapGhostInterfacesDeviceField(g);
+        }
+        #endif
             
         CHECK_KERNEL_ERR("Stream Collision kernel");
         #endif
@@ -409,7 +414,7 @@ int main() {
             threads.clear();
         }
 
-        #ifdef STEP12_OVERLAP_HALOS
+        #ifdef OVERLAP_HALO_TRANSFERS
         for (int g = 0; g < N_GPUS; ++g) {
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
             checkCudaErrors(cudaEventRecord(stepReady[g], streamsLBM[g]));
@@ -517,6 +522,19 @@ int main() {
     }
     threads.clear();
 
+    #ifdef COOPERATIVE_GHOST_CHECKSUM
+    {
+        const unsigned char* checksumBytes =
+            reinterpret_cast<const unsigned char*>(hostField.h_fMom);
+        unsigned long long checksum = 1469598103934665603ULL;
+        for (size_t byte = 0; byte < MEM_SIZE_MOM; ++byte) {
+            checksum ^= static_cast<unsigned long long>(checksumBytes[byte]);
+            checksum *= 1099511628211ULL;
+        }
+        printf("MOMENT_CHECKSUM: %016llx\n", checksum);
+    }
+    #endif
+
     hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
 
     if(CHECKPOINT_SAVE){
@@ -573,7 +591,7 @@ int main() {
     for(int g = 0; g < N_GPUS; g++){
         threads.emplace_back([&, g]() {
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-            #ifdef STEP12_OVERLAP_HALOS
+            #ifdef OVERLAP_HALO_TRANSFERS
             checkCudaErrors(cudaEventDestroy(haloReady[g]));
             checkCudaErrors(cudaEventDestroy(boundaryReady[g]));
             checkCudaErrors(cudaEventDestroy(stepReady[g]));

@@ -84,6 +84,15 @@ void interfaceFree(ghostInterfaceData &ghostInterface, ghostInterfaceData &ghost
     cudaFree(ghostInterfaceCopy.popAux.Z_0);
     cudaFree(ghostInterfaceCopy.popAux.Z_1);
 
+    #ifdef STREAMING_AB
+    cudaFree(ghostInterfaceCopy.pop.X_0);
+    cudaFree(ghostInterfaceCopy.pop.X_1);
+    cudaFree(ghostInterfaceCopy.pop.Y_0);
+    cudaFree(ghostInterfaceCopy.pop.Y_1);
+    cudaFree(ghostInterfaceCopy.pop.Z_0);
+    cudaFree(ghostInterfaceCopy.pop.Z_1);
+    #endif
+
     cudaFree(macroInterfaceGPU.rho.Z_0);
     cudaFree(macroInterfaceGPU.rho.auxZ_0);
     cudaFree(macroInterfaceGPU.rho.Z_1);
@@ -469,36 +478,20 @@ void interfaceCudaMemcpy(GhostInterfaceData& ghostInterface, ghostData& dst, con
  *  @param ghostInterface: reference to the ghost interface data structure
  */
 __host__
-void swapGhostInterfaces(GhostInterfaceData& ghostInterface) {
-    // Synchronize device before performing swaps
-    checkCudaErrors(cudaDeviceSynchronize());
-
-    #ifdef SECOND_DIST
-    #endif //SECOND_DIST
-
-    #ifdef PHI_DIST
-    #endif //PHI_DIST
-
-    #ifdef LAMBDA_DIST
-    #endif //LAMBDA_DIST
-
-    #ifdef A_XX_DIST
-    #endif //A_XX_DIST
-
-    #ifdef A_XY_DIST
-    #endif //A_XY_DIST
-
-    #ifdef A_XZ_DIST
-    #endif //A_XZ_DIST
-
-    #ifdef A_YY_DIST
-    #endif //A_YY_DIST
-
-    #ifdef A_YZ_DIST
-    #endif //A_YZ_DIST
-
-    #ifdef A_ZZ_DIST
-    #endif //A_ZZ_DIST
+void swapGhostInterfaces(GhostInterfaceData& ghostInterface, GhostInterfaceData& ghostInterfaceCopy) {
+    #ifdef STREAMING_AB
+    interfaceSwap(ghostInterface.pop.X_0, ghostInterfaceCopy.pop.X_0);
+    interfaceSwap(ghostInterface.pop.X_1, ghostInterfaceCopy.pop.X_1);
+    interfaceSwap(ghostInterface.pop.Y_0, ghostInterfaceCopy.pop.Y_0);
+    interfaceSwap(ghostInterface.pop.Y_1, ghostInterfaceCopy.pop.Y_1);
+    interfaceSwap(ghostInterface.pop.Z_0, ghostInterfaceCopy.pop.Z_0);
+    interfaceSwap(ghostInterface.pop.Z_1, ghostInterfaceCopy.pop.Z_1);
+    interfaceSwap(ghostInterface.popAux.Z_0, ghostInterfaceCopy.popAux.Z_0);
+    interfaceSwap(ghostInterface.popAux.Z_1, ghostInterfaceCopy.popAux.Z_1);
+    #else
+    (void)ghostInterface;
+    (void)ghostInterfaceCopy;
+    #endif
 }
 
 /**
@@ -508,7 +501,7 @@ void swapGhostInterfaces(GhostInterfaceData& ghostInterface) {
 __host__
 void interfaceMalloc(ghostInterfaceData &ghostInterface, ghostInterfaceData &ghostInterfaceCopy, macroInterfaceGPUData &macroInterfaceGPU, macroInterfaceGPUData &macroInterfaceGPUCopy)
 {
-    unsigned int memAllocated = 0;
+    size_t memAllocated = 0;
 
     size_t MacroBoundarySize = NX * NY * sizeof(dfloat);
 
@@ -523,6 +516,15 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface, ghostInterfaceData &gho
 
     cudaMalloc((void **)&(ghostInterfaceCopy.popAux.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_AUX * QF);
     cudaMalloc((void **)&(ghostInterfaceCopy.popAux.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_AUX * QF);
+
+    #ifdef STREAMING_AB
+    cudaMalloc((void **)&(ghostInterfaceCopy.pop.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * QF);
+    cudaMalloc((void **)&(ghostInterfaceCopy.pop.X_1), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * QF);
+    cudaMalloc((void **)&(ghostInterfaceCopy.pop.Y_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF);
+    cudaMalloc((void **)&(ghostInterfaceCopy.pop.Y_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XZ * QF);
+    cudaMalloc((void **)&(ghostInterfaceCopy.pop.Z_0), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF);
+    cudaMalloc((void **)&(ghostInterfaceCopy.pop.Z_1), sizeof(dfloat) * NUMBER_GHOST_FACE_XY_LOCAL * QF);
+    #endif
 
     cudaMalloc((void **)&(macroInterfaceGPU.rho.Z_0), MacroBoundarySize);
     cudaMalloc((void **)&(macroInterfaceGPU.rho.Z_1), MacroBoundarySize);
@@ -556,7 +558,11 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface, ghostInterfaceData &gho
     cudaMalloc((void **)&(macroInterfaceGPUCopy.uz.auxZ_0), MacroBoundarySize);
     cudaMalloc((void **)&(macroInterfaceGPUCopy.uz.auxZ_1), MacroBoundarySize);
 
-    memAllocated = QF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);  // AA: ghost only
+    #ifdef STREAMING_AB
+    memAllocated = 4ULL * QF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
+    #else
+    memAllocated = 2ULL * QF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);
+    #endif
 
 #ifdef SECOND_DIST
     cudaMalloc((void **)&(ghostInterface.g.X_0), sizeof(dfloat) * NUMBER_GHOST_FACE_YZ * GF);

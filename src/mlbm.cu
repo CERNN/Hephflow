@@ -1,7 +1,6 @@
 #include "mlbm.cuh"
 #include "curvedConformationBC.cuh"
 
-
 __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 {
     // Split launches use a smaller grid in Z. Shadow CUDA's launch block index
@@ -14,8 +13,16 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     // Unpack parameters from struct (passed by value - CUDA optimized!)
     dfloat *fMom = params.fMom;
     unsigned int *dNodeType = params.dNodeType;
-    const ghostFacePtrs ghostInterface = params.pop;  // 8 ptrs (64B) - fits registers
+    const ghostFacePtrs ghostInterface = params.pop;  // current interface generation
+    #ifdef STREAMING_AB
+    // AB reads the current generation and writes the alternate generation.
+    // Its halo pointers belong to the same current generation.
+    const ghostFacePtrs ghostInterfaceCopy = params.pop;
+    const ghostFacePtrs storeGhostInterface = params.popCopy;
+    #else
     const ghostFacePtrs ghostInterfaceCopy = params.popCopy;
+    const ghostFacePtrs storeGhostInterface = params.pop;
+    #endif
     const gpuDirection macroInterfaceGPUrho = params.rho_macro;
     const gpuDirection macroInterfaceGPUux = params.ux_macro;
     const gpuDirection macroInterfaceGPUuy = params.uy_macro;

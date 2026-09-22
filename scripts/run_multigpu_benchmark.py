@@ -149,33 +149,32 @@ def configured_sources(
     )
     constants_text = replace_exact(
         constants_text,
-        r"^constexpr int N_STEPS = \d+;[^\r\n]*(?=\r?$)",
-        f"constexpr int N_STEPS = {steps};              // Total simulation steps",
-        "N_STEPS declaration",
+        r"^#define BENCHMARK_STEPS \d+[^\r\n]*(?=\r?$)",
+        f"#define BENCHMARK_STEPS {steps}",
+        "BENCHMARK_STEPS definition",
     )
     constants_text = replace_exact(
         constants_text,
-        r"^constexpr int N = \d+ \* SCALE;[^\r\n]*(?=\r?$)",
-        f"constexpr int N = {domain} * SCALE;"
-        "              // Reference grid size",
-        "domain-size declaration",
+        r"^#define BENCHMARK_N \d+[^\r\n]*(?=\r?$)",
+        f"#define BENCHMARK_N {domain}",
+        "BENCHMARK_N definition",
     )
     constants_text = replace_exact(
         constants_text,
-        r"^[ \t]*(?://[ \t]*)?#define STEP11_SPLIT_Z_KERNEL[^\r\n]*(?=\r?$)",
-        "#define STEP11_SPLIT_Z_KERNEL",
-        "STEP11_SPLIT_Z_KERNEL guard",
+        r"^[ \t]*(?://[ \t]*)?#define SPLIT_Z_COLLISION_KERNEL[^\r\n]*(?=\r?$)",
+        "#define SPLIT_Z_COLLISION_KERNEL",
+        "SPLIT_Z_COLLISION_KERNEL guard",
     )
-    step12 = (
-        "#define STEP12_OVERLAP_HALOS"
+    overlap_define = (
+        "#define OVERLAP_HALO_TRANSFERS"
         if overlap
-        else "// #define STEP12_OVERLAP_HALOS"
+        else "// #define OVERLAP_HALO_TRANSFERS"
     )
     constants_text = replace_exact(
         constants_text,
-        r"^[ \t]*(?://[ \t]*)?#define STEP12_OVERLAP_HALOS[^\r\n]*(?=\r?$)",
-        step12,
-        "STEP12_OVERLAP_HALOS guard",
+        r"^[ \t]*(?://[ \t]*)?#define OVERLAP_HALO_TRANSFERS[^\r\n]*(?=\r?$)",
+        overlap_define,
+        "OVERLAP_HALO_TRANSFERS guard",
     )
     return var_text, constants_text
 
@@ -443,7 +442,7 @@ def write_reports(result: dict[str, Any], output_dir: Path) -> None:
         "",
         "- Speedup uses the one-GPU serialized mean for the same fixed global domain.",
         "- Efficiency is `speedup / GPU count`.",
-        "- Overlap delta compares Step 12 against serialized Step 11 on the same GPU set.",
+        "- Overlap delta compares overlapped halo transfers against the serialized split-kernel path on the same GPU set.",
         "- Check the topology and run logs for `P2P access enabled` or access warnings before interpreting scaling.",
         "- On Windows, verify the Tesla devices use TCC rather than WDDM mode; the driver-model query is captured above.",
         "- Initialization and final output are outside HephFlow's reported MLUPS timer.",
@@ -462,9 +461,9 @@ def self_test(repo_root: Path) -> int:
     )
     assert "N_GPUS = 4" in var_new
     assert "{0, 2, 3, 5}" in var_new
-    assert "N_STEPS = 1234" in constants_new
-    assert "N = 512 * SCALE" in constants_new
-    assert re.search(r"^#define STEP12_OVERLAP_HALOS\r?$", constants_new, re.MULTILINE)
+    assert "#define BENCHMARK_STEPS 1234" in constants_new
+    assert "#define BENCHMARK_N 512" in constants_new
+    assert re.search(r"^#define OVERLAP_HALO_TRANSFERS\r?$", constants_new, re.MULTILINE)
     assert parse_mlups("MLUPS: 1234.5  (steps=10, nodes=42, time=0.123s)") == {
         "mlups": 1234.5,
         "steps": 10,

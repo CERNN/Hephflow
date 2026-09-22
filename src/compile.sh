@@ -5,11 +5,13 @@ set -o pipefail
 
 SHOW_WARNINGS=0
 OUTPUT_PREFIX=""
+STREAMING_SCHEME="${STREAMING_SCHEME:-AA}"
 
 usage() {
-    echo "Usage: $0 [--show-warnings|--hide-warnings] <output_prefix>"
+    echo "Usage: $0 [--show-warnings|--hide-warnings] [--streaming SCHEME] <output_prefix>"
     echo "  --show-warnings  Show nvcc warnings (warnings are hidden by default)."
     echo "  --hide-warnings  Hide nvcc warnings explicitly."
+    echo "  --streaming      AB, AA, AA_PULL, AA_TWIST, or AA_PUSH (default: AA)."
 }
 
 while [ "$#" -gt 0 ]; do
@@ -19,6 +21,14 @@ while [ "$#" -gt 0 ]; do
             ;;
         --hide-warnings)
             SHOW_WARNINGS=0
+            ;;
+        --streaming)
+            shift
+            if [ "$#" -eq 0 ]; then
+                echo "Error: --streaming requires a scheme." >&2
+                exit 2
+            fi
+            STREAMING_SCHEME=$1
             ;;
         --help|-h)
             usage
@@ -59,6 +69,31 @@ if [ -z "$OUTPUT_PREFIX" ]; then
     usage >&2
     exit 2
 fi
+
+STREAMING_FLAGS=()
+case "${STREAMING_SCHEME^^}" in
+    AB)
+        STREAMING_FLAGS=(-DSTREAMING_AB)
+        ;;
+    AA)
+        STREAMING_FLAGS=(-DSTREAMING_AA)
+        ;;
+    AA_PULL)
+        STREAMING_FLAGS=(-DSTREAMING_AA -DSTREAMING_AA_ESOTERIC_PULL)
+        ;;
+    AA_TWIST)
+        STREAMING_FLAGS=(-DSTREAMING_AA -DSTREAMING_AA_ESOTERIC_TWIST)
+        ;;
+    AA_PUSH)
+        STREAMING_FLAGS=(-DSTREAMING_AA -DSTREAMING_AA_ESOTERIC_PUSH)
+        ;;
+    *)
+        echo "Error: invalid streaming scheme '$STREAMING_SCHEME'." >&2
+        usage >&2
+        exit 2
+        ;;
+esac
+echo "Streaming scheme: ${STREAMING_SCHEME^^}"
 
 # Prevent runtime cudaErrorInsufficientDriver by validating CUDA compatibility
 # before compiling: toolkit version (nvcc) must be <= driver supported version.
@@ -118,7 +153,22 @@ BLOCK_NZ=$(grep -E "^#define BLOCK_NZ" "$MEMORY_LAYOUT" | awk '{print $3}')
 BLOCK_SIZE=$((BLOCK_NX * BLOCK_NY * BLOCK_NZ))
 
 # SM_86 has 65536 registers per SM. Calculate max registers per thread.
+# MAX_REGS_OVERRIDE permits reproducible occupancy sweeps without adding a
+# second --maxrregcount flag through NVCC_APPEND_FLAGS.
 MAX_REGS=$((65536 / BLOCK_SIZE))
+if [ -n "${MAX_REGS_OVERRIDE:-}" ]; then
+    case "$MAX_REGS_OVERRIDE" in
+        ''|*[!0-9]*)
+            echo "Error: MAX_REGS_OVERRIDE must be an integer from 1 to 255." >&2
+            exit 2
+            ;;
+    esac
+    if [ "$MAX_REGS_OVERRIDE" -lt 1 ] || [ "$MAX_REGS_OVERRIDE" -gt 255 ]; then
+        echo "Error: MAX_REGS_OVERRIDE must be an integer from 1 to 255." >&2
+        exit 2
+    fi
+    MAX_REGS=$MAX_REGS_OVERRIDE
+fi
 
 # Cap at 255 (CUDA max per thread)
 if [ "$MAX_REGS" -gt 255 ]; then
@@ -186,6 +236,7 @@ for SOURCE in "${CUDA_SOURCES[@]}"; do
     # Preserve device IR through separate compilation so the final link can
     # inline and optimize calls across CUDA translation units.
     nvcc --std=c++17 -gencode arch=compute_${CC},code=lto_${CC} -rdc=true -dc -O3 --restrict -DSM_${CC} \
+        "${STREAMING_FLAGS[@]}" \
         --maxrregcount="$MAX_REGS" \
         "${WARNING_FLAGS[@]}" \
         -diag-suppress 39 \

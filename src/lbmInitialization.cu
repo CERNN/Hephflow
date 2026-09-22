@@ -295,11 +295,11 @@ __global__ void gpuInitialization_pop(
     int by = blockIdx.y;
     int bz = blockIdx.z;
 
-    #if defined(STEP7_ESOTERIC_TWIST) && defined(D3Q19)
+    #if defined(STREAMING_AA_ESOTERIC_TWIST)
     #include "fragments/popInit_esoteric_twist.inc"
-    #elif defined(STEP7_ESOTERIC_PUSH) && defined(D3Q19)
+    #elif defined(STREAMING_AA_ESOTERIC_PUSH)
     #include "fragments/popInit_esoteric_push.inc"
-    #elif defined(STEP7_ESOTERIC_PULL) && defined(D3Q19)
+    #elif defined(STREAMING_AA_ESOTERIC_PULL)
     #include "fragments/popInit_esoteric_pull.inc"
     #else
     if (threadIdx.x == 0) { //w

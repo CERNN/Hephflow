@@ -71,6 +71,13 @@ static_assert(NX >= BLOCK_NX, "NX must be >= BLOCK_NX, Update block size in memo
 static_assert(NY >= BLOCK_NY, "NY must be >= BLOCK_NY, Update block size in memory_layout.h or increase domain in constants.inc");
 static_assert(NZ >= BLOCK_NZ, "NZ must be >= BLOCK_NZ, Update block size in memory_layout.h or increase domain in constants.inc");
 
+#if defined(COOPERATIVE_GHOST_LOAD_MASK) || defined(COOPERATIVE_GHOST_SAVE_MASK)
+static_assert(NX % BLOCK_NX == 0 && NY % BLOCK_NY == 0,
+              "Cooperative ghost transfer requires complete CUDA blocks in X and Y");
+static_assert((NZ / N_GPUS) % BLOCK_NZ == 0,
+              "Cooperative ghost transfer requires complete CUDA blocks in local Z");
+#endif
+
 #ifndef HEPHFLOW_SKIP_CONSTEXPR_MATH_TESTS
 
 constexpr auto err = constexprPow(2.0_df, 0.5_df) - sqrtt(2.0_df);
