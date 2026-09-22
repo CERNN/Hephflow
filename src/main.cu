@@ -135,8 +135,6 @@ int main() {
 
     step = INI_STEP;
 
-    bool stepParity = (step & 1u);
-    
     //Declaration of atomic flags to safely control the state of data saving in multiple threads.
     std::atomic<bool> savingMacrVtk(false);
     std::atomic<bool> savingMacrParticle(false);
@@ -147,11 +145,13 @@ int main() {
     }
 
     /* -------------- Initialize the domain on the devices ------------- */
+    std::vector<int> initializedSteps(N_GPUS, INI_STEP);
     for(int g = 0; g < N_GPUS; g++){
 
         threads.emplace_back([&, g, slice]() {
             checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-            devices[g].initializeDomainDeviceField(hostField, randomNumbers,  step, gridBlock, threadBlock, g, slice);
+            devices[g].initializeDomainDeviceField(hostField, randomNumbers,
+                initializedSteps[g], gridBlock, threadBlock, g, slice);
             cudaError_t err = cudaGetLastError();
             if (err != cudaSuccess) {
                 printf("Erro no device %d após init: %s\n", GPUS_TO_USE[g], cudaGetErrorString(err));
@@ -165,6 +165,17 @@ int main() {
     }
 
     threads.clear();
+
+    step = initializedSteps[0];
+    for (int g = 1; g < N_GPUS; ++g) {
+        if (initializedSteps[g] != step) {
+            fprintf(stderr,
+                "Checkpoint step mismatch: partition 0 resumes at %d, partition %d at %d\n",
+                step, g, initializedSteps[g]);
+            return EXIT_FAILURE;
+        }
+    }
+    bool stepParity = (step & 1u);
 
     #ifdef RANDOM_NUMBERS
         for (int g = 0; g < N_GPUS; g++) {
@@ -424,13 +435,14 @@ int main() {
         //------------------------- Saving Data -------------------------
         // Saving checkpoint     
         if(saveField.checkpoint){
-            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step);
+            int checkpointStep = step + 1;
+            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", checkpointStep);
             for(int g = 0; g < N_GPUS; g++){
                 threads.emplace_back([&, g, slice]() {
                     checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
                     devices[g].cudaMemcpyDeviceField(hostField, g, slice);
                     devices[g].interfaceCudaMemcpyDeviceField(true, g);  
-                    devices[g].saveSimCheckpointHostDeviceField(hostField, step, g, slice);
+                    devices[g].saveSimCheckpointHostDeviceField(hostField, checkpointStep, g, slice);
                     #ifdef PARTICLE_MODEL
                         particleField.saveCheckpoint(step);
                     #endif //PARTICLE_MODEL  
@@ -522,7 +534,6 @@ int main() {
     }
     threads.clear();
 
-    #ifdef COOPERATIVE_GHOST_CHECKSUM
     {
         const unsigned char* checksumBytes =
             reinterpret_cast<const unsigned char*>(hostField.h_fMom);
@@ -533,7 +544,6 @@ int main() {
         }
         printf("MOMENT_CHECKSUM: %016llx\n", checksum);
     }
-    #endif
 
     hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);
 

@@ -146,7 +146,11 @@ void writeFilesIntoDfloat3SoA(dfloat3SoA arr, const std::string foldername, cons
 
 __host__
 std::string getCheckpointFilenameRead(std::string name, int gpu_index){
-    std::filesystem::path p = std::filesystem::path(SIMULATION_FOLDER_LOAD_CHECKPOINT) / ID_SIM / "checkpoint" / (std::to_string(gpu_index) + "_" + name);
+    std::filesystem::path checkpointRoot(SIMULATION_FOLDER_LOAD_CHECKPOINT);
+    if (checkpointRoot.is_relative()) {
+        checkpointRoot = getExecutablePathCheckpoint().parent_path() / checkpointRoot;
+    }
+    std::filesystem::path p = checkpointRoot / ID_SIM / "checkpoint" / (std::to_string(gpu_index) + "_" + name);
     return p.string();
 } 
 
@@ -195,13 +199,13 @@ void operateSimCheckpoint(
     // Everything will fit in this array
     dfloat* tmp = (dfloat*)malloc(MEM_SIZE_MOM_LOCAL);
 
-    // Load/save current step
-    f_arr(step, f_filename("curr_step", gpu_index), sizeof(int), tmp);
-
-    if(oper == __LOAD_CHECKPOINT){
-        printf("Loaded checkpoint: step %d | N_GPU: %d \n",step[0], gpu_index);
-    }else if(oper == __SAVE_CHECKPOINT){
+    // The load path reads the restart step once in getStep(). Reading the
+    // file again here used to overwrite the selected next step.
+    if(oper == __SAVE_CHECKPOINT){
+        f_arr(step, f_filename("curr_step", gpu_index), sizeof(int), tmp);
         printf("Saved checkpoint: step %d | N_GPU: %d \n",step[0], gpu_index);
+    }else{
+        printf("Loaded checkpoint: next step %d | N_GPU: %d \n",step[0], gpu_index);
     }
 
     // Load/save pop
@@ -352,12 +356,8 @@ void operateSimCheckpoint(
 
 
 __host__
-int getStep(int gpu_index,  int* step){
-    std::string filename = SIMULATION_FOLDER_LOAD_CHECKPOINT;
-
-    // Build a portable path to the checkpoint file using std::filesystem
-    std::filesystem::path dir = std::filesystem::path("..") / "bin" / filename / ID_SIM / "checkpoint";
-    std::filesystem::path filePath = dir /(std::to_string(gpu_index) + "_curr_step.bin");
+int getStep(int gpu_index, int* /*step*/){
+    std::filesystem::path filePath = getCheckpointFilenameRead("curr_step", gpu_index) + ".bin";
 
     std::ifstream fileread(filePath.string(), std::ios::binary);
 
@@ -386,7 +386,7 @@ int getStep(int gpu_index,  int* step){
     
     fileread.close();
 
-    return laststep+1;
+    return laststep;
 }
 
 __host__
