@@ -1,45 +1,45 @@
 //copy full macroscopic field
 int y_wall;
-dfloat t_ux0, t_uy0,t_uz0;
-dfloat t_rho0;
-dfloat t_Mxx, t_Mxy, t_Mxz, t_Myy, t_Myz, t_Mzz;
-dfloat inv_eta;
+double t_ux0, t_uy0,t_uz0;
+double t_rho0;
+double t_Mxx, t_Mxy, t_Mxz, t_Myy, t_Myz, t_Mzz;
+double inv_eta;
 
 
-dfloat rho_0[NY];
+double rho_0[NY];
 
-dfloat ux_1[NY];
-dfloat uy_1[NY];
-dfloat uz_1[NY];
+double ux_1[NY];
+double uy_1[NY];
+double uz_1[NY];
 
-dfloat ux_ux[NY];
-dfloat uy_uy[NY];
-dfloat uz_uz[NY];
-dfloat ux_uy[NY];
-dfloat ux_uz[NY];
-dfloat uy_uz[NY];
+double ux_ux[NY];
+double uy_uy[NY];
+double uz_uz[NY];
+double ux_uy[NY];
+double ux_uz[NY];
+double uy_uz[NY];
 
-dfloat ux_3[NY];
-dfloat uy_3[NY];
-dfloat uz_3[NY];
+double ux_3[NY];
+double uy_3[NY];
+double uz_3[NY];
 
-dfloat ux_4[NY];
-dfloat uy_4[NY];
-dfloat uz_4[NY];
+double ux_4[NY];
+double uy_4[NY];
+double uz_4[NY];
 
-dfloat Sxx[NY];
-dfloat Sxy[NY];
-dfloat Sxz[NY];
-dfloat Syy[NY];
-dfloat Syz[NY];
-dfloat Szz[NY];
+double Sxx[NY];
+double Sxy[NY];
+double Sxz[NY];
+double Syy[NY];
+double Syz[NY];
+double Szz[NY];
 
-dfloat SGxx[NY];
-dfloat SGxy[NY];
-dfloat SGxz[NY];
-dfloat SGyy[NY];
-dfloat SGyz[NY];
-dfloat SGzz[NY];
+double SGxx[NY];
+double SGxy[NY];
+double SGxz[NY];
+double SGyy[NY];
+double SGyz[NY];
+double SGzz[NY];
 
 for (int y_wall = 0; y_wall <NY;y_wall++){
     rho_0[y_wall] = 0;
@@ -88,10 +88,10 @@ for(int y = 0; y< NY;y++){
         for(int x = 0; x< NX;x++){
 
             //current lattice value
-            t_rho0 = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_RHO_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] + RHO_0;
-            t_ux0 =  h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_UX_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]/F_M_I_SCALE;
-            t_uy0 =  h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_UY_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]/F_M_I_SCALE;
-            t_uz0 =  h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_UZ_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]/F_M_I_SCALE;
+            t_rho0 = static_cast<double>(h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_RHO_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]) + static_cast<double>(RHO_0);
+            t_ux0 = static_cast<double>(h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_UX_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]) / static_cast<double>(F_M_I_SCALE);
+            t_uy0 = static_cast<double>(h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_UY_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]) / static_cast<double>(F_M_I_SCALE);
+            t_uz0 = static_cast<double>(h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_UZ_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]) / static_cast<double>(F_M_I_SCALE);
 
             rho_0[y_wall] += t_rho0;
 
@@ -114,12 +114,12 @@ for(int y = 0; y< NY;y++){
             uy_4[y_wall] += t_uy0*t_uy0*t_uy0*t_uy0;
             uz_4[y_wall] += t_uz0*t_uz0*t_uz0*t_uz0;
 
-            t_Mxx = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MXX_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]/F_M_II_SCALE;
-            t_Mxy = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MXY_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]/F_M_IJ_SCALE;
-            t_Mxz = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MXZ_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]/F_M_IJ_SCALE;
-            t_Myy = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MYY_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]/F_M_II_SCALE;
-            t_Myz = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MYZ_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]/F_M_IJ_SCALE;
-            t_Mzz = h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MZZ_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]/F_M_II_SCALE;
+            t_Mxx = static_cast<double>(h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MXX_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]) / static_cast<double>(F_M_II_SCALE);
+            t_Mxy = static_cast<double>(h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MXY_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]) / static_cast<double>(F_M_IJ_SCALE);
+            t_Mxz = static_cast<double>(h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MXZ_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]) / static_cast<double>(F_M_IJ_SCALE);
+            t_Myy = static_cast<double>(h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MYY_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]) / static_cast<double>(F_M_II_SCALE);
+            t_Myz = static_cast<double>(h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MYZ_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]) / static_cast<double>(F_M_IJ_SCALE);
+            t_Mzz = static_cast<double>(h_fMom[idxMom(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M_MZZ_INDEX, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)]) / static_cast<double>(F_M_II_SCALE);
 
             //correction for pre-collsion values  
             t_Mxx = (t_Mxx - OMEGA * t_ux0 * t_ux0 - (1.0 - OMEGA/2)*0)/(1.0 - OMEGA);
@@ -244,6 +244,22 @@ std::ostringstream strDataInfo_SGxz("");
 std::ostringstream strDataInfo_SGyy("");
 std::ostringstream strDataInfo_SGyz("");
 std::ostringstream strDataInfo_SGzz("");
+
+std::ostringstream* statistic_streams[] = {
+    &strDataInfo_rho_0,
+    &strDataInfo_ux_1, &strDataInfo_uy_1, &strDataInfo_uz_1,
+    &strDataInfo_ux_ux, &strDataInfo_uy_uy, &strDataInfo_uz_uz,
+    &strDataInfo_ux_uy, &strDataInfo_ux_uz, &strDataInfo_uy_uz,
+    &strDataInfo_ux_3, &strDataInfo_uy_3, &strDataInfo_uz_3,
+    &strDataInfo_ux_4, &strDataInfo_uy_4, &strDataInfo_uz_4,
+    &strDataInfo_Sxx, &strDataInfo_Sxy, &strDataInfo_Sxz,
+    &strDataInfo_Syy, &strDataInfo_Syz, &strDataInfo_Szz,
+    &strDataInfo_SGxx, &strDataInfo_SGxy, &strDataInfo_SGxz,
+    &strDataInfo_SGyy, &strDataInfo_SGyz, &strDataInfo_SGzz
+};
+for (std::ostringstream* stream : statistic_streams) {
+    *stream << std::scientific << std::setprecision(17);
+}
 
 strDataInfo_rho_0 <<"step,"<< step;
 
@@ -405,23 +421,23 @@ rhoProfile(h_fMom,3,x0,(96*del)/96,z0,step); //rho
 // These running means combine the homogeneous x-z plane average calculated
 // above with an equally weighted average over calls to this treatment routine.
 static unsigned long long turbulence_samples = 0;
-static dfloat turb_mean_ux[NY] = {};
-static dfloat turb_mean_uy[NY] = {};
-static dfloat turb_mean_uz[NY] = {};
-static dfloat turb_mean_uxux[NY] = {};
-static dfloat turb_mean_uyuy[NY] = {};
-static dfloat turb_mean_uzuz[NY] = {};
-static dfloat turb_mean_uxuy[NY] = {};
-static dfloat turb_mean_uxuz[NY] = {};
-static dfloat turb_mean_uyuz[NY] = {};
+static double turb_mean_ux[NY] = {};
+static double turb_mean_uy[NY] = {};
+static double turb_mean_uz[NY] = {};
+static double turb_mean_uxux[NY] = {};
+static double turb_mean_uyuy[NY] = {};
+static double turb_mean_uzuz[NY] = {};
+static double turb_mean_uxuy[NY] = {};
+static double turb_mean_uxuz[NY] = {};
+static double turb_mean_uyuz[NY] = {};
 
 ++turbulence_samples;
-const dfloat turbulence_sample_weight =
-    1.0 / static_cast<dfloat>(turbulence_samples);
+const double turbulence_sample_weight =
+    1.0 / static_cast<double>(turbulence_samples);
 
-dfloat turb_kinetic[NY] = {};
-dfloat invariant2[NY] = {};
-dfloat invariant3[NY] = {};
+double turb_kinetic[NY] = {};
+double invariant2[NY] = {};
+double invariant3[NY] = {};
 
 for (int y = 0; y < NY; ++y) {
     turb_mean_ux[y] += (ux_1[y] - turb_mean_ux[y]) * turbulence_sample_weight;
@@ -436,7 +452,7 @@ for (int y = 0; y < NY; ++y) {
     turb_mean_uyuz[y] += (uy_uz[y] - turb_mean_uyuz[y]) * turbulence_sample_weight;
 
     // R_ij = <u_i u_j> - <u_i><u_j>.
-    dfloat R[3][3] = {};
+    double R[3][3] = {};
     R[0][0] = turb_mean_uxux[y] - turb_mean_ux[y] * turb_mean_ux[y];
     R[1][1] = turb_mean_uyuy[y] - turb_mean_uy[y] * turb_mean_uy[y];
     R[2][2] = turb_mean_uzuz[y] - turb_mean_uz[y] * turb_mean_uz[y];
@@ -448,13 +464,13 @@ for (int y = 0; y < NY; ++y) {
 
     // b_ij = R_ij/(2k) - delta_ij/3. At negligible k the
     // anisotropy direction is undefined, so leave both invariants at zero.
-    constexpr dfloat K_TOLERANCE = 1.0e-20;
+    constexpr double K_TOLERANCE = 1.0e-20;
     if (turb_kinetic[y] <= K_TOLERANCE) {
         continue;
     }
 
-    dfloat bij[3][3] = {};
-    const dfloat inverse_two_k = 1.0 / (2.0 * turb_kinetic[y]);
+    double bij[3][3] = {};
+    const double inverse_two_k = 1.0 / (2.0 * turb_kinetic[y]);
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
             bij[i][j] = R[i][j] * inverse_two_k;
@@ -466,7 +482,7 @@ for (int y = 0; y < NY; ++y) {
 
     // Principal invariants used by the Lumley map:
     // II_b = -0.5 tr(b^2), III_b = det(b) = tr(b^3)/3.
-    dfloat trace_b_squared = 0.0;
+    double trace_b_squared = 0.0;
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
             trace_b_squared += bij[i][j] * bij[j][i];
@@ -483,6 +499,10 @@ std::ostringstream strDataInfo_k("");
 std::ostringstream strDataInfo_II("");
 std::ostringstream strDataInfo_III("");
 
+strDataInfo_k << std::scientific << std::setprecision(17);
+strDataInfo_II << std::scientific << std::setprecision(17);
+strDataInfo_III << std::scientific << std::setprecision(17);
+
 strDataInfo_k << "step," << step;
 strDataInfo_II << "step," << step;
 strDataInfo_III << "step," << step;
@@ -492,7 +512,7 @@ strDataInfo_III << "step," << step;
 constexpr int N_WALL_DISTANCES = (NY + 1) / 2;
 for (int y_wall = 0; y_wall < N_WALL_DISTANCES; ++y_wall) {
     const int opposite_y = NY - 1 - y_wall;
-    const dfloat fold_weight = (opposite_y == y_wall) ? 1.0 : 0.5;
+    const double fold_weight = (opposite_y == y_wall) ? 1.0 : 0.5;
 
     strDataInfo_k << "," << fold_weight *
         (turb_kinetic[y_wall] +
