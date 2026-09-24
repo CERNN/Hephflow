@@ -2,11 +2,15 @@
 #include "hostField.cuh"
 #include "deviceField.cuh"
 #include "saveField.cuh"
+#include "include/memory_estimate.h"
 #ifdef PARTICLE_MODEL
 #include "particleField.cuh"
 #endif //PARTICLE_MODEL
 
 #include <chrono>
+#include <cstring>
+#include <future>
+#include <mutex>
 
 #if defined(OVERLAP_HALO_TRANSFERS) && !defined(SPLIT_Z_COLLISION_KERNEL)
 #error "OVERLAP_HALO_TRANSFERS requires SPLIT_Z_COLLISION_KERNEL"
@@ -14,7 +18,12 @@
 
 using namespace std;
 
-int main() {
+int main(int argc, char** argv) {
+    if (argc == 2 && std::strcmp(argv[1], "--memory-estimate") == 0) {
+        printCompileTimeMemoryEstimate();
+        return 0;
+    }
+
     // Setup saving folder
     folderSetup();
 
@@ -24,6 +33,15 @@ int main() {
     // Field Variables
     HostField hostField;
     DeviceField deviceField;
+    // One ownership lock covers every reader and writer of the shared host
+    // snapshot: GPU copies, checkpointing, macro extraction and treat-data.
+    std::mutex hostSnapshotMutex;
+    std::future<void> hostSnapshotFuture;
+    auto finishHostSnapshotTask = [&]() {
+        if (hostSnapshotFuture.valid()) {
+            hostSnapshotFuture.get();
+        }
+    };
 
     // Multi-GPU Variables
     std::vector<std::thread> threads;
@@ -61,6 +79,19 @@ int main() {
     // This is one global host value, not one allocation per GPU.
     hostField.allocateDensityCorrectionMemory();
     #endif
+
+    // Macro saving, checkpointing and treat-data share h_fMom.  All three take
+    // hostSnapshotMutex while reading it, and every GPU-to-host copy takes the
+    // same mutex while overwriting it.  This keeps one full moment snapshot in
+    // host RAM instead of one per consumer. When multiple outputs trigger on
+    // the same step, one combined worker lets all three reuse one device copy.
+    // This is not total process RSS: CUDA runtime state, particle containers,
+    // and transient serialization buffers are outside this accounting.
+    size_t peakPinnedHostFieldBytes = hostField.getPinnedBytesAllocated();
+    printf("Peak persistent pinned host-field memory: %.2f MiB (%.3f GiB)\n",
+        static_cast<double>(peakPinnedHostFieldBytes) / (1024.0 * 1024.0),
+        static_cast<double>(peakPinnedHostFieldBytes) / (1024.0 * 1024.0 * 1024.0));
+    if(console_flush) fflush(stdout);
     
     /* -------------- ALLOCATION FOR GPUs ------------- */
     cudaStream_t streamsLBM[N_GPUS];
@@ -433,65 +464,110 @@ int main() {
         #endif
 
         //------------------------- Saving Data -------------------------
-        // Saving checkpoint     
-        if(saveField.checkpoint){
-            int checkpointStep = step + 1;
-            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", checkpointStep);
-            for(int g = 0; g < N_GPUS; g++){
-                threads.emplace_back([&, g, slice]() {
-                    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-                    devices[g].cudaMemcpyDeviceField(hostField, g, slice);
-                    devices[g].interfaceCudaMemcpyDeviceField(true, g);  
-                    devices[g].saveSimCheckpointHostDeviceField(hostField, checkpointStep, g, slice);
-                    #ifdef PARTICLE_MODEL
-                        particleField.saveCheckpoint(step);
-                    #endif //PARTICLE_MODEL  
-                    if(console_flush){fflush(stdout);}
-                });
+        const bool checkpointRequested = saveField.checkpoint;
+        const bool reportRequested = saveField.reportSave;
+        const bool macroRequested = saveField.macrSave;
+        const bool snapshotRequested = checkpointRequested || reportRequested || macroRequested;
+
+        if (checkpointRequested) {
+            printf("\n--------------------------- Saving checkpoint %06d ---------------------------\n", step + 1);
+        }
+        if (reportRequested) {
+            printf("\n--------------------------- Saving report %06d ---------------------------\n", step);
+        }
+        if (macroRequested) {
+            printf("\n--------------------------- Saving macro %06d ---------------------------\n", step);
+        }
+
+        if (snapshotRequested) {
+            // A single worker owns all same-step consumers. This gives every
+            // checkpoint/macro/treatment request a place in the sequence and
+            // prevents a later timestep from overtaking any of them.
+            finishHostSnapshotTask();
+            std::unique_lock<std::mutex> snapshotLock(hostSnapshotMutex);
+            deviceField.copyMacroscopicDeviceField(hostField, devices.data(), slice);
+
+            // Checkpoint interface populations must be captured before GPU
+            // simulation resumes; disk serialization happens in the worker.
+            if (checkpointRequested) {
+                for (int g = 0; g < N_GPUS; ++g) {
+                    threads.emplace_back([&, g]() {
+                        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+                        devices[g].interfaceCudaMemcpyDeviceField(true, g);
+                    });
+                }
+                for (auto &t : threads) t.join();
+                threads.clear();
             }
 
-            for (auto &t : threads) {
-                t.join();
-            }                  
-            threads.clear();
-            fflush(stdout);
+            const int snapshotStep = step;
+            const int checkpointStep = step + 1;
+            std::promise<void> snapshotOwnedPromise;
+            std::future<void> snapshotOwned = snapshotOwnedPromise.get_future();
+            hostSnapshotFuture = std::async(std::launch::async,
+                [&, snapshotStep, checkpointStep, checkpointRequested,
+                    reportRequested, macroRequested, slice,
+                    owned = std::move(snapshotOwnedPromise)]() mutable {
+                    std::lock_guard<std::mutex> workerLock(hostSnapshotMutex);
+
+                    #ifdef PARTICLE_MODEL
+                    // Particle state is device-resident, so capture it before
+                    // telling the main thread that GPU simulation may resume.
+                    if (checkpointRequested) {
+                        particleField.saveCheckpoint(snapshotStep);
+                    }
+                    #endif
+
+                    // Ownership is now established and every device-resident
+                    // checkpoint component has been captured.
+                    owned.set_value();
+
+                    if (checkpointRequested) {
+                        int checkpointStepForSave = checkpointStep;
+                        std::vector<std::thread> checkpointThreads;
+                        checkpointThreads.reserve(N_GPUS);
+                        for (int g = 0; g < N_GPUS; ++g) {
+                            checkpointThreads.emplace_back([&, g]() {
+                                checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+                                devices[g].saveSimCheckpointHostDeviceField(
+                                    hostField, checkpointStepForSave, g, slice);
+                                if(console_flush) fflush(stdout);
+                            });
+                        }
+                        for (auto &t : checkpointThreads) t.join();
+                    }
+
+                    if (macroRequested && !ONLY_FINAL_MACRO) {
+                        hostField.saveMacrHostField(snapshotStep,
+                            savingMacrVtk, savingMacrBin, false);
+                    }
+
+                    if (reportRequested) {
+                        deviceField.treatDataDeviceField(
+                            hostField, snapshotStep, slice);
+                    }
+                });
+
+            // Release the capture lock, then wait only until the worker has
+            // acquired it. The GPU may continue while CPU consumers run.
+            snapshotLock.unlock();
+            snapshotOwned.get();
         }
-       
-        // Saving treat data  checks
-        if(saveField.reportSave){
-            printf("\n--------------------------- Saving report %06d ---------------------------\n", step);
-            #ifdef TREAT_DATA_INCLUDE
-            deviceField.copyMacroscopicDeviceField(hostField, devices.data(), slice); 
-            #endif //TREAT_DATA_INCLUDE
-            deviceField.treatDataDeviceField(hostField, step, slice);
-            #ifdef PARTICLE_MODEL
+
+        #ifdef PARTICLE_MODEL
+        if (reportRequested) {
             particleField.exportWallForces(step);
-            #endif
-            if(console_flush){fflush(stdout);}
         }
+        #endif
+        if(console_flush && snapshotRequested) fflush(stdout);
 
         #ifdef TESTS
+        finishHostSnapshotTask();
+        {
+            std::lock_guard<std::mutex> snapshotLock(hostSnapshotMutex);
             #include CASE_TEST_METRIC
-        #endif //TESTS
-        
-        if(saveField.macrSave){
-            //copy data from device to host
-            for(int g = 0; g < N_GPUS; g++){
-                threads.emplace_back([&, g, slice]() {
-                    checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-                    checkCudaErrors(cudaDeviceSynchronize()); 
-                    devices[g].cudaMemcpyDeviceField(hostField, g, slice);
-                });
-            }
-
-            for (auto &t : threads) {
-                t.join();
-            }                  
-            threads.clear();
-            printf("\n--------------------------- Saving macro %06d ---------------------------\n", step);
-            if(!ONLY_FINAL_MACRO){ hostField.saveMacrHostField(step, savingMacrVtk, savingMacrBin, false);}
-            if(console_flush){fflush(stdout);}
         }
+        #endif //TESTS
 
         #ifdef PARTICLE_MODEL
             if (saveField.particleSave){
@@ -521,18 +597,9 @@ int main() {
     if(console_flush) fflush(stdout);
     
     /* ------------------------------ POST ------------------------------ */
-    for(int g = 0; g < N_GPUS; g++){
-
-        threads.emplace_back([&, g, slice]() {
-            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-            devices[g].cudaMemcpyDeviceField(hostField, g, slice);
-        });
-    }
-
-    for (auto &t : threads) {
-        t.join();
-    }
-    threads.clear();
+    finishHostSnapshotTask();
+    std::lock_guard<std::mutex> finalSnapshotLock(hostSnapshotMutex);
+    deviceField.copyMacroscopicDeviceField(hostField, devices.data(), slice);
 
     {
         const unsigned char* checksumBytes =
@@ -552,9 +619,8 @@ int main() {
         for(int g = 0; g < N_GPUS; g++){
             threads.emplace_back([&, g, slice]() {
                 checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-                devices[g].cudaMemcpyDeviceField(hostField, g, slice);
                 devices[g].interfaceCudaMemcpyDeviceField(false, g); 
-                devices[g].saveSimCheckpointDeviceField(step, g, slice);
+                devices[g].saveSimCheckpointHostDeviceField(hostField, step, g, slice);
                 if(console_flush){fflush(stdout);}
             });
         }
@@ -594,7 +660,6 @@ int main() {
     for (size_t i = 0; i < savingMacrBin.size(); ++i) {
         while (savingMacrBin[i]) std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-
     /* ------------------------------ FREE ------------------------------ */
 
     hostField.freeHostField();

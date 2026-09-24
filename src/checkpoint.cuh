@@ -90,7 +90,7 @@ void readFileIntoArray(
  *  @param arr GPU array to read content from
  *  @param filename Filename to write to
  *  @param arr_size_bytes Size in bytes to write to file
- *  @param tmp Temporary array used to write to file (already allocated, make sure that the file content fits in it)
+ *  @param tmp Optional staging array for device data; nullptr writes host data directly
  */
 __host__
 void writeFileIntoArray(
@@ -161,6 +161,7 @@ std::string getCheckpointFilenameWrite(
  *  @param ghostInterface interface block transfer information
  *  @param step Pointer to current step value in main
  *  @param gpu_index GPU index for save and load operations
+ *  @param fMomOnHost true when fMom is already in host memory
  */
 __host__
 void operateSimCheckpoint( 
@@ -168,7 +169,8 @@ void operateSimCheckpoint(
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
     int* step,
-    int gpu_index
+    int gpu_index,
+    bool fMomOnHost = false
 );
 
 #ifdef PARTICLE_MODEL
@@ -217,13 +219,15 @@ int loadSimCheckpointParticle(
  *  @param ghostInterface interface block transfer information
  *  @param gpu_index GPU index for checkpoint save operations
  *  @param step Pointer to current step value in main
+ *  @param fMomOnHost true when fMom is the shared host snapshot
  */
 __host__
 void saveSimCheckpoint( 
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
     int *step,
-    int gpu_index
+    int gpu_index,
+    bool fMomOnHost = false
 );
 
 #ifdef PARTICLE_MODEL

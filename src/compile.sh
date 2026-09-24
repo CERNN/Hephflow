@@ -252,10 +252,11 @@ for SOURCE in "${CUDA_SOURCES[@]}"; do
 done
 
 echo "Linking executable"
+OUTPUT_PATH="./../bin/${OUTPUT_PREFIX}sim_${VELOCITY_SET}_sm${CC}"
 nvcc --std=c++17 -gencode arch=compute_${CC},code=sm_${CC} -rdc=true -dlto \
     "${WARNING_FLAGS[@]}" \
     "${OBJECTS[@]}" \
-    -lcudadevrt -lcurand -o "./../bin/${OUTPUT_PREFIX}sim_${VELOCITY_SET}_sm${CC}" \
+    -lcudadevrt -lcurand -o "$OUTPUT_PATH" \
     2>&1 | sed \
         -e '/^[[:space:]]*tmpxft_[^[:space:]]*[[:space:]]*$/d' \
         -e '/^[[:space:]]*[0-9][0-9]*\.\(o\|obj\)[[:space:]]*$/d' \
@@ -268,6 +269,19 @@ if [ "$BUILD_STATUS" -ne 0 ]; then
 fi
 
 echo "Built: ../bin/${OUTPUT_PREFIX}sim_${VELOCITY_SET}_sm${CC}"
+
+# The linked estimator uses the exact constants and feature flags selected by
+# this build.  It does not initialize CUDA or allocate simulation memory.
+MEMORY_REPORT_EXECUTABLE="$OUTPUT_PATH"
+if [ ! -f "$MEMORY_REPORT_EXECUTABLE" ] && [ -f "${OUTPUT_PATH}.exe" ]; then
+    MEMORY_REPORT_EXECUTABLE="${OUTPUT_PATH}.exe"
+fi
+if [ -f "$MEMORY_REPORT_EXECUTABLE" ]; then
+    "$MEMORY_REPORT_EXECUTABLE" --memory-estimate || \
+        echo "Warning: executable built, but the memory estimate could not be run." >&2
+else
+    echo "Warning: executable built, but it could not be found for the memory estimate." >&2
+fi
 
 rm -f ./../bin/*.exp ./../bin/*.lib
 

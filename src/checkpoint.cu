@@ -125,11 +125,14 @@ void writeFileIntoArray(void* arr, const std::string filename, const size_t arr_
         std::cout << "Error opening file '" << filename << ".bin' to write. Exiting\n";
     }
 
-    // Copy file content from GPU array to tmp
-    checkCudaErrors(cudaMemcpy(tmp, arr, arr_size_bytes, cudaMemcpyDefault));
-
-    // Write temporary array into file
-    fwrite(tmp, arr_size_bytes, 1, file);
+    // Host-backed checkpoints can be written directly from the shared moment
+    // snapshot. Device-backed checkpoints still need the staging allocation.
+    const void* fileData = arr;
+    if (tmp != nullptr) {
+        checkCudaErrors(cudaMemcpy(tmp, arr, arr_size_bytes, cudaMemcpyDefault));
+        fileData = tmp;
+    }
+    fwrite(fileData, arr_size_bytes, 1, file);
 
     fclose(file);
 }
@@ -177,7 +180,8 @@ void operateSimCheckpoint(
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
     int* step,
-    int gpu_index
+    int gpu_index,
+    bool fMomOnHost
     )
 {
     // Defining what functions to use (read or write to files)
@@ -196,8 +200,13 @@ void operateSimCheckpoint(
         exit(-1);
     }
 
-    // Everything will fit in this array
-    dfloat* tmp = (dfloat*)malloc(MEM_SIZE_MOM_LOCAL);
+    // Loading and device-backed saves need a full-slab staging allocation.
+    // Normal saves use the shared host h_fMom snapshot and write it directly,
+    // keeping checkpointing from adding another moment-sized RAM allocation.
+    dfloat* tmp = nullptr;
+    if (oper == __LOAD_CHECKPOINT || !fMomOnHost) {
+        tmp = (dfloat*)malloc(MEM_SIZE_MOM_LOCAL);
+    }
 
     // The load path reads the restart step once in getStep(). Reading the
     // file again here used to overwrite the selected next step.
@@ -416,11 +425,13 @@ void saveSimCheckpoint(
     dfloat* fMom,
     ghostInterfaceData ghostInterface,
     int *step,
-    int gpu_index
+    int gpu_index,
+    bool fMomOnHost
     ){
     folderCheckpoint();
 
-    operateSimCheckpoint(__SAVE_CHECKPOINT, fMom,ghostInterface, step, gpu_index);
+    operateSimCheckpoint(__SAVE_CHECKPOINT, fMom, ghostInterface, step,
+        gpu_index, fMomOnHost);
 }
 
 #ifdef PARTICLE_MODEL

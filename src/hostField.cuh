@@ -32,6 +32,7 @@ typedef struct hostField{
     unsigned int* hNodeType;
 
     int NThread;
+    size_t pinnedBytesAllocated;
 
     #if NODE_TYPE_SAVE
     unsigned int* nodeTypeSave; 
@@ -140,7 +141,7 @@ typedef struct hostField{
     // Constructor: initialize pointers and compute NThread based on compile-time flags
     hostField()
         : h_fMom(nullptr), rho(nullptr), ux(nullptr), uy(nullptr), uz(nullptr),
-          hNodeType(nullptr)
+          hNodeType(nullptr), pinnedBytesAllocated(0)
         #if NODE_TYPE_SAVE
         , nodeTypeSave(nullptr)
         #endif
@@ -301,7 +302,7 @@ typedef struct hostField{
     }
 
     void allocateHostMemoryHostField(){
-        unsigned int memAllocated = 0;
+        size_t memAllocated = 0;
 
         checkCudaErrors(cudaMallocHost((void**)&h_fMom, MEM_SIZE_MOM));
         checkCudaErrors(cudaMallocHost((void**)&rho, MEM_SIZE_SCALAR));
@@ -442,14 +443,22 @@ typedef struct hostField{
         checkCudaErrors(cudaMallocHost((void**)&hNodeType, sizeof(unsigned int) * NUMBER_LBM_NODES));
         memAllocated += sizeof(unsigned int) * NUMBER_LBM_NODES;
 
-        printf("Host Memory Allocated: %0.2f MB\n", (float)memAllocated / (1024.0 * 1024.0)); if(console_flush) fflush(stdout);
+        pinnedBytesAllocated = memAllocated;
+        printf("Primary host-field memory allocated: %0.2f MiB\n",
+            static_cast<double>(memAllocated) / (1024.0 * 1024.0));
+        if(console_flush) fflush(stdout);
     }
 
     #ifdef DENSITY_CORRECTION
     void allocateDensityCorrectionMemory(){
         checkCudaErrors(cudaMallocHost((void**)&(h_mean_rho), sizeof(dfloat)));
+        pinnedBytesAllocated += sizeof(dfloat);
     }
     #endif //DENSITY_CORRECTION
+
+    size_t getPinnedBytesAllocated() const {
+        return pinnedBytesAllocated;
+    }
 
     void saveMacrHostField(unsigned int nSteps, std::atomic<bool>& savingMacrVtk, std::vector<std::atomic<bool>>& savingMacrBin, bool meanFlow){
         SaveDataParams saveMacrParams;
@@ -714,6 +723,7 @@ typedef struct hostField{
         #ifdef DENSITY_CORRECTION
             if (h_mean_rho) cudaFreeHost(h_mean_rho);
         #endif //DENSITY_CORRECTION
+        pinnedBytesAllocated = 0;
     }
 
 } HostField;

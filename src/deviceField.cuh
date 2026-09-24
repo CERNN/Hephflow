@@ -4,6 +4,8 @@
 #include "var.h"
 #include "main.cuh"
 #include "hostField.cuh"
+#include <thread>
+#include <vector>
 
 typedef struct deviceField{
     ghostInterfaceData ghostInterface[N_GPUS];
@@ -1443,7 +1445,7 @@ typedef struct deviceField{
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         int zStart = g * slice;
         size_t zOffset = zStart * NX * NY * NUMBER_MOMENTS;
-        saveSimCheckpoint(hostField.h_fMom+zOffset, ghostInterface[g], &step, g);
+        saveSimCheckpoint(hostField.h_fMom+zOffset, ghostInterface[g], &step, g, true);
     }
 
     void saveSimCheckpointDeviceField( int &step, int g, int slice){
@@ -1451,62 +1453,77 @@ typedef struct deviceField{
         saveSimCheckpoint(d_fMom[g],ghostInterface[g],&step, g);
     }
 
-    #ifdef TREAT_DATA_INCLUDE
     void copyMacroscopicDeviceField(hostField &hostField, deviceField* allDevices, int slice){
+        std::vector<std::thread> copyThreads;
+        copyThreads.reserve(N_GPUS);
+
         for(int g = 0; g < N_GPUS; g++){
-            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-            checkCudaErrors(cudaDeviceSynchronize());
-            int zStart = g * slice;
-            size_t zOffset = zStart * NX * NY * NUMBER_MOMENTS;
-            size_t zOffsetScalar = zStart * NX * NY;
-            checkCudaErrors(cudaMemcpy(hostField.h_fMom+zOffset, allDevices[g].d_fMom[g],
-                MEM_SIZE_MOM_STORAGE_LOCAL, cudaMemcpyDeviceToHost));
-            decodeMomentStorageInPlace(hostField.h_fMom + zOffset, NUM_BLOCK_LOCAL);
+            copyThreads.emplace_back([&, g]() {
+                checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+                checkCudaErrors(cudaDeviceSynchronize());
+                int zStart = g * slice;
+                size_t zOffset = zStart * NX * NY * NUMBER_MOMENTS;
+                #if defined(SAVE_LOCAL_FORCES) || (defined(BC_FORCES) && defined(SAVE_BC_FORCES))
+                size_t zOffsetScalar = zStart * NX * NY;
+                #endif
+                checkCudaErrors(cudaMemcpy(hostField.h_fMom+zOffset, allDevices[g].d_fMom[g],
+                    MEM_SIZE_MOM_STORAGE_LOCAL, cudaMemcpyDeviceToHost));
+                decodeMomentStorageInPlace(hostField.h_fMom + zOffset, NUM_BLOCK_LOCAL);
 
-            // Local forces / source terms (scalar fields, assembled on host)
-            #ifdef SAVE_LOCAL_FORCES
-            checkCudaErrors(cudaMemcpy(hostField.h_Local_Fx+zOffsetScalar, allDevices[g].d_Local_Fx, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
-            checkCudaErrors(cudaMemcpy(hostField.h_Local_Fy+zOffsetScalar, allDevices[g].d_Local_Fy, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
-            checkCudaErrors(cudaMemcpy(hostField.h_Local_Fz+zOffsetScalar, allDevices[g].d_Local_Fz, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
-                #ifdef SECOND_DIST
-            checkCudaErrors(cudaMemcpy(hostField.h_Source_C+zOffsetScalar, allDevices[g].d_Source_C, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                // Each worker writes only its own Z slab in the pinned global
+                // snapshot, so transfers from different devices can overlap.
+                #if defined(BC_FORCES) && defined(SAVE_BC_FORCES)
+                checkCudaErrors(cudaMemcpy(hostField.h_BC_Fx+zOffsetScalar, allDevices[g].d_BC_Fx[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                checkCudaErrors(cudaMemcpy(hostField.h_BC_Fy+zOffsetScalar, allDevices[g].d_BC_Fy[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                checkCudaErrors(cudaMemcpy(hostField.h_BC_Fz+zOffsetScalar, allDevices[g].d_BC_Fz[g], sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
                 #endif
-                #ifdef PHI_DIST
-            checkCudaErrors(cudaMemcpy(hostField.h_Source_Phi+zOffsetScalar, allDevices[g].d_Source_Phi, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
-                #endif
-                #ifdef LAMBDA_DIST
-            checkCudaErrors(cudaMemcpy(hostField.h_Source_Lambda+zOffsetScalar, allDevices[g].d_Source_Lambda, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
-                #endif
-                #ifdef CONFORMATION_TENSOR
-                    #ifdef A_XX_DIST
-            checkCudaErrors(cudaMemcpy(hostField.h_Source_Gxx+zOffsetScalar, allDevices[g].d_Source_Gxx, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                #ifdef SAVE_LOCAL_FORCES
+                checkCudaErrors(cudaMemcpy(hostField.h_Local_Fx+zOffsetScalar, allDevices[g].d_Local_Fx, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                checkCudaErrors(cudaMemcpy(hostField.h_Local_Fy+zOffsetScalar, allDevices[g].d_Local_Fy, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                checkCudaErrors(cudaMemcpy(hostField.h_Local_Fz+zOffsetScalar, allDevices[g].d_Local_Fz, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                    #ifdef SECOND_DIST
+                checkCudaErrors(cudaMemcpy(hostField.h_Source_C+zOffsetScalar, allDevices[g].d_Source_C, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
                     #endif
-                    #ifdef A_XY_DIST
-            checkCudaErrors(cudaMemcpy(hostField.h_Source_Gxy+zOffsetScalar, allDevices[g].d_Source_Gxy, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                    #ifdef PHI_DIST
+                checkCudaErrors(cudaMemcpy(hostField.h_Source_Phi+zOffsetScalar, allDevices[g].d_Source_Phi, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
                     #endif
-                    #ifdef A_XZ_DIST
-            checkCudaErrors(cudaMemcpy(hostField.h_Source_Gxz+zOffsetScalar, allDevices[g].d_Source_Gxz, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                    #ifdef LAMBDA_DIST
+                checkCudaErrors(cudaMemcpy(hostField.h_Source_Lambda+zOffsetScalar, allDevices[g].d_Source_Lambda, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
                     #endif
-                    #ifdef A_YY_DIST
-            checkCudaErrors(cudaMemcpy(hostField.h_Source_Gyy+zOffsetScalar, allDevices[g].d_Source_Gyy, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
-                    #endif
-                    #ifdef A_YZ_DIST
-            checkCudaErrors(cudaMemcpy(hostField.h_Source_Gyz+zOffsetScalar, allDevices[g].d_Source_Gyz, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
-                    #endif
-                    #ifdef A_ZZ_DIST
-            checkCudaErrors(cudaMemcpy(hostField.h_Source_Gzz+zOffsetScalar, allDevices[g].d_Source_Gzz, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
-                    #endif
-                #endif //CONFORMATION_TENSOR
-            #endif //SAVE_LOCAL_FORCES
+                    #ifdef CONFORMATION_TENSOR
+                        #ifdef A_XX_DIST
+                checkCudaErrors(cudaMemcpy(hostField.h_Source_Gxx+zOffsetScalar, allDevices[g].d_Source_Gxx, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                        #endif
+                        #ifdef A_XY_DIST
+                checkCudaErrors(cudaMemcpy(hostField.h_Source_Gxy+zOffsetScalar, allDevices[g].d_Source_Gxy, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                        #endif
+                        #ifdef A_XZ_DIST
+                checkCudaErrors(cudaMemcpy(hostField.h_Source_Gxz+zOffsetScalar, allDevices[g].d_Source_Gxz, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                        #endif
+                        #ifdef A_YY_DIST
+                checkCudaErrors(cudaMemcpy(hostField.h_Source_Gyy+zOffsetScalar, allDevices[g].d_Source_Gyy, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                        #endif
+                        #ifdef A_YZ_DIST
+                checkCudaErrors(cudaMemcpy(hostField.h_Source_Gyz+zOffsetScalar, allDevices[g].d_Source_Gyz, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                        #endif
+                        #ifdef A_ZZ_DIST
+                checkCudaErrors(cudaMemcpy(hostField.h_Source_Gzz+zOffsetScalar, allDevices[g].d_Source_Gzz, sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL, cudaMemcpyDeviceToHost));
+                        #endif
+                    #endif //CONFORMATION_TENSOR
+                #endif //SAVE_LOCAL_FORCES
 
-            checkCudaErrors(cudaDeviceSynchronize());
+                checkCudaErrors(cudaDeviceSynchronize());
+            });
+        }
+
+        for (auto &copyThread : copyThreads) {
+            copyThread.join();
         }
     }
-    #endif //TREAT_DATA_INCLUDE
 
     void treatDataDeviceField(hostField &hostField, 
         int step, int slice){
-        TreatDataParams treatDataParams;
+        TreatDataParams treatDataParams{};
         treatDataParams.h_fMom = hostField.h_fMom;
         #if MEAN_FLOW
         treatDataParams.d_fMom_mean = hostField.m_fMom;
