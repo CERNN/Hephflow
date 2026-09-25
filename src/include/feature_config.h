@@ -8,12 +8,6 @@
 #ifndef __FEATURE_CONFIG_H
 #define __FEATURE_CONFIG_H
 
-/* ==================== POPULATION REPRESENTATION ==================== */
-
-// Enable f_i - w_i*RHO_0 storage/streaming for the supported hydrodynamic
-// moment reconstruction. Comment this definition for unshifted A/B tests.
-// #define SHIFTED_HYDRO_POP
-
 /* ====================== POPULATION STREAMING ====================== */
 
 // Select exactly one interface streaming layout at compile time. The build
