@@ -22,7 +22,7 @@ constexpr int NZ = N;                       // Grid size in Z
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- REFERENCE VALUES --------------------- */
-constexpr dfloat U_MAX = 0.0;               // Maximum/reference velocity
+constexpr dfloat U_MAX = 0.01;
 constexpr dfloat L = N;                     // Reference length
 
 /* --------------------- BODY FORCES --------------------- */
@@ -48,7 +48,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 #define BC_Z_PERIODIC
 
 /* --------------------- FLUID PROPERTIES --------------------- */
-constexpr dfloat VISC = U_MAX * NX / RE;    // Kinematic viscosity
+constexpr dfloat VISC = 0.01;    // Kinematic viscosity
 constexpr dfloat TAU = 0.5 + 3.0*VISC;      // Relaxation time
 constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 
