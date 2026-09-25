@@ -11,8 +11,9 @@ uz = 0.0;
 rho = RHO_0;
 
 if (radius < PIPE_RADIUS) {
-    const dfloat pos = PIPE_RADIUS - radius;
-    uz = (uc_f*U_TAU)*(pos/PIPE_RADIUS)*(pos/PIPE_RADIUS);
+    dfloat pos = (y < NY/2 ? y + 0.5 : NY - (y + 0.5));
+    dfloat uz_log = (uc_f*U_TAU)*(pos/HALF_WIDTH)*(pos/HALF_WIDTH);
+    uz = uz_log;
 
     // Same perturbation used by the curved-boundary case.
     const dfloat pert = 0.2;
@@ -22,3 +23,7 @@ if (radius < PIPE_RADIUS) {
     ux += (ub_f*U_TAU)*pert*randomNumbers[l + x - Nt*((l + x)/Nt)];
     uy += (ub_f*U_TAU)*pert*randomNumbers[l + y - Nt*((l + y)/Nt)];
 }
+
+
+
+

@@ -12,10 +12,11 @@ constexpr int N_STEPS = 1360000;            // Total simulation steps
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- GRID DIMENSIONS --------------------- */
-constexpr int N = 216;                       // Cross-section grid size
-constexpr int NX = N;                        // Grid size in X
-constexpr int NY = N;                        // Grid size in Y
-constexpr int NZ = 16*(N/2);                 // Periodic axial length (16 nominal radii)
+constexpr int HALF_WIDTH = 96;               // Duct half-width / integral scale
+constexpr int N = HALF_WIDTH;                // Reference length retained for utilities
+constexpr int NX = 2 * HALF_WIDTH;           // Square-duct width in X
+constexpr int NY = 2 * HALF_WIDTH;           // Square-duct width in Y
+constexpr int NZ = 16 * HALF_WIDTH;          // Periodic streamwise length
 constexpr int NZ_TOTAL = NZ;                // Total grid size in Z (multi-GPU)
 
 /* --------------------- DUCT GEOMETRY --------------------- */
@@ -76,15 +77,15 @@ static inline fluidPhaseProps makeCasePhaseProps(){
 #define SIMULATION_FOLDER_LOAD_CHECKPOINT "TEST" // Folder to load checkpoint from
 #define CHECKPOINT_SAVE false               // Save simulation checkpoints
 #define LOAD_FIELD false                    // Load field data
-#define LOAD_FIELD_STEP 0                   // Step to load field from
+#define LOAD_FIELD_STEP 0                   // Load field step
 
-/* --------------------- EXTERNAL DUCT CONFIGURATION --------------------- */
+/* --------------------- STAIRCASE DUCT CONFIGURATION --------------------- */
 #define FORCE_VOXEL_BC_BUILDING
+#define EXTERNAL_DUCT_BC
 
-#define EXTERNAL_DUCT_BC 
-#ifdef EXTERNAL_DUCT_BC 
+#ifdef EXTERNAL_DUCT_BC
     #define OUTER_RADIUS PIPE_RADIUS
     #define EXTERNAL_DUCT_BC_RADIUS PIPE_RADIUS
     #define OUTER_VELOCITY 0.0
-    #define OUTER_ROTATION 0.0 //(U_MAX/OUTER_RADIUS)    
-#endif //EXTERNAL_DUCT_BC
+    #define OUTER_ROTATION 0.0
+#endif // EXTERNAL_DUCT_BC
