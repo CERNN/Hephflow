@@ -115,25 +115,30 @@ void checkCollisionWalls(ParticleShape *shape, ParticleCenter* pc_i, ParticleWal
         switch (*shape) {
             case SPHERE:
                 dist = vector_length(pc_i->getPos() - ductCenter);
-                if(EXTERNAL_DUCT_BC_RADIUS - dist < pc_i->getRadius()){
+                dist = cylinderContactGap(dist, pc_i->getRadius(), EXTERNAL_DUCT_BC_RADIUS, -1);
+                if (dist < 0.0_df) {
                     wallData = determineCircularWall(pc_i->getPos(),EXTERNAL_DUCT_BC_RADIUS,-1);
-                    sphereWallCollision({pc_i, wallData, (dfloat)EXTERNAL_DUCT_BC_RADIUS - (pc_i->getRadius() + dist), step},d_pwForces);
+                    sphereWallCollision({pc_i, wallData, -dist, step},d_pwForces);
                 }
                 break;
             case CAPSULE:
-                //two cases (it always collide on the hemispheres)
+                // For a containing cylinder, the maximum radial distance of a
+                // line segment occurs at an endpoint, so cap checks cover both
+                // side and end-cap contact orientations.
                 endpoint = pc_i->getSemiAxis1();
                 dist = vector_length(endpoint - ductCenter);
-                if (EXTERNAL_DUCT_BC_RADIUS - dist < pc_i->getRadius()){
+                dist = cylinderContactGap(dist, pc_i->getRadius(), EXTERNAL_DUCT_BC_RADIUS, -1);
+                if (dist < 0.0_df) {
                     wallData = determineCircularWall(endpoint,EXTERNAL_DUCT_BC_RADIUS,-1);
-                    capsuleWallCollisionCap({pc_i, wallData, (dfloat)EXTERNAL_DUCT_BC_RADIUS - (pc_i->getRadius() + dist), step, endpoint});
+                    capsuleWallCollisionCap({pc_i, wallData, -dist, step, endpoint});
                 }
                 
                 endpoint = pc_i->getSemiAxis2();
                 dist = vector_length(endpoint - ductCenter);
-                if( EXTERNAL_DUCT_BC_RADIUS - dist < pc_i->getRadius()){
+                dist = cylinderContactGap(dist, pc_i->getRadius(), EXTERNAL_DUCT_BC_RADIUS, -1);
+                if (dist < 0.0_df) {
                     wallData = determineCircularWall(endpoint,EXTERNAL_DUCT_BC_RADIUS,-1);
-                    capsuleWallCollisionCap({pc_i, wallData, (dfloat)EXTERNAL_DUCT_BC_RADIUS - (pc_i->getRadius() + dist), step, endpoint});
+                    capsuleWallCollisionCap({pc_i, wallData, -dist, step, endpoint});
                 }
                 break;
             case ELLIPSOID:
@@ -536,7 +541,9 @@ dfloat ellipsoidSegmentCollisionDistance( ParticleCenter* pc_i, dfloat3 P1, dflo
 
 
     //projection of center into segment
-    dfloat3 proj = segmentProjection(pc_i->getPos(),P1,P2,cRadius,cyDir);
+    dfloat3 cylinderNormal[1];
+    dfloat3 proj = segmentProjection(
+        pc_i->getPos(), P1, P2, cRadius, cyDir, cylinderNormal);
     dfloat3 dir = pc_i->getPos() - proj;
     dfloat3 t = ellipsoid_intersection(pc_i,RE,proj,dir,dfloat3(0,0,0));
     dfloat3 inter1 = proj + t.x*dir;
@@ -562,7 +569,8 @@ dfloat ellipsoidSegmentCollisionDistance( ParticleCenter* pc_i, dfloat3 P1, dflo
     dfloat max_iters = 20;
     dfloat tolerance = 1e-3;
     for(int i = 0; i< max_iters;i++){
-        proj = segmentProjection(sphere_center2,P1,P2,cRadius, cyDir);
+        proj = segmentProjection(
+            sphere_center2, P1, P2, cRadius, cyDir, cylinderNormal);
         dir = sphere_center2 - proj;
         t = ellipsoid_intersection(pc_i,RE,proj,dir,dfloat3(0,0,0));
 
@@ -591,6 +599,16 @@ dfloat ellipsoidSegmentCollisionDistance( ParticleCenter* pc_i, dfloat3 P1, dflo
     contactPoint1[0] = proj;
     contactPoint2[0] = closest_point2;
     dist = vector_length(sphere_center2 - proj) - r;
+
+    // The iterative construction above returns the unsigned separation after
+    // a particle has crossed completely through the wall. Preserve a negative
+    // gap on the forbidden side so the restoring contact remains active.
+    dfloat3 closestAxis[1];
+    const dfloat centerRadius = point_to_segment_distance(
+        pc_i->getPos(), P1, P2, closestAxis);
+    if (cylinderContactGap(centerRadius, 0.0_df, cRadius, cyDir) < 0.0_df) {
+        dist = -fabs(dist);
+    }
     return dist;
 }
 

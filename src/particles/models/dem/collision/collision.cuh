@@ -313,7 +313,7 @@ void ellipsoidEllipsoidCollision(const CollisionContext& ctx,dfloat3 closestOnA[
  * @param P1: One endpoint of the cylinder axis.
  * @param P2: The other endpoint of the cylinder axis.
  * @param cRadius: The radius of the cylinder.
- * @param cyDir: The direction of the cylinder surface normal
+ * @param cyDir: -1 for a concave containing wall, +1 for a convex obstacle.
  */
 __device__
 void ellipsoidCylinderCollision(const CollisionContext& ctx, dfloat3 closestOnB[1],dfloat cr1[1], dfloat3 P1, dfloat3 P2, dfloat cRadius, int cyDir); 

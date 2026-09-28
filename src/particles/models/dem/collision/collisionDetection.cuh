@@ -160,7 +160,7 @@ dfloat sphereSphereGap(ParticleCenter*  pc_i, ParticleCenter*  pc_j);
 *   @brief determine wall properties for duct, based on contact position and radius
 *   @param pos_i: coordinates of the collision point in the body center .
 *   @param R: Radius of the duct
-*   @param dir: direction of the duct, -1 for internal collision and +1 for external collision
+*   @param dir: -1 for a concave containing wall and +1 for a convex obstacle.
 */
 __device__
 Wall determineCircularWall(dfloat3 pos_i, dfloat R, dfloat dir);
@@ -175,7 +175,7 @@ Wall determineCircularWall(dfloat3 pos_i, dfloat R, dfloat dir);
  * @param contactPoint1: Output parameter to store the contact point on the ellipsoid.
  * @param contactPoint2: Output parameter to store the contact point on the cylinder segment.
  * @param cr: Output parameter to store the contact radius.
- * @param cyDir: Direction indicator for the cylinder (-1 for externa, 1 for internal
+ * @param cyDir: -1 for a concave containing wall, +1 for a convex obstacle.
  * @param step: The current simulation time step for collision checking.
  * @return The distance between the surfaces of the cylinder and ellipsoid
  */

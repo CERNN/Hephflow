@@ -721,12 +721,12 @@ void ellipsoidCylinderCollision(const CollisionContext& ctx, dfloat3 closestOnB[
     dfloat3 wall_speed = dfloat3(0,0,0); 
     dfloat3 wall_rotation = dfloat3(0,0,0);
 
-    dfloat3 proj = segmentProjection(endpoint,P1,P2,cRadius,cyDir);
-    dfloat3 dir = pc_i->getPos() - proj;
-    dfloat3 n = vector_normalize(proj - endpoint);
+    dfloat3 wallNormal[1];
+    segmentProjection(endpoint, P1, P2, cRadius, cyDir, wallNormal);
 
-    //invert collision direction since is from sphere to wall
-    n = -n;
+    // Collision routines use the direction from the particle toward the wall;
+    // the force law then applies the restoring force in the opposite direction.
+    dfloat3 n = -wallNormal[0];
 
     //vector center-> contact 
     dfloat3 rri = pos_c_i - pos_i;
@@ -735,7 +735,7 @@ void ellipsoidCylinderCollision(const CollisionContext& ctx, dfloat3 closestOnB[
     dfloat3 G_cn = dot_product(G,n) * n;
     dfloat3 G_ct = G - G_cn;
 
-    dfloat effective_radius = 1.0 / ((cr1[0] + cRadius) / (cr1[0] * cRadius));
+    dfloat effective_radius = cylinderEffectiveRadius(cr1[0], cRadius, cyDir);
     dfloat effective_mass = (m_i); //wall has infinite mass
 
     const dfloat STIFFNESS_NORMAL = SPHERE_WALL_STIFFNESS_NORMAL_CONST * sqrt(effective_radius);

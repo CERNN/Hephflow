@@ -47,14 +47,42 @@ dfloat3 planeProjection(dfloat3 P, dfloat3 n, dfloat d) {
 }
 
 __device__
-dfloat3 segmentProjection(dfloat3 P, dfloat3 P1, dfloat3 P2, dfloat cRadius, int cyDir ){
+dfloat3 segmentProjection(
+    dfloat3 P,
+    dfloat3 P1,
+    dfloat3 P2,
+    dfloat cRadius,
+    int cyDir,
+    dfloat3 wallNormal[1]) {
     dfloat3 closestOnAB[1];
 
-    dfloat dist = point_to_segment_distance(P, P1, P2, closestOnAB);
-    dfloat3 n =  vector_normalize(closestOnAB[0] - P); //TODO: FIX IT, missing cyDir, i.e internal (1) vs external (-1)
-    dfloat3 contactPoint =  closestOnAB[0] - n *  cRadius;
+    point_to_segment_distance(P, P1, P2, closestOnAB);
+    const dfloat3 radialDirection = vector_normalize(P - closestOnAB[0]);
+    const dfloat normalSign = cyDir < 0 ? -1.0_df : 1.0_df;
+    wallNormal[0] = normalSign * radialDirection;
+    const dfloat3 contactPoint = closestOnAB[0] + radialDirection * cRadius;
 
     return contactPoint;
+}
+
+__host__ __device__
+dfloat cylinderContactGap(
+    dfloat radialDistance,
+    dfloat extentRadius,
+    dfloat cRadius,
+    int cyDir) {
+    if (cyDir < 0) {
+        return cRadius - radialDistance - extentRadius;
+    }
+    return radialDistance - cRadius - extentRadius;
+}
+
+__host__ __device__
+dfloat cylinderEffectiveRadius(dfloat particleRadius, dfloat cRadius, int cyDir) {
+    const dfloat signedCylinderCurvature = cyDir < 0 ? -1.0_df : 1.0_df;
+    const dfloat inverseRadius =
+        fabs(1.0_df / particleRadius + signedCylinderCurvature / cRadius);
+    return 1.0_df / inverseRadius;
 }
 
 

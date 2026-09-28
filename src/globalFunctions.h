@@ -457,16 +457,46 @@ __device__
 dfloat3 planeProjection(dfloat3 P, dfloat3 n, dfloat d);
 
 /**
- * @brief Projects point P onto a line segment defined by endpoints P1 and P2, considering a cylinder radius and direction. 
+ * @brief Projects P onto a cylindrical surface and returns its oriented wall normal.
  * @param P The point to project.
  * @param P1 The start point of the segment.
  * @param P2 The end point of the segment.
  * @param cRadius The radius of the cylinder around the segment.
- * @param cyDir The direction of the surfance normal for the cylinder (-1 for external and 1 for internal).
- * @return The projected point on the segment within the cylinder.
+ * @param cyDir -1 for a concave containing wall, +1 for a convex obstacle.
+ * @param wallNormal Output normal pointing from the wall into the admissible region.
+ * @return The nearest point on the cylindrical surface. The surface point is
+ * independent of cyDir; only the oriented normal changes side.
  */
 __device__
-dfloat3 segmentProjection(dfloat3 P, dfloat3 P1, dfloat3 P2, dfloat cRadius, int cyDir);
+dfloat3 segmentProjection(
+    dfloat3 P,
+    dfloat3 P1,
+    dfloat3 P2,
+    dfloat cRadius,
+    int cyDir,
+    dfloat3 wallNormal[1]);
+
+/**
+ * @brief Signed gap between a radial extent and a cylindrical wall.
+ * @param radialDistance Distance of the extent center from the cylinder axis.
+ * @param extentRadius Radius/support distance of the particle toward the wall.
+ * @param cRadius Cylinder radius.
+ * @param cyDir -1 for a concave containing wall, +1 for a convex obstacle.
+ * @return Positive when separated in the admissible region, negative on overlap.
+ */
+__host__ __device__
+dfloat cylinderContactGap(
+    dfloat radialDistance,
+    dfloat extentRadius,
+    dfloat cRadius,
+    int cyDir);
+
+/**
+ * @brief Effective scalar contact radius for a particle and cylindrical wall.
+ * Concave walls use opposite-signed curvature; convex obstacles use the sum.
+ */
+__host__ __device__
+dfloat cylinderEffectiveRadius(dfloat particleRadius, dfloat cRadius, int cyDir);
 
 /**
  *  @brief Compute the dot product of two vectors.
