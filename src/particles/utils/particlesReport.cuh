@@ -66,5 +66,10 @@ void collectAndExportWallForces(
     unsigned int step
 );
 
+void collectAndExportIbmDiagnostics(
+    ParticlesSoA* particles,
+    unsigned int step
+);
+
 #endif //PARTICLE_MODEL
 #endif //!__PARTICLES_REPORT_H

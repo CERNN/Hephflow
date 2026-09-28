@@ -1,0 +1,17 @@
+#define ID_SIM "000"
+#define PATH_FILES "CircularDuctIBMNewtonian"
+#define TREATFIELD (false)
+#define TREATPOINT (false)
+#define TREATLINE (false)
+#define SAVEDATA (true)
+#define CONSOLEPRINT (false)
+#define MEAN_FLOW (false)
+#define NODE_TYPE_SAVE (false)
+#define ONLY_FINAL_MACRO (false)
+#define MACR_SAVE (10000)
+#define REPORT_SAVE (5000)
+#define VTK_SAVE (true)
+#define BIN_SAVE (false)
+#define PARTICLES_SAVE (false)
+#define PARTICLES_DATA_REPORT (false)
+#define IBM_PARTICLES_NODES_SAVE true

@@ -15,6 +15,22 @@ namespace {
 static_assert(P_DIST * 2 <= IBM_CACHED_STENCIL_WIDTH,
     "IBM stencil cache is too small for the selected stencil");
 
+__device__ __forceinline__ void ibmAtomicMaxNonnegative(
+    dfloat* address, dfloat value)
+{
+#ifdef SINGLE_PRECISION
+    atomicMax(reinterpret_cast<unsigned int*>(address), __float_as_uint(value));
+#else
+    unsigned long long* bits = reinterpret_cast<unsigned long long*>(address);
+    unsigned long long old = *bits;
+    while (__longlong_as_double(old) < value) {
+        const unsigned long long assumed = old;
+        old = atomicCAS(bits, assumed, __double_as_longlong(value));
+        if (old == assumed) break;
+    }
+#endif
+}
+
 __device__ __forceinline__ size_t ibmStencilWeightIndex(
     int axis, int offset, unsigned int node, unsigned int numNodes)
 {
@@ -160,6 +176,9 @@ void ibmSimulation(
     const IbmNodesView nodes = nodesSoA->getView();
 
     ParticleCenter* pArray = particles->getPCenterArray();
+    #if IBM_SLIP_DIAGNOSTICS
+    dfloat* maxSlipSquared = particles->getIbmMaxSlipSquared();
+    #endif
     ibmPrepareNodes<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(nodes, pArray);
     IbmNodeDebugRecord* d_debugRecords = nullptr;
     #ifdef PARTICLE_FORCE_DEBUG
@@ -171,8 +190,16 @@ void ibmSimulation(
     #endif
 
     for (int iteration = 0; iteration < IBM_MAX_ITERATION; ++iteration) {
+        // Retain the residual from the final MDF iteration only.
+        #if IBM_SLIP_DIAGNOSTICS
+        checkCudaErrors(cudaMemsetAsync(maxSlipSquared, 0, sizeof(dfloat), streamParticles));
+        #endif
         ibmForceInterpolationSpread<<<gridNodesIBM, threadsNodesIBM, 0, streamParticles>>>(
-            nodes, pArray, fMom, step, d_debugRecords);
+            nodes, pArray, fMom,
+            #if IBM_SLIP_DIAGNOSTICS
+            maxSlipSquared,
+            #endif
+            step, d_debugRecords);
 
         #ifdef PARTICLE_FORCE_DEBUG
         if (d_debugRecords != nullptr) {
@@ -273,6 +300,9 @@ void ibmForceInterpolationSpread(
     IbmNodesView particlesNodes,
     ParticleCenter *pArray,
     dfloat *fMom,
+    #if IBM_SLIP_DIAGNOSTICS
+    dfloat* maxSlipSquared,
+    #endif
     unsigned int step,
     IbmNodeDebugRecord* debugRecords
 ){
@@ -598,6 +628,11 @@ void ibmForceInterpolationSpread(
         uyVar - uy_calc,
         uzVar - uz_calc);
     const dfloat residualSquared = dot_product(velocityResidual, velocityResidual);
+    #if IBM_SLIP_DIAGNOSTICS
+    if (isfinite(residualSquared)) {
+        ibmAtomicMaxNonnegative(maxSlipSquared, residualSquared);
+    }
+    #endif
     const bool validCorrection = !invalidEulerianState &&
         isfinite(rhoVar) && rhoVar > 1.0e-6_df &&
         isfinite(aux) && isfinite(residualSquared);

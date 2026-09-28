@@ -141,6 +141,9 @@ void ParticleField::saveCheckpoint(unsigned int step) {
 
 void ParticleField::exportWallForces(unsigned int step) {
     collectAndExportWallForces(d_pwForces, step);
+    #if IBM_SLIP_DIAGNOSTICS
+    collectAndExportIbmDiagnostics(&particlesSoA, step);
+    #endif
 }
 
 void ParticleField::waitForSaving(std::atomic<bool>& savingFlag) {

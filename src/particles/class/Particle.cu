@@ -2,6 +2,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <algorithm>
+#include <vector>
 
 #ifdef PARTICLE_MODEL
 
@@ -13,6 +15,12 @@ __host__ __device__ Particle::Particle(){
     collideWall = false;
     shape = nullptr;
     nodes = nullptr; // Initialize nodes
+    ductRadiusA = 0.0_df;
+    ductRadiusB = 0.0_df;
+    ductRotationAngle = 0.0_df;
+    ductStaggeredRings = true;
+    ductAxisStart = dfloat3();
+    ductAxisEnd = dfloat3();
 }
 
 __host__ Particle::~Particle(){
@@ -45,6 +53,20 @@ __host__ __device__ void Particle::setCollideWall(const bool& value) { this->col
 
 __host__ __device__ ParticleShape* Particle::getShape() const {return this->shape;}
 __host__ __device__ void Particle::setShape(ParticleShape* shape) { this->shape = shape;}
+__host__ __device__ void Particle::setDuctAxisEndpoints(const dfloat3& axisStart, const dfloat3& axisEnd) {
+    this->ductAxisStart = axisStart;
+    this->ductAxisEnd = axisEnd;
+}
+__host__ __device__ void Particle::setDuctRadii(dfloat radiusA, dfloat radiusB, dfloat rotationAngle) {
+    this->ductRadiusA = radiusA;
+    this->ductRadiusB = radiusB;
+    this->ductRotationAngle = rotationAngle;
+}
+__host__ __device__ dfloat Particle::getDuctRadiusA() const { return this->ductRadiusA; }
+__host__ __device__ dfloat Particle::getDuctRadiusB() const { return this->ductRadiusB; }
+__host__ __device__ void Particle::setDuctStaggeredRings(bool staggered) {
+    this->ductStaggeredRings = staggered;
+}
 
 // ParticlesSoA class implementation
 __host__ 
@@ -56,6 +78,7 @@ ParticlesSoA::ParticlesSoA() {
     collisionFlags = nullptr;
     pibmForceArray = nullptr;
     pibmForceCorrectionArray = nullptr;
+    ibmMaxSlipSquared = nullptr;
     particleCollisionsEnabled = false;
     wallCollisionsEnabled = false;
 }
@@ -90,6 +113,10 @@ ParticlesSoA::~ParticlesSoA() {
         cudaFree(pibmForceCorrectionArray);
         pibmForceCorrectionArray = nullptr;
     }
+    if (ibmMaxSlipSquared) {
+        cudaFree(ibmMaxSlipSquared);
+        ibmMaxSlipSquared = nullptr;
+    }
 }
 
 __host__ __device__ IbmNodesSoA* ParticlesSoA::getNodesSoA() {
@@ -120,6 +147,7 @@ __host__ __device__ void ParticlesSoA::setPMethod(ParticleMethod* pMethod) {this
 __host__ __device__ const unsigned char* ParticlesSoA::getCollisionFlags() const {return this->collisionFlags;}
 __host__ __device__ dfloat3* ParticlesSoA::getPibmForceArray() const {return this->pibmForceArray;}
 __host__ __device__ dfloat3* ParticlesSoA::getPibmForceCorrectionArray() const {return this->pibmForceCorrectionArray;}
+__host__ __device__ dfloat* ParticlesSoA::getIbmMaxSlipSquared() const {return this->ibmMaxSlipSquared;}
 __host__ bool ParticlesSoA::hasParticleCollisions() const {return this->particleCollisionsEnabled;}
 __host__ bool ParticlesSoA::hasWallCollisions() const {return this->wallCollisionsEnabled;}
 
@@ -173,6 +201,9 @@ __host__ void ParticlesSoA::createParticles(Particle *particles){
                 break;
             case CAPSULE:
                 particles[i].makeCapsule(particles[i].getPCenter());
+                break;
+            case PERIODIC_DUCT:
+                particles[i].makePeriodicDuct(particles[i].getPCenter());
                 break;
             case ELLIPSOID:
                particles[i].makeEllipsoid(particles[i].getPCenter());
@@ -239,10 +270,17 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
     checkCudaErrors(cudaMalloc((void**)&this->collisionFlags,            sizeof(unsigned char)  * NUM_PARTICLES));
     checkCudaErrors(cudaMalloc((void**)&this->pibmForceArray,            sizeof(dfloat3)         * NUM_PARTICLES));
     checkCudaErrors(cudaMalloc((void**)&this->pibmForceCorrectionArray,  sizeof(dfloat3)         * NUM_PARTICLES));
+    #if IBM_SLIP_DIAGNOSTICS
+    checkCudaErrors(cudaMallocManaged((void**)&this->ibmMaxSlipSquared, sizeof(dfloat)));
+    #endif
 
     if (!this->pCenterArray || !this->collisionDataArray ||
         !this->pShape || !this->pMethod || !this->collisionFlags ||
-        !this->pibmForceArray || !this->pibmForceCorrectionArray) {
+        !this->pibmForceArray || !this->pibmForceCorrectionArray
+        #if IBM_SLIP_DIAGNOSTICS
+        || !this->ibmMaxSlipSquared
+        #endif
+        ) {
         printf("ERRO: Memory allocation failed!!\n"); fflush(stdout);
         return;
     }
@@ -301,6 +339,9 @@ __host__ void ParticlesSoA::updateParticlesAsSoA(Particle* particles){
         sizeof(unsigned char) * NUM_PARTICLES, cudaMemcpyHostToDevice));
     checkCudaErrors(cudaMemset(this->pibmForceArray, 0, sizeof(dfloat3) * NUM_PARTICLES));
     checkCudaErrors(cudaMemset(this->pibmForceCorrectionArray, 0, sizeof(dfloat3) * NUM_PARTICLES));
+    #if IBM_SLIP_DIAGNOSTICS
+    checkCudaErrors(cudaMemset(this->ibmMaxSlipSquared, 0, sizeof(dfloat)));
+    #endif
 }
 
 void ParticlesSoA::freeNodesAndCenters(){
@@ -323,6 +364,10 @@ void ParticlesSoA::freeNodesAndCenters(){
     this->pibmForceArray = nullptr;
     cudaFree(this->pibmForceCorrectionArray);
     this->pibmForceCorrectionArray = nullptr;
+    #if IBM_SLIP_DIAGNOSTICS
+    cudaFree(this->ibmMaxSlipSquared);
+    this->ibmMaxSlipSquared = nullptr;
+    #endif
     this->particleCollisionsEnabled = false;
     this->wallCollisionsEnabled = false;
 }
@@ -1193,6 +1238,112 @@ void Particle::makeCapsule(ParticleCenter *particleCenter){
          IbmNodes* node_j = &(this->nodes[ii]);
     }
 
+}
+
+void Particle::makePeriodicDuct(ParticleCenter *particleCenter)
+{
+    const dfloat radiusA = this->ductRadiusA;
+    const dfloat radiusB = this->ductRadiusB;
+    const dfloat3 axisStart = this->ductAxisStart;
+    const dfloat3 axisEnd = this->ductAxisEnd;
+    const dfloat3 axisVector = axisEnd - axisStart;
+    const dfloat length = vector_length(axisVector);
+    if (!(radiusA > 0.0_df) || !(radiusB > 0.0_df) ||
+        !(length > 0.0_df) || !(MESH_SCALE > 0.0_df)) {
+        fprintf(stderr,
+            "ERROR: PERIODIC_DUCT requires positive radii, axis length, and MESH_SCALE.\n");
+        this->numNodes = 0;
+        this->nodes = nullptr;
+        return;
+    }
+
+    const dfloat3 axisDirection = axisVector / length;
+    // Select the reference direction least parallel to the duct axis.
+    const dfloat3 reference = fabs(axisDirection.z) < 0.9_df
+        ? dfloat3(0.0_df, 0.0_df, 1.0_df)
+        : dfloat3(0.0_df, 1.0_df, 0.0_df);
+    const dfloat3 crossA = cross_product(reference, axisDirection);
+    const dfloat3 baseA = crossA / vector_length(crossA);
+    const dfloat3 baseB = cross_product(axisDirection, baseA);
+    const dfloat rotationCos = cos(this->ductRotationAngle);
+    const dfloat rotationSin = sin(this->ductRotationAngle);
+    const dfloat3 basisA = rotationCos * baseA + rotationSin * baseB;
+    const dfloat3 basisB = -rotationSin * baseA + rotationCos * baseB;
+
+    // Construct a numerical arc-length map so elliptical rings have nearly
+    // uniform marker spacing rather than uniform parameter-angle spacing.
+    const dfloat h = POW_FUNCTION(radiusA - radiusB, 2.0_df) /
+        POW_FUNCTION(radiusA + radiusB, 2.0_df);
+    const dfloat perimeterEstimate = M_PI * (radiusA + radiusB) *
+        (1.0_df + 3.0_df * h / (10.0_df + sqrt(4.0_df - 3.0_df * h)));
+    const int estimatedMarkers = std::max(4,
+        (int)ceil(perimeterEstimate / MESH_SCALE));
+    const int arcSegments = std::max(4096, 32 * estimatedMarkers);
+    std::vector<dfloat> cumulativeArc((size_t)arcSegments + 1, 0.0_df);
+    const dfloat arcDTheta = 2.0_df * M_PI / (dfloat)arcSegments;
+    dfloat previousSpeed = radiusB;
+    for (int segment = 1; segment <= arcSegments; ++segment) {
+        const dfloat theta = (dfloat)segment * arcDTheta;
+        const dfloat speed = sqrt(
+            radiusA * radiusA * sin(theta) * sin(theta) +
+            radiusB * radiusB * cos(theta) * cos(theta));
+        cumulativeArc[(size_t)segment] = cumulativeArc[(size_t)segment - 1] +
+            0.5_df * (previousSpeed + speed) * arcDTheta;
+        previousSpeed = speed;
+    }
+    const dfloat perimeter = cumulativeArc.back();
+    const int azimuthalNodes = std::max(4, (int)ceil(perimeter / MESH_SCALE));
+    int axialNodes = std::max(2, (int)ceil(length / MESH_SCALE));
+    // An even number preserves the alternating phase across the periodic seam.
+    if (this->ductStaggeredRings && (axialNodes & 1)) ++axialNodes;
+    const dfloat dsAxis = length / (dfloat)axialNodes;
+    const dfloat markerArea = perimeter * length /
+        (dfloat)(azimuthalNodes * axialNodes);
+
+    this->numNodes = (unsigned int)(azimuthalNodes * axialNodes);
+    this->nodes = new IbmNodes[this->numNodes];
+
+    unsigned int marker = 0;
+    for (int k = 0; k < axialNodes; ++k) {
+        const dfloat3 ringCenter = axisStart +
+            (((dfloat)k + 0.5_df) * dsAxis) * axisDirection;
+        const dfloat stagger =
+            (this->ductStaggeredRings && (k & 1)) ? 0.5_df : 0.0_df;
+        for (int j = 0; j < azimuthalNodes; ++j, ++marker) {
+            dfloat targetArc = ((dfloat)j + stagger) * perimeter /
+                (dfloat)azimuthalNodes;
+            if (targetArc >= perimeter) targetArc -= perimeter;
+            const auto upper = std::lower_bound(
+                cumulativeArc.begin(), cumulativeArc.end(), targetArc);
+            int segment = (int)(upper - cumulativeArc.begin());
+            segment = std::max(1, std::min(segment, arcSegments));
+            const dfloat arc0 = cumulativeArc[(size_t)segment - 1];
+            const dfloat arc1 = cumulativeArc[(size_t)segment];
+            const dfloat fraction = (targetArc - arc0) /
+                fmax(arc1 - arc0, 1.0e-14_df);
+            const dfloat theta = ((dfloat)(segment - 1) + fraction) * arcDTheta;
+            const dfloat3 position = ringCenter +
+                (radiusA * cos(theta)) * basisA +
+                (radiusB * sin(theta)) * basisB;
+            this->nodes[marker].setPos(position);
+            this->nodes[marker].setVel(dfloat3(0.0_df, 0.0_df, 0.0_df));
+            this->nodes[marker].setVelOld(dfloat3(0.0_df, 0.0_df, 0.0_df));
+            this->nodes[marker].setF(dfloat3(0.0_df, 0.0_df, 0.0_df));
+            this->nodes[marker].setDeltaF(dfloat3(0.0_df, 0.0_df, 0.0_df));
+            this->nodes[marker].setS(markerArea);
+        }
+    }
+
+    particleCenter->setRadius(std::max(radiusA, radiusB));
+    particleCenter->setS(perimeter * length);
+    particleCenter->setVolume(M_PI * radiusA * radiusB * length);
+    particleCenter->setPos(0.5_df * (axisStart + axisEnd));
+    particleCenter->setPos_old(particleCenter->getPos());
+    particleCenter->setVel(dfloat3(0.0_df, 0.0_df, 0.0_df));
+    particleCenter->setVel_old(dfloat3(0.0_df, 0.0_df, 0.0_df));
+    particleCenter->setW(dfloat3(0.0_df, 0.0_df, 0.0_df));
+    particleCenter->setW_old(dfloat3(0.0_df, 0.0_df, 0.0_df));
+    particleCenter->setMovable(false);
 }
 
 void Particle::makeEllipsoid(ParticleCenter *particleCenter)

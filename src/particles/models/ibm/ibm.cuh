@@ -88,6 +88,9 @@ void ibmForceInterpolationSpread(
     IbmNodesView particlesNodes,
     ParticleCenter *pArray,
     dfloat *fMom,
+    #if IBM_SLIP_DIAGNOSTICS
+    dfloat* maxSlipSquared,
+    #endif
     unsigned int step,
     IbmNodeDebugRecord* debugRecords
 );

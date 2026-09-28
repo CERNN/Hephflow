@@ -116,6 +116,20 @@ void saveParticlesInfo(ParticlesSoA *particles, unsigned int step, std::atomic<b
     saveThread.join();
 }
 
+void collectAndExportIbmDiagnostics(
+    ParticlesSoA* particles,
+    unsigned int step)
+{
+    if (particles == nullptr || particles->getMethodCount(IBM) == 0) return;
+    const dfloat maxSlipSquared = *particles->getIbmMaxSlipSquared();
+    std::ostringstream output;
+    output << std::scientific << std::setprecision(12)
+           << "ibm_marker_slip," << step
+           << ",max_pre_correction_slip_final_iteration,"
+           << sqrt(fmax(maxSlipSquared, 0.0_df));
+    saveTreatData("_ibm_marker_slip", output.str(), step);
+}
+
 
 void collectAndExportWallForces(
     ParticleWallForces* d_pwForces,

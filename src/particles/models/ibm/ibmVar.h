@@ -34,6 +34,10 @@
 #endif
 //#define IBM_DEBUG
 
+#ifndef IBM_SLIP_DIAGNOSTICS
+#define IBM_SLIP_DIAGNOSTICS false
+#endif
+
 
 /* ------------------------ THREADS AND GRIDS FOR IBM ----------------------- */
 

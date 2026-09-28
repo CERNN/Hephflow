@@ -51,7 +51,14 @@ struct MethodRange {
 };
 
 
-enum ParticleShape { SPHERE = 0 , CAPSULE = 1, ELLIPSOID = 2, GRID = 3, RANDOM = 4};
+enum ParticleShape {
+    SPHERE = 0,
+    CAPSULE = 1,
+    ELLIPSOID = 2,
+    GRID = 3,
+    RANDOM = 4,
+    PERIODIC_DUCT = 5
+};
 
 class Particle {
     public:
@@ -79,6 +86,12 @@ class Particle {
         __host__ __device__ ParticleShape* getShape() const;
         __host__ __device__ void setShape(ParticleShape* shape);
 
+        __host__ __device__ void setDuctAxisEndpoints(const dfloat3& axisStart, const dfloat3& axisEnd);
+        __host__ __device__ void setDuctRadii(dfloat radiusA, dfloat radiusB, dfloat rotationAngle = 0.0_df);
+        __host__ __device__ void setDuctStaggeredRings(bool staggered);
+        __host__ __device__ dfloat getDuctRadiusA() const;
+        __host__ __device__ dfloat getDuctRadiusB() const;
+
          /**
          *  @brief Create the particle in the shape of a sphere with given diameter and center
          *  @param part: particle object to override values
@@ -103,6 +116,9 @@ class Particle {
 
         __host__
         void makeCapsule(ParticleCenter *praticleCenter);
+        
+        __host__
+        void makePeriodicDuct(ParticleCenter *particleCenter);
 
         __host__
         void makeEllipsoid(ParticleCenter *praticleCenter);
@@ -122,6 +138,12 @@ class Particle {
         bool collideWall; //false if particle collide with walls
         ParticleShape *shape;
         IbmNodes *nodes;
+        dfloat ductRadiusA;
+        dfloat ductRadiusB;
+        dfloat ductRotationAngle;
+        bool ductStaggeredRings;
+        dfloat3 ductAxisStart;
+        dfloat3 ductAxisEnd;
 
         // std::vector<IbmNodes> nodeStorage;
 
@@ -159,6 +181,7 @@ class ParticlesSoA{
         __host__ __device__ const unsigned char* getCollisionFlags() const;
         __host__ __device__ dfloat3* getPibmForceArray() const;
         __host__ __device__ dfloat3* getPibmForceCorrectionArray() const;
+        __host__ __device__ dfloat* getIbmMaxSlipSquared() const;
         __host__ bool hasParticleCollisions() const;
         __host__ bool hasWallCollisions() const;
 
@@ -177,6 +200,7 @@ class ParticlesSoA{
         unsigned char* collisionFlags;
         dfloat3* pibmForceArray;
         dfloat3* pibmForceCorrectionArray;
+        dfloat* ibmMaxSlipSquared;
         bool particleCollisionsEnabled;
         bool wallCollisionsEnabled;
         std::map<ParticleMethod, MethodRange> methodRanges;
