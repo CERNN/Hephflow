@@ -68,13 +68,38 @@ constexpr int M_MZZ_INDEX = 9;
     constexpr int M3_NX_INDEX  = (5+M_OFFSET); // X
     constexpr int M3_NY_INDEX  = (6+M_OFFSET); // X
     constexpr int M3_NZ_INDEX  = (7+M_OFFSET); // X
-    constexpr int M3_LP_INDEX  = (8+M_OFFSET);
-    constexpr int M3_MU_INDEX  = (9+M_OFFSET); // x
-    constexpr int M3_LM_INDEX  = (10+M_OFFSET);
+    constexpr int M3_LP_INDEX  = (8+M_OFFSET); // laplacian of phi
     #ifdef M_OFFSET
         #undef M_OFFSET
     #endif
-    #define M_OFFSET M3_LM_INDEX
+    #define M_OFFSET M3_LP_INDEX
+    #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
+        constexpr int M3_MU_INDEX = (1+M_OFFSET);
+        #ifdef M_OFFSET
+            #undef M_OFFSET
+        #endif
+        #define M_OFFSET M3_MU_INDEX
+    #endif
+    #ifdef PHASE_TRANSPORT_CAHN_HILLIARD
+        constexpr int M3_LAPLACIAN_MU_INDEX = (1+M_OFFSET);
+        #ifdef M_OFFSET
+            #undef M_OFFSET
+        #endif
+        #define M_OFFSET M3_LAPLACIAN_MU_INDEX
+    #elif defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN)
+        constexpr int M3_DIV_LAMBDA_NORMAL_INDEX = (1+M_OFFSET);
+        #ifdef M_OFFSET
+            #undef M_OFFSET
+        #endif
+        #define M_OFFSET M3_DIV_LAMBDA_NORMAL_INDEX
+    #endif
+    #ifdef PHASE_FORCE_CSF
+        constexpr int M3_DIV_NORMAL_INDEX = (1+M_OFFSET);
+        #ifdef M_OFFSET
+            #undef M_OFFSET
+        #endif
+        #define M_OFFSET M3_DIV_NORMAL_INDEX
+    #endif
 #endif
 
 #ifdef LAMBDA_DIST

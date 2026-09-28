@@ -192,6 +192,7 @@ void interfaceFree(ghostInterfaceData &ghostInterface, ghostInterfaceData &ghost
         cudaFree(macroInterfaceGPUCopy.nz.auxZ_0);
         cudaFree(macroInterfaceGPUCopy.nz.auxZ_1);
 
+        #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
         cudaFree(macroInterfaceGPU.mu.Z_0);
         cudaFree(macroInterfaceGPU.mu.auxZ_0);
         cudaFree(macroInterfaceGPU.mu.Z_1);
@@ -199,6 +200,7 @@ void interfaceFree(ghostInterfaceData &ghostInterface, ghostInterfaceData &ghost
 
         cudaFree(macroInterfaceGPUCopy.mu.auxZ_0);
         cudaFree(macroInterfaceGPUCopy.mu.auxZ_1);
+        #endif
 
     #endif //PHI_DIST
     #ifdef LAMBDA_DIST
@@ -633,6 +635,7 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface, ghostInterfaceData &gho
     cudaMalloc((void **)&(macroInterfaceGPUCopy.nz.auxZ_0), MacroBoundarySize);
     cudaMalloc((void **)&(macroInterfaceGPUCopy.nz.auxZ_1), MacroBoundarySize);
 
+    #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
     cudaMalloc((void **)&(macroInterfaceGPU.mu.Z_0), MacroBoundarySize);
     cudaMalloc((void **)&(macroInterfaceGPU.mu.Z_1), MacroBoundarySize);
     cudaMalloc((void **)&(macroInterfaceGPU.mu.auxZ_0), MacroBoundarySize);
@@ -640,6 +643,7 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface, ghostInterfaceData &gho
 
     cudaMalloc((void **)&(macroInterfaceGPUCopy.mu.auxZ_0), MacroBoundarySize);
     cudaMalloc((void **)&(macroInterfaceGPUCopy.mu.auxZ_1), MacroBoundarySize);
+    #endif
 
 
     memAllocated += 2 * GF * (NUMBER_GHOST_FACE_YZ + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL) * sizeof(dfloat);

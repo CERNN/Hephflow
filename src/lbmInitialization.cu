@@ -177,8 +177,17 @@ __global__ void gpuInitialization_mom(
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_LP_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_MU_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
-    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_LM_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    #endif
+    #ifdef PHASE_TRANSPORT_CAHN_HILLIARD
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_LAPLACIAN_MU_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    #elif defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN)
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_DIV_LAMBDA_NORMAL_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    #endif
+    #ifdef PHASE_FORCE_CSF
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_DIV_NORMAL_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    #endif
     #endif //PHI_DIST
 
     #ifdef LAMBDA_DIST 

@@ -439,7 +439,9 @@ typedef struct macroInterfaceGPUData {
         gpuDirection nx;
         gpuDirection ny;
         gpuDirection nz;
+        #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
         gpuDirection mu;
+        #endif
     #endif //PHI_DIST
     #ifdef A_XX_DIST
         gpuDirection Axx;
@@ -682,13 +684,17 @@ struct DeviceKernelParams {
     gpuDirection nx_macro;
     gpuDirection ny_macro;
     gpuDirection nz_macro;
+    #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
     gpuDirection mu_macro;
+    #endif
 
     gpuDirection phi_macroCopy;
     gpuDirection nx_macroCopy;
     gpuDirection ny_macroCopy;
     gpuDirection nz_macroCopy;
+    #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
     gpuDirection mu_macroCopy;
+    #endif
     #endif //PHI_DIST
     #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
 

@@ -246,13 +246,25 @@ int main(int argc, char** argv) {
                 g, slice, streamsLBM[g], stepParity);
         // Packing follows the phase kernels on each stream; wait for all senders.
         publishMacroHalos();
+        #ifdef PHASE_NEEDS_NORMAL_HALOS
+        for (int g = 0; g < N_GPUS; ++g) {
+            devices[g].exchangeMacroField(g, devices.data(),
+                &macroInterfaceGPUData::nx, streamsLBM[g], stepParity);
+            devices[g].exchangeMacroField(g, devices.data(),
+                &macroInterfaceGPUData::ny, streamsLBM[g], stepParity);
+            devices[g].exchangeMacroField(g, devices.data(),
+                &macroInterfaceGPUData::nz, streamsLBM[g], stepParity);
+        }
+        #endif
+        #ifdef PHASE_TRANSPORT_CAHN_HILLIARD
         for (int g = 0; g < N_GPUS; ++g)
             devices[g].exchangeMacroField(g, devices.data(),
                 &macroInterfaceGPUData::mu, streamsLBM[g], stepParity);
+        #endif
         synchronizeLBMStreams();
 
         for (int g = 0; g < N_GPUS; ++g)
-            devices[g].gpuComputeLaplacianMuDeviceField(gridBlock, threadBlock,
+            devices[g].computePhaseAuxiliariesDeviceField(gridBlock, threadBlock,
                 g, slice, streamsLBM[g], stepParity);
         synchronizeLBMStreams();
         CHECK_KERNEL_ERR("Phase derivatives kernels");

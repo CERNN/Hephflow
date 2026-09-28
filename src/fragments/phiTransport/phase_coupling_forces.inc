@@ -17,7 +17,7 @@ dfloat Fs_y = 0.0_df;
 dfloat Fs_z = 0.0_df;
 
 #if PHI_FORCE_FS_ENABLED
-    #ifdef METHOD_CAHN_HILLIARD
+    #ifdef PHASE_FORCE_CHEMICAL_POTENTIAL
         // -------------------------------------------------
         // Cahn-Hilliard: Korteweg / Potential Force
         // F = mu * grad(phi)
@@ -28,15 +28,15 @@ dfloat Fs_z = 0.0_df;
         Fs_x = mu_val * dphidx;
         Fs_y = mu_val * dphidy;
         Fs_z = mu_val * dphidz;
-    #else
+    #elif defined(PHASE_FORCE_CSF)
         // -------------------------------------------------
         // Allen-Cahn: CSF (Continuum Surface Force)
-        // F = -sigma * kappa * grad(phi)
-        // Note: pnx * mod_grad is equivalent to dphidx
+        // F = -sigma * div(n) * grad(phi).  div(n) is computed with
+        // the same isotropic link stencil used by the CAC flux.
         // -------------------------------------------------
-        Fs_x = -phi_sigma * curvature * dphidx;
-        Fs_y = -phi_sigma * curvature * dphidy;
-        Fs_z = -phi_sigma * curvature * dphidz;
+        Fs_x = -phi_sigma * div_normal * dphidx;
+        Fs_y = -phi_sigma * div_normal * dphidy;
+        Fs_z = -phi_sigma * div_normal * dphidz;
     #endif
 #endif
 

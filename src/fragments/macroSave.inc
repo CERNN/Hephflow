@@ -47,7 +47,9 @@
                 macroInterfaceGPUnx.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
                 macroInterfaceGPUny.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
                 macroInterfaceGPUnz.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
                 macroInterfaceGPUmu.Z_0[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_MU_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                #endif
                 #endif
 
             }
@@ -100,7 +102,9 @@
                 macroInterfaceGPUnx.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NX_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
                 macroInterfaceGPUny.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NY_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
                 macroInterfaceGPUnz.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_NZ_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
                 macroInterfaceGPUmu.Z_1[planeIdx] = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_MU_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
+                #endif
                 #endif
             }
     }

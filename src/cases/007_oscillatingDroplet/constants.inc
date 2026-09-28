@@ -113,8 +113,6 @@ static inline fluidPhaseProps makeCasePhasePropsPhase2(){
 #define D3G19
 
 #define PHI_DIST
-#define METHOD_CAHN_HILLIARD
-
 
 /* --------------------- PHASE FIELD REFERENCE VALUES --------------------- */
 constexpr dfloat PHI_REFERENCE = 0.0_df;
@@ -126,6 +124,11 @@ constexpr dfloat PHI_SCALE = 2.0_df / PHI_DELTA_PHI;
 
 /* --------------------- SURFACE TENSION AND INTERFACE PARAMETERS --------------------- */
 constexpr dfloat phi_del = 4.0_df;  // Interface width (in lattice units)
+constexpr dfloat PHI_INTERFACE_WIDTH = phi_del;
+constexpr dfloat PHI_NORMAL_EPS = 1.0e-12_df;
+constexpr dfloat CONTACT_ANGLE_DEG = 90.0_df;
+static __device__ dfloat contact_angle =
+    CONTACT_ANGLE_DEG * ((dfloat)M_PI / 180.0_df);
 
 
 // Derived transport coefficients from target Ca and Pe.
@@ -152,11 +155,19 @@ constexpr dfloat R0 = 20.0_df;
 /* --------------------- PHASE-FIELD TRANSPORT (LBM) --------------------- */
 constexpr dfloat PECLET_NUMBER = 10.0_df;
 constexpr dfloat PHI_DIFF_REF = VISC / PECLET_NUMBER;
+constexpr dfloat PHI_LBM_DIFF = PHI_DIFF_REF;
+constexpr dfloat M_AC = PHI_DIFF_REF;
 constexpr dfloat PHI_DIFFUSIVITY = VISC / PECLET_NUMBER;
 constexpr dfloat PHI_DIFFUSIVITY_RATIO = PECLET_NUMBER;
 
 constexpr dfloat PHI_TAU = 0.5_df + 3.0_df * PHI_DIFF_REF;
 constexpr dfloat PHI_OMEGA = 1.0_df / PHI_TAU;
+
+// Conservation verification runs leave clipping disabled.  Set to 1 only
+// for boundedness studies and account for the resulting phase correction.
+#ifndef PHI_CLAMP_ENABLED
+#define PHI_CLAMP_ENABLED 0
+#endif
 
 /* ----- END CONSTANTS CONFIGURATION ----- */
 

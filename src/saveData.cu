@@ -1572,6 +1572,20 @@ std::string getSimInfoString(int step, dfloat MLUPS, const fluidPhaseProps& phas
     strSimInfo << "         Phi Offset: " << PHI_ZERO << "\n";
     strSimInfo << "            PHI_TAU: " << PHI_TAU << "\n";
     strSimInfo << "          PHI_OMEGA: " << PHI_OMEGA << "\n";
+    #if defined(PHASE_TRANSPORT_CAHN_HILLIARD)
+    strSimInfo << "          Transport: Cahn-Hilliard\n";
+    #elif defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN)
+    strSimInfo << "          Transport: Conservative Allen-Cahn\n";
+    strSimInfo << "                M_AC: " << M_AC << "\n";
+    strSimInfo << "     Interface width: " << PHI_INTERFACE_WIDTH << "\n";
+    strSimInfo << "          Normal eps.: " << PHI_NORMAL_EPS << "\n";
+    #endif
+    #if defined(PHASE_FORCE_CHEMICAL_POTENTIAL)
+    strSimInfo << "     Capillary force: mu*grad(phi)\n";
+    #elif defined(PHASE_FORCE_CSF)
+    strSimInfo << "     Capillary force: CSF\n";
+    #endif
+    strSimInfo << "       Phi clamp on: " << PHI_CLAMP_ENABLED << "\n";
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif// PHASE_MODEL
     #if defined(FENE_P) || defined(OLDROYD_B)

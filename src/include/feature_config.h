@@ -67,6 +67,64 @@
     #define COMPUTE_SHEAR
     #define NON_NEWTONIAN_FLUID
     #define OMEGA_FIELD
+
+    /* Cases select the high-level phase method in model.inc. */
+    #if defined(METHOD_CAHN_HILLIARD) && defined(METHOD_ALLEN_CAHN)
+        #error "Select only one phase method in model.inc"
+    #endif
+    #if defined(METHOD_CAHN_HILLIARD) && \
+        !defined(PHASE_TRANSPORT_CAHN_HILLIARD) && \
+        !defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN)
+        #define PHASE_TRANSPORT_CAHN_HILLIARD
+    #endif
+    #if defined(METHOD_ALLEN_CAHN) && \
+        !defined(PHASE_TRANSPORT_CAHN_HILLIARD) && \
+        !defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN)
+        #define PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN
+    #endif
+
+    /* Default force; define PHASE_FORCE_CSF explicitly to override it. */
+    #if !defined(PHASE_FORCE_CHEMICAL_POTENTIAL) && \
+        !defined(PHASE_FORCE_CSF)
+        #define PHASE_FORCE_CHEMICAL_POTENTIAL
+    #endif
+
+    #if (defined(PHASE_TRANSPORT_CAHN_HILLIARD) + \
+         defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN)) != 1
+        #error "PHI_DIST requires exactly one phase transport model"
+    #endif
+    #if (defined(PHASE_FORCE_CHEMICAL_POTENTIAL) + \
+         defined(PHASE_FORCE_CSF)) != 1
+        #error "PHI_DIST requires exactly one phase capillary-force model"
+    #endif
+    #if defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN) && \
+        !defined(INTERFACE_SHARPENING)
+        #error "Conservative Allen-Cahn requires INTERFACE_SHARPENING"
+    #endif
+
+    #if defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN)
+        static_assert(M_AC >= 0.0_df, "M_AC must be non-negative");
+        static_assert(PHI_INTERFACE_WIDTH > 0.0_df,
+                      "PHI_INTERFACE_WIDTH must be positive");
+        static_assert(PHI_NORMAL_EPS > 0.0_df,
+                      "PHI_NORMAL_EPS must be positive");
+    #endif
+
+    #if defined(PHASE_TRANSPORT_CAHN_HILLIARD) || \
+        defined(PHASE_FORCE_CHEMICAL_POTENTIAL)
+        #define PHASE_NEEDS_CHEMICAL_POTENTIAL
+    #endif
+    #if defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN) || \
+        defined(PHASE_FORCE_CSF)
+        #define PHASE_NEEDS_NORMAL_HALOS
+    #endif
+
+    #ifndef PHI_CLAMP_ENABLED
+        #define PHI_CLAMP_ENABLED 1
+    #endif
+    #if (PHI_CLAMP_ENABLED != 0) && (PHI_CLAMP_ENABLED != 1)
+        #error "PHI_CLAMP_ENABLED must be 0 or 1"
+    #endif
 #endif //PHI_DIST
 
 

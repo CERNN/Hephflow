@@ -4,6 +4,7 @@
 #include "var.h"
 #include "main.cuh"
 #include "hostField.cuh"
+#include "fragments/phiTransport/phase_kernels.cuh"
 #include <thread>
 #include <vector>
 
@@ -768,6 +769,7 @@ typedef struct deviceField{
         params.nz_macroCopy.auxZ_0 = macroInterfaceGPUCopy[g].nz.auxZ_0;
         params.nz_macroCopy.auxZ_1 = macroInterfaceGPUCopy[g].nz.auxZ_1;
 
+        #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
         params.mu_macro.Z_0 = macroInterfaceGPU[g].mu.Z_0;
         params.mu_macro.Z_1 = macroInterfaceGPU[g].mu.Z_1;
         params.mu_macro.auxZ_0 = macroInterfaceGPU[g].mu.auxZ_0;
@@ -775,6 +777,7 @@ typedef struct deviceField{
 
         params.mu_macroCopy.auxZ_0 = macroInterfaceGPUCopy[g].mu.auxZ_0;
         params.mu_macroCopy.auxZ_1 = macroInterfaceGPUCopy[g].mu.auxZ_1;
+        #endif
 
         #endif //PHI_DIST
         #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
@@ -967,11 +970,13 @@ typedef struct deviceField{
             MacroHaloSize, streamLBM
         ));
 
+        #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
         checkCudaErrors(cudaMemcpyPeerAsync(
             dstIface.mu.auxZ_1, GPUS_TO_USE[gNext],
             allDevices[g].macroInterfaceGPU[g].mu.Z_1, GPUS_TO_USE[g],
             MacroHaloSize, streamLBM
         ));
+        #endif
         #endif //PHI_DIST
     }
 
@@ -1090,11 +1095,13 @@ typedef struct deviceField{
             allDevices[gNext].macroInterfaceGPU[gNext].nz.Z_0, GPUS_TO_USE[gNext],
             MacroHaloSize, streamLBM
         ));
+        #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
         checkCudaErrors(cudaMemcpyPeerAsync(
             dstIface.mu.auxZ_0, GPUS_TO_USE[g],
             allDevices[gNext].macroInterfaceGPU[gNext].mu.Z_0, GPUS_TO_USE[gNext],
             MacroHaloSize, streamLBM
         ));
+        #endif
         #endif //PHI_DIST
     }
 
@@ -1303,7 +1310,8 @@ typedef struct deviceField{
     }
 
     #ifdef PHI_DIST
-    // Caller must exchange fresh PHI before this stage and fresh mu afterward.
+    // Caller must exchange fresh PHI before this stage and publish the
+    // resulting gradients/chemical potential before auxiliary derivatives.
     void computePhaseNormalsDeviceField(dim3 gridBlock, dim3 threadBlock, int g, int slice, cudaStream_t stream, bool stepParity){
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         int zStart = g * slice;
@@ -1312,17 +1320,24 @@ typedef struct deviceField{
         macroInterfaceGPUData& macroIF = stepParity ? macroInterfaceGPU[g] : macroInterfaceGPUCopy[g];
 
         gpuComputePhaseNormals<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], macroIF, localNZ, zStart);
+        #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
         gpuComputeChemicalPotential<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], localNZ, zStart);
+        #endif
     }
 
-    void gpuComputeLaplacianMuDeviceField(dim3 gridBlock, dim3 threadBlock, int g, int slice, cudaStream_t stream, bool stepParity){
+    void computePhaseAuxiliariesDeviceField(dim3 gridBlock, dim3 threadBlock, int g, int slice, cudaStream_t stream, bool stepParity){
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
         int zStart = g * slice;
         int zEnd   = (g == N_GPUS - 1) ? NZ : zStart + slice;
         size_t localNZ = zEnd - zStart;
         macroInterfaceGPUData& macroIF = stepParity ? macroInterfaceGPU[g] : macroInterfaceGPUCopy[g];
 
+        #ifdef PHASE_TRANSPORT_CAHN_HILLIARD
         gpuComputeLaplacianMu<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], macroIF, localNZ, zStart);
+        #endif
+        #ifdef PHASE_NEEDS_NORMAL_HALOS
+        gpuComputePhaseFluxDivergences<<<gridBlock, threadBlock, 0, stream>>>(d_fMom[g], dNodeType[g], macroIF, localNZ, zStart);
+        #endif
     }
     
     #endif //PHI_DIST

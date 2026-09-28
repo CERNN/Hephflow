@@ -7,6 +7,10 @@
 /* --------------------- VELOCITY SET --------------------- */
 #define D3Q19
 
+/* --------------------- PHASE-FIELD MODEL --------------------- */
+#define METHOD_CAHN_HILLIARD
+//#define METHOD_ALLEN_CAHN
+
 /* --------------------- COLLISION METHOD --------------------- */
 #define COLLISION_TYPE MR_LBM_2ND_ORDER
 //#define COLLISION_TYPE HO_RR //http://dx.doi.org/10.1063/1.4981227
