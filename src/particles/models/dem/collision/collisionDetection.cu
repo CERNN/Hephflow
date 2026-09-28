@@ -53,9 +53,7 @@ void particlesCollisionHandler(
     if (row >= NUM_PARTICLES || column >= row)
         return;
 
-    const unsigned char pairMask = PARTICLE_COLLISION_WITH_PARTICLES;
-    if ((collisionFlags[column] & pairMask) == 0 ||
-        (collisionFlags[row] & pairMask) == 0)
+    if (!particlePairCollisionEnabled(collisionFlags[column], collisionFlags[row]))
         return;
 
     ParticleCenter* pc_i = &pArray[column];
@@ -76,7 +74,7 @@ void particleWallCollisionHandler(
     unsigned int step){
     const unsigned int particle = threadIdx.x + blockDim.x * blockIdx.x;
     if (particle >= NUM_PARTICLES ||
-        (collisionFlags[particle] & PARTICLE_COLLISION_WITH_WALLS) == 0)
+        !particleWallCollisionEnabled(collisionFlags[particle]))
         return;
 
     ParticleCenter* pc = &pArray[particle];

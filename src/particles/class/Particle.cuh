@@ -14,6 +14,7 @@
 
 #include "ParticleCenter.cuh"
 #include "../models/ibm/ibmNodes.cuh"
+#include "../models/dem/collision/collisionFlags.cuh"
 #include <math.h>
 #include <random>
 #include "./../../var.h"
@@ -51,12 +52,6 @@ struct MethodRange {
 
 
 enum ParticleShape { SPHERE = 0 , CAPSULE = 1, ELLIPSOID = 2, GRID = 3, RANDOM = 4};
-
-enum ParticleCollisionFlag : unsigned char {
-    PARTICLE_COLLISION_DISABLED = 0,
-    PARTICLE_COLLISION_WITH_PARTICLES = 1u << 0,
-    PARTICLE_COLLISION_WITH_WALLS = 1u << 1
-};
 
 class Particle {
     public:
