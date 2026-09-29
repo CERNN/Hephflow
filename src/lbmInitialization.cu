@@ -1466,7 +1466,7 @@ __host__ void hostInitialization_nodeType(
             //         hNodeType[idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)] = (unsigned int)nodeType;
 
                     #ifdef CURVED_BOUNDARY_CONDITION
-                    if ( (nodeType & (0b111 << 8)) == (0b101 << 8) ){ //mask bits 8,9,10 then compare with BC_CURVED_BC
+                    if (isCurvedBoundaryNodeType(nodeType)) {
                         numberCurvedBoundaryNodes[0]++;
                     }
                     #endif
@@ -1592,7 +1592,13 @@ void define_voxel_bc(
         dNodeType[index] = bc_id(dNodeType,x,y,z);
         #ifdef CURVED_BOUNDARY_CONDITION //TODO: this only works if is the only boundary conditiond being made, if there is an obstacle will stop working
             if((dNodeType[index] != BULK )&& (dNodeType[index] != SOLID_NODE)){
-                dNodeType[index] += BC_CURVED_BC_CONCAV;
+                #ifdef CURVED_BOUNDARY_IS_CONVEX
+                    dNodeType[index] += CURVED_BOUNDARY_IS_CONVEX(x, y, z)
+                        ? BC_CURVED_BC_CONVEX
+                        : BC_CURVED_BC_CONCAV;
+                #else
+                    dNodeType[index] += BC_CURVED_BC_CONCAV;
+                #endif
             }
         #endif
     }
@@ -1769,7 +1775,7 @@ unsigned int bc_id(unsigned int *dNodeType, int x, int y, int z){
                         y / BLOCK_NY,
                         zLocal / BLOCK_NZ);
                     const unsigned int nodeType = hNodeType[idx];
-                    if ((nodeType & (0b111 << 8)) == (0b101 << 8)) {
+                    if (isCurvedBoundaryNodeType(nodeType)) {
                         numberCurvedBoundaryNodes++;
                     }
                 }
@@ -1824,7 +1830,7 @@ unsigned int bc_id(unsigned int *dNodeType, int x, int y, int z){
                     const int z = zStart + zLocal;
                     idx = idxScalarBlock(x%BLOCK_NX, y%BLOCK_NY, zLocal%BLOCK_NZ, x/BLOCK_NX, y/BLOCK_NY, zLocal/BLOCK_NZ);
                     nodeType = hNodeType[idx];
-                    if((nodeType & (0b111 << 8)) == (0b101 << 8) ){ //mask bits 8,9,10 then compare with 
+                    if (isCurvedBoundaryNodeType(nodeType)) {
                         h_curvedBC_ptrs[idx] = d_curvedBC_array + curvedBCCount;
                         #include CASE_CURVED_BC_DEF
 

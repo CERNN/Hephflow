@@ -1082,6 +1082,11 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 ux0 = curvedBC->vel.x;
                 uy0 = curvedBC->vel.y;
                 uz0 = curvedBC->vel.z;
+
+                // Concave and convex walls use the same reconstruction
+                // equations. The original tag remains in dNodeType for
+                // geometry setup; only this local switch key is normalized.
+                nodeType = curvedBoundaryReconstructionNodeType(nodeType);
             }
         #endif //CURVED_BOUNDARY_CONDITION
 

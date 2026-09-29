@@ -58,7 +58,7 @@
 #define BC_FREESLIP           (0b00000000000000000000010000000000)
 #define BC_CURVED_BC_CONCAV   (0b00000000000000000000010100000000)
 #define BC_CURVED_BC_CONVEX   (0b00000000000000000000011000000000)
-#define BC_EMPTY_ONE          (0b00000000000000000000011100000000)
+#define BC_TYPE_MASK          (0b00000000000000000000011100000000)
 #define BC_VELOCITY_INDEX_0   (0b00000000000000000000000000000000)
 #define BC_VELOCITY_INDEX_1   (0b00000000000000000000100000000000)
 #define BC_VELOCITY_INDEX_2   (0b00000000000000000001000000000000)
@@ -90,6 +90,36 @@
 
 
 #define MISSING_DEFINITION   (0b11111111111111111111111111111111)
+
+__host__ __device__ inline
+bool isCurvedBoundaryNodeType(const unsigned int nodeType)
+{
+    const unsigned int boundaryType = nodeType & BC_TYPE_MASK;
+    return boundaryType == BC_CURVED_BC_CONCAV ||
+           boundaryType == BC_CURVED_BC_CONVEX;
+}
+
+__host__ __device__ inline
+bool isConvexCurvedBoundaryNodeType(const unsigned int nodeType)
+{
+    return (nodeType & BC_TYPE_MASK) == BC_CURVED_BC_CONVEX;
+}
+
+/**
+ * The generated hydrodynamic reconstruction tables use the concave curved
+ * tag in their switch keys. Curvature does not change those equations: the
+ * low direction bits already describe which streamed populations are
+ * missing. Preserve every other bit while mapping a convex tag to that
+ * shared reconstruction table.
+ */
+__host__ __device__ inline
+unsigned int curvedBoundaryReconstructionNodeType(const unsigned int nodeType)
+{
+    if (!isConvexCurvedBoundaryNodeType(nodeType)) {
+        return nodeType;
+    }
+    return (nodeType & ~BC_TYPE_MASK) | BC_CURVED_BC_CONCAV;
+}
 
 
 #define DIRECTION_BITS (0b11111 << DIRECTION_OFFSET)
