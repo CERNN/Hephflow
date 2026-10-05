@@ -5,10 +5,14 @@
  * ========================================================================== */
 
 /* --------------------- VELOCITY SET --------------------- */
+#if !defined(D3Q19) && !defined(D3Q27)
 #define D3Q27
+#endif
 
 /* --------------------- COLLISION METHOD --------------------- */
+#ifndef COLLISION_TYPE
 #define COLLISION_TYPE MR_LBM_2ND_ORDER
+#endif
 //#define COLLISION_TYPE HO_RR //http://dx.doi.org/10.1063/1.4981227
 //#define COLLISION_TYPE HOME_LBM //https://inria.hal.science/hal-04223237/
 
@@ -28,6 +32,5 @@
 
 //#define RANDOM_NUMBERS true    // to generate random numbers 
                                // (useful for turbulence)
-
 
 

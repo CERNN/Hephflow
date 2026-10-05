@@ -9,7 +9,11 @@
 #define ONLY_FINAL_MACRO (false)        // Save only last time step macroscopic
 
 /* --------------------- OUTPUT FORMATS --------------------- */
+#ifdef TESTS
+#define VTK_SAVE (false)
+#else
 #define VTK_SAVE (true)                 // Save VTK format (ParaView)
+#endif
 #define BIN_SAVE (false)                // Save binary format
 #define MACR_SAVE (false)               // Save macroscopic fields
 #define REPORT_SAVE (500)             // Save report files
@@ -33,4 +37,3 @@
 
 //#define BC_FORCES //create scalar field to export the reaction forces from BC;
 //#define SAVE_BC_FORCES // define if it will export BC force field to bin
-

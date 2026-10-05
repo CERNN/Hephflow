@@ -7,13 +7,26 @@
  * ========================================================================== */
 
 /* --------------------- SIMULATION SCALE --------------------- */
+#ifndef TGV_GRID_N
+#define TGV_GRID_N 256
+#endif
+#ifndef TGV_REYNOLDS
+#define TGV_REYNOLDS 1600.0
+#endif
+#ifndef TGV_N_STEPS
+#define TGV_N_STEPS 50000
+#endif
+#ifndef TGV_SAMPLE_INTERVAL
+#define TGV_SAMPLE_INTERVAL ((TGV_N_STEPS + 3) / 4)
+#endif
+
 constexpr int SCALE = 1;                    // Grid scaling factor
 
 /* --------------------- DIMENSIONLESS NUMBERS --------------------- */
-constexpr dfloat RE = 1600;                    // Reynolds number
+constexpr dfloat RE = TGV_REYNOLDS;         // Reynolds number
 
 /* --------------------- GRID DIMENSIONS --------------------- */
-constexpr int N = 256 * SCALE;              // Reference grid size
+constexpr int N = TGV_GRID_N * SCALE;       // Reference grid size
 constexpr int NX = N;                       // Grid size in X
 constexpr int NY = N;                       // Grid size in Y
 constexpr int NZ = N;                       // Grid size in Z
@@ -30,7 +43,9 @@ constexpr dfloat Cx = 1.0/L;                // Length scaling
 constexpr dfloat Cp = 1.0/(Cx * Ct * Ct);   // Pressure scaling
 
 /* --------------------- TIME STEPPING --------------------- */
-constexpr int N_STEPS = 50000;   // Full simulation steps (calculated)
+constexpr int N_STEPS = TGV_N_STEPS;        // Full simulation steps
+constexpr int TGV_SAMPLE_EVERY = TGV_SAMPLE_INTERVAL;
+static_assert(TGV_SAMPLE_EVERY > 0, "TGV_SAMPLE_INTERVAL must be positive");
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- BODY FORCES --------------------- */

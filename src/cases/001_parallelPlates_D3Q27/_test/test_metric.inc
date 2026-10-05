@@ -11,7 +11,8 @@ if (step == N_STEPS - 1) {
     
     // Copy full macroscopic field from device to host
     checkCudaErrors(cudaDeviceSynchronize());
-    deviceField.cudaMemcpyDeviceField(hostField);
+    for (int g = 0; g < N_GPUS; ++g)
+        devices[g].cudaMemcpyDeviceField(hostField, g, slice);
     checkCudaErrors(cudaDeviceSynchronize());
     
     // Analytical solution parameters for Poiseuille flow
