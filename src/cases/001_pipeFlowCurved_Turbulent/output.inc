@@ -5,12 +5,12 @@
  * ========================================================================== */
 
 /* --------------------- OUTPUT FILES --------------------- */
-#define ID_SIM "001"                    // Prefix for simulation's files
+#define ID_SIM "002"                    // Prefix for simulation's files
 #define PATH_FILES "PipeFlowCurved_Turbulent" // Path to save simulation files
 #define ONLY_FINAL_MACRO (false)        // Save only last time step macroscopic
 
 /* --------------------- OUTPUT FORMATS --------------------- */
-#define VTK_SAVE (true)                 // Save VTK format (ParaView)
+#define VTK_SAVE (false)                 // Save VTK format (ParaView)
 #define BIN_SAVE (false)                // Save binary format
 #define MACR_SAVE (34000)               // Save macroscopic fields every N steps
 #define REPORT_SAVE (340)               // Sample and save radial statistics
@@ -26,4 +26,3 @@
 
 //#define BC_FORCES //create scalar field to export the reaction forces from BC;
 //#define SAVE_BC_FORCES // define if it will export BC force field to bin
-

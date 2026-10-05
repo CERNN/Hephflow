@@ -1,7 +1,6 @@
 /* ============================================================================
  * OUTPUT CONFIGURATION
- * Case: Thermal Lid-Driven Cavity
- * Description: Thermal convection in lid-driven cavity
+ * Case: 005_thermalViscoplasticBuoyantLidDrivenCavity
  * ========================================================================== */
 
 /* --------------------- OUTPUT FILES --------------------- */
@@ -11,21 +10,26 @@
 /* --------------------- OUTPUT FORMATS --------------------- */
 #define VTK_SAVE (true)                 // Save VTK format (ParaView)
 #define BIN_SAVE (false)                // Save binary format
-#define ONLY_FINAL_MACRO (false)        // Save only last time step macroscopic
-#define MACR_SAVE (1000)                // Save macroscopic fields
-#define REPORT_SAVE (false)             // Console report frequency (steps)
+#define MACR_SAVE (100000)               // Save macroscopic fields
+#define REPORT_SAVE (1000)             // Save report files
+#define NODE_TYPE_SAVE (false)          // Save BC conditions for visualization
 
 /* --------------------- DATA TREATMENT --------------------- */
 #define TREATFIELD (false)              // Treat data over entire field
 #define TREATPOINT (false)              // Treat data at specific points
 #define TREATLINE (false)               // Save macro along a line
-#define SAVEDATA (false)                // Save treated data
+#define SAVEDATA (true)                // Save treated data
 #define CONSOLEPRINT (false)            // Print data saving to console
 #define MEAN_FLOW (false)               // Store mean flow for turbulence statistics
-#define NODE_TYPE_SAVE (false)          // Save BC conditions for visualization
+
+/* --------------------- CHECKPOINT CONFIGURATION --------------------- */
+#define LOAD_CHECKPOINT false           // Load simulation from checkpoint
+#define SIMULATION_FOLDER_LOAD_CHECKPOINT "TEST" // Folder to load checkpoint from
+#define CHECKPOINT_SAVE false           // Save simulation checkpoints
+#define LOAD_FIELD false                // Load field data
+#define LOAD_FIELD_STEP 0               // Step to load field from
 
 //#define BC_FORCES //create scalar field to export the reaction forces from BC;
 //#define SAVE_BC_FORCES // define if it will export BC force field to bin
 
-//#define PARTICLE_TRACER  // define if will traces massless particles inside the flow
-#define PARTICLE_TRACER_SAVE false
+#define TREAT_DATA_INCLUDE     // Include data treatment routines

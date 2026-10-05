@@ -874,6 +874,7 @@ struct SaveDataParams {
 struct TreatDataParams {
     // Core fields
     dfloat* h_fMom;
+    const unsigned int* h_nodeType;
     dfloat* d_fMom;
     
     // Optional fields (compiled conditionally)

@@ -28,8 +28,8 @@ constexpr int N_RADIAL_BINS = static_cast<int>(PIPE_RADIUS + 0.5);
 /* --------------------- TURBULENCE PARAMETERS --------------------- */
 constexpr dfloat RE = 180.0;                 // Friction Reynolds number Re_tau
 constexpr dfloat U_TAU = 0.00579;            // Friction velocity
-constexpr dfloat U_BULK = 15.6*U_TAU;        // Initial bulk-velocity scale
-constexpr dfloat U_CENTERLINE = 18.2*U_TAU;  // Initial centerline velocity
+constexpr dfloat U_BULK = 14.73*U_TAU;
+constexpr dfloat U_CENTERLINE = 19.31*U_TAU;
 
 /* --------------------- REFERENCE VALUES --------------------- */
 constexpr dfloat U_MAX = U_CENTERLINE;       // Maximum/reference velocity

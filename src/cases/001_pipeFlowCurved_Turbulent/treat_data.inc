@@ -2,6 +2,11 @@
 // Velocity components are rotated at every node before averaging so that the
 // radial and azimuthal normal stresses are not mixed by the annular average.
 double shell_radius[N_RADIAL_BINS] = {};
+double shell_min_radius[N_RADIAL_BINS] = {};
+double shell_max_radius[N_RADIAL_BINS] = {};
+double shell_wall_distance[N_RADIAL_BINS] = {};
+double shell_min_wall_distance[N_RADIAL_BINS] = {};
+double shell_max_wall_distance[N_RADIAL_BINS] = {};
 double shell_rho[N_RADIAL_BINS] = {};
 // Raw moments of rho-RHO_0 avoid catastrophic cancellation in p' moments.
 double shell_rho2[N_RADIAL_BINS] = {};
@@ -59,6 +64,19 @@ double shell_inv_omega2[N_RADIAL_BINS] = {};
 unsigned long long shell_yielded_count[N_RADIAL_BINS] = {};
 #endif
 unsigned long long shell_count[N_RADIAL_BINS] = {};
+// Geometry chooses the radial bin; the solver's node type decides whether the
+// node is a valid statistics sample. These raw counters diagnose the gap.
+unsigned long long shell_candidate_count[N_RADIAL_BINS] = {};
+unsigned long long shell_fluid_count[N_RADIAL_BINS] = {};
+unsigned long long shell_rejected_count[N_RADIAL_BINS] = {};
+unsigned long long shell_curved_bc_count[N_RADIAL_BINS] = {};
+unsigned long long shell_solid_count[N_RADIAL_BINS] = {};
+unsigned long long shell_other_node_count[N_RADIAL_BINS] = {};
+
+for (int radial_bin = 0; radial_bin < N_RADIAL_BINS; ++radial_bin) {
+    shell_min_radius[radial_bin] = static_cast<double>(PIPE_RADIUS);
+    shell_min_wall_distance[radial_bin] = static_cast<double>(PIPE_RADIUS);
+}
 
 const double base_omega = static_cast<double>(OMEGA);
 const double force_x = static_cast<double>(FX);
@@ -72,10 +90,20 @@ const double non_newtonian_omega_cutoff = 1.0e-3;
 #endif
 #endif
 
-auto is_fluid = [](int x, int y) {
-    const double dx = static_cast<double>(x) - static_cast<double>(DUCT_CENTER_X);
-    const double dy = static_cast<double>(y) - static_cast<double>(DUCT_CENTER_Y);
-    return dx*dx + dy*dy < static_cast<double>(PIPE_RADIUS)*PIPE_RADIUS;
+auto node_type_at = [&](int x, int y, int z) {
+    if (x < 0 || x >= NX || y < 0 || y >= NY) {
+        return static_cast<unsigned int>(SOLID_NODE);
+    }
+    const int periodic_z = (z + NZ_TOTAL)%NZ_TOTAL;
+    return h_nodeType[idxScalarBlock(
+        x%BLOCK_NX, y%BLOCK_NY, periodic_z%BLOCK_NZ,
+        x/BLOCK_NX, y/BLOCK_NY, periodic_z/BLOCK_NZ)];
+};
+auto is_fluid = [&](int x, int y, int z) {
+    // BULK is the solver's canonical collision/streaming fluid-node type.
+    // Curved-BC nodes have their own nonzero type and are deliberately not
+    // sampled as bulk turbulence nodes.
+    return node_type_at(x, y, z) == BULK;
 };
 auto density_at = [&](int x, int y, int z) {
     const int periodic_z = (z + NZ_TOTAL)%NZ_TOTAL;
@@ -108,6 +136,44 @@ for (int z = 0; z < NZ_TOTAL; ++z) {
             if (radial_bin < 0 || radial_bin >= N_RADIAL_BINS) {
                 continue;
             }
+
+            ++shell_candidate_count[radial_bin];
+            const unsigned int node_type = node_type_at(x, y, z);
+            if (node_type != BULK) {
+                ++shell_rejected_count[radial_bin];
+                if (isCurvedBoundaryNodeType(node_type)) {
+                    ++shell_curved_bc_count[radial_bin];
+                } else if (node_type == SOLID_NODE) {
+                    ++shell_solid_count[radial_bin];
+                } else {
+                    ++shell_other_node_count[radial_bin];
+                }
+#ifdef TURBULENCE_NODE_FILTER_DEBUG
+                static int rejected_debug_count = 0;
+                if (rejected_debug_count < 16) {
+                    printf("Rejected turbulence node: x=%d y=%d z=%d r=%.8f bin=%d node_type=0x%08x\n",
+                        x, y, z, radius, radial_bin, node_type);
+                    ++rejected_debug_count;
+                }
+#endif
+                continue;
+            }
+            ++shell_fluid_count[radial_bin];
+
+            const double wall_distance = static_cast<double>(PIPE_RADIUS) - radius;
+            if (radius < shell_min_radius[radial_bin]) {
+                shell_min_radius[radial_bin] = radius;
+            }
+            if (radius > shell_max_radius[radial_bin]) {
+                shell_max_radius[radial_bin] = radius;
+            }
+            if (wall_distance < shell_min_wall_distance[radial_bin]) {
+                shell_min_wall_distance[radial_bin] = wall_distance;
+            }
+            if (wall_distance > shell_max_wall_distance[radial_bin]) {
+                shell_max_wall_distance[radial_bin] = wall_distance;
+            }
+            shell_wall_distance[radial_bin] += wall_distance;
 
             double cos_theta = 1.0;
             double sin_theta = 0.0;
@@ -153,8 +219,8 @@ for (int z = 0; z < NZ_TOTAL; ++z) {
                 }
                 const int dx_axis = axis == 0 ? 1 : 0;
                 const int dy_axis = axis == 1 ? 1 : 0;
-                const bool minus_fluid = is_fluid(x-dx_axis, y-dy_axis);
-                const bool plus_fluid = is_fluid(x+dx_axis, y+dy_axis);
+                const bool minus_fluid = is_fluid(x-dx_axis, y-dy_axis, z);
+                const bool plus_fluid = is_fluid(x+dx_axis, y+dy_axis, z);
                 if (minus_fluid && plus_fluid) {
                     return 0.5*(density_at(x+dx_axis, y+dy_axis, z) -
                         density_at(x-dx_axis, y-dy_axis, z));
@@ -174,8 +240,8 @@ for (int z = 0; z < NZ_TOTAL; ++z) {
                 }
                 const int dx_axis = axis == 0 ? 1 : 0;
                 const int dy_axis = axis == 1 ? 1 : 0;
-                const bool minus_fluid = is_fluid(x-dx_axis, y-dy_axis);
-                const bool plus_fluid = is_fluid(x+dx_axis, y+dy_axis);
+                const bool minus_fluid = is_fluid(x-dx_axis, y-dy_axis, z);
+                const bool plus_fluid = is_fluid(x+dx_axis, y+dy_axis, z);
                 if (minus_fluid && plus_fluid) {
                     return 0.5*(velocity_at(x+dx_axis, y+dy_axis, z, component) -
                         velocity_at(x-dx_axis, y-dy_axis, z, component));
@@ -358,12 +424,31 @@ for (int z = 0; z < NZ_TOTAL; ++z) {
 }
 
 for (int radial_bin = 0; radial_bin < N_RADIAL_BINS; ++radial_bin) {
+    if (shell_candidate_count[radial_bin] !=
+        shell_fluid_count[radial_bin] + shell_rejected_count[radial_bin]) {
+        printf("ERROR: turbulence node-count mismatch in bin %d: candidate=%llu fluid=%llu rejected=%llu\n",
+            radial_bin, shell_candidate_count[radial_bin],
+            shell_fluid_count[radial_bin], shell_rejected_count[radial_bin]);
+    }
+    if (shell_count[radial_bin] != shell_fluid_count[radial_bin]) {
+        printf("ERROR: turbulence normalization-count mismatch in bin %d: shell=%llu fluid=%llu\n",
+            radial_bin, shell_count[radial_bin], shell_fluid_count[radial_bin]);
+    }
+    if (shell_rejected_count[radial_bin] !=
+        shell_curved_bc_count[radial_bin] + shell_solid_count[radial_bin] +
+        shell_other_node_count[radial_bin]) {
+        printf("ERROR: turbulence rejection-category mismatch in bin %d\n", radial_bin);
+    }
+}
+
+for (int radial_bin = 0; radial_bin < N_RADIAL_BINS; ++radial_bin) {
     if (shell_count[radial_bin] == 0) {
         continue;
     }
     const double inverse_count =
         1.0/static_cast<double>(shell_count[radial_bin]);
     shell_radius[radial_bin] *= inverse_count;
+    shell_wall_distance[radial_bin] *= inverse_count;
     shell_rho[radial_bin] *= inverse_count;
     shell_rho2[radial_bin] *= inverse_count;
     shell_rho3[radial_bin] *= inverse_count;
@@ -418,6 +503,66 @@ for (int radial_bin = 0; radial_bin < N_RADIAL_BINS; ++radial_bin) {
     }
 #endif
 }
+
+printf("Turbulence fluid-node diagnostics (outermost 5 candidate bins):\n");
+printf("  bin       mean_r      candidate       fluid    rejected  fluid_fraction          mean_Uz\n");
+int candidate_diagnostic_bins_printed = 0;
+for (int radial_bin = N_RADIAL_BINS - 1;
+     radial_bin >= 0 && candidate_diagnostic_bins_printed < 5; --radial_bin) {
+    if (shell_candidate_count[radial_bin] == 0) {
+        continue;
+    }
+    const double fluid_fraction = static_cast<double>(shell_fluid_count[radial_bin]) /
+        static_cast<double>(shell_candidate_count[radial_bin]);
+    printf("%5d %12.6f %14llu %11llu %11llu %15.8f %16.8e\n",
+        radial_bin, shell_radius[radial_bin], shell_candidate_count[radial_bin],
+        shell_fluid_count[radial_bin], shell_rejected_count[radial_bin],
+        fluid_fraction, shell_uz[radial_bin]);
+    ++candidate_diagnostic_bins_printed;
+}
+
+printf("Turbulence fluid-node radial-range diagnostics (outermost 5 populated fluid bins):\n");
+printf("  bin       fluid        r_min       r_mean        r_max        y_min       y_mean        y_max          mean_Uz\n");
+int diagnostic_bins_printed = 0;
+for (int radial_bin = N_RADIAL_BINS - 1;
+     radial_bin >= 0 && diagnostic_bins_printed < 5; --radial_bin) {
+    if (shell_fluid_count[radial_bin] == 0) {
+        continue;
+    }
+    printf("%5d %11llu %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f %16.8e\n",
+        radial_bin, shell_fluid_count[radial_bin],
+        shell_min_radius[radial_bin], shell_radius[radial_bin],
+        shell_max_radius[radial_bin], shell_min_wall_distance[radial_bin],
+        shell_wall_distance[radial_bin], shell_max_wall_distance[radial_bin],
+        shell_uz[radial_bin]);
+    ++diagnostic_bins_printed;
+}
+
+for (int radial_bin = N_RADIAL_BINS - 1; radial_bin >= 0; --radial_bin) {
+    if (shell_candidate_count[radial_bin] > 0 && shell_fluid_count[radial_bin] == 0) {
+        printf("  bin %d has %llu candidates but no populated fluid samples\n",
+            radial_bin, shell_candidate_count[radial_bin]);
+    }
+}
+
+bool mean_uz_monotonic_inward = true;
+bool have_outer_mean_uz = false;
+double previous_outer_mean_uz = 0.0;
+int monotonic_bins_checked = 0;
+for (int radial_bin = N_RADIAL_BINS - 1;
+     radial_bin >= 0 && monotonic_bins_checked < 5; --radial_bin) {
+    if (shell_fluid_count[radial_bin] == 0) {
+        continue;
+    }
+    if (have_outer_mean_uz && shell_uz[radial_bin] < previous_outer_mean_uz) {
+        mean_uz_monotonic_inward = false;
+    }
+    previous_outer_mean_uz = shell_uz[radial_bin];
+    have_outer_mean_uz = true;
+    ++monotonic_bins_checked;
+}
+printf("Mean Uz monotonic moving inward across these %d populated bins: %s\n",
+    monotonic_bins_checked, mean_uz_monotonic_inward ? "yes" : "no");
 
 // These are instantaneous theta-z spatial statistics. Raw moments are saved
 // at every report so temporal averaging and central-moment construction can be
@@ -498,6 +643,33 @@ auto save_radial_profile = [step](const char* suffix, const double* values) {
     }
     saveTreatData(suffix, data.str(), step);
 };
+
+auto save_radial_count = [step](const char* suffix,
+    const unsigned long long* values) {
+    std::ostringstream data;
+    data << "step," << step;
+    for (int radial_bin = 0; radial_bin < N_RADIAL_BINS; ++radial_bin) {
+        data << "," << values[radial_bin];
+    }
+    saveTreatData(suffix, data.str(), step);
+};
+
+double shell_fluid_fraction[N_RADIAL_BINS] = {};
+for (int radial_bin = 0; radial_bin < N_RADIAL_BINS; ++radial_bin) {
+    if (shell_candidate_count[radial_bin] > 0) {
+        shell_fluid_fraction[radial_bin] =
+            static_cast<double>(shell_fluid_count[radial_bin]) /
+            static_cast<double>(shell_candidate_count[radial_bin]);
+    }
+}
+
+save_radial_count("_turbulent_candidate_count", shell_candidate_count);
+save_radial_count("_turbulent_fluid_count", shell_fluid_count);
+save_radial_count("_turbulent_rejected_count", shell_rejected_count);
+save_radial_count("_turbulent_curved_bc_count", shell_curved_bc_count);
+save_radial_count("_turbulent_solid_count", shell_solid_count);
+save_radial_count("_turbulent_other_node_count", shell_other_node_count);
+save_radial_profile("_turbulent_fluid_fraction", shell_fluid_fraction);
 
 save_radial_profile("_turbulent_radius", shell_radius);
 save_radial_profile("_turbulent_rho", shell_rho);

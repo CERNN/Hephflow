@@ -1540,6 +1540,7 @@ typedef struct deviceField{
         int step, int slice){
         TreatDataParams treatDataParams{};
         treatDataParams.h_fMom = hostField.h_fMom;
+        treatDataParams.h_nodeType = hostField.hNodeType;
         #if MEAN_FLOW
         treatDataParams.d_fMom_mean = hostField.m_fMom;
         #endif

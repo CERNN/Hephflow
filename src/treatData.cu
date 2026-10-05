@@ -5,6 +5,7 @@ void treatData(const TreatDataParams* params)
 {
     // Unpack parameters from struct
     dfloat* h_fMom = params->h_fMom;
+    const unsigned int* h_nodeType = params->h_nodeType;
     #if MEAN_FLOW
     dfloat* fMom_mean = params->d_fMom_mean;
     #endif

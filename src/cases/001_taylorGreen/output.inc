@@ -12,14 +12,14 @@
 #define VTK_SAVE (true)                 // Save VTK format (ParaView)
 #define BIN_SAVE (false)                // Save binary format
 #define MACR_SAVE (false)               // Save macroscopic fields
-#define REPORT_SAVE (false)             // Save report files
+#define REPORT_SAVE (500)             // Save report files
 #define NODE_TYPE_SAVE (false)          // Save BC conditions for visualization
 
 /* --------------------- DATA TREATMENT --------------------- */
 #define TREATFIELD (false)              // Treat data over entire field
 #define TREATPOINT (false)              // Treat data at specific points
 #define TREATLINE (false)               // Save macro along a line
-#define SAVEDATA (false)                // Save treated data
+#define SAVEDATA (true)                // Save treated data
 #define CONSOLEPRINT (false)            // Print data saving to console
 #define MEAN_FLOW (false)               // Store mean flow for turbulence statistics
 

@@ -1,7 +1,7 @@
 /* ============================================================================
  * MODEL CONFIGURATION
- * Case: Thermal Lid-Driven Cavity
- * Description: Thermal convection in lid-driven cavity
+ * Case: 005_thermalLidDrivenCavity_3DS
+ * Description: 3D lid-driven cavity benchmark
  * ========================================================================== */
 
 /* --------------------- VELOCITY SET --------------------- */
@@ -14,6 +14,8 @@
 
 /* --------------------- PHYSICS MODELS --------------------- */
 // Enable specific physics models (uncomment to activate)
+#define BINGHAM         
+//#define THERMAL_MODEL                 // Thermal coupling
 //#define PARTICLE_MODEL                // IBM particle simulation
 //#define FENE_P                        // FENE-P viscoelastic model
 
@@ -25,7 +27,7 @@
 /* --------------------- OTHER DEFINITIONS --------------------- */
 //#define DENSITY_CORRECTION
 
-#define RANDOM_NUMBERS true    // to generate random numbers
+//#define RANDOM_NUMBERS true    // to generate random numbers 
                                // (useful for turbulence)
 
 

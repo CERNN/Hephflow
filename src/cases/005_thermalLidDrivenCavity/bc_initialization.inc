@@ -16,19 +16,19 @@
     }
     else if (y == (NY - 1) && x == 0 && z == 0) // NWB
     {
-        nodeType = NORTH;
+        nodeType = NORTH_WEST_BACK;
     }
     else if (y == (NY - 1) && x == 0 && z == (NZ_TOTAL - 1)) // NWF
     {
-        nodeType = NORTH;
+        nodeType = NORTH_WEST_FRONT;
     }
     else if (y == (NY - 1) && x == (NX - 1) && z == 0) // NEB
     {
-        nodeType = NORTH;
+        nodeType = NORTH_EAST_BACK;
     }
     else if (y == (NY - 1) && x == (NX - 1) && z == (NZ_TOTAL - 1)) // NEF
     {
-        nodeType = NORTH;
+        nodeType = NORTH_EAST_FRONT;
     }
     else if (y == 0 && x == 0) // SW
     {
@@ -40,11 +40,11 @@
     }
     else if (y == (NY - 1) && x == 0) // NW
     {
-         nodeType = NORTH;
+         nodeType = NORTH_WEST;
     }
     else if (y == (NY - 1) && x == (NX - 1)) // NE
     {
-        nodeType = NORTH;
+        nodeType = NORTH_EAST;
     }
     else if (y == 0 && z == 0) // SB
     {
@@ -56,11 +56,11 @@
     }
     else if (y == (NY - 1) && z == 0) // NB
     {
-        nodeType = NORTH;
+        nodeType = NORTH_BACK;
     }
     else if (y == (NY - 1) && z == (NZ_TOTAL - 1)) // NF
     {
-        nodeType = NORTH;
+        nodeType = NORTH_FRONT;
     }
     else if (x == 0 && z == 0) // WB
     {

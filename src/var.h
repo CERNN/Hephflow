@@ -30,12 +30,12 @@
 #define GPU_INDEX 0
 
 constexpr bool console_flush = false;
-constexpr unsigned int N_GPUS = 2;                      // Number of GPUS to use
-constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0,1};       // Which GPUs to use
+constexpr unsigned int N_GPUS = 1;                      // Number of GPUS to use
+constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
 
 /* ============================ PROBLEM SETUP ============================= */
 
-#define BC_PROBLEM 007_RayleighTaylor_3D
+#define BC_PROBLEM 001_taylorGreen
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 
@@ -47,6 +47,7 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0,1};       // Which GPUs to use
 #include CASE_MODEL
 #include CASE_CONSTANTS
 #include CASE_OUTPUTS
+
 
 // Classic single-GPU benchmark has no macroscopic inter-partition halos.
 // Advanced physics and multi-GPU paths retain the macro halo machinery.
