@@ -504,7 +504,23 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
                 ;
                 phiVar = phiVar + phiSource;
                 #if PHI_CLAMP_ENABLED
+                const dfloat unclippedPhi = phiVar;
                 phiVar = myMin(myMax(phiVar, PHI_ONE), PHI_TWO);
+                    #ifdef PHASE_DIAGNOSTICS
+                const dfloat clipCorrection = phiVar - unclippedPhi;
+                const size_t clipSignedIndex = idxMom(threadIdx.x, threadIdx.y,
+                    threadIdx.z, M3_CLIP_SIGNED_INDEX, blockIdx.x, blockIdx.y,
+                    blockIdx.z);
+                const size_t clipAbsoluteIndex = idxMom(threadIdx.x, threadIdx.y,
+                    threadIdx.z, M3_CLIP_ABSOLUTE_INDEX, blockIdx.x, blockIdx.y,
+                    blockIdx.z);
+                storeMoment(fMom, clipSignedIndex, M3_CLIP_SIGNED_INDEX,
+                    loadMoment(fMom, clipSignedIndex, M3_CLIP_SIGNED_INDEX)
+                    + clipCorrection);
+                storeMoment(fMom, clipAbsoluteIndex, M3_CLIP_ABSOLUTE_INDEX,
+                    loadMoment(fMom, clipAbsoluteIndex, M3_CLIP_ABSOLUTE_INDEX)
+                    + fabs(clipCorrection));
+                    #endif
                 #endif
 
                 phi_qx_t30 = (gNode[1] - gNode[2] 

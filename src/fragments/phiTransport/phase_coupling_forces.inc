@@ -31,12 +31,15 @@ dfloat Fs_z = 0.0_df;
     #elif defined(PHASE_FORCE_CSF)
         // -------------------------------------------------
         // Allen-Cahn: CSF (Continuum Surface Force)
-        // F = -sigma * div(n) * grad(phi).  div(n) is computed with
-        // the same isotropic link stencil used by the CAC flux.
+        // F = -sigma * div(n) * grad(C), with
+        // C = (phi - PHI_ONE)/(PHI_TWO - PHI_ONE). div(n) is computed
+        // with the same isotropic link stencil used by the CAC flux.
         // -------------------------------------------------
-        Fs_x = -phi_sigma * div_normal * dphidx;
-        Fs_y = -phi_sigma * div_normal * dphidy;
-        Fs_z = -phi_sigma * div_normal * dphidz;
+        const dfloat csf_scale = -phi_sigma * div_normal
+            / (PHI_TWO - PHI_ONE);
+        Fs_x = csf_scale * dphidx;
+        Fs_y = csf_scale * dphidy;
+        Fs_z = csf_scale * dphidz;
     #endif
 #endif
 

@@ -100,6 +100,14 @@ constexpr int M_MZZ_INDEX = 9;
         #endif
         #define M_OFFSET M3_DIV_NORMAL_INDEX
     #endif
+    #ifdef PHASE_DIAGNOSTICS
+        constexpr int M3_CLIP_SIGNED_INDEX = (1+M_OFFSET);
+        constexpr int M3_CLIP_ABSOLUTE_INDEX = (2+M_OFFSET);
+        #ifdef M_OFFSET
+            #undef M_OFFSET
+        #endif
+        #define M_OFFSET M3_CLIP_ABSOLUTE_INDEX
+    #endif
 #endif
 
 #ifdef LAMBDA_DIST

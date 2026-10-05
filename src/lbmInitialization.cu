@@ -188,6 +188,10 @@ __global__ void gpuInitialization_mom(
     #ifdef PHASE_FORCE_CSF
     fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_DIV_NORMAL_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
     #endif
+    #ifdef PHASE_DIAGNOSTICS
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_CLIP_SIGNED_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M3_CLIP_ABSOLUTE_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)] = 0;
+    #endif
     #endif //PHI_DIST
 
     #ifdef LAMBDA_DIST 

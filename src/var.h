@@ -31,12 +31,23 @@
 #define GPU_INDEX 0
 
 constexpr bool console_flush = false;
-constexpr unsigned int N_GPUS = 1;                      // Number of GPUS to use
-constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};       // Which GPUs to use
+#ifndef HEPHFLOW_N_GPUS
+#define HEPHFLOW_N_GPUS 1
+#endif
+constexpr unsigned int N_GPUS = HEPHFLOW_N_GPUS;
+#if HEPHFLOW_N_GPUS == 1
+constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0};
+#elif HEPHFLOW_N_GPUS == 2
+constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0, 1};
+#else
+#error "HEPHFLOW_N_GPUS currently supports one or two GPUs"
+#endif
 
 /* ============================ PROBLEM SETUP ============================= */
 
+#ifndef BC_PROBLEM
 #define BC_PROBLEM 001_taylorGreen
+#endif
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */
 
