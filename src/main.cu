@@ -10,7 +10,10 @@
 #include <chrono>
 #include <cstring>
 #include <future>
+#include <iomanip>
 #include <mutex>
+#include <sstream>
+#include <stdexcept>
 
 #if defined(OVERLAP_HALO_TRANSFERS) && !defined(SPLIT_Z_COLLISION_KERNEL)
 #error "OVERLAP_HALO_TRANSFERS requires SPLIT_Z_COLLISION_KERNEL"
@@ -51,6 +54,8 @@ int main(int argc, char** argv) {
 
     static_assert(NZ % N_GPUS == 0,
         "NZ must be exactly divisible by N_GPUS for uniform Z-slab decomposition.");
+    static_assert((NZ / N_GPUS) % BLOCK_NZ == 0,
+        "Each GPU Z slab must contain a whole number of storage blocks.");
 
     threads.reserve(N_GPUS);
 
@@ -225,6 +230,59 @@ int main(int argc, char** argv) {
             checkCudaErrors(cudaStreamSynchronize(streamsLBM[g]));
         }
     };
+
+    #ifdef DENSITY_CORRECTION
+    bool densityHistoryStarted = false;
+    auto updateDensityCorrection = [&](size_t densityStep) {
+        for (int g = 0; g < N_GPUS; ++g) {
+            const size_t localNZ = static_cast<size_t>(slice);
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            devices[g].reduceDensityPartialDeviceField(
+                g, localNZ,
+                &hostField.h_density_partial_sum[g],
+                &hostField.h_density_partial_count[g], streamsLBM[g]);
+        }
+
+        // The host is the global reduction coordinator. Each stream only
+        // synchronizes after its asynchronous local reduction/copy is queued.
+        synchronizeLBMStreams();
+
+        dfloat globalSum = 0.0_df;
+        unsigned long long globalCount = 0;
+        for (int g = 0; g < N_GPUS; ++g) {
+            globalSum += hostField.h_density_partial_sum[g];
+            globalCount += hostField.h_density_partial_count[g];
+        }
+        if (globalCount == 0) {
+            throw std::runtime_error(
+                "Density correction found no physical active fluid nodes");
+        }
+
+        hostField.h_mean_rho[0] =
+            globalSum / static_cast<dfloat>(globalCount);
+        for (int g = 0; g < N_GPUS; ++g) {
+            checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+            checkCudaErrors(cudaMemcpyAsync(
+                devices[g].d_mean_rho[g], hostField.h_mean_rho,
+                sizeof(dfloat), cudaMemcpyHostToDevice, streamsLBM[g]));
+        }
+
+        std::ostringstream history;
+        history << std::scientific << std::setprecision(9)
+            << "step," << densityStep
+            << ",mean_rho," << (RHO_0 + hostField.h_mean_rho[0])
+            << ",correction," << hostField.h_mean_rho[0]
+            << ",active_nodes," << globalCount;
+        saveTreatData(
+            "_densityHistory", history.str(), static_cast<int>(densityStep),
+            densityHistoryStarted);
+        densityHistoryStarted = true;
+    };
+
+    // Establish a valid correction from the initialized/restored field before
+    // the first collision reads d_mean_rho.
+    updateDensityCorrection(static_cast<size_t>(step));
+    #endif
 
     auto publishMacroHalos = [&]() {
         for (int g = 0; g < N_GPUS; ++g)
@@ -443,6 +501,13 @@ int main(int argc, char** argv) {
         //------------------------- Auxiliary Kernels -------------------------
         #ifdef PHI_DIST
         updatePhaseDerivatives();
+        #endif
+
+        #ifdef DENSITY_CORRECTION
+        // This global value corrects the field state produced by the collision
+        // above and is consumed by every partition on the next collision.
+        updateDensityCorrection(static_cast<size_t>(step) + 1);
+        CHECK_KERNEL_ERR("Density correction reduction");
         #endif
 
         if (N_GPUS == 1) {

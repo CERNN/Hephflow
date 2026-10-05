@@ -30,13 +30,19 @@
 #include <iomanip>      // std::setprecision
 
 
-/**
- *  @brief Calculate the mean density value of the field and save it
- *  @param fMom: Pointer to the device array containing the current macroscopic moments.
- *  @param step: Current time step
-*/
-__host__ 
-void mean_rho(dfloat *fMom, size_t step, dfloat *d_mean_rho, cudaStream_t stream = 0);
+/** @brief Queue a local density sum/count reduction and host copy. */
+__host__
+void reduceDensityPartial(
+    const dfloat* fMom,
+    const unsigned int* nodeType,
+    dfloat* sumBuffer0,
+    dfloat* sumBuffer1,
+    unsigned long long* countBuffer0,
+    unsigned long long* countBuffer1,
+    size_t localNZ,
+    dfloat* hostSum,
+    unsigned long long* hostCount,
+    cudaStream_t stream = 0);
 
 /** 
  *  @brief Compute and update the mean flow values (velocity and temperature if applicable) over time.

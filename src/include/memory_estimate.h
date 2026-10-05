@@ -184,7 +184,8 @@ constexpr CompileTimeMemoryEstimate compileTimeMemoryEstimate() {
     estimate.hostPrimary += nodeTypeBytes;
     #endif
     #ifdef DENSITY_CORRECTION
-    estimate.hostPrimary += sizeof(dfloat);
+    estimate.hostPrimary += sizeof(dfloat)
+        + N_GPUS * (sizeof(dfloat) + sizeof(unsigned long long));
     #endif
 
     const size_t xyzInterfaceFaces = NUMBER_GHOST_FACE_YZ
@@ -247,7 +248,9 @@ constexpr CompileTimeMemoryEstimate compileTimeMemoryEstimate() {
         #endif
     #endif
     #ifdef DENSITY_CORRECTION
-    estimate.deviceOptionalFields += sizeof(dfloat);
+    estimate.deviceOptionalFields += sizeof(dfloat)
+        + 2 * NUM_BLOCK_LOCAL
+            * (sizeof(dfloat) + sizeof(unsigned long long));
     #endif
 
     return estimate;

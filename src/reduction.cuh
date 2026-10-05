@@ -60,8 +60,24 @@ void sumReductionThread(dfloat* g_idata, dfloat* g_odata, int m_index);
  *  @param g_idata: moment point
  *  @param g_odata: sum of moments inside the block
 */
-__global__ 
-void sumReductionThread_rho(dfloat* g_idata, dfloat* g_odata);
+__global__
+void densityReductionBlocks(
+    const dfloat* fMom,
+    const unsigned int* nodeType,
+    dfloat* blockSums,
+    unsigned long long* blockCounts,
+    size_t localNZ);
+
+/**
+ * @brief Reduce density sums and active-node counts from one pass to the next.
+ */
+__global__
+void densityReductionPass(
+    const dfloat* inputSums,
+    const unsigned long long* inputCounts,
+    dfloat* outputSums,
+    unsigned long long* outputCounts,
+    size_t elementCount);
 
 /**
  *  @brief Perform paralel reduction of all threads of a block of for kinetic energy

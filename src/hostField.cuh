@@ -76,6 +76,8 @@ typedef struct hostField{
     
     #ifdef DENSITY_CORRECTION
     dfloat* h_mean_rho;
+    dfloat* h_density_partial_sum;
+    unsigned long long* h_density_partial_count;
     #endif //DENSITY_CORRECTION
 
     #if MEAN_FLOW
@@ -177,6 +179,7 @@ typedef struct hostField{
         #endif
         #ifdef DENSITY_CORRECTION
         , h_mean_rho(nullptr)
+        , h_density_partial_sum(nullptr), h_density_partial_count(nullptr)
         #endif
         #if MEAN_FLOW
         , m_fMom(nullptr), m_rho(nullptr), m_ux(nullptr), m_uy(nullptr), m_uz(nullptr)
@@ -452,7 +455,14 @@ typedef struct hostField{
     #ifdef DENSITY_CORRECTION
     void allocateDensityCorrectionMemory(){
         checkCudaErrors(cudaMallocHost((void**)&(h_mean_rho), sizeof(dfloat)));
-        pinnedBytesAllocated += sizeof(dfloat);
+        checkCudaErrors(cudaMallocHost(
+            (void**)&(h_density_partial_sum), N_GPUS * sizeof(dfloat)));
+        checkCudaErrors(cudaMallocHost(
+            (void**)&(h_density_partial_count),
+            N_GPUS * sizeof(unsigned long long)));
+        h_mean_rho[0] = 0.0_df;
+        pinnedBytesAllocated += sizeof(dfloat)
+            + N_GPUS * (sizeof(dfloat) + sizeof(unsigned long long));
     }
     #endif //DENSITY_CORRECTION
 
@@ -722,6 +732,8 @@ typedef struct hostField{
     
         #ifdef DENSITY_CORRECTION
             if (h_mean_rho) cudaFreeHost(h_mean_rho);
+            if (h_density_partial_sum) cudaFreeHost(h_density_partial_sum);
+            if (h_density_partial_count) cudaFreeHost(h_density_partial_count);
         #endif //DENSITY_CORRECTION
         pinnedBytesAllocated = 0;
     }

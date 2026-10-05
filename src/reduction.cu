@@ -126,40 +126,88 @@ void sumReductionThread_TKE(dfloat* g_idata, dfloat* g_odata, dfloat *meanMom)
 }
 
 
-__global__ 
-void sumReductionThread_rho(dfloat* g_idata, dfloat* g_odata)
+__global__
+void densityReductionBlocks(
+    const dfloat* fMom,
+    const unsigned int* nodeType,
+    dfloat* blockSums,
+    unsigned long long* blockCounts,
+    size_t localNZ)
 {
+    __shared__ dfloat sums[BLOCK_LBM_SIZE];
+    __shared__ unsigned long long counts[BLOCK_LBM_SIZE];
 
-    #include "fragments/shared_reduction.inc"
+    const unsigned int tid = threadIdx.x
+        + blockDim.x * (threadIdx.y + blockDim.y * threadIdx.z);
+    const unsigned int bid = blockIdx.x
+        + gridDim.x * (blockIdx.y + gridDim.y * blockIdx.z);
+    const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+    const unsigned int z = blockIdx.z * blockDim.z + threadIdx.z;
 
+    dfloat rhoFluctuation = 0.0_df;
+    unsigned long long active = 0;
+    if (x < NX && y < NY && z < localNZ) {
+        const size_t scalarIndex = idxScalarBlock(
+            threadIdx.x, threadIdx.y, threadIdx.z,
+            blockIdx.x, blockIdx.y, blockIdx.z);
+        const unsigned int type = nodeType[scalarIndex];
+        if ((type & SOLID_NODE) != SOLID_NODE) {
+            const size_t momentIndex = idxMom(
+                threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX,
+                blockIdx.x, blockIdx.y, blockIdx.z);
+            rhoFluctuation = loadMoment(fMom, momentIndex, M_RHO_INDEX);
+            active = 1;
+        }
+    }
 
-    //global index in the array
-    unsigned int ix =  idxMom(threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX, blockIdx.x, blockIdx.y, blockIdx.z);
-    //thread index in the array
-    unsigned int tid = threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * (threadIdx.z));
-    //block index
-    unsigned int bid = blockIdx.x + gridDim.x * (blockIdx.y + gridDim.y * (blockIdx.z));
-    //total number of threads in block
-    unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
-
-    sdata[tid] = (g_idata[ix]);
+    sums[tid] = rhoFluctuation;
+    counts[tid] = active;
     __syncthreads();
-    
-    // Reduction that handles non-power-of-2 block sizes
-    for (unsigned int s = blockSize; s > 1; ) {
-        unsigned int half = s / 2;
-        if (tid < half) {
-            sdata[tid] += sdata[tid + half];
-            if ((s & 1) && tid == 0) {
-                sdata[0] += sdata[s - 1];
-            }
+
+    for (unsigned int stride = BLOCK_LBM_SIZE / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) {
+            sums[tid] += sums[tid + stride];
+            counts[tid] += counts[tid + stride];
         }
         __syncthreads();
-        s = half;
     }
-    
+
     if (tid == 0) {
-        g_odata[bid] = sdata[0];
+        blockSums[bid] = sums[0];
+        blockCounts[bid] = counts[0];
+    }
+}
+
+__global__
+void densityReductionPass(
+    const dfloat* inputSums,
+    const unsigned long long* inputCounts,
+    dfloat* outputSums,
+    unsigned long long* outputCounts,
+    size_t elementCount)
+{
+    constexpr unsigned int REDUCTION_THREADS = 256;
+    __shared__ dfloat sums[REDUCTION_THREADS];
+    __shared__ unsigned long long counts[REDUCTION_THREADS];
+
+    const unsigned int tid = threadIdx.x;
+    const size_t index = blockIdx.x * blockDim.x + tid;
+    sums[tid] = index < elementCount ? inputSums[index] : 0.0_df;
+    counts[tid] = index < elementCount ? inputCounts[index] : 0;
+    __syncthreads();
+
+    for (unsigned int stride = REDUCTION_THREADS / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) {
+            sums[tid] += sums[tid + stride];
+            counts[tid] += counts[tid + stride];
+        }
+        __syncthreads();
+    }
+
+    if (tid == 0) {
+        outputSums[blockIdx.x] = sums[0];
+        outputCounts[blockIdx.x] = counts[0];
     }
 }
 

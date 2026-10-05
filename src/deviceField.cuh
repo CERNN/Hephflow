@@ -5,6 +5,7 @@
 #include "main.cuh"
 #include "hostField.cuh"
 #include "fragments/phiTransport/phase_kernels.cuh"
+#include <algorithm>
 #include <thread>
 #include <vector>
 
@@ -25,6 +26,8 @@ typedef struct deviceField{
 
     #ifdef DENSITY_CORRECTION
     dfloat* d_mean_rho[N_GPUS];
+    dfloat* d_density_sum[N_GPUS][2];
+    unsigned long long* d_density_count[N_GPUS][2];
     #endif //DENSITY_CORRECTION
 
     #ifdef BC_FORCES
@@ -174,7 +177,16 @@ typedef struct deviceField{
 
     #ifdef DENSITY_CORRECTION
     void allocateDensityCorrectionMemory(int g){
-        cudaMalloc((void**)&d_mean_rho[g], sizeof(dfloat));
+        checkCudaErrors(cudaMalloc((void**)&d_mean_rho[g], sizeof(dfloat)));
+        checkCudaErrors(cudaMemset(d_mean_rho[g], 0, sizeof(dfloat)));
+        for (int buffer = 0; buffer < 2; ++buffer) {
+            checkCudaErrors(cudaMalloc(
+                (void**)&d_density_sum[g][buffer],
+                NUM_BLOCK_LOCAL * sizeof(dfloat)));
+            checkCudaErrors(cudaMalloc(
+                (void**)&d_density_count[g][buffer],
+                NUM_BLOCK_LOCAL * sizeof(unsigned long long)));
+        }
     }
     #endif //DENSITY_CORRECTION
 
@@ -274,11 +286,15 @@ typedef struct deviceField{
 
         // Node type initialization - hNodeType is allocated once globally in allocateHostMemoryHostField().
         // Each GPU operates on its own slice: offset = zStart * NX * NY into the global array.
-        unsigned int* const hNodeType_slice = hostField.hNodeType + zStart * NX * NY;
+        unsigned int* const hNodeType_slice =
+            hostField.hNodeType + static_cast<size_t>(g) * NUMBER_LBM_NODES_LOCAL;
 
         unsigned int numberCurvedBoundaryNodes_local = 0;
 
         #ifndef VOXEL_FILENAME
+            // hostInitialization_nodeType only overwrites boundary nodes.
+            // Initialize physical bulk nodes and padded storage deterministically.
+            std::fill_n(hNodeType_slice, NUMBER_LBM_NODES_LOCAL, BULK);
             hostInitialization_nodeType(hNodeType_slice, zStart, localNZ
             #ifdef CURVED_BOUNDARY_CONDITION
             ,&numberCurvedBoundaryNodes_local
@@ -422,8 +438,14 @@ typedef struct deviceField{
     #endif //CURVED_BOUNDARY_CONDITION
 
     #ifdef DENSITY_CORRECTION
-    void mean_rhoDeviceField(size_t step, int g, cudaStream_t stream){
-        mean_rho(d_fMom[g], step, d_mean_rho[g], stream);
+    void reduceDensityPartialDeviceField(
+        int g, size_t localNZ, dfloat* hostSum,
+        unsigned long long* hostCount, cudaStream_t stream){
+        reduceDensityPartial(
+            d_fMom[g], dNodeType[g],
+            d_density_sum[g][0], d_density_sum[g][1],
+            d_density_count[g][0], d_density_count[g][1],
+            localNZ, hostSum, hostCount, stream);
     }
     #endif //DENSITY_CORRECTION
 
@@ -1360,10 +1382,6 @@ typedef struct deviceField{
                 CHECK_KERNEL_ERR("Curved conformation BC kernel");
             #endif
         #endif //CURVED_BOUNDARY_CONDITION
-        #ifdef DENSITY_CORRECTION
-            mean_rhoDeviceField(step, g, stream);
-            CHECK_KERNEL_ERR("Density correction kernel");
-        #endif //DENSITY_CORRECTION
     }
     
     #ifdef LOCAL_FORCES
@@ -1611,6 +1629,10 @@ typedef struct deviceField{
 
         #ifdef DENSITY_CORRECTION
         cudaFree(d_mean_rho[g]);
+        for (int buffer = 0; buffer < 2; ++buffer) {
+            cudaFree(d_density_sum[g][buffer]);
+            cudaFree(d_density_count[g][buffer]);
+        }
         #endif //DENSITY_CORRECTION
 
         #ifdef BC_FORCES
