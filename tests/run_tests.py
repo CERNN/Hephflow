@@ -41,6 +41,11 @@ TEST_SUITE = {
         'case_number': '011',
         'block_size': (8, 8, 4)  # Smaller blocks for D3Q27 to fit shared memory
     },
+    '001_taylorGreen': {
+        'velocity_set': 'D3Q19',
+        'case_number': '001_tgv_validation_',
+        'block_size': (8, 8, 8)
+    },
     '006_singleParticleSettling': {
         'velocity_set': 'D3Q19',
         'case_number': '006_settling_test_',
@@ -200,9 +205,11 @@ class TestRunner:
             return False
         
         config = TEST_SUITE[case_name]
-        velocity_set = config['velocity_set']
+        velocity_set = os.environ.get('HEPHFLOW_TEST_VELOCITY_SET', config['velocity_set'])
         case_number = config['case_number']
         block_nx, block_ny, block_nz = config['block_size']
+        if velocity_set == 'D3Q27':
+            block_nx, block_ny, block_nz = (8, 8, 4)
         
         var_h_path = self.src_dir / "var.h"
         memory_layout_path = self.src_dir / "include" / "memory_layout.h"
@@ -317,9 +324,12 @@ class TestRunner:
         try:
             # Determine executable name based on case configuration
             config = TEST_SUITE[case_name]
-            velocity_set = config['velocity_set']
+            velocity_set = os.environ.get('HEPHFLOW_TEST_VELOCITY_SET', config['velocity_set'])
             case_number = config['case_number']
-            sim_executable = self.bin_dir / f"{case_number}sim_{velocity_set}_sm86.exe"
+            cuda_arch = os.environ.get('HEPHFLOW_TEST_CUDA_ARCH', '86')
+            executable_suffix = '.exe' if sys.platform == 'win32' else ''
+            sim_executable = self.bin_dir / (
+                f"{case_number}sim_{velocity_set}_sm{cuda_arch}{executable_suffix}")
 
             output_dir = config.get('output_dir')
             if output_dir:

@@ -1,26 +1,35 @@
+{
+    const dfloat rho = rhoVar;
+    const dfloat ux = ux_t30;
+    const dfloat uy = uy_t30;
+    const dfloat uz = uz_t30;
+    const dfloat mxx = m_xx_t45;
+    const dfloat mxy = m_xy_t90;
+    const dfloat mxz = m_xz_t90;
+    const dfloat myy = m_yy_t45;
+    const dfloat myz = m_yz_t90;
+    const dfloat mzz = m_zz_t45;
+
     multiplyTerm = rho * W0;
     pics2 = 1.0_df - cs2 * (mxx + myy + mzz);
     
-    const dfloat mxxy = ux * mxy + uy * mxx - ux * ux * uy;
-    const dfloat mxxz = ux * mxz + uz * mxx - ux * ux * uz;
-    const dfloat mxyy = ux * myy + uy * mxy - ux * uy * uy;
-    const dfloat mxzz = ux * mzz + uz * mxz - ux * uz * uz;
-    const dfloat myzz = uy * mzz + uz * myz - uy * uz * uz;
-    const dfloat myyz = uy * myz + uz * myy - uy * uy * uz;
-    const dfloat mxyz = ux * myz + uy * mxz + uz * mxy - 2 * ux * uy * uz;
-
-    const dfloat mxxyy = (ux * ux * myy + ux * uy * mxy + uy * mxxy - 3.0_df * ux * ux * uy * uy / 2) / 2;
-    const dfloat mxxzz = (ux * ux * mzz + ux * uz * mxz + uz * mxxz - 3.0_df * ux * ux * uz * uz / 2) / 2;
-    const dfloat myyzz = (uy * uy * mzz + uy * uz * myz + uz * myyz - 3.0_df * uy * uy * uz * uz / 2) / 2;
-    const dfloat mxyzz = (2 * ux * uy * mzz + ux * uz * myz + uy * uz * mxz + uz * mxyz - 3 * ux * uy * uz * uz) / 2;
-    const dfloat mxyyz = ux * uy * myz + uy * uy * mxz / 2 + uz * mxyy - 3.0_df * ux * uy * uy * uz / 2;
-    const dfloat mxxyz = ux * ux * myz / 2 + ux * uy * mxz + uz * mxxy - 3.0_df * ux * ux * uy * uz / 2;
-
-    const dfloat mxxyzz = (ux * ux * uy * mzz + ux * ux * uz * myz / 2 + ux * uy * uz * mxz + uz * mxxyz - 2 * ux * ux * uy * uz * uz) / 2;
-    const dfloat mxxyyz =  ux * ux * uy * myz / 2 + ux * uy * uy * mxz / 2 + uz * mxxyy - ux * ux * uy * uy * uz;
-    const dfloat mxyyzz = (ux * uy * uy * mzz + ux * uy * uz * myz + uy * uy * uz * mxz / 2+ uz * mxyyz - 2 * ux * uy * uy * uz * uz) / 2;
-
-    const dfloat mxxyyzz = (ux * ux * uy * uy * mzz + ux * ux * uy * uz * myz + ux * uy * uy * uz * mxz + 2 * uz * mxxyyz - 3 * ux * ux * uy * uy * uz * uz) / 4;
+    const dfloat mxxy = mrlbmRecursiveCoefficient<2,1,0>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxxz = mrlbmRecursiveCoefficient<2,0,1>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxyy = mrlbmRecursiveCoefficient<1,2,0>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxzz = mrlbmRecursiveCoefficient<1,0,2>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat myzz = mrlbmRecursiveCoefficient<0,1,2>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat myyz = mrlbmRecursiveCoefficient<0,2,1>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxyz = mrlbmRecursiveCoefficient<1,1,1>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxxyy = mrlbmRecursiveCoefficient<2,2,0>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxxzz = mrlbmRecursiveCoefficient<2,0,2>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat myyzz = mrlbmRecursiveCoefficient<0,2,2>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxyzz = mrlbmRecursiveCoefficient<1,1,2>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxyyz = mrlbmRecursiveCoefficient<1,2,1>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxxyz = mrlbmRecursiveCoefficient<2,1,1>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxxyzz = mrlbmRecursiveCoefficient<2,1,2>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxxyyz = mrlbmRecursiveCoefficient<2,2,1>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxyyzz = mrlbmRecursiveCoefficient<1,2,2>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
+    const dfloat mxxyyzz = mrlbmRecursiveCoefficient<2,2,2>(ux,uy,uz,mxx,mxy,mxz,myy,myz,mzz);
 
     const dfloat cs4 = cs2 * cs2;
     const dfloat cs6 = cs4 * cs2;
@@ -86,19 +95,19 @@
                               one_minus_cs2 * mxxz + cs2 * mxyy - one_minus_cs2 * mxzz + cs2 * myyz -
                               one_minus_cs2 * cs2 * mxxyy + one_minus_cs2_square * mxxzz - one_minus_cs2 * cs2 * myyzz -
                               cs2 * mxyyz +
-                              one_minus_cs2 * cs2 * mxxyyz + one_minus_cs2 * cs2 * mxyyzz -
+                             one_minus_cs2 * cs2 * mxxyyz + one_minus_cs2 * cs2 * mxyyzz -
                               one_minus_cs2_square * cs2 * mxxyyzz);
     pop[11] = multiplyTerm * (pics2 + uy + uz + myy + mzz + myz -
                               cs2 * mxxy - cs2 * mxxz + one_minus_cs2 * myzz + one_minus_cs2 * myyz -
                               one_minus_cs2 * cs2 * mxxyy - one_minus_cs2 * cs2 * mxxzz + one_minus_cs2_square * myyzz -
                               cs2 * mxxyz -
-                              one_minus_cs2 * cs2 * mxxyzz - one_minus_cs2 * mxxyyz -
+                              one_minus_cs2 * cs2 * mxxyzz - one_minus_cs2 * cs2 * mxxyyz -
                               one_minus_cs2_square * cs2 * mxxyyzz);
     pop[12] = multiplyTerm * (pics2 - uy - uz + myy + mzz + myz +
                               cs2 * mxxy + cs2 * mxxz - one_minus_cs2 * myzz - one_minus_cs2 * myyz -
                               one_minus_cs2 * cs2 * mxxyy - one_minus_cs2 * cs2 * mxxzz + one_minus_cs2_square * myyzz -
                               cs2 * mxxyz +
-                              one_minus_cs2 * cs2 * mxxyzz + one_minus_cs2 * mxxyyz -
+                              one_minus_cs2 * cs2 * mxxyzz + one_minus_cs2 * cs2 * mxxyyz -
                               one_minus_cs2_square * cs2 * mxxyyzz);
     pop[13] = multiplyTerm * (pics2 + ux - uy + mxx + myy - mxy -
                               one_minus_cs2 * mxxy + one_minus_cs2 * mxyy - cs2 * mxzz + cs2 * myzz +
@@ -116,13 +125,13 @@
                               one_minus_cs2 * mxxz - cs2 * mxyy + one_minus_cs2 * mxzz + cs2 * myyz -
                               one_minus_cs2 * cs2 * mxxyy + one_minus_cs2_square * mxxzz - one_minus_cs2 * cs2 * myyzz +
                               cs2 * mxyyz +
-                              one_minus_cs2 * cs2 * mxxyzz - one_minus_cs2 * cs2 * mxyyzz -
+                              one_minus_cs2 * cs2 * mxxyyz - one_minus_cs2 * cs2 * mxyyzz -
                               one_minus_cs2_square * cs2 * mxxyyzz);
     pop[16] = multiplyTerm * (pics2 - ux + uz + mxx + mzz - mxz +
                               one_minus_cs2 * mxxz + cs2 * mxyy - one_minus_cs2 * mxzz - cs2 * myyz -
                               one_minus_cs2 * cs2 * mxxyy + one_minus_cs2_square * mxxzz - one_minus_cs2 * cs2 * myyzz +
                               cs2 * mxyyz -
-                              one_minus_cs2 * cs2 * mxxyzz + one_minus_cs2 * cs2 * mxyyzz -
+                              one_minus_cs2 * cs2 * mxxyyz + one_minus_cs2 * cs2 * mxyyzz -
                               one_minus_cs2_square * cs2 * mxxyyzz);
     pop[17] = multiplyTerm * (pics2 + uy - uz + myy + mzz - myz -
                               cs2 * mxxy + cs2 * mxxz + one_minus_cs2 * myzz - one_minus_cs2 * myyz -
@@ -195,3 +204,28 @@
                               one_minus_cs2_square * mxxyzz - one_minus_cs2_square * mxxyyz + one_minus_cs2_square * mxyyzz +
                               one_minus_cs2_cube * mxxyyzz);
     #endif //D3Q27
+#ifdef D3Q27
+#define MR_CORNER_RECONSTRUCTION(SX,SY,SZ) (pics2 + \
+    (SX)*ux + (SY)*uy + (SZ)*uz + mxx + myy + mzz + \
+    (SX)*(SY)*mxy + (SX)*(SZ)*mxz + (SY)*(SZ)*myz + \
+    one_minus_cs2*((SY)*mxxy + (SZ)*mxxz + (SX)*mxyy + (SX)*mxzz + (SY)*myzz + (SZ)*myyz) + \
+    (SX)*(SY)*(SZ)*mxyz + one_minus_cs2_square*(mxxyy+mxxzz+myyzz) + \
+    one_minus_cs2*((SX)*(SY)*mxyzz + (SX)*(SZ)*mxyyz + (SY)*(SZ)*mxxyz) + \
+    one_minus_cs2_square*((SY)*mxxyzz + (SZ)*mxxyyz + (SX)*mxyyzz) + \
+    one_minus_cs2_cube*mxxyyzz)
+    multiplyTerm = rho * W3;
+    pop[19] = multiplyTerm * MR_CORNER_RECONSTRUCTION( 1, 1, 1);
+    pop[20] = multiplyTerm * MR_CORNER_RECONSTRUCTION(-1,-1,-1);
+    pop[21] = multiplyTerm * MR_CORNER_RECONSTRUCTION( 1, 1,-1);
+    pop[22] = multiplyTerm * MR_CORNER_RECONSTRUCTION(-1,-1, 1);
+    pop[23] = multiplyTerm * MR_CORNER_RECONSTRUCTION( 1,-1, 1);
+    pop[24] = multiplyTerm * MR_CORNER_RECONSTRUCTION(-1, 1,-1);
+    pop[25] = multiplyTerm * MR_CORNER_RECONSTRUCTION(-1, 1, 1);
+    pop[26] = multiplyTerm * MR_CORNER_RECONSTRUCTION( 1,-1,-1);
+#undef MR_CORNER_RECONSTRUCTION
+#endif
+#ifndef D3Q27
+mrlbmConservativeD3Q19Projection(pop, rhoVar, ux_t30, uy_t30, uz_t30,
+    m_xx_t45, m_xy_t90, m_xz_t90, m_yy_t45, m_yz_t90, m_zz_t45);
+#endif
+}

@@ -46,3 +46,5 @@ tmp/
 *.err
 *.out
 tests/
+!tests/
+tests/*

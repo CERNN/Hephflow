@@ -194,7 +194,7 @@ if [ ! -f "$MODEL_INC" ]; then
     echo "Error: model.inc not found at $MODEL_INC"
     exit 1
 fi
-VELOCITY_SET=$(grep -E "^#define (D3Q19|D3Q27)" "$MODEL_INC" | awk '{print $2}' | head -n 1)
+VELOCITY_SET=${VELOCITY_SET_OVERRIDE:-$(grep -E "^#define (D3Q19|D3Q27)" "$MODEL_INC" | awk '{print $2}' | head -n 1)}
 if [ -z "$VELOCITY_SET" ]; then
     echo "Error: D3Q19 or D3Q27 not defined in $MODEL_INC"
     exit 1
@@ -210,6 +210,11 @@ fi
 WARNING_FLAGS=()
 if [ "$SHOW_WARNINGS" -eq 0 ]; then
     WARNING_FLAGS+=(--disable-warnings)
+fi
+
+NVCC_EXTRA_FLAGS=()
+if [ -n "${NVCC_APPEND_FLAGS:-}" ]; then
+    read -r -a NVCC_EXTRA_FLAGS <<< "$NVCC_APPEND_FLAGS"
 fi
 
 BUILD_DIR=$(mktemp -d "${TMPDIR:-/tmp}/hephflow-build.XXXXXX") || {
@@ -237,6 +242,7 @@ for SOURCE in "${CUDA_SOURCES[@]}"; do
     # inline and optimize calls across CUDA translation units.
     nvcc --std=c++17 -gencode arch=compute_${CC},code=lto_${CC} -rdc=true -dc -O3 --restrict -DSM_${CC} \
         "${STREAMING_FLAGS[@]}" \
+        "${NVCC_EXTRA_FLAGS[@]}" \
         --maxrregcount="$MAX_REGS" \
         "${WARNING_FLAGS[@]}" \
         -diag-suppress 39 \

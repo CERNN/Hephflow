@@ -12,7 +12,9 @@
 
 /* ========================= PRECISION DEFINITIONS ========================= */
 
-#define SINGLE_PRECISION 
+#if !defined(SINGLE_PRECISION) && !defined(DOUBLE_PRECISION)
+    #define SINGLE_PRECISION
+#endif
 #ifdef SINGLE_PRECISION
     typedef float dfloat;      // single precision
     #define VTK_DFLOAT_TYPE "float"
@@ -26,6 +28,10 @@
     #define POW_FUNCTION pow
     #define EXP_FUNCTION exp
 #endif //DOUBLE_PRECISION
+
+#if defined(SINGLE_PRECISION) && defined(DOUBLE_PRECISION)
+    #error "Select only one of SINGLE_PRECISION or DOUBLE_PRECISION"
+#endif
 
 // User-defined literal for dfloat type
 __host__ __device__ 

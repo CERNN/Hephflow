@@ -18,6 +18,7 @@
 
 // Project type definitions and utilities
 #include "include/var_types.h"
+#include "include/mrlbm_recursive.h"
 #include "non_newtonian/nnf_types.h"
 #include "include/utils.h"
 #include "include/constexpr_math.h"
