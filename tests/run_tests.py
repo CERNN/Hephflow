@@ -31,6 +31,125 @@ if sys.platform == 'win32':
 
 # Test suite configuration: maps case names to their compilation parameters
 TEST_SUITE = {
+    'phase_ch_regression': {
+        'case_dir': '007_phaseFieldVerification',
+        'velocity_set': 'D3Q19',
+        'case_number': 'acv_ch_regression_',
+        'block_size': (8, 8, 8),
+        'validation': 'phase_field',
+        'precision': 'single',
+        'ch_regression': True,
+        'defines': ['PHASE_TEST_SCENARIO=PHASE_TEST_PLANAR',
+                    'PHASE_TEST_STEPS=1000', 'PHASE_TEST_METHOD_CH',
+                    'PHASE_TEST_FORCE_CHEMICAL']
+    },
+    'phase_ac_planar_chemical': {
+        'case_dir': '007_phaseFieldVerification',
+        'velocity_set': 'D3Q19',
+        'case_number': 'acv_planar_mu_',
+        'block_size': (8, 8, 8),
+        'validation': 'phase_field',
+        'precision': 'single',
+        'defines': ['PHASE_TEST_SCENARIO=PHASE_TEST_PLANAR',
+                    'PHASE_TEST_STEPS=1000', 'PHASE_TEST_FORCE_CHEMICAL']
+    },
+    'phase_ac_planar_csf': {
+        'case_dir': '007_phaseFieldVerification',
+        'velocity_set': 'D3Q19',
+        'case_number': 'acv_planar_csf_',
+        'block_size': (8, 8, 8),
+        'validation': 'phase_field',
+        'precision': 'single',
+        'defines': ['PHASE_TEST_SCENARIO=PHASE_TEST_PLANAR',
+                    'PHASE_TEST_STEPS=1000', 'PHASE_TEST_FORCE_CSF']
+    },
+    'phase_ac_planar_double': {
+        'case_dir': '007_phaseFieldVerification',
+        'velocity_set': 'D3Q19',
+        'case_number': 'acv_planar_double_',
+        'block_size': (8, 8, 8),
+        'validation': 'phase_field',
+        'precision': 'double',
+        'defines': ['PHASE_TEST_SCENARIO=PHASE_TEST_PLANAR',
+                    'PHASE_TEST_STEPS=1000', 'PHASE_TEST_FORCE_CHEMICAL']
+    },
+    'phase_ac_stationary_droplet': {
+        'case_dir': '007_phaseFieldVerification',
+        'velocity_set': 'D3Q19',
+        'case_number': 'acv_drop_',
+        'block_size': (8, 8, 8),
+        'validation': 'phase_field',
+        'precision': 'single',
+        'droplet_test': True,
+        'curvature_test': True,
+        'defines': ['PHASE_TEST_SCENARIO=PHASE_TEST_DROPLET',
+                    'PHASE_TEST_STEPS=2000', 'PHASE_TEST_FORCE_CSF']
+    },
+    'phase_ac_diagonal_translation': {
+        'case_dir': '007_phaseFieldVerification',
+        'velocity_set': 'D3Q19',
+        'case_number': 'acv_translate_',
+        'block_size': (8, 8, 8),
+        'validation': 'phase_field',
+        'precision': 'single',
+        'translation_test': True,
+        'defines': ['PHASE_TEST_SCENARIO=PHASE_TEST_TRANSLATION',
+                    'PHASE_TEST_STEPS=800', 'PHASE_TEST_FORCE_CHEMICAL']
+    },
+    'phase_ac_clipping_accounting': {
+        'case_dir': '007_phaseFieldVerification',
+        'velocity_set': 'D3Q19',
+        'case_number': 'acv_clip_',
+        'block_size': (8, 8, 8),
+        'validation': 'phase_field',
+        'precision': 'single',
+        'clipping_test': True,
+        'defines': ['PHASE_TEST_SCENARIO=PHASE_TEST_PLANAR',
+                    'PHASE_TEST_STEPS=100', 'PHASE_TEST_WIDTH=2.0_df',
+                    'PHASE_TEST_MOBILITY=0.2_df', 'PHI_CLAMP_ENABLED=1']
+    },
+    'phase_ac_capillary_droplet': {
+        'case_dir': '007_phaseFieldVerification',
+        'velocity_set': 'D3Q19',
+        'case_number': 'acv_capillary_',
+        'block_size': (8, 8, 8),
+        'validation': 'phase_field',
+        'precision': 'single',
+        'capillary_test': True,
+        'droplet_test': True,
+        'curvature_test': True,
+        'mass_drift_tolerance': 2.0e-5,
+        'defines': ['PHASE_TEST_SCENARIO=PHASE_TEST_CAPILLARY_DROPLET',
+                    'PHASE_TEST_STEPS=2000', 'PHASE_TEST_FORCE_CSF']
+    },
+    'phase_ac_capillary_chemical': {
+        'case_dir': '007_phaseFieldVerification',
+        'velocity_set': 'D3Q19',
+        'case_number': 'acv_capillary_mu_',
+        'block_size': (8, 8, 8),
+        'validation': 'phase_field',
+        'precision': 'single',
+        'capillary_test': True,
+        'droplet_test': True,
+        'mass_drift_tolerance': 2.0e-5,
+        'defines': ['PHASE_TEST_SCENARIO=PHASE_TEST_CAPILLARY_DROPLET',
+                    'PHASE_TEST_STEPS=2000',
+                    'PHASE_TEST_FORCE_CHEMICAL']
+    },
+    'phase_ac_multigpu_interface': {
+        'case_dir': '007_phaseFieldVerification',
+        'velocity_set': 'D3Q19',
+        'case_number': 'acv_multigpu_',
+        'block_size': (8, 8, 8),
+        'validation': 'phase_field',
+        'precision': 'single',
+        'required_gpus': 2,
+        'droplet_test': True,
+        'curvature_test': True,
+        'defines': ['PHASE_TEST_SCENARIO=PHASE_TEST_DROPLET',
+                    'PHASE_TEST_STEPS=500', 'PHASE_TEST_FORCE_CSF',
+                    'HEPHFLOW_N_GPUS=2']
+    },
     '001_parallelPlates_D3Q19': {
         'velocity_set': 'D3Q19',
         'case_number': '011',
@@ -73,7 +192,20 @@ class TestRunner:
         Run a single test case
         Returns: (passed, results_dict)
         """
-        case_dir = self.cases_dir / case_name
+        config = TEST_SUITE.get(case_name, {})
+        if not config:
+            print(f"[FAIL] Unknown test case: {case_name}")
+            return False, {
+                'case': case_name, 'status': 'FAILED', 'passed': False,
+                'errors': ['Unknown test case']
+            }
+        required_gpus = config.get('required_gpus', 1)
+        available_gpus = self._available_gpu_count()
+        if available_gpus < required_gpus:
+            print(f"[SKIP] {case_name} requires {required_gpus} GPUs; "
+                  f"found {available_gpus}")
+            return None, {}
+        case_dir = self.cases_dir / config.get('case_dir', case_name)
         test_dir = case_dir / "_test"
         
         if not test_dir.exists():
@@ -135,6 +267,9 @@ class TestRunner:
         if config.get('validation') == 'particle_trajectory':
             passed, comparison = self._validate_particle_trajectory(
                 case_dir, config, test_results, reference, tolerances)
+        elif config.get('validation') == 'phase_field':
+            passed, comparison = self._validate_phase_results(
+                test_results, tolerances, config)
         else:
             passed, comparison = self._validate_results(
                 test_results, reference, tolerances)
@@ -144,6 +279,19 @@ class TestRunner:
         results['status'] = 'PASSED' if passed else 'FAILED'
         
         return passed, results
+
+    @staticmethod
+    def _available_gpu_count() -> int:
+        """Return the number of GPUs visible to CUDA test executables."""
+        try:
+            result = subprocess.run(
+                ['nvidia-smi', '--query-gpu=index', '--format=csv,noheader'],
+                capture_output=True, text=True, timeout=10)
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return 0
+        if result.returncode != 0:
+            return 0
+        return len([line for line in result.stdout.splitlines() if line.strip()])
     
     def _load_tolerances(self, tol_file: Path) -> Dict:
         """Parse tolerances.txt file"""
@@ -205,6 +353,8 @@ class TestRunner:
             return False
         
         config = TEST_SUITE[case_name]
+        if config.get('validation') == 'phase_field':
+            return self._compile_phase_case(config)
         velocity_set = os.environ.get('HEPHFLOW_TEST_VELOCITY_SET', config['velocity_set'])
         case_number = config['case_number']
         block_nx, block_ny, block_nz = config['block_size']
@@ -318,6 +468,67 @@ class TestRunner:
                 print(f"  Restored memory_layout.h to original block size")
             except Exception as e:
                 print(f"  [WARNING] Failed to restore memory_layout.h: {e}")
+
+    def _compile_phase_case(self, config: Dict) -> bool:
+        """Compile a phase variant without rewriting tracked configuration."""
+        environment = os.environ.copy()
+        definitions = [
+            f"BC_PROBLEM={config['case_dir']}",
+            "TESTS=1", "PHASE_DIAGNOSTICS",
+            *config.get('defines', []),
+        ]
+        if config.get('precision') == 'double':
+            definitions.extend(['DOUBLE_PRECISION', 'DYNAMIC_SHARED_MEMORY'])
+        environment['NVCC_APPEND_FLAGS'] = ' '.join(
+            f'-D{definition}' for definition in definitions)
+        environment['VELOCITY_SET_OVERRIDE'] = config['velocity_set']
+        if sys.platform == 'win32':
+            nvcc = shutil.which('nvcc')
+            if not nvcc:
+                print("  [FAIL] nvcc is not available")
+                return False
+            cuda_arch = os.environ.get('HEPHFLOW_TEST_CUDA_ARCH', '86')
+            output = self.bin_dir / (
+                f"{config['case_number']}sim_{config['velocity_set']}_"
+                f"sm{cuda_arch}.exe")
+            sources = sorted(str(path) for path in self.src_dir.rglob('*.cu'))
+            command = [
+                nvcc, '--std=c++17',
+                '-gencode', f'arch=compute_{cuda_arch},code=sm_{cuda_arch}',
+                '-rdc=true', '-O3', '--restrict', f'-DSM_{cuda_arch}',
+                *[f'-D{definition}' for definition in definitions],
+                '-I', str(self.src_dir), *sources,
+                '-diag-suppress', '39', '-diag-suppress', '179',
+                '-lcudadevrt', '-lcurand', '-o', str(output),
+            ]
+            try:
+                result = subprocess.run(command, cwd=str(self.src_dir),
+                                        capture_output=True, timeout=300)
+            except subprocess.TimeoutExpired:
+                print("  [TIMEOUT] Phase compilation timed out")
+                return False
+            if result.returncode != 0:
+                text = (result.stdout + result.stderr).decode('utf-8', errors='ignore')
+                print("  [FAIL] Phase compilation failed")
+                print('\n'.join(text.splitlines()[-30:]))
+                return False
+            print("  [PASS] Phase compilation successful")
+            return True
+        try:
+            result = subprocess.run(
+                ["bash", str(self.src_dir / "compile.sh"), config['case_number']],
+                cwd=str(self.src_dir), env=environment, capture_output=True,
+                timeout=300)
+        except subprocess.TimeoutExpired:
+            print("  [TIMEOUT] Phase compilation timed out")
+            return False
+        if result.returncode != 0:
+            output = (result.stdout + result.stderr).decode('utf-8', errors='ignore')
+            print("  [FAIL] Phase compilation failed")
+            print('\n'.join(output.splitlines()[-30:]))
+            return False
+        print("  [PASS] Phase compilation successful")
+        return True
     
     def _run_simulation(self, case_dir: Path, case_name: str) -> bool:
         """Run simulation executable"""
@@ -330,6 +541,15 @@ class TestRunner:
             executable_suffix = '.exe' if sys.platform == 'win32' else ''
             sim_executable = self.bin_dir / (
                 f"{case_number}sim_{velocity_set}_sm{cuda_arch}{executable_suffix}")
+            if not sim_executable.exists() and config.get('validation') == 'phase_field':
+                candidates = [
+                    path for path in self.bin_dir.glob(
+                        f"{case_number}sim_{velocity_set}_sm*")
+                    if path.suffix in ('', '.exe')
+                ]
+                if candidates:
+                    sim_executable = max(candidates,
+                                         key=lambda path: path.stat().st_mtime)
 
             output_dir = config.get('output_dir')
             if output_dir:
@@ -442,6 +662,77 @@ class TestRunner:
         
         passed = len(comparison['violations']) == 0
         return passed, comparison
+
+    def _validate_phase_results(self, measured: Dict, tolerances: Dict,
+                                config: Dict) -> Tuple[bool, Dict]:
+        """Validate AC conservation, boundedness, and scenario invariants."""
+        comparison = {'test_metrics': measured, 'violations': []}
+        precision = config.get('precision', 'single')
+        phase_tolerance = tolerances[
+            'MASS_DRIFT_FP64_TOL' if precision == 'double'
+            else 'MASS_DRIFT_FP32_TOL']
+        phase_tolerance = config.get('mass_drift_tolerance', phase_tolerance)
+        profile_tolerance = tolerances[
+            'PROFILE_L2_FP64_TOL' if precision == 'double'
+            else 'PROFILE_L2_FP32_TOL']
+
+        checks = [
+            ('FINITE_COUNT', measured.get('FINITE_COUNT', math.inf),
+             tolerances['FINITE_COUNT_TOL']),
+            ('PHASE_DRIFT', measured.get('PHASE_DRIFT', math.inf),
+             phase_tolerance),
+            ('SOURCE_SUM_NORMALIZED',
+             measured.get('SOURCE_SUM_NORMALIZED', math.inf),
+             tolerances['SOURCE_SUM_NORMALIZED_TOL']),
+            ('COMPRESSION_SUM_NORMALIZED',
+             measured.get('COMPRESSION_SUM_NORMALIZED', math.inf),
+             tolerances['SOURCE_SUM_NORMALIZED_TOL']),
+        ]
+        if not config.get('clipping_test'):
+            checks.append(('PHI_OVERSHOOT',
+                           measured.get('PHI_OVERSHOOT', math.inf),
+                           tolerances['PHI_OVERSHOOT_TOL']))
+        definitions = config.get('defines', [])
+        if (not config.get('clipping_test') and
+                not config.get('ch_regression') and
+                any('PHASE_TEST_PLANAR' in item for item in definitions)):
+            checks.append(('PROFILE_L2', measured.get('PROFILE_L2', math.inf),
+                           profile_tolerance))
+        if config.get('droplet_test'):
+            checks.append(('RADIUS_REL_DRIFT',
+                           measured.get('RADIUS_REL_DRIFT', math.inf),
+                           tolerances['RADIUS_REL_DRIFT_TOL']))
+        if config.get('curvature_test'):
+            checks.append(('CURVATURE_REL_ERROR',
+                           measured.get('CURVATURE_REL_ERROR', math.inf),
+                           tolerances['CURVATURE_REL_ERROR_TOL']))
+        if config.get('translation_test'):
+            checks.append(('PROFILE_L2', measured.get('PROFILE_L2', math.inf),
+                           tolerances['TRANSLATION_L2_TOL']))
+        if config.get('clipping_test'):
+            checks.append(('CLIP_ACCOUNTING_ERROR',
+                           measured.get('CLIP_ACCOUNTING_ERROR', math.inf),
+                           tolerances['CLIP_ACCOUNTING_ERROR_TOL']))
+            if measured.get('CLIP_ABSOLUTE_CORRECTION', 0.0) <= 0.0:
+                comparison['violations'].append(
+                    'clipping test did not trigger any clipping correction')
+        if config.get('capillary_test'):
+            checks.extend([
+                ('LAPLACE_REL_ERROR', measured.get('LAPLACE_REL_ERROR', math.inf),
+                 tolerances['LAPLACE_REL_ERROR_TOL']),
+                ('MAX_VELOCITY', measured.get('MAX_VELOCITY', math.inf),
+                 tolerances['SPURIOUS_VELOCITY_TOL']),
+            ])
+            if measured.get('PRESSURE_JUMP', -math.inf) <= 0.0:
+                comparison['violations'].append(
+                    'capillary pressure jump has the wrong sign')
+
+        for name, value, limit in checks:
+            print(f"  {name}: {value:.6e} (limit {limit:.6e})")
+            if not math.isfinite(value) or value > limit:
+                comparison['violations'].append(
+                    f"{name}: {value:.6e} > {limit:.6e}")
+        return len(comparison['violations']) == 0, comparison
 
     def _validate_particle_trajectory(
             self, case_dir: Path, config: Dict, test_results: Dict,
