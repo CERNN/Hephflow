@@ -14,7 +14,10 @@
 #define SOFT_SPHERE 
 #define FIRST_PARTICLE_COLLISION_SLOT 7
 #ifndef MAX_ACTIVE_PARTICLE_COLLISIONS
-#define MAX_ACTIVE_PARTICLE_COLLISIONS 16
+// Covers the 12-contact kissing limit for equal rigid spheres with additional
+// headroom for contact turnover. Polydisperse and non-spherical systems can
+// still require more; override at compile time when needed.
+#define MAX_ACTIVE_PARTICLE_COLLISIONS 24
 #endif
 #define MAX_ACTIVE_COLLISIONS (FIRST_PARTICLE_COLLISION_SLOT + MAX_ACTIVE_PARTICLE_COLLISIONS)
 
