@@ -595,6 +595,20 @@ struct ghostFacePtrs {
 };
 
 /**
+ * Physical A and its six stored-representation components on each directional block face. The halo
+ * supplies race-free neighbors for direct polymer-stress divergence and for
+ * representation-consistent auxiliary diffusion.
+ */
+struct PolymerStressHaloPtrs {
+    dfloat* X_0;
+    dfloat* X_1;
+    dfloat* Y_0;
+    dfloat* Y_1;
+    dfloat* Z_0;
+    dfloat* Z_1;
+};
+
+/**
  * @struct DeviceKernelParams
  * @brief Parameters for gpuMomCollisionStream kernel
  * @details Consolidates all parameters previously passed via scattered macros
@@ -612,6 +626,10 @@ struct DeviceKernelParams {
     int zStart;
     unsigned int zBlockOffset;              ///< Maps split-kernel launch Z to the local slab block index.
     bool mapBoundaryBlocks;                 ///< Maps a two-plane launch to local Z blocks 0 and N-1.
+
+    #ifdef CONFORMATION_PHYSICAL_A_HALO
+    PolymerStressHaloPtrs polymerStressHalo;
+    #endif
 
     gpuDirection rho_macro;
     gpuDirection ux_macro;

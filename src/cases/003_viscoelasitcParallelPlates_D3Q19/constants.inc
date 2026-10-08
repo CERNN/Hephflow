@@ -1,7 +1,7 @@
 /* ============================================================================
  * CONSTANTS CONFIGURATION
  * Case: 003_viscoelasitcParallelPlates_D3Q19
- * Description: Viscoelastic flow between parallel plates (FENE-P model)
+ * Description: Oldroyd-B flow between parallel plates
  * ========================================================================== */
 
 /* --------------------- SIMULATION SCALE --------------------- */
@@ -74,13 +74,11 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 #define LOAD_FIELD false
 #define LOAD_FIELD_STEP 0
 
-/* --------------------- FENE-P VISCOELASTIC MODEL CONFIGURATION --------------------- */
-#ifdef FENE_P
-    #define OLDROYD_B
+/* --------------------- VISCOELASTIC MODEL CONFIGURATION --------------------- */
+#ifdef VISCOELASTIC_MODEL
     #define CONVECTION_DIFFUSION_TRANSPORT
     #define D3G19
 
-    #define CONFORMATION_TENSOR    
     #define A_XX_DIST
     #define A_XY_DIST
     #define A_XZ_DIST
@@ -95,18 +93,20 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
     constexpr dfloat CONF_ZERO = (dfloat)(1.0);
 
     constexpr dfloat nu_p = SUM_VISC - VISC;
-    constexpr dfloat Weissenberg_number = 1.0;
+    constexpr dfloat Weissenberg_number = 5.0;
 
     constexpr dfloat LAMBDA = Weissenberg_number*t_c;
     constexpr dfloat inv_lambda = 1.0/LAMBDA;
-    constexpr dfloat fenep_re = 10.0;
+    // Constitutive-model parameters. Keep inactive alternatives here to make
+    // controlled comparisons without losing their selected values.
+    // constexpr dfloat FENE_L2 = 40.0;
+    // constexpr dfloat GIESEKUS_ALPHA = 0.3;
+    // constexpr dfloat PTT_EPSILON = 0.1;
 
     static inline fluidPhaseProps makeCasePhaseProps(){
         fluidPhaseProps pp{};
-        pp.nnf.type = FLUID_BINGHAM;
+        pp.nnf.type = FLUID_NEWTONIAN;
         pp.nnf.hasLambda = false;
-        pp.nnf.u.bingham.s_y = 0.0_df;
-        pp.nnf.u.bingham.omega_p = 1.0_df / TAU;
         pp.ve.type = VE_OLDROYD_B;
         pp.ve.eta_p = nu_p;
         pp.ve.lambda = LAMBDA;
@@ -116,7 +116,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
     #define CASE_PHASE_PROPS makeCasePhaseProps()
 
     //ADVECTION-DIFFUSIONS CONSTANTS
-    constexpr dfloat CONF_DIFFUSIVITY_RATIO = 2000; //OR Pr in malaspinas
+    constexpr dfloat CONF_DIFFUSIVITY_RATIO = 500; //OR Pr in malaspinas
     constexpr dfloat CONF_DIFFUSIVITY = VISC/CONF_DIFFUSIVITY_RATIO; // alpha
 
     constexpr dfloat CONF_DIFF_REF = (1.0/6);
@@ -127,4 +127,4 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
     constexpr dfloat CONF_DIFF_FLUC = CONF_DIFFUSIVITY - CONF_DIFF_REF;
     constexpr dfloat CONF_AAA = (3*CONF_DIFF_FLUC*CONF_OMEGA);
     constexpr dfloat CONF_DIFF_FLUC_COEF = CONF_AAA/(1.0+CONF_AAA);
-#endif
+#endif // VISCOELASTIC_MODEL

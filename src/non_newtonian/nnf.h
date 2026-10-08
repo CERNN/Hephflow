@@ -14,6 +14,7 @@
 #include <cmath>
 #include "../var.h"
 #include "nnf_types.h"
+#include "log_conformation_math.cuh"
 
 // Provide PHASE1/PHASE2 aliases when a case only defines CASE_PHASE_PROPS
 #ifdef CASE_PHASE_PROPS
@@ -374,13 +375,32 @@ dfloat __forceinline__ calcOmega_thixo(const fluidProps& fp, dfloat lambda, dflo
 // VISCOELASTIC FLUID DISPATCH
 // ============================================================================
 
+__host__ __device__ __forceinline__ dfloat calcVePolymerModulus(
+    const veFluidProps& vp)
+{
+    return vp.type != VE_NEWTONIAN && vp.lambda > 0.0_df
+        ? vp.eta_p / vp.lambda : 0.0_df;
+}
 
-// Forward declarations
-__host__ __device__ veRelaxTerm __forceinline__ calcVeRelaxationTerm_OldroydB(dfloat inv_lambda, dfloat Axx, dfloat Axy, dfloat Axz, dfloat Ayy, dfloat Ayz, dfloat Azz);
-__host__ __device__ veRelaxTerm __forceinline__ calcVeRelaxationTerm_FeneP(dfloat L_sq, dfloat inv_lambda, dfloat Axx, dfloat Axy, dfloat Axz, dfloat Ayy, dfloat Ayz, dfloat Azz);
-__host__ __device__ veRelaxTerm __forceinline__ calcVeRelaxationTerm_Giesekus(dfloat alpha, dfloat inv_lambda, dfloat Axx, dfloat Axy, dfloat Axz, dfloat Ayy, dfloat Ayz, dfloat Azz);
-__host__ __device__ veRelaxTerm __forceinline__ calcVeRelaxationTerm_PttLinear(dfloat epsilon, dfloat inv_lambda, dfloat Axx, dfloat Axy, dfloat Axz, dfloat Ayy, dfloat Ayz, dfloat Azz);
-__host__ __device__ veRelaxTerm __forceinline__ calcVeRelaxationTerm_PttExponential(dfloat epsilon, dfloat inv_lambda, dfloat Axx, dfloat Axy, dfloat Axz, dfloat Ayy, dfloat Ayz, dfloat Azz);
+__host__ __device__ __forceinline__ bool validateVeFluidProps(
+    const veFluidProps& vp)
+{
+    if (vp.type == VE_NEWTONIAN) return vp.eta_p >= 0.0_df;
+    if (vp.eta_p < 0.0_df || vp.lambda <= 0.0_df) return false;
+    if ((vp.type == VE_FENE_P || vp.type == VE_FENE_CR) && vp.fene_L2 <= 3.0_df)
+        return false;
+    if (vp.type == VE_GIESEKUS &&
+        (vp.giesekus_alpha < 0.0_df || vp.giesekus_alpha > 0.5_df)) return false;
+    if ((vp.type == VE_PTT_LINEAR || vp.type == VE_PTT_EXPONENTIAL) &&
+        vp.ptt_epsilon < 0.0_df) return false;
+    return true;
+}
+
+__host__ __device__ __forceinline__ dfloat calcVePeterlinFactor(
+    const veFluidProps& vp, const Sym3& A)
+{
+    return (vp.fene_L2 - 3.0_df) / (vp.fene_L2 - A.trace());
+}
 
 __host__ __device__
 veFluidProps __forceinline__ blendVeProps(
@@ -407,8 +427,9 @@ veFluidProps __forceinline__ blendVeProps(
     } else if (B.type == VE_NEWTONIAN) {
         vp.type = A.type;
     } else {
-        // Edge Case: Mixing two DIFFERENT viscoelastic models (e.g., FENE-P and PTT).
-        //TODO: Need figure out how to implement
+        // Unsupported mixed constitutive laws are made inert deterministically;
+        // host-side case validation should reject this configuration.
+        vp.type = VE_NEWTONIAN;
     }
 
     // 2. Interpolate macroscopic properties
@@ -435,14 +456,21 @@ veFluidProps __forceinline__ blendVeProps(
     // 3. Handle internal structural parameters
     switch (vp.type) {
         case VE_FENE_P:
-            vp.u.fenep.L_sq = inv_h * A.u.fenep.L_sq + h * B.u.fenep.L_sq;
+        case VE_FENE_CR:
+            vp.fene_L2 = A.type == VE_NEWTONIAN ? B.fene_L2
+                       : B.type == VE_NEWTONIAN ? A.fene_L2
+                       : inv_h*A.fene_L2+h*B.fene_L2;
             break;
         case VE_GIESEKUS:
-            vp.u.giesekus.alpha = inv_h * A.u.giesekus.alpha + h * B.u.giesekus.alpha;
+            vp.giesekus_alpha = A.type == VE_NEWTONIAN ? B.giesekus_alpha
+                              : B.type == VE_NEWTONIAN ? A.giesekus_alpha
+                              : inv_h*A.giesekus_alpha+h*B.giesekus_alpha;
             break;
         case VE_PTT_LINEAR:
         case VE_PTT_EXPONENTIAL:
-            vp.u.ptt.epsilon = inv_h * A.u.ptt.epsilon + h * B.u.ptt.epsilon;
+            vp.ptt_epsilon = A.type == VE_NEWTONIAN ? B.ptt_epsilon
+                           : B.type == VE_NEWTONIAN ? A.ptt_epsilon
+                           : inv_h*A.ptt_epsilon+h*B.ptt_epsilon;
             break;
         default: 
             break;
@@ -451,126 +479,59 @@ veFluidProps __forceinline__ blendVeProps(
     return vp;
 }
 
-__host__ __device__
-veRelaxTerm __forceinline__ calcVeRelaxationTerm(
-    const veFluidProps& vp, dfloat inv_lambda_local,
-    dfloat Axx, dfloat Axy, dfloat Axz,
-    dfloat Ayy, dfloat Ayz, dfloat Azz)
+__host__ __device__ __forceinline__ Sym3 calcVeRelaxation(
+    const veFluidProps& vp, const Sym3& A)
 {
+    if (vp.type == VE_NEWTONIAN || vp.lambda <= 0.0_df) return Sym3{};
+    const dfloat invLambda = 1.0_df / vp.lambda;
+    const Sym3 B = A - veIdentity();
     switch (vp.type) {
-    case VE_NEWTONIAN:       return veRelaxTerm{};
-    case VE_OLDROYD_B:       return calcVeRelaxationTerm_OldroydB(inv_lambda_local, Axx, Axy, Axz, Ayy, Ayz, Azz);
-    case VE_FENE_P:          return calcVeRelaxationTerm_FeneP(vp.u.fenep.L_sq, inv_lambda_local, Axx, Axy, Axz, Ayy, Ayz, Azz);
-    case VE_GIESEKUS:        return calcVeRelaxationTerm_Giesekus(vp.u.giesekus.alpha, inv_lambda_local, Axx, Axy, Axz, Ayy, Ayz, Azz);
-    case VE_PTT_LINEAR:      return calcVeRelaxationTerm_PttLinear(vp.u.ptt.epsilon, inv_lambda_local, Axx, Axy, Axz, Ayy, Ayz, Azz);
-    case VE_PTT_EXPONENTIAL: return calcVeRelaxationTerm_PttExponential(vp.u.ptt.epsilon, inv_lambda_local, Axx, Axy, Axz, Ayy, Ayz, Azz);
-    default: return veRelaxTerm{};
+    case VE_OLDROYD_B:
+        return B * (-invLambda);
+    case VE_FENE_P: {
+        const dfloat f = calcVePeterlinFactor(vp, A);
+        return (veIdentity() - A*f) * invLambda;
+    }
+    case VE_FENE_CR: {
+        const dfloat f = calcVePeterlinFactor(vp, A);
+        return B * (-f*invLambda);
+    }
+    case VE_GIESEKUS:
+        return (B + veSquareSymmetric(B)*vp.giesekus_alpha) * (-invLambda);
+    case VE_PTT_LINEAR: {
+        const dfloat f = 1.0_df + vp.ptt_epsilon*(A.trace()-3.0_df);
+        return B * (-f*invLambda);
+    }
+    case VE_PTT_EXPONENTIAL: {
+        const dfloat f = EXP_FUNCTION(vp.ptt_epsilon*(A.trace()-3.0_df));
+        return B * (-f*invLambda);
+    }
+    default:
+        return Sym3{};
     }
 }
 
-// ---- Oldroyd-B ---------------------------------------------------------------
-__host__ __device__
-veRelaxTerm __forceinline__ calcVeRelaxationTerm_OldroydB(
-    dfloat inv_lambda,
-    dfloat Axx, dfloat Axy, dfloat Axz,
-    dfloat Ayy, dfloat Ayz, dfloat Azz)
+__host__ __device__ __forceinline__ Sym3 calcVeStressReduced(
+    const veFluidProps& vp, const Sym3& A)
 {
-    veRelaxTerm R;
-    R.xx = inv_lambda * (1.0_df - Axx); 
-    R.yy = inv_lambda * (1.0_df - Ayy);
-    R.zz = inv_lambda * (1.0_df - Azz); 
-    R.xy = inv_lambda * (-Axy);
-    R.xz = inv_lambda * (-Axz);         
-    R.yz = inv_lambda * (-Ayz);
-    return R;
+    const Sym3 B = A - veIdentity();
+    if (vp.type == VE_FENE_P)
+        return A*calcVePeterlinFactor(vp, A) - veIdentity();
+    if (vp.type == VE_FENE_CR)
+        return B*calcVePeterlinFactor(vp, A);
+    return vp.type == VE_NEWTONIAN ? Sym3{} : B;
 }
 
-// ---- FENE-P ------------------------------------------------------------------
-// aa = b/(b-trA),  bb = b/(b-3),  b = L_sq. Recovers Oldroyd-B as L_sq->inf.
-__host__ __device__
-veRelaxTerm __forceinline__ calcVeRelaxationTerm_FeneP(
-    dfloat L_sq, dfloat inv_lambda,
-    dfloat Axx, dfloat Axy, dfloat Axz,
-    dfloat Ayy, dfloat Ayz, dfloat Azz)
+__host__ __device__ __forceinline__ Sym3 calcVeStressReducedDifferential(
+    const veFluidProps& vp, const Sym3& A, const Sym3& dA)
 {
-    dfloat trA = Axx + Ayy + Azz;
-    dfloat aa  = 1.0_df / (1.0_df - trA   / L_sq);
-    dfloat bb  = 1.0_df / (1.0_df - 3.0_df / L_sq);
-    const dfloat aa_lambda = inv_lambda * aa;
-    veRelaxTerm R;
-    R.xx = inv_lambda * (bb - aa * Axx); 
-    R.yy = inv_lambda * (bb - aa * Ayy);
-    R.zz = inv_lambda * (bb - aa * Azz); 
-    R.xy = -aa_lambda * Axy;
-    R.xz = -aa_lambda * Axz;
-    R.yz = -aa_lambda * Ayz;
-    return R;
-}
-
-// ---- Giesekus ----------------------------------------------------------------
-// G = (1/lambda)*(I - A - alpha*(A-I)^2).  alpha=0 -> Oldroyd-B.
-__host__ __device__
-veRelaxTerm __forceinline__ calcVeRelaxationTerm_Giesekus(
-    dfloat alpha, dfloat inv_lambda,
-    dfloat Axx, dfloat Axy, dfloat Axz,
-    dfloat Ayy, dfloat Ayz, dfloat Azz)
-{
-    dfloat A2xx = Axx*Axx + Axy*Axy + Axz*Axz;
-    dfloat A2yy = Axy*Axy + Ayy*Ayy + Ayz*Ayz;
-    dfloat A2zz = Axz*Axz + Ayz*Ayz + Azz*Azz;
-    dfloat A2xy = Axx*Axy + Axy*Ayy + Axz*Ayz;
-    dfloat A2xz = Axx*Axz + Axy*Ayz + Axz*Azz;
-    dfloat A2yz = Axy*Axz + Ayy*Ayz + Ayz*Azz;
-    dfloat c1 = 1.0_df - alpha, c2 = 1.0_df - 2.0_df * alpha;
-    veRelaxTerm R;
-    R.xx = inv_lambda * (c1     - c2*Axx - alpha*A2xx);
-    R.yy = inv_lambda * (c1     - c2*Ayy - alpha*A2yy);
-    R.zz = inv_lambda * (c1     - c2*Azz - alpha*A2zz);
-    R.xy = inv_lambda * (0.0_df - c2*Axy - alpha*A2xy);
-    R.xz = inv_lambda * (0.0_df - c2*Axz - alpha*A2xz);
-    R.yz = inv_lambda * (0.0_df - c2*Ayz - alpha*A2yz);
-    return R;
-}
-
-// ---- PTT linear --------------------------------------------------------------
-// f(trA) = 1 + epsilon*(trA - 3).  epsilon=0 -> Oldroyd-B.
-__host__ __device__
-veRelaxTerm __forceinline__ calcVeRelaxationTerm_PttLinear(
-    dfloat epsilon, dfloat inv_lambda,
-    dfloat Axx, dfloat Axy, dfloat Axz,
-    dfloat Ayy, dfloat Ayz, dfloat Azz)
-{
-    dfloat f = 1.0_df + epsilon * (Axx + Ayy + Azz - 3.0_df);
-    const dfloat relaxation = inv_lambda * f;
-    veRelaxTerm R;
-    R.xx = relaxation * (1.0_df - Axx);
-    R.yy = relaxation * (1.0_df - Ayy);
-    R.zz = relaxation * (1.0_df - Azz);
-    R.xy = -relaxation * Axy;
-    R.xz = -relaxation * Axz;
-    R.yz = -relaxation * Ayz;
-    return R;
-}
-
-// ---- PTT exponential ---------------------------------------------------------
-// f(trA) = exp(epsilon*(trA - 3)).  epsilon=0 -> Oldroyd-B.
-__host__ __device__
-veRelaxTerm __forceinline__ calcVeRelaxationTerm_PttExponential(
-    dfloat epsilon, dfloat inv_lambda,
-    dfloat Axx, dfloat Axy, dfloat Axz,
-    dfloat Ayy, dfloat Ayz, dfloat Azz)
-{
-    dfloat f = EXP_FUNCTION(epsilon * (Axx + Ayy + Azz - 3.0_df));
-    const dfloat relaxation = inv_lambda * f;
-    veRelaxTerm R;
-    R.xx = relaxation * (1.0_df - Axx);
-    R.yy = relaxation * (1.0_df - Ayy);
-    R.zz = relaxation * (1.0_df - Azz);
-    R.xy = -relaxation * Axy;
-    R.xz = -relaxation * Axz;
-    R.yz = -relaxation * Ayz;
-    return R;
+    if (vp.type != VE_FENE_P && vp.type != VE_FENE_CR)
+        return vp.type == VE_NEWTONIAN ? Sym3{} : dA;
+    const dfloat denominator = vp.fene_L2 - A.trace();
+    const dfloat f = calcVePeterlinFactor(vp, A);
+    const dfloat df = f*dA.trace()/denominator;
+    const Sym3 base = vp.type == VE_FENE_P ? A : (A-veIdentity());
+    return dA*f + base*df;
 }
 
 #endif // __NNF_H
-

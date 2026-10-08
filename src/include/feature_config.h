@@ -46,6 +46,126 @@
 
 /* ============================== MODEL MACROS ============================= */
 
+// FENE_P historically enabled the entire conformation subsystem. Keep it as
+// a compatibility alias while allowing cases to use the model-neutral name.
+#if defined(FENE_P) && !defined(VISCOELASTIC_MODEL)
+    #define VISCOELASTIC_MODEL
+#endif
+
+#if defined(VISCOELASTIC_MODEL) && !defined(CONFORMATION_TENSOR)
+    #define CONFORMATION_TENSOR
+#endif
+
+#if defined(CONFORMATION_TENSOR)
+    // Canonical conformation representation selector.  The legacy symbolic
+    // defines remain accepted because existing cases and validation scripts
+    // pass CONFORMATION_LOG on the compiler command line.
+    #define CONF_REP_STANDARD 0
+    #define CONF_REP_LOG      1
+    #define CONF_REP_SQRT     2
+
+    #if (defined(CONFORMATION_STANDARD) + defined(CONFORMATION_LOG) + \
+         defined(CONFORMATION_SQRT)) > 1
+        #error "Select exactly one conformation representation"
+    #endif
+
+    #ifndef CONF_REPRESENTATION
+        #if defined(CONFORMATION_LOG)
+            #define CONF_REPRESENTATION CONF_REP_LOG
+        #elif defined(CONFORMATION_SQRT)
+            #define CONF_REPRESENTATION CONF_REP_SQRT
+        #else
+            #define CONF_REPRESENTATION CONF_REP_STANDARD
+        #endif
+    #endif
+
+    #if CONF_REPRESENTATION == CONF_REP_STANDARD
+        #if defined(CONFORMATION_LOG) || defined(CONFORMATION_SQRT)
+            #error "CONF_REPRESENTATION conflicts with a legacy representation define"
+        #endif
+        #ifndef CONFORMATION_STANDARD
+            #define CONFORMATION_STANDARD
+        #endif
+    #elif CONF_REPRESENTATION == CONF_REP_LOG
+        #if defined(CONFORMATION_STANDARD) || defined(CONFORMATION_SQRT)
+            #error "CONF_REPRESENTATION conflicts with a legacy representation define"
+        #endif
+        #ifndef CONFORMATION_LOG
+            #define CONFORMATION_LOG
+        #endif
+    #elif CONF_REPRESENTATION == CONF_REP_SQRT
+        #if defined(CONFORMATION_STANDARD) || defined(CONFORMATION_LOG)
+            #error "CONF_REPRESENTATION conflicts with a legacy representation define"
+        #endif
+        #ifndef CONFORMATION_SQRT
+            #define CONFORMATION_SQRT
+        #endif
+    #else
+        #error "Invalid CONF_REPRESENTATION"
+    #endif
+
+    #define CONF_FORCE_GRAD_EXISTING           0
+    #define CONF_FORCE_GRAD_FRECHET            1
+    #define CONF_FORCE_GRAD_DIRECT_STRESS_HALO 2
+
+    // Compatibility alias for validation scripts and cases written during
+    // development of the direct-halo formulation.
+    #define CONF_FORCE_GRAD_DIRECT_PHYSICAL_HALO CONF_FORCE_GRAD_DIRECT_STRESS_HALO
+
+    #ifndef CONF_FORCE_GRADIENT
+        #if CONF_REPRESENTATION == CONF_REP_LOG
+            #define CONF_FORCE_GRADIENT CONF_FORCE_GRAD_FRECHET
+        #elif CONF_REPRESENTATION == CONF_REP_SQRT
+            #define CONF_FORCE_GRADIENT CONF_FORCE_GRAD_DIRECT_STRESS_HALO
+        #else
+            #define CONF_FORCE_GRADIENT CONF_FORCE_GRAD_EXISTING
+        #endif
+    #endif
+
+    #if CONF_FORCE_GRADIENT < CONF_FORCE_GRAD_EXISTING || \
+        CONF_FORCE_GRADIENT > CONF_FORCE_GRAD_DIRECT_STRESS_HALO
+        #error "Invalid CONF_FORCE_GRADIENT"
+    #endif
+    #if CONF_REPRESENTATION == CONF_REP_STANDARD && \
+        CONF_FORCE_GRADIENT == CONF_FORCE_GRAD_FRECHET
+        #error "Frechet force gradients are only defined for log conformation"
+    #endif
+    #if CONF_REPRESENTATION == CONF_REP_SQRT && \
+        CONF_FORCE_GRADIENT != CONF_FORCE_GRAD_DIRECT_STRESS_HALO
+        #error "Square-root conformation requires the direct polymer-stress halo force path"
+    #endif
+
+    #if CONF_FORCE_GRADIENT == CONF_FORCE_GRAD_DIRECT_STRESS_HALO
+        #define CONFORMATION_DIRECT_STRESS_HALO
+    #endif
+
+    // Transformed representations need immutable neighboring physical-A values
+    // to map the auxiliary LBM diffusion back to the same physical equation as
+    // the standard representation.  The direct force path reuses this halo.
+    #if defined(CONFORMATION_LOG) || defined(CONFORMATION_SQRT) || \
+        defined(CONFORMATION_DIRECT_STRESS_HALO)
+        #define CONFORMATION_PHYSICAL_A_HALO
+        #if HEPHFLOW_N_GPUS != 1
+            #error "The physical-A halo is currently single-GPU only"
+        #endif
+        #if defined(PHI_DIST)
+            #error "The physical-A halo has not been audited for phase blending"
+        #endif
+        #if defined(CURVED_BOUNDARY_CONDITION)
+            #error "The physical-A halo has not been audited for curved boundaries"
+        #endif
+        #if defined(OVERLAP_HALO_TRANSFERS)
+            #error "The physical-A halo is incompatible with split/overlapped launches"
+        #endif
+    #endif
+
+    #if defined(VE_FORCE_LEGACY_COEFFICIENT) && defined(VE_FORCE_FULL_DIVERGENCE)
+        #error "Select exactly one viscoelastic force policy"
+    #elif !defined(VE_FORCE_LEGACY_COEFFICIENT) && !defined(VE_FORCE_FULL_DIVERGENCE)
+        #define VE_FORCE_LEGACY_COEFFICIENT
+    #endif
+#endif
+
 #if defined(POWERLAW) || defined(BINGHAM) || defined(BI_VISCOSITY) || defined(HERSCHEL_BULKLEY) || defined(KEE_TURCOTEE)
     #define OMEGA_FIELD
     #define NON_NEWTONIAN_FLUID

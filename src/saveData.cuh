@@ -42,9 +42,8 @@
 #include "globalStructs.h"
 #include <atomic>
 
-#ifdef OMEGA_FIELD
 #include "non_newtonian/nnf_types.h"
-#endif //OMEGA_FIELD
+#include "non_newtonian/conformation_representation.cuh"
 
 __host__
 std::filesystem::path getExecutablePath();

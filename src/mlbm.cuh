@@ -21,6 +21,7 @@
 #include "include/interface.h"
 #include "nodeTypeMap.h"
 #include "non_newtonian/nnf.h"
+#include "non_newtonian/conformation_representation.cuh"
 #include "fragments/lambdaTransport/lambda_evolution.cuh"
 #include "non_newtonian/propertyInterpolation.cuh"
 
@@ -38,6 +39,21 @@
  */
 __global__
 void gpuMomCollisionStream(DeviceKernelParams params);
+
+#ifdef CONFORMATION_PHYSICAL_A_HALO
+/**
+ * @brief Reconstructs physical A and its stored representation on CUDA-block faces for the next collision generation.
+ *
+ * This is intentionally a post-transport kernel: collision reads generation n, transport produces n+1, and this
+ * kernel publishes the face values for generation n+1 after every block has finished writing its conformation moments.
+ *
+ * @param fMom Current device moment array containing the stored conformation representation.
+ * @param halo Face buffers for the AB generation being reconstructed.
+ * @param localNZ Number of lattice planes owned by this GPU.
+ */
+__global__ void gpuFillPolymerStressHalo(
+    const dfloat* fMom, PolymerStressHaloPtrs halo, size_t localNZ);
+#endif // CONFORMATION_PHYSICAL_A_HALO
 
 #ifdef LOCAL_FORCES
 /**

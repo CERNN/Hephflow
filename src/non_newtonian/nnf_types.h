@@ -45,19 +45,20 @@ struct fluidProps {
  *
  * All models evolve the polymer conformation tensor A via:
  *   DA/Dt = R_ij(A, model_params) + (A.du + du^T.A)
- * where R_ij is the model-specific relaxation term dispatched by
- * calcVeRelaxationTerm() in nnf.h.
+ * where R(A) is the model-specific relaxation term dispatched by
+ * calcVeRelaxation() in nnf.h.
  *
  * Adding a new model:
  *  1. Add an entry here.
- *  2. Add its parameters to the veFluidProps union below.
- *  3. Add a case to calcVeRelaxationTerm() in nnf.h.
+ *  2. Add its parameters to veFluidProps below.
+ *  3. Add cases to the relaxation and reduced-stress functions in nnf.h.
  *  4. Provide a makeCasePhaseProps*() factory in the case's constants.inc.
  */
 enum veFluidType {
     VE_NEWTONIAN,           ///< No polymer (eta_p = 0); use for the Newtonian phase in multiphase
     VE_OLDROYD_B,           ///< Oldroyd-B: linear, infinite extensibility
     VE_FENE_P,              ///< FENE-P: finitely extensible nonlinear (Peterlin closure)
+    VE_FENE_CR,             ///< FENE-CR: constant-shear-viscosity finite extensibility
     VE_GIESEKUS,            ///< Giesekus: quadratic relaxation, shear-thinning polymers
     VE_PTT_LINEAR,          ///< Phan-Thien-Tanner with linear trace function
     VE_PTT_EXPONENTIAL,     ///< Phan-Thien-Tanner with exponential trace function
@@ -66,13 +67,27 @@ enum veFluidType {
 /**
  * @brief Six independent components of the symmetric 3×3 relaxation term R_ij.
  *
- * Returned by calcVeRelaxationTerm(). The upper-convected derivative contribution
- * (A.du + du^T.A) is added separately by the caller in conformation_evolution.inc.
+ * Compact symmetric tensor used for conformation, relaxation, and reduced
+ * polymer stress. Named members are declared in legacy memory order, while the
+ * constructor follows matrix-reading order: xx, xy, xz, yy, yz, zz.
  */
-struct veRelaxTerm {
+struct Sym3 {
     dfloat xx, yy, zz, xy, xz, yz;
-    __host__ __device__ veRelaxTerm()
-        : xx(0.0f), yy(0.0f), zz(0.0f), xy(0.0f), xz(0.0f), yz(0.0f) {}
+    __host__ __device__ constexpr Sym3(
+        dfloat xx_ = 0.0_df, dfloat xy_ = 0.0_df, dfloat xz_ = 0.0_df,
+        dfloat yy_ = 0.0_df, dfloat yz_ = 0.0_df, dfloat zz_ = 0.0_df)
+        : xx(xx_), yy(yy_), zz(zz_), xy(xy_), xz(xz_), yz(yz_) {}
+
+    __host__ __device__ constexpr dfloat trace() const { return xx + yy + zz; }
+    __host__ __device__ constexpr Sym3 operator+(const Sym3& b) const {
+        return Sym3(xx+b.xx, xy+b.xy, xz+b.xz, yy+b.yy, yz+b.yz, zz+b.zz);
+    }
+    __host__ __device__ constexpr Sym3 operator-(const Sym3& b) const {
+        return Sym3(xx-b.xx, xy-b.xy, xz-b.xz, yy-b.yy, yz-b.yz, zz-b.zz);
+    }
+    __host__ __device__ constexpr Sym3 operator*(dfloat s) const {
+        return Sym3(s*xx, s*xy, s*xz, s*yy, s*yz, s*zz);
+    }
 };
 
 /**
@@ -92,11 +107,9 @@ struct veFluidProps {
     dfloat      eta_p;  ///< Polymeric viscosity
     dfloat      lambda; ///< Relaxation time
 
-    union {
-        struct { dfloat L_sq;    } fenep;     ///< FENE-P: max extensibility squared (L_max^2)
-        struct { dfloat alpha;   } giesekus;  ///< Giesekus: mobility parameter (0 < α < 0.5)
-        struct { dfloat epsilon; } ptt;       ///< PTT: extensibility parameter (epsilson > 0)
-    } u;
+    dfloat fene_L2;         ///< FENE-P/FENE-CR maximum extensibility squared
+    dfloat giesekus_alpha; ///< Giesekus mobility parameter
+    dfloat ptt_epsilon;    ///< PTT extensibility parameter
 };
 
 // ============================================================================

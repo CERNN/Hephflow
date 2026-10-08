@@ -23,10 +23,15 @@ switch (nodeType) {
     {
         // Interior neighbour is at (y-1): load its Ābar
         // (sum of its gNode populations, not the physical A)
+        #if defined(CONFORMATION_LOG) || defined(CONFORMATION_SQRT)
+        const double AbarInt = veExtrapolateStoredFromPhysicalAY(
+            fMom,threadIdx.x,threadIdx.y,threadIdx.z,blockIdx.x,blockIdx.y,blockIdx.z,-1).xx;
+        #else
         const double AbarInt1 = fMom[idxMom(threadIdx.x, threadIdx.y - 1, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         const double AbarInt2 = fMom[idxMom(threadIdx.x, threadIdx.y - 2, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         const double AbarInt3 = fMom[idxMom(threadIdx.x, threadIdx.y - 3, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         const double AbarInt = 3.0 * AbarInt1 - 3.0 * AbarInt2 + AbarInt3;
+        #endif
 
         // Missing populations: ξ_y > 0  →  indices 3,7,11,14,17
         // Known  opposites   : ξ_y < 0  →  indices 4,8,12,13,18
@@ -83,10 +88,15 @@ switch (nodeType) {
     case SOUTH:
     {
         // Interior neighbour is at (y+1)
+        #if defined(CONFORMATION_LOG) || defined(CONFORMATION_SQRT)
+        const double AbarInt = veExtrapolateStoredFromPhysicalAY(
+            fMom,threadIdx.x,threadIdx.y,threadIdx.z,blockIdx.x,blockIdx.y,blockIdx.z,1).xx;
+        #else
         const double AbarInt1 = fMom[idxMom(threadIdx.x, threadIdx.y + 1, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         const double AbarInt2 = fMom[idxMom(threadIdx.x, threadIdx.y + 2, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         const double AbarInt3 = fMom[idxMom(threadIdx.x, threadIdx.y + 3, threadIdx.z, A_XX_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         const double AbarInt = 3.0 * AbarInt1 - 3.0 * AbarInt2 + AbarInt3;
+        #endif
 
         // Missing: ξ_y < 0  →  4,8,12,13,18;  opp: 3,7,11,14,17
             gNode[ 3] = -gNode[ 4] + 2.0 * W_FACE * AbarInt;   // ξ=(0,-1, 0)

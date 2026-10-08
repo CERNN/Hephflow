@@ -1,7 +1,7 @@
 /* ============================================================================
  * OUTPUT CONFIGURATION
  * Case: 003_viscoelasitcParallelPlates_D3Q19
- * Description: Viscoelastic flow between parallel plates (FENE-P model)
+ * Description: Oldroyd-B flow between parallel plates
  * ========================================================================== */
 
 /* --------------------- FILE IDENTIFICATION --------------------- */

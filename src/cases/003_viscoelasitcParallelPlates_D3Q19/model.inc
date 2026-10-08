@@ -1,7 +1,7 @@
 /* ============================================================================
  * MODEL CONFIGURATION
  * Case: 003_viscoelasitcParallelPlates_D3Q19
- * Description: Viscoelastic flow between parallel plates (FENE-P model)
+ * Description: Oldroyd-B flow between parallel plates
  * ========================================================================== */
 
 /* --------------------- VELOCITY SET --------------------- */
@@ -14,7 +14,7 @@
 
 /* --------------------- PHYSICS MODELS --------------------- */
 // Enable specific physics models (uncomment to activate)
-#define FENE_P                        // FENE-P viscoelastic model
+#define VISCOELASTIC_MODEL            // Oldroyd-B is selected in constants.inc
 //#define BINGHAM                       // Bingham viscoplastic model
 //#define THERMAL_MODEL                 // Thermal coupling
 //#define PARTICLE_MODEL                // IBM particle simulation
@@ -31,6 +31,3 @@
                                // (useful for turbulence)
 
 #define TREAT_DATA_INCLUDE
-
-
-

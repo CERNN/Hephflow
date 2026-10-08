@@ -295,6 +295,30 @@ g_idxUZ(
 }
 #endif //COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 
+#ifdef CONFORMATION_PHYSICAL_A_HALO
+// Each directional face stores physical A followed by the stored tensor, both in Sym3 component order.
+__host__ __device__ __forceinline__ size_t
+g_idxPolymerStressHaloX(
+    int ty, int tz, int component, int bx, int by, int bz)
+{
+    return component + 12*(ty + BLOCK_NY*(tz + BLOCK_NZ*(bx + NUM_BLOCK_X*(by + NUM_BLOCK_Y*bz))));
+}
+
+__host__ __device__ __forceinline__ size_t
+g_idxPolymerStressHaloY(
+    int tx, int tz, int component, int bx, int by, int bz)
+{
+    return component + 12*(tx + BLOCK_NX*(tz + BLOCK_NZ*(bx + NUM_BLOCK_X*(by + NUM_BLOCK_Y*bz))));
+}
+
+__host__ __device__ __forceinline__ size_t
+g_idxPolymerStressHaloZ(
+    int tx, int ty, int component, int bx, int by, int bz)
+{
+    return component + 12*(tx + BLOCK_NX*(ty + BLOCK_NY*(bx + NUM_BLOCK_X*(by + NUM_BLOCK_Y*bz))));
+}
+#endif
+
 #ifdef COMPUTE_VEL_GRADIENT_FINITE_DIFFERENCE
 __device__ int __forceinline__
 g_idxConfX(

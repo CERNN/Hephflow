@@ -133,6 +133,19 @@ int main(int argc, char** argv) {
             #endif
             #endif
             #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
+            #ifdef CONFORMATION_TENSOR
+            if (!validateVeFluidProps(devices[g].phasePropsA.ve)
+                #ifdef PHI_DIST
+                || !validateVeFluidProps(devices[g].phasePropsB.ve)
+                || (devices[g].phasePropsA.ve.type != VE_NEWTONIAN &&
+                    devices[g].phasePropsB.ve.type != VE_NEWTONIAN &&
+                    devices[g].phasePropsA.ve.type != devices[g].phasePropsB.ve.type)
+                #endif
+            ) {
+                fprintf(stderr, "Invalid or unsupported viscoelastic phase properties\n");
+                abort();
+            }
+            #endif
             
             #ifdef DENSITY_CORRECTION
                 devices[g].allocateDensityCorrectionMemory(g);
@@ -336,6 +349,14 @@ int main(int argc, char** argv) {
     }
     #endif
 
+    #ifdef CONFORMATION_PHYSICAL_A_HALO
+    // AB time-level contract: collision reads generation n, transport produces n+1, and the post-kernel
+    // reconstruction below writes the polymer-stress halo for generation n+1. Seed generation n here from
+    // initialized or checkpoint-restored moments; this derived halo is never checkpointed.
+    devices[0].fillPolymerStressHaloDeviceField(gridBlock, threadBlock, step & 1u, 0, streamsLBM[0]);
+    checkCudaErrors(cudaStreamSynchronize(streamsLBM[0]));
+    #endif
+
     #ifdef OVERLAP_HALO_TRANSFERS
     // Seed the first timestep's compute dependency.
     for (int g = 0; g < N_GPUS; ++g) {
@@ -532,6 +553,12 @@ int main(int argc, char** argv) {
             for (auto &t : threads) { t.join(); }
             threads.clear();
         }
+
+        #ifdef CONFORMATION_PHYSICAL_A_HALO
+        // All conformation-mutating work for this step is ordered before this reconstruction on the same stream.
+        // The next collision reads the alternate polymer-stress halo generation corresponding to A^(n+1).
+        devices[0].fillPolymerStressHaloDeviceField(gridBlock, threadBlock, (step + 1u) & 1u, 0, streamsLBM[0]);
+        #endif
 
         #ifdef OVERLAP_HALO_TRANSFERS
         for (int g = 0; g < N_GPUS; ++g) {

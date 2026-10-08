@@ -252,6 +252,9 @@ constexpr CompileTimeMemoryEstimate compileTimeMemoryEstimate() {
         + 2 * NUM_BLOCK_LOCAL
             * (sizeof(dfloat) + sizeof(unsigned long long));
     #endif
+    #ifdef CONFORMATION_PHYSICAL_A_HALO
+    estimate.deviceOptionalFields += MEM_SIZE_POLYMER_STRESS_HALO_TOTAL;
+    #endif // CONFORMATION_PHYSICAL_A_HALO
 
     return estimate;
 }

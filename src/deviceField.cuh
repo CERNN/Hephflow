@@ -36,6 +36,10 @@ typedef struct deviceField{
         dfloat* d_BC_Fz[N_GPUS];
     #endif //_BC_FORCES
 
+    #ifdef CONFORMATION_PHYSICAL_A_HALO
+    PolymerStressHaloPtrs polymerStressHalo[N_GPUS][2]{};
+    #endif
+
     #ifdef SAVE_LOCAL_FORCES
         dfloat* d_Local_Fx;
         dfloat* d_Local_Fy;
@@ -74,7 +78,6 @@ typedef struct deviceField{
     #if defined(NON_NEWTONIAN_FLUID) || defined(CONFORMATION_TENSOR)
     fluidPhaseProps phasePropsA;             ///< Phase-1 fluid properties (viscous + viscoelastic)
     #endif 
-
 
     #ifdef PHI_DIST
     fluidPhaseProps phasePropsB;             ///< Phase-2 fluid properties (viscous + viscoelastic)
@@ -117,6 +120,22 @@ typedef struct deviceField{
         cudaMalloc((void**)&d_fMom[g], MEM_SIZE_MOM_STORAGE_LOCAL);
         cudaMalloc((void**)&dNodeType[g], sizeof(int) * NUMBER_LBM_NODES_LOCAL);
         interfaceMalloc(ghostInterface[g], ghostInterfaceCopy[g], macroInterfaceGPU[g], macroInterfaceGPUCopy[g]);
+
+        #ifdef CONFORMATION_PHYSICAL_A_HALO
+        // These buffers are derived block-face data, not population or inter-GPU interfaces. They have two AB
+        // generations and store physical A for direct stress divergence and transformed-representation diffusion.
+        // Keeping them separate avoids changing ghostInterfaceData's population layout and checkpoint roles.
+        for (int generation=0; generation<2; ++generation) {
+            auto& halo=polymerStressHalo[g][generation];
+            checkCudaErrors(cudaMalloc((void**)&halo.X_0, MEM_SIZE_POLYMER_STRESS_HALO_X));
+            checkCudaErrors(cudaMalloc((void**)&halo.X_1, MEM_SIZE_POLYMER_STRESS_HALO_X));
+            checkCudaErrors(cudaMalloc((void**)&halo.Y_0, MEM_SIZE_POLYMER_STRESS_HALO_Y));
+            checkCudaErrors(cudaMalloc((void**)&halo.Y_1, MEM_SIZE_POLYMER_STRESS_HALO_Y));
+            checkCudaErrors(cudaMalloc((void**)&halo.Z_0, MEM_SIZE_POLYMER_STRESS_HALO_Z));
+            checkCudaErrors(cudaMalloc((void**)&halo.Z_1, MEM_SIZE_POLYMER_STRESS_HALO_Z));
+        }
+        memAllocated += MEM_SIZE_POLYMER_STRESS_HALO_TOTAL;
+        #endif
 
         memAllocated += MEM_SIZE_MOM_STORAGE_LOCAL + sizeof(int) * NUMBER_LBM_NODES_LOCAL;
 
@@ -489,6 +508,10 @@ typedef struct deviceField{
         params.zBlockOffset = 0;
         params.mapBoundaryBlocks = false;
 
+        #ifdef CONFORMATION_PHYSICAL_A_HALO
+        params.polymerStressHalo = polymerStressHalo[g][step & 1u];
+        #endif
+
         params.rho_macro.Z_0 = macroInterfaceGPU[g].rho.Z_0;
         params.rho_macro.Z_1 = macroInterfaceGPU[g].rho.Z_1;
         params.rho_macro.auxZ_0 = macroInterfaceGPU[g].rho.auxZ_0;
@@ -838,6 +861,19 @@ typedef struct deviceField{
         #endif
         #endif
     }
+
+    #ifdef CONFORMATION_PHYSICAL_A_HALO
+    void fillPolymerStressHaloDeviceField(
+        dim3 gridBlock, dim3 threadBlock, unsigned int generation,
+        int g, cudaStream_t stream)
+    {
+        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
+        gpuFillPolymerStressHalo<<<gridBlock,threadBlock,0,stream>>>(
+            d_fMom[g], polymerStressHalo[g][generation & 1u],
+            (size_t)(NZ/N_GPUS));
+        CHECK_KERNEL_ERR("Physical-conformation halo fill kernel");
+    }
+    #endif
 
     void packMacroHalosDeviceField(int g, int slice, cudaStream_t stream) {
         checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
@@ -1616,6 +1652,15 @@ typedef struct deviceField{
 
     void freeDeviceField(int g) {
         interfaceFree(ghostInterface[g], ghostInterfaceCopy[g], macroInterfaceGPU[g], macroInterfaceGPUCopy[g]);
+
+        #ifdef CONFORMATION_PHYSICAL_A_HALO
+        for (int generation=0; generation<2; ++generation) {
+            auto& halo=polymerStressHalo[g][generation];
+            cudaFree(halo.X_0); cudaFree(halo.X_1);
+            cudaFree(halo.Y_0); cudaFree(halo.Y_1);
+            cudaFree(halo.Z_0); cudaFree(halo.Z_1);
+        }
+        #endif
 
         #ifdef CURVED_BOUNDARY_CONDITION
         cudaFree(d_curvedBC[g]);

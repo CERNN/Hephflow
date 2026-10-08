@@ -342,6 +342,23 @@ void saveMacr(const SaveDataParams* params)
         #ifdef LAMBDA_DIST
         lambda[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * M4_LAMBDA_INDEX] - LAMBDA_ZERO;
         #endif //LAMBDA_DIST
+        #if defined(CONFORMATION_TENSOR) && (defined(CONFORMATION_LOG) || defined(CONFORMATION_SQRT))
+        {
+            const Sym3 stored(
+                h_fMom[momentBase + BLOCK_LBM_SIZE * A_XX_C_INDEX],
+                h_fMom[momentBase + BLOCK_LBM_SIZE * A_XY_C_INDEX],
+                h_fMom[momentBase + BLOCK_LBM_SIZE * A_XZ_C_INDEX],
+                h_fMom[momentBase + BLOCK_LBM_SIZE * A_YY_C_INDEX],
+                h_fMom[momentBase + BLOCK_LBM_SIZE * A_YZ_C_INDEX],
+                h_fMom[momentBase + BLOCK_LBM_SIZE * A_ZZ_C_INDEX]);
+
+            const Sym3 physicalA=vePhysicalAFromStored(stored);
+
+            Axx[indexMacr] = physicalA.xx; Axy[indexMacr] = physicalA.xy;
+            Axz[indexMacr] = physicalA.xz; Ayy[indexMacr] = physicalA.yy;
+            Ayz[indexMacr] = physicalA.yz; Azz[indexMacr] = physicalA.zz;
+        }
+        #else
         #ifdef A_XX_DIST
         Axx[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * A_XX_C_INDEX] - CONF_ZERO;
         #endif //A_XX_DIST
@@ -360,6 +377,7 @@ void saveMacr(const SaveDataParams* params)
         #ifdef A_ZZ_DIST
         Azz[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * A_ZZ_C_INDEX] - CONF_ZERO;
         #endif //A_ZZ_DIST
+        #endif // transformed conformation representation
 
         #if NODE_TYPE_SAVE
         nodeTypeData[indexMacr] = hNodeType[blockedScalarIndex];
@@ -1370,26 +1388,32 @@ static void appendVeProps(std::ostringstream& strSimInfo, const veFluidProps& vp
             strSimInfo << "         VE model: FENE-P\n";
             strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
             strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
-            strSimInfo << "              L_sq: " << vp.u.fenep.L_sq << "\n";
-            strSimInfo << "                 L: " << std::sqrt(vp.u.fenep.L_sq) << "\n";
+            strSimInfo << "              L_sq: " << vp.fene_L2 << "\n";
+            strSimInfo << "                 L: " << std::sqrt(vp.fene_L2) << "\n";
+            break;
+        case VE_FENE_CR:
+            strSimInfo << "         VE model: FENE-CR\n";
+            strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
+            strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
+            strSimInfo << "               L_sq: " << vp.fene_L2 << "\n";
             break;
         case VE_GIESEKUS:
             strSimInfo << "         VE model: Giesekus\n";
             strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
             strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
-            strSimInfo << "             Alpha: " << vp.u.giesekus.alpha << "\n";
+            strSimInfo << "              Alpha: " << vp.giesekus_alpha << "\n";
             break;
         case VE_PTT_LINEAR:
             strSimInfo << "         VE model: PTT (linear)\n";
             strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
             strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
-            strSimInfo << "           Epsilon: " << vp.u.ptt.epsilon << "\n";
+            strSimInfo << "            Epsilon: " << vp.ptt_epsilon << "\n";
             break;
         case VE_PTT_EXPONENTIAL:
             strSimInfo << "         VE model: PTT (exponential)\n";
             strSimInfo << "  Polymer viscosity: " << vp.eta_p << "\n";
             strSimInfo << "    Relaxation time: " << vp.lambda << "\n";
-            strSimInfo << "           Epsilon: " << vp.u.ptt.epsilon << "\n";
+            strSimInfo << "            Epsilon: " << vp.ptt_epsilon << "\n";
             break;
         default:
             strSimInfo << "         VE model: Unknown\n";
@@ -1482,6 +1506,19 @@ std::string getSimInfoString(int step, dfloat MLUPS, const fluidPhaseProps& phas
         appendVeProps(strSimInfo, phasePropsB.ve);
     }
     strSimInfo << "\n  --- Conformation transport ---\n";
+    strSimInfo << "     Representation: " << veConformationRepresentationDescription() << "\n";
+    #if CONF_FORCE_GRADIENT == CONF_FORCE_GRAD_DIRECT_STRESS_HALO
+    strSimInfo << "       Force gradient: direct polymer-stress halo\n";
+    #elif CONF_FORCE_GRADIENT == CONF_FORCE_GRAD_FRECHET
+    strSimInfo << "       Force gradient: Frechet chain rule\n";
+    #else
+    strSimInfo << "       Force gradient: existing direct path\n";
+    #endif
+    #ifdef VE_FORCE_FULL_DIVERGENCE
+    strSimInfo << "       Force policy: full div(Gp*S)\n";
+    #else
+    strSimInfo << "       Force policy: legacy Gp*div(S)\n";
+    #endif
     strSimInfo << std::scientific << std::setprecision(4);
     strSimInfo << "  Diffusivity ratio: " << CONF_DIFFUSIVITY_RATIO << "\n";
     strSimInfo << "  Diffusivity Coef.: " << CONF_DIFFUSIVITY << "\n";

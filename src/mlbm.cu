@@ -82,6 +82,10 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     const gpuDirection macroInterfaceGPUAzzCopy = params.Azz_macroCopy;
     #endif //A_ZZ_DIST
 
+    #ifdef CONFORMATION_PHYSICAL_A_HALO
+    const PolymerStressHaloPtrs polymerStressHalo = params.polymerStressHalo;
+    #endif
+
     #ifdef LAMBDA_DIST
     const ghostFacePtrs ghostInterfaceLambda = params.lambda;
     const ghostFacePtrs ghostInterfaceLambdaCopy = params.lambdaCopy;
@@ -184,6 +188,16 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     #else
     __shared__ dfloat s_pop[MAX_SHARED_MEMORY_SIZE/sizeof(dfloat)];
     #endif //DYNAMIC_SHARED_MEMORY
+
+    const int tx=threadIdx.x, ty=threadIdx.y, tz=threadIdx.z;
+    const int bx=blockIdx.x, by=blockIdx.y, bz=blockIdx.z;
+    const int txm1=(tx-1+BLOCK_NX)%BLOCK_NX, txp1=(tx+1)%BLOCK_NX;
+    const int tym1=(ty-1+BLOCK_NY)%BLOCK_NY, typ1=(ty+1)%BLOCK_NY;
+    const int tzm1=(tz-1+BLOCK_NZ)%BLOCK_NZ, tzp1=(tz+1)%BLOCK_NZ;
+    const int bxm1=(bx-1+NUM_BLOCK_X)%NUM_BLOCK_X, bxp1=(bx+1)%NUM_BLOCK_X;
+    const int bym1=(by-1+NUM_BLOCK_Y)%NUM_BLOCK_Y, byp1=(by+1)%NUM_BLOCK_Y;
+    const int bzm1=(bz-1+NUM_BLOCK_Z_LOCAL)%NUM_BLOCK_Z_LOCAL;
+    const int bzp1=(bz+1)%NUM_BLOCK_Z_LOCAL;
     
     const int baseIdx = idxMom(threadIdx.x, threadIdx.y, threadIdx.z, 0, blockIdx.x, blockIdx.y, blockIdx.z);
     const int baseIdxPop = idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z,  0);
@@ -192,11 +206,13 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
 
     //rho'
     unsigned int nodeType = dNodeType[idxScalarBlock(threadIdx.x, threadIdx.y, threadIdx.z,blockIdx.x, blockIdx.y, blockIdx.z)];
+    #ifdef CONFORMATION_PHYSICAL_A_HALO
+        #include "fragments/conformationTransport/physical_conformation_halo.inc"
+    #endif
     if (nodeType == 0b11111111)  return;
 
-    #define LOAD_HYDRO_MOMENT(moment) \
-        loadMoment(fMom, idxMom(threadIdx.x, threadIdx.y, threadIdx.z, moment, \
-            blockIdx.x, blockIdx.y, blockIdx.z), moment)
+    #define LOAD_HYDRO_MOMENT(moment) loadMoment(fMom, idxMom(threadIdx.x, threadIdx.y, threadIdx.z, moment, blockIdx.x, blockIdx.y, blockIdx.z), moment)
+
     dfloat rhoVar = RHO_0 + LOAD_HYDRO_MOMENT(M_RHO_INDEX);
     dfloat ux_t30     = LOAD_HYDRO_MOMENT(M_UX_INDEX);
     dfloat uy_t30     = LOAD_HYDRO_MOMENT(M_UY_INDEX);
@@ -285,32 +301,6 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
     const unsigned short int zp1 = (threadIdx.z + 1 + BLOCK_NZ) % BLOCK_NZ;
     const unsigned short int zm1 = (threadIdx.z - 1 + BLOCK_NZ) % BLOCK_NZ;
     
-    const int tx = threadIdx.x;
-    const int ty = threadIdx.y;
-    const int tz = threadIdx.z;
-    
-    const int bx = blockIdx.x;
-    const int by = blockIdx.y;
-    const int bz = blockIdx.z;
-
-    const int txm1 = (tx-1+BLOCK_NX)%BLOCK_NX;
-    const int txp1 = (tx+1+BLOCK_NX)%BLOCK_NX;
-
-    const int tym1 = (ty-1+BLOCK_NY)%BLOCK_NY;
-    const int typ1 = (ty+1+BLOCK_NY)%BLOCK_NY;
-
-    const int tzm1 = (tz-1+BLOCK_NZ)%BLOCK_NZ;
-    const int tzp1 = (tz+1+BLOCK_NZ)%BLOCK_NZ;
-
-    const int bxm1 = (bx-1+NUM_BLOCK_X)%NUM_BLOCK_X;
-    const int bxp1 = (bx+1+NUM_BLOCK_X)%NUM_BLOCK_X;
-
-    const int bym1 = (by-1+NUM_BLOCK_Y)%NUM_BLOCK_Y;
-    const int byp1 = (by+1+NUM_BLOCK_Y)%NUM_BLOCK_Y;
-
-    const int bzm1 = (bz-1+NUM_BLOCK_Z_LOCAL)%NUM_BLOCK_Z_LOCAL;
-    const int bzp1 = (bz+1+NUM_BLOCK_Z_LOCAL)%NUM_BLOCK_Z_LOCAL;
-
     const bool stepParity = (step & 1u);
 
     //need to compute the gradient before the moments are recalculated
@@ -385,11 +375,35 @@ __global__ void gpuMomCollisionStream(DeviceKernelParams params)
             dfloat AzzVar = fMom[idxMom(threadIdx.x, threadIdx.y, threadIdx.z, A_ZZ_C_INDEX, blockIdx.x, blockIdx.y, blockIdx.z)];
         #endif //A_ZZ_DIST
 
-        #ifdef COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
-            #include "fragments/conformationTransport/conformation_gradient.inc"   
+        #if !defined(CONFORMATION_DIRECT_STRESS_HALO) && defined(COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE)
+            #include "fragments/conformationTransport/stored_tensor_gradient.inc"
         #endif //COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
 
-        #include "fragments/conformationTransport/conformation_evolution.inc"
+        #ifdef CONFORMATION_LOG
+            #include "fragments/conformationTransport/log_conformation_evolution.inc"
+        #elif defined(CONFORMATION_SQRT)
+            #include "fragments/conformationTransport/sqrt_conformation_evolution.inc"
+        #else
+            #include "fragments/conformationTransport/standard_conformation_evolution.inc"
+        #endif
+        #ifdef CONFORMATION_DIRECT_STRESS_HALO
+        #ifndef DISABLE_POLYMER_MOMENTUM_FEEDBACK
+        {
+            dfloat polymerFeedbackRamp=1.0_df;
+            #ifdef VISCOELASTIC_STARTUP_RAMP
+                const dfloat r=fmin(1.0_df,(dfloat)step/(dfloat)STARTUP_RAMP_STEPS);
+                polymerFeedbackRamp=r*r*(3.0_df-2.0_df*r);
+            #endif
+
+            const dfloat feedbackWeight=switch_conf*polymerFeedbackRamp;
+            const dfloat modulus=calcVePolymerModulus(veLocal);
+
+            L_Fx += modulus * directDivStressX * feedbackWeight;
+            L_Fy += modulus * directDivStressY * feedbackWeight;
+            L_Fz += modulus * directDivStressZ * feedbackWeight;
+        }
+        #endif
+        #endif
         #ifdef SAVE_LOCAL_FORCES
         if(save){
             #ifdef A_XX_DIST
@@ -1502,3 +1516,79 @@ __global__ void gpuPackMacroHalos(const dfloat *fMom,
     #endif
 #endif
 }
+
+// ============================================================================
+// PHYSICAL-CONFORMATION HALO
+// ============================================================================
+
+#ifdef CONFORMATION_PHYSICAL_A_HALO
+// This must remain a post-transport kernel. gpuMomCollisionStream reads halo generation n while producing
+// conformation generation n+1. Publishing n+1 inside that kernel would require a grid-wide barrier before any block
+// could safely consume neighboring faces on the next launch, which ordinary CUDA kernels do not provide.
+__global__ void gpuFillPolymerStressHalo(
+    const dfloat* fMom, PolymerStressHaloPtrs halo, size_t localNZ)
+{
+    const int tx = threadIdx.x;
+    const int ty = threadIdx.y;
+    const int tz = threadIdx.z;
+    const int bx = blockIdx.x;
+    const int by = blockIdx.y;
+    const int bz = blockIdx.z;
+    const int x = tx + BLOCK_NX * bx;
+    const int y = ty + BLOCK_NY * by;
+    const int z = tz + BLOCK_NZ * bz;
+    if (x >= NX || y >= NY || z >= localNZ) return;
+
+    const Sym3 stored(
+        fMom[idxMom(tx,ty,tz,A_XX_C_INDEX,bx,by,bz)],
+        fMom[idxMom(tx,ty,tz,A_XY_C_INDEX,bx,by,bz)],
+        fMom[idxMom(tx,ty,tz,A_XZ_C_INDEX,bx,by,bz)],
+        fMom[idxMom(tx,ty,tz,A_YY_C_INDEX,bx,by,bz)],
+        fMom[idxMom(tx,ty,tz,A_YZ_C_INDEX,bx,by,bz)],
+        fMom[idxMom(tx,ty,tz,A_ZZ_C_INDEX,bx,by,bz)]);
+    const Sym3 physicalA = vePhysicalAFromStored(stored);
+
+    #define STORE_PHYSICAL_A_FACE(face, base) \
+        do { \
+            (face)[(base)] = physicalA.xx; \
+            (face)[(base) + 1] = physicalA.xy; \
+            (face)[(base) + 2] = physicalA.xz; \
+            (face)[(base) + 3] = physicalA.yy; \
+            (face)[(base) + 4] = physicalA.yz; \
+            (face)[(base) + 5] = physicalA.zz; \
+            (face)[(base) + 6] = stored.xx; \
+            (face)[(base) + 7] = stored.xy; \
+            (face)[(base) + 8] = stored.xz; \
+            (face)[(base) + 9] = stored.yy; \
+            (face)[(base) + 10] = stored.yz; \
+            (face)[(base) + 11] = stored.zz; \
+        } while (false)
+
+    if (tx == 0) {
+        const size_t base = g_idxPolymerStressHaloX(ty, tz, 0, bx, by, bz);
+        STORE_PHYSICAL_A_FACE(halo.X_0, base);
+    }
+    if (tx == BLOCK_NX - 1) {
+        const size_t base = g_idxPolymerStressHaloX(ty, tz, 0, bx, by, bz);
+        STORE_PHYSICAL_A_FACE(halo.X_1, base);
+    }
+    if (ty == 0) {
+        const size_t base = g_idxPolymerStressHaloY(tx, tz, 0, bx, by, bz);
+        STORE_PHYSICAL_A_FACE(halo.Y_0, base);
+    }
+    if (ty == BLOCK_NY - 1) {
+        const size_t base = g_idxPolymerStressHaloY(tx, tz, 0, bx, by, bz);
+        STORE_PHYSICAL_A_FACE(halo.Y_1, base);
+    }
+    if (tz == 0) {
+        const size_t base = g_idxPolymerStressHaloZ(tx, ty, 0, bx, by, bz);
+        STORE_PHYSICAL_A_FACE(halo.Z_0, base);
+    }
+    if (tz == BLOCK_NZ - 1) {
+        const size_t base = g_idxPolymerStressHaloZ(tx, ty, 0, bx, by, bz);
+        STORE_PHYSICAL_A_FACE(halo.Z_1, base);
+    }
+
+    #undef STORE_PHYSICAL_A_FACE
+}
+#endif // CONFORMATION_PHYSICAL_A_HALO

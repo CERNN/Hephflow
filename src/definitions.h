@@ -18,7 +18,9 @@
 #include "include/math_constants.h"    // Mathematical constants
 #include "include/feature_config.h"     // Feature flags and model macros
 #include "include/memory_layout.h"      // Memory calculations and block layout
+#ifndef HEPHFLOW_SKIP_CUDA_CONFIG
 #include "include/cuda_config.h"        // CUDA-specific settings
+#endif
 
 /* ========================== AUXILIARY DEFINITIONS ======================== */
 

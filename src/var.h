@@ -91,6 +91,13 @@ static_assert((NZ / N_GPUS) % BLOCK_NZ == 0,
               "Cooperative ghost transfer requires complete CUDA blocks in local Z");
 #endif
 
+#ifdef CONFORMATION_DIRECT_STRESS_HALO
+static_assert(NX % BLOCK_NX == 0 && NY % BLOCK_NY == 0,
+              "Direct polymer-stress halos require complete X/Y blocks");
+static_assert((NZ / N_GPUS) % BLOCK_NZ == 0,
+              "Direct polymer-stress halos require complete local Z blocks");
+#endif
+
 #ifndef HEPHFLOW_SKIP_CONSTEXPR_MATH_TESTS
 
 constexpr auto err = constexprPow(2.0_df, 0.5_df) - sqrtt(2.0_df);

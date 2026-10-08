@@ -68,9 +68,15 @@ constexpr BlockDim optimalBlockDimArray = findOptimalBlockDimensions(MAX_ELEMENT
 
 /* =========================== BLOCK DEFINITIONS =========================== */
 
+#ifndef BLOCK_NX
 #define BLOCK_NX 8
+#endif
+#ifndef BLOCK_NY
 #define BLOCK_NY 8
+#endif
+#ifndef BLOCK_NZ
 #define BLOCK_NZ 8
+#endif
 
 #define BLOCK_LBM_SIZE (BLOCK_NX * BLOCK_NY * BLOCK_NZ)
 
@@ -116,6 +122,22 @@ const size_t NUMBER_GHOST_FACE_YZ_LOCAL = BLOCK_NY*BLOCK_NZ*NUM_BLOCK_X*NUM_BLOC
 // from a neighbor GPU; allocating NUM_BLOCK_Z_LOCAL planes is wasteful.
 const size_t NUMBER_GHOST_FACE_XY_AUX = BLOCK_NX*BLOCK_NY*NUM_BLOCK_X*NUM_BLOCK_Y;
 
+#ifdef CONFORMATION_PHYSICAL_A_HALO
+// Each face stores physical A and its stored representation (six components each).
+const size_t POLYMER_STRESS_HALO_X_SCALARS = 12 * NUMBER_GHOST_FACE_YZ_LOCAL;
+const size_t POLYMER_STRESS_HALO_Y_SCALARS = 12 * NUMBER_GHOST_FACE_XZ_LOCAL;
+const size_t POLYMER_STRESS_HALO_Z_SCALARS = 12 * NUMBER_GHOST_FACE_XY_LOCAL;
+const size_t MEM_SIZE_POLYMER_STRESS_HALO_X = sizeof(dfloat) * POLYMER_STRESS_HALO_X_SCALARS;
+const size_t MEM_SIZE_POLYMER_STRESS_HALO_Y = sizeof(dfloat) * POLYMER_STRESS_HALO_Y_SCALARS;
+const size_t MEM_SIZE_POLYMER_STRESS_HALO_Z = sizeof(dfloat) * POLYMER_STRESS_HALO_Z_SCALARS;
+
+// Two faces per direction and two AB generations. Keep this factorization explicit because it is part of the layout.
+const size_t MEM_SIZE_POLYMER_STRESS_HALO_TOTAL = 2 * 2 *
+    (MEM_SIZE_POLYMER_STRESS_HALO_X + MEM_SIZE_POLYMER_STRESS_HALO_Y + MEM_SIZE_POLYMER_STRESS_HALO_Z);
+#else
+const size_t MEM_SIZE_POLYMER_STRESS_HALO_TOTAL = 0;
+#endif
+
 /* ======================== MEMORY ALLOCATION SIZES ======================== */
 
 const size_t MEM_SIZE_BLOCK_LBM = sizeof(dfloat) * BLOCK_LBM_SIZE * NUMBER_MOMENTS;
@@ -156,8 +178,17 @@ const size_t MEM_SIZE_MAP_BC = sizeof(uint32_t) * NUMBER_LBM_NODES;
     const size_t CONFORMATION_GRAD_BLOCK_SIZE = 0;
 #endif //COMPUTE_CONF_GRADIENT_FINITE_DIFFERENCE
 
+#ifdef CONFORMATION_PHYSICAL_A_HALO
+    const size_t POLYMER_STRESS_SHARED_SIZE = BLOCK_LBM_SIZE * 12;
+#else
+    const size_t POLYMER_STRESS_SHARED_SIZE = 0;
+#endif
 
-constexpr int LBM_MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_SIZE_POP, myMax(VEL_GRAD_BLOCK_SIZE, CONFORMATION_GRAD_BLOCK_SIZE))*sizeof(dfloat);
+
+constexpr int LBM_MAX_SHARED_MEMORY_SIZE = myMax(
+    BLOCK_LBM_SIZE_POP,
+    myMax(VEL_GRAD_BLOCK_SIZE,
+          myMax(CONFORMATION_GRAD_BLOCK_SIZE, POLYMER_STRESS_SHARED_SIZE)))*sizeof(dfloat);
 constexpr int LBM_G_MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_G_SIZE_POP,1)*sizeof(dfloat);
 
 constexpr int MAX_SHARED_MEMORY_SIZE = myMax(LBM_MAX_SHARED_MEMORY_SIZE, LBM_G_MAX_SHARED_MEMORY_SIZE);

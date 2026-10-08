@@ -201,7 +201,8 @@ if [ -z "$VELOCITY_SET" ]; then
 fi
 echo "Velocity set: $VELOCITY_SET (from cases/${BC_PROBLEM}/model.inc)"
 
-mapfile -t CUDA_SOURCES < <(find . -name '*.cu' -print | sort)
+# Standalone CUDA unit tests have their own main() and build driver.
+mapfile -t CUDA_SOURCES < <(find . -name '*.cu' ! -path './tests/*' -print | sort)
 if [ "${#CUDA_SOURCES[@]}" -eq 0 ]; then
     echo "Error: No CUDA source files found." >&2
     exit 1

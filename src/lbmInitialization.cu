@@ -1,4 +1,5 @@
 #include "lbmInitialization.cuh"
+#include "non_newtonian/conformation_representation.cuh"
 
 
 
@@ -110,6 +111,26 @@ __global__ void gpuInitialization_mom(
 
 
     #include CASE_FLOW_INITIALIZATION
+
+    #if defined(CONFORMATION_TENSOR) && \
+        (defined(CONFORMATION_LOG) || defined(CONFORMATION_SQRT))
+    {
+        // Existing case initializers specify physical A using the legacy
+        // stored-A offset. Convert once after the case hook has run.
+        const Sym3 initialA(AxxVar-CONF_ZERO, AxyVar-CONF_ZERO,
+                            AxzVar-CONF_ZERO, AyyVar-CONF_ZERO,
+                            AyzVar-CONF_ZERO, AzzVar-CONF_ZERO);
+        const Sym3 initialStored=veStoredFromPhysicalA(initialA);
+        AxxVar=initialStored.xx; AxyVar=initialStored.xy; AxzVar=initialStored.xz;
+        AyyVar=initialStored.yy; AyzVar=initialStored.yz; AzzVar=initialStored.zz;
+        Axx_qx_t30=F_M_I_SCALE*AxxVar*ux; Axx_qy_t30=F_M_I_SCALE*AxxVar*uy; Axx_qz_t30=F_M_I_SCALE*AxxVar*uz;
+        Axy_qx_t30=F_M_I_SCALE*AxyVar*ux; Axy_qy_t30=F_M_I_SCALE*AxyVar*uy; Axy_qz_t30=F_M_I_SCALE*AxyVar*uz;
+        Axz_qx_t30=F_M_I_SCALE*AxzVar*ux; Axz_qy_t30=F_M_I_SCALE*AxzVar*uy; Axz_qz_t30=F_M_I_SCALE*AxzVar*uz;
+        Ayy_qx_t30=F_M_I_SCALE*AyyVar*ux; Ayy_qy_t30=F_M_I_SCALE*AyyVar*uy; Ayy_qz_t30=F_M_I_SCALE*AyyVar*uz;
+        Ayz_qx_t30=F_M_I_SCALE*AyzVar*ux; Ayz_qy_t30=F_M_I_SCALE*AyzVar*uy; Ayz_qz_t30=F_M_I_SCALE*AyzVar*uz;
+        Azz_qx_t30=F_M_I_SCALE*AzzVar*ux; Azz_qy_t30=F_M_I_SCALE*AzzVar*uy; Azz_qz_t30=F_M_I_SCALE*AzzVar*uz;
+    }
+    #endif
 
     #ifdef OMEGA_FIELD
     omega = OMEGA;

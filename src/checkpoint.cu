@@ -20,6 +20,7 @@
 */
 
 #include "checkpoint.cuh"
+#include "non_newtonian/conformation_representation.cuh"
 
 
 void createFolder(std::string foldername)
@@ -174,6 +175,52 @@ std::string getCheckpointFilenameWrite(std::string name, int gpu_index){
     return p.string();
 } 
 
+#ifdef CONFORMATION_TENSOR
+/**
+ * Save or validate the metadata that identifies how the six conformation fields are represented.
+ * The tensor payload itself is handled by the normal moment checkpoint; this sidecar prevents loading identical
+ * binary fields as A, log(A), or sqrt(A) under a different build configuration.
+ */
+static void operateConformationCheckpointMetadata(int oper, int gpu_index)
+{
+    // Read and write use their respective checkpoint roots so restart input may differ from the current output path.
+    const std::string path = (oper == __LOAD_CHECKPOINT)
+        ? getCheckpointFilenameRead("conformation.meta", gpu_index)
+        : getCheckpointFilenameWrite("conformation.meta", gpu_index);
+
+    // Saving always rewrites the complete versioned sidecar. Representation names are persisted API values.
+    if (oper == __SAVE_CHECKPOINT) {
+        std::ofstream out(path, std::ios::trunc);
+        if (!out) throw std::runtime_error("Cannot write conformation checkpoint metadata: "+path);
+        out << "version=1\nrepresentation=" << veConformationRepresentationName() << "\n";
+        return;
+    }
+
+    // Loading rejects missing metadata rather than guessing how an untagged tensor should be interpreted.
+    std::ifstream in(path);
+    if (!in) throw std::runtime_error(
+        "Conformation checkpoint metadata is missing; refusing an untagged restart: "+path);
+
+    // Parse keys independently so future metadata can add fields without making version 1 readers order-dependent.
+    std::string line, representation, version;
+    while (std::getline(in,line)) {
+        const std::string versionKey="version=";
+        const std::string key="representation=";
+        if (line.rfind(versionKey,0)==0) version=line.substr(versionKey.size());
+        if (line.rfind(key,0)==0) representation=line.substr(key.size());
+    }
+
+    // The format version protects the parser; the representation protects the physical meaning of the payload.
+    if (version != "1")
+        throw std::runtime_error("Unsupported conformation checkpoint metadata version '"+
+            version+"' in "+path);
+    if (representation != veConformationRepresentationName())
+        throw std::runtime_error("Checkpoint conformation representation is '"+
+            representation+"' but this build requires '"+
+            veConformationRepresentationName()+"'");
+}
+#endif // CONFORMATION_TENSOR
+
 __host__
 void operateSimCheckpoint( 
     int oper,
@@ -199,6 +246,10 @@ void operateSimCheckpoint(
         std::cout << "Invalid operation. Exiting\n";
         exit(-1);
     }
+
+    #ifdef CONFORMATION_TENSOR
+    operateConformationCheckpointMetadata(oper, gpu_index);
+    #endif
 
     // Loading and device-backed saves need a full-slab staging allocation.
     // Normal saves use the shared host h_fMom snapshot and write it directly,
