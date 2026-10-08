@@ -19,14 +19,9 @@
 
 #ifdef PARTICLE_MODEL
 
-#ifndef ELLIPSOID_PENETRATION_SPHERE_RADIUS
-#define ELLIPSOID_PENETRATION_SPHERE_RADIUS 3.0f
-#endif
-
 enum EllipsoidContactStatus {
     ELLIPSOID_SEPARATED = 0,
     ELLIPSOID_INTERSECTING = 1,
-    ELLIPSOID_PROXY_INVALID = 2,
     ELLIPSOID_MAX_ITERATIONS = 3,
     ELLIPSOID_INVALID_GEOMETRY = 4,
     ELLIPSOID_NUMERICAL_FAILURE = 5
@@ -351,8 +346,7 @@ dfloat3 ellipsoid_normal(ParticleCenter* pc_i, dfloat R[3][3],dfloat3 point, dfl
  * @param translation: The translation vector to apply to the second ellipsoid for periodic boundary conditions.
  * @param step: The current simulation time step for collision processing.
  * @return Explicit status, image-space contact points, B-to-A normal, and a
- * signed displacement. Separation is positive; a valid fixed-sphere
- * penetration proxy is negative.
+ * signed displacement. Separation is positive and penetration is negative.
  */
 __device__
 EllipsoidContactResult ellipsoidEllipsoidCollisionDistance(
@@ -364,4 +358,3 @@ EllipsoidContactResult ellipsoidEllipsoidCollisionDistance(
 
 #endif //PARTICLE_MODEL
 #endif // !__IBM_COLLISION_H
-

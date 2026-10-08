@@ -172,12 +172,13 @@ Wall determineCircularWall(dfloat3 pos_i, dfloat R, dfloat dir);
  * @param P1: The starting point of the cylinder segment.
  * @param P2: The ending point of the cylinder segment.
  * @param cRadius: The radius of the cylinder surrounding the segment.
- * @param contactPoint1: Output parameter to store the contact point on the ellipsoid.
- * @param contactPoint2: Output parameter to store the contact point on the cylinder segment.
+ * @param contactPoint1: Output parameter to store the contact point on the cylinder.
+ * @param contactPoint2: Output parameter to store the contact point on the ellipsoid.
  * @param cr: Output parameter to store the contact radius.
  * @param cyDir: -1 for a concave containing wall, +1 for a convex obstacle.
  * @param step: The current simulation time step for collision checking.
- * @return The distance between the surfaces of the cylinder and ellipsoid
+ * @return Signed distance between the surfaces; positive when separated in the
+ * admissible region and negative when penetrating.
  */
 __device__
 dfloat ellipsoidSegmentCollisionDistance( ParticleCenter* pc_i, dfloat3 P1, dfloat3 P2, dfloat cRadius ,dfloat3 contactPoint1[1], dfloat3 contactPoint2[1], dfloat cr[1], int cyDir, unsigned int step);

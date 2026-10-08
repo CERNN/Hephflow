@@ -974,28 +974,169 @@ __device__ dfloat3 ellipsoidGradient(
     );
 }
 
-__device__ dfloat ellipsoidLevel(
-    ParticleCenter* particle,
-    dfloat R[3][3],
-    const dfloat3& point,
-    const dfloat3& translation
-) {
-    const dfloat3 pos=particle->getPos();
-    const dfloat a=vector_length(particle->getSemiAxis1()-pos);
-    const dfloat b=vector_length(particle->getSemiAxis2()-pos);
-    const dfloat c=vector_length(particle->getSemiAxis3()-pos);
-    const dfloat3 d=point-(pos+translation);
-    const dfloat x=R[0][0]*d.x+R[0][1]*d.y+R[0][2]*d.z;
-    const dfloat y=R[1][0]*d.x+R[1][1]*d.y+R[1][2]*d.z;
-    const dfloat z=R[2][0]*d.x+R[2][1]*d.y+R[2][2]*d.z;
-    return x*x/(a*a)+y*y/(b*b)+z*z/(c*c);
-}
-
 __device__ bool aligned(const dfloat3& a, const dfloat3& b) {
     const dfloat aa = dot_product(a,a);
     const dfloat bb = dot_product(b,b);
     if (aa <= 1.0e-20f || bb <= 1.0e-20f) return false;
     return dot_product(a,b)/sqrtf(aa*bb) >= 0.9999995f;
+}
+
+struct EllipsoidPenetrationResult {
+    dfloat depth;
+    dfloat3 directionAToB;
+    dfloat3 pointA;
+    dfloat3 pointB;
+    int iterations;
+    bool valid;
+};
+
+__device__ dfloat3 ellipsoidSupportVector(
+    dfloat R[3][3],
+    dfloat a,
+    dfloat b,
+    dfloat c,
+    const dfloat3& direction
+) {
+    const dfloat x=R[0][0]*direction.x+R[0][1]*direction.y+R[0][2]*direction.z;
+    const dfloat y=R[1][0]*direction.x+R[1][1]*direction.y+R[1][2]*direction.z;
+    const dfloat z=R[2][0]*direction.x+R[2][1]*direction.y+R[2][2]*direction.z;
+    const dfloat support=sqrtf(a*a*x*x+b*b*y*y+c*c*z*z);
+    if (!(support>1.0e-20f) || !isfinite(support)) return dfloat3(0.0f,0.0f,0.0f);
+    return dfloat3(
+        (R[0][0]*(a*a*x)+R[1][0]*(b*b*y)+R[2][0]*(c*c*z))/support,
+        (R[0][1]*(a*a*x)+R[1][1]*(b*b*y)+R[2][1]*(c*c*z))/support,
+        (R[0][2]*(a*a*x)+R[1][2]*(b*b*y)+R[2][2]*(c*c*z))/support
+    );
+}
+
+__device__ dfloat ellipsoidPairOverlap(
+    dfloat R1[3][3], dfloat a1, dfloat b1, dfloat c1,
+    dfloat R2[3][3], dfloat a2, dfloat b2, dfloat c2,
+    const dfloat3& centerDelta,
+    const dfloat3& direction,
+    dfloat3* supportA,
+    dfloat3* supportB
+) {
+    *supportA=ellipsoidSupportVector(R1,a1,b1,c1,direction);
+    *supportB=ellipsoidSupportVector(R2,a2,b2,c2,direction);
+    return dot_product(*supportA+*supportB-centerDelta,direction);
+}
+
+__device__ bool minimizeEllipsoidPairOverlap(
+    dfloat R1[3][3], dfloat a1, dfloat b1, dfloat c1,
+    dfloat R2[3][3], dfloat a2, dfloat b2, dfloat c2,
+    const dfloat3& centerDelta,
+    const dfloat3& initialDirection,
+    dfloat lengthScale,
+    dfloat3* direction,
+    dfloat* overlap,
+    dfloat3* supportA,
+    dfloat3* supportB,
+    int* iterations
+) {
+    dfloat3 n=initialDirection;
+    const dfloat gradientTolerance=1.0e-6f*lengthScale;
+    const int maxIterations=40;
+    int iteration=0;
+    for (; iteration<maxIterations; ++iteration) {
+        const dfloat value=ellipsoidPairOverlap(
+            R1,a1,b1,c1,R2,a2,b2,c2,centerDelta,n,supportA,supportB);
+        const dfloat3 gradient=*supportA+*supportB-centerDelta;
+        const dfloat3 tangentGradient=gradient-dot_product(gradient,n)*n;
+        if (!isfinite(value) || !isfinite(tangentGradient.x) ||
+            !isfinite(tangentGradient.y) || !isfinite(tangentGradient.z)) return false;
+        if (vector_length(tangentGradient)<=gradientTolerance) break;
+
+        dfloat step=1.0f/lengthScale;
+        bool accepted=false;
+        for (int lineSearch=0; lineSearch<12; ++lineSearch) {
+            const dfloat3 trialUnnormalized=n-step*tangentGradient;
+            const dfloat trialLength=vector_length(trialUnnormalized);
+            if (trialLength>1.0e-20f) {
+                const dfloat3 trial=trialUnnormalized/trialLength;
+                dfloat3 trialSupportA,trialSupportB;
+                const dfloat trialValue=ellipsoidPairOverlap(
+                    R1,a1,b1,c1,R2,a2,b2,c2,centerDelta,trial,
+                    &trialSupportA,&trialSupportB);
+                if (isfinite(trialValue) && trialValue<value) {
+                    n=trial;
+                    accepted=true;
+                    break;
+                }
+            }
+            step*=0.5f;
+        }
+        if (!accepted) break;
+    }
+
+    const dfloat value=ellipsoidPairOverlap(
+        R1,a1,b1,c1,R2,a2,b2,c2,centerDelta,n,supportA,supportB);
+    const dfloat3 gradient=*supportA+*supportB-centerDelta;
+    const dfloat3 tangentGradient=gradient-dot_product(gradient,n)*n;
+    if (!isfinite(value) || vector_length(tangentGradient)>1.0e-4f*lengthScale) return false;
+    *direction=n;
+    *overlap=value;
+    *iterations=iteration+1;
+    return true;
+}
+
+// The penetration depth is the distance from the origin to the boundary of
+// the Minkowski difference A-B.  For an intersecting pair this is the minimum,
+// over unit directions n, of h_A(n)+h_B(-n)-(centerB-centerA).n.
+__device__ EllipsoidPenetrationResult ellipsoidPenetrationDepth(
+    const dfloat3& center1,
+    const dfloat3& center2,
+    dfloat R1[3][3], dfloat a1, dfloat b1, dfloat c1,
+    dfloat R2[3][3], dfloat a2, dfloat b2, dfloat c2
+) {
+    EllipsoidPenetrationResult result={};
+    result.valid=false;
+    const dfloat3 centerDelta=center2-center1;
+    const dfloat centerDistance=vector_length(centerDelta);
+
+    dfloat3 candidates[13];
+    int candidateCount=0;
+    if (centerDistance>1.0e-20f) candidates[candidateCount++]=centerDelta/centerDistance;
+    for (int sign=-1; sign<=1; sign+=2) {
+        const dfloat s=(dfloat)sign;
+        for (int axis=0; axis<3; ++axis) {
+            candidates[candidateCount++]=s*dfloat3(R1[axis][0],R1[axis][1],R1[axis][2]);
+            candidates[candidateCount++]=s*dfloat3(R2[axis][0],R2[axis][1],R2[axis][2]);
+        }
+    }
+
+    dfloat maxAxis1=a1; if (b1>maxAxis1) maxAxis1=b1; if (c1>maxAxis1) maxAxis1=c1;
+    dfloat maxAxis2=a2; if (b2>maxAxis2) maxAxis2=b2; if (c2>maxAxis2) maxAxis2=c2;
+    const dfloat lengthScale=maxAxis1+maxAxis2;
+    dfloat bestValue=1.0e37f;
+    dfloat3 bestDirection=dfloat3(1.0f,0.0f,0.0f);
+    dfloat3 bestSupportA,bestSupportB;
+    int bestIterations=0;
+    for (int i=0; i<candidateCount; ++i) {
+        const dfloat candidateLength=vector_length(candidates[i]);
+        if (!(candidateLength>1.0e-20f)) continue;
+        dfloat3 direction,supportA,supportB;
+        dfloat value;
+        int iterations;
+        if (minimizeEllipsoidPairOverlap(
+                R1,a1,b1,c1,R2,a2,b2,c2,centerDelta,
+                candidates[i]/candidateLength,lengthScale,&direction,&value,
+                &supportA,&supportB,&iterations) && value<bestValue) {
+            bestValue=value;
+            bestDirection=direction;
+            bestSupportA=supportA;
+            bestSupportB=supportB;
+            bestIterations=iterations;
+        }
+    }
+    if (!isfinite(bestValue) || bestValue<0.0f) return result;
+    result.depth=bestValue;
+    result.directionAToB=bestDirection;
+    result.pointA=center1+bestSupportA;
+    result.pointB=center2-bestSupportB;
+    result.iterations=bestIterations;
+    result.valid=true;
+    return result;
 }
 
 __device__ bool makeEllipsoidFrame(
@@ -1047,8 +1188,24 @@ EllipsoidContactResult ellipsoidEllipsoidCollisionDistance(
     for (int iteration=0; iteration<maxIterations; ++iteration) {
         const dfloat3 direction=interior2-interior1;
         if (dot_product(direction,direction) <= 1.0e-20f) {
-            out.status=ELLIPSOID_PROXY_INVALID;
-            out.iterations=iteration;
+            const EllipsoidPenetrationResult penetration=ellipsoidPenetrationDepth(
+                center1,center2,R1,a1,b1,c1,R2,a2,b2,c2);
+            if (!penetration.valid) {
+                out.status=ELLIPSOID_NUMERICAL_FAILURE;
+                out.iterations=iteration;
+                return out;
+            }
+            dfloat curvature1[1],curvature2[1];
+            ellipsoid_normal(pc_i,R1,penetration.pointA,curvature1,dfloat3(0,0,0));
+            ellipsoid_normal(pc_j,R2,penetration.pointB,curvature2,translation);
+            out.status=ELLIPSOID_INTERSECTING;
+            out.signedDisplacement=-penetration.depth;
+            out.pointA=penetration.pointA;
+            out.pointBImage=penetration.pointB;
+            out.normalBToA=-penetration.directionAToB;
+            out.curvatureRadiusA=curvature1[0];
+            out.curvatureRadiusB=curvature2[0];
+            out.iterations=iteration+penetration.iterations;
             return out;
         }
         const EllipsoidLineRoots roots1=orderedEllipsoidRoots(pc_i,R1,interior1,direction,dfloat3(0,0,0));
@@ -1062,56 +1219,24 @@ EllipsoidContactResult ellipsoidEllipsoidCollisionDistance(
         point2=interior1+roots2.enter*direction;
 
         if (roots2.enter <= roots1.exit+rootTolerance) {
-            // Intersection is established by interval overlap. The following loop only
-            // computes the legacy, length-valued fixed-sphere penetration proxy.
-            const dfloat radius=(dfloat)ELLIPSOID_PENETRATION_SPHERE_RADIUS;
-            if (!(radius > 0.0f) || !isfinite(radius)) {
-                out.status=ELLIPSOID_PROXY_INVALID;
+            const EllipsoidPenetrationResult penetration=ellipsoidPenetrationDepth(
+                center1,center2,R1,a1,b1,c1,R2,a2,b2,c2);
+            if (!penetration.valid) {
+                out.status=ELLIPSOID_NUMERICAL_FAILURE;
+                out.iterations=iteration;
                 return out;
             }
-            for (int overlapIteration=0; overlapIteration<maxIterations; ++overlapIteration) {
-                dfloat dummy1[1],dummy2[1];
-                const dfloat3 normal1=ellipsoid_normal(pc_i,R1,point1,dummy1,dfloat3(0,0,0));
-                const dfloat3 normal2=ellipsoid_normal(pc_j,R2,point2,dummy2,translation);
-                const dfloat3 overlap12=point1-point2;
-                const dfloat3 overlap21=point2-point1;
-                const dfloat3 sphere1=point1-radius*normal1;
-                const dfloat3 sphere2=point2-radius*normal2;
-
-                if (aligned(overlap12,normal1) && aligned(overlap21,normal2)) {
-                    const dfloat proxy=vector_length(sphere2-sphere1)-2.0f*radius;
-                    out.pointA=point1;
-                    out.pointBImage=point2;
-                    out.normalBToA=-normal1;
-                    out.curvatureRadiusA=dummy1[0];
-                    out.curvatureRadiusB=dummy2[0];
-                    out.signedDisplacement=proxy;
-                    out.iterations=iteration+overlapIteration+1;
-                    const bool centersInside=ellipsoidLevel(pc_i,R1,sphere1,dfloat3(0,0,0)) < 1.0f &&
-                                             ellipsoidLevel(pc_j,R2,sphere2,translation) < 1.0f;
-                    // Once penetration exceeds 2r the absolute center distance folds
-                    // over and no longer represents the intended signed overlap.
-                    const bool shallowBranch=dot_product(sphere2-sphere1,normal1) > 0.0f;
-                    out.status=(isfinite(proxy) && proxy < 0.0f && centersInside && shallowBranch)
-                        ? ELLIPSOID_INTERSECTING : ELLIPSOID_PROXY_INVALID;
-                    return out;
-                }
-
-                const dfloat3 proxyDirection=sphere2-sphere1;
-                if (dot_product(proxyDirection,proxyDirection) <= 1.0e-20f) {
-                    out.status=ELLIPSOID_PROXY_INVALID;
-                    return out;
-                }
-                const EllipsoidLineRoots overlapRoots1=orderedEllipsoidRoots(pc_i,R1,sphere1,proxyDirection,dfloat3(0,0,0));
-                const EllipsoidLineRoots overlapRoots2=orderedEllipsoidRoots(pc_j,R2,sphere1,proxyDirection,translation);
-                if (!overlapRoots1.valid || !overlapRoots2.valid) {
-                    out.status=ELLIPSOID_NUMERICAL_FAILURE;
-                    return out;
-                }
-                point1=sphere1+overlapRoots1.exit*proxyDirection;
-                point2=sphere1+overlapRoots2.enter*proxyDirection;
-            }
-            out.status=ELLIPSOID_MAX_ITERATIONS;
+            dfloat curvature1[1],curvature2[1];
+            ellipsoid_normal(pc_i,R1,penetration.pointA,curvature1,dfloat3(0,0,0));
+            ellipsoid_normal(pc_j,R2,penetration.pointB,curvature2,translation);
+            out.status=ELLIPSOID_INTERSECTING;
+            out.signedDisplacement=-penetration.depth;
+            out.pointA=penetration.pointA;
+            out.pointBImage=penetration.pointB;
+            out.normalBToA=-penetration.directionAToB;
+            out.curvatureRadiusA=curvature1[0];
+            out.curvatureRadiusB=curvature2[0];
+            out.iterations=iteration+penetration.iterations;
             return out;
         }
 
