@@ -83,75 +83,89 @@ void particleWallCollisionHandler(
     checkCollisionWalls(&shape[particle], pc, d_pwForces, step);
 }
 
+#if defined(EXTERNAL_DUCT_BC)
+__device__
+void checkCollisionExternalDuctSphere(
+    ParticleCenter* pc_i,
+    ParticleWallForces* d_pwForces,
+    unsigned int step
+) {
+    const dfloat3 ductCenter=dfloat3(
+        DUCT_CENTER_X,DUCT_CENTER_Y,pc_i->getPosZ());
+    const dfloat radialDistance=vector_length(pc_i->getPos()-ductCenter);
+    const dfloat gap=cylinderContactGap(
+        radialDistance,pc_i->getRadius(),EXTERNAL_DUCT_BC_RADIUS,-1);
+    if (gap<0.0_df) {
+        const Wall wallData=determineCircularWall(
+            pc_i->getPos(),EXTERNAL_DUCT_BC_RADIUS,-1);
+        sphereWallCollision({pc_i,wallData,-gap,step},d_pwForces);
+    }
+}
+
+__device__
+void checkCollisionExternalDuctCapsule(ParticleCenter* pc_i,unsigned int step) {
+    const dfloat3 ductCenter=dfloat3(
+        DUCT_CENTER_X,DUCT_CENTER_Y,pc_i->getPosZ());
+    const dfloat3 endpoints[2]={pc_i->getSemiAxis1(),pc_i->getSemiAxis2()};
+    for (int i=0; i<2; ++i) {
+        const dfloat gap=cylinderContactGap(
+            vector_length(endpoints[i]-ductCenter),pc_i->getRadius(),
+            EXTERNAL_DUCT_BC_RADIUS,-1);
+        if (gap<0.0_df) {
+            const Wall wallData=determineCircularWall(
+                endpoints[i],EXTERNAL_DUCT_BC_RADIUS,-1);
+            capsuleWallCollisionCap({pc_i,wallData,-gap,step,endpoints[i]});
+        }
+    }
+}
+
+__device__
+void checkCollisionExternalDuctEllipsoid(ParticleCenter* pc_i,unsigned int step) {
+    const dfloat3 axisStart=dfloat3(
+        DUCT_CENTER_X,DUCT_CENTER_Y,-EXTERNAL_DUCT_BC_RADIUS);
+    const dfloat3 axisEnd=dfloat3(
+        DUCT_CENTER_X,DUCT_CENTER_Y,NZ_TOTAL+EXTERNAL_DUCT_BC_RADIUS);
+    dfloat3 pointCylinder[1];
+    dfloat3 pointEllipsoid[1];
+    dfloat curvatureRadius[1];
+    const dfloat gap=ellipsoidSegmentCollisionDistance(
+        pc_i,axisStart,axisEnd,EXTERNAL_DUCT_BC_RADIUS,
+        pointCylinder,pointEllipsoid,curvatureRadius,-1,step);
+    if (gap<0.0_df) {
+        const Wall wallData=determineCircularWall(
+            pointCylinder[0],EXTERNAL_DUCT_BC_RADIUS,-1);
+        ellipsoidCylinderCollision(
+            {pc_i,wallData,-gap,step},pointEllipsoid,curvatureRadius,
+            axisStart,axisEnd,EXTERNAL_DUCT_BC_RADIUS,-1);
+    }
+}
+#endif
+
 __device__
 void checkCollisionWalls(ParticleShape *shape, ParticleCenter* pc_i, ParticleWallForces *d_pwForces, unsigned int step){
     switch (*shape) {
         case SPHERE:
             checkCollisionWallsSphere(pc_i,d_pwForces,step);
+            #if defined(EXTERNAL_DUCT_BC)
+            checkCollisionExternalDuctSphere(pc_i,d_pwForces,step);
+            #endif
             break;
         case CAPSULE:
             checkCollisionWallsCapsule(pc_i,step);
+            #if defined(EXTERNAL_DUCT_BC)
+            checkCollisionExternalDuctCapsule(pc_i,step);
+            #endif
             break;
         case ELLIPSOID:
             checkCollisionWallsElipsoid(pc_i,step);
+            #if defined(EXTERNAL_DUCT_BC)
+            checkCollisionExternalDuctEllipsoid(pc_i,step);
+            #endif
             break;
         default:
             // Handle unknown particle types
             break;
-    }  
-
-    //TODO: find a way to remove the double check
-    #if defined (EXTERNAL_DUCT_BC)
-        dfloat dist;
-        Wall wallData;
-        dfloat3 ductCenter = dfloat3(DUCT_CENTER_X, DUCT_CENTER_Y, pc_i->getPosZ());
-        dfloat3 endpoint;
-        dfloat3 closestOnA[1];
-        dfloat3 closestOnB[1];
-        dfloat cr[1];
-
-        switch (*shape) {
-            case SPHERE:
-                dist = vector_length(pc_i->getPos() - ductCenter);
-                dist = cylinderContactGap(dist, pc_i->getRadius(), EXTERNAL_DUCT_BC_RADIUS, -1);
-                if (dist < 0.0_df) {
-                    wallData = determineCircularWall(pc_i->getPos(),EXTERNAL_DUCT_BC_RADIUS,-1);
-                    sphereWallCollision({pc_i, wallData, -dist, step},d_pwForces);
-                }
-                break;
-            case CAPSULE:
-                // For a containing cylinder, the maximum radial distance of a
-                // line segment occurs at an endpoint, so cap checks cover both
-                // side and end-cap contact orientations.
-                endpoint = pc_i->getSemiAxis1();
-                dist = vector_length(endpoint - ductCenter);
-                dist = cylinderContactGap(dist, pc_i->getRadius(), EXTERNAL_DUCT_BC_RADIUS, -1);
-                if (dist < 0.0_df) {
-                    wallData = determineCircularWall(endpoint,EXTERNAL_DUCT_BC_RADIUS,-1);
-                    capsuleWallCollisionCap({pc_i, wallData, -dist, step, endpoint});
-                }
-                
-                endpoint = pc_i->getSemiAxis2();
-                dist = vector_length(endpoint - ductCenter);
-                dist = cylinderContactGap(dist, pc_i->getRadius(), EXTERNAL_DUCT_BC_RADIUS, -1);
-                if (dist < 0.0_df) {
-                    wallData = determineCircularWall(endpoint,EXTERNAL_DUCT_BC_RADIUS,-1);
-                    capsuleWallCollisionCap({pc_i, wallData, -dist, step, endpoint});
-                }
-                break;
-            case ELLIPSOID:
-                dist = ellipsoidSegmentCollisionDistance(pc_i, dfloat3(DUCT_CENTER_X,DUCT_CENTER_Y,-EXTERNAL_DUCT_BC_RADIUS),dfloat3(DUCT_CENTER_X,DUCT_CENTER_Y,NZ_TOTAL+EXTERNAL_DUCT_BC_RADIUS), EXTERNAL_DUCT_BC_RADIUS,closestOnA,closestOnB,cr,-1,step);
-                if(dist < 0){
-                    wallData = determineCircularWall(closestOnA[0],EXTERNAL_DUCT_BC_RADIUS,-1);
-                    ellipsoidCylinderCollision({pc_i, wallData,-dist,step},closestOnB,cr,dfloat3(DUCT_CENTER_X,DUCT_CENTER_Y,-EXTERNAL_DUCT_BC_RADIUS),dfloat3(DUCT_CENTER_X,DUCT_CENTER_Y,NZ_TOTAL+EXTERNAL_DUCT_BC_RADIUS),EXTERNAL_DUCT_BC_RADIUS,-1);
-                }
-                break;
-            default:
-                break;
-        }  
-
-
-    #endif //(EXTERNAL_DUCT_BC)
+    }
 }
 
 __device__
@@ -208,18 +222,18 @@ void checkCollisionWallsCapsule(ParticleCenter* pc_i, unsigned int step) {
     int wallCount = 0;
 
     #ifdef BC_X_WALL
-    walls[wallCount++] = wall(dfloat3(1, 0, 0), 0);
-    walls[wallCount++] = wall(dfloat3(-1, 0, 0), (NX - 1));
+    walls[wallCount++] = wall(dfloat3(1,0,0),0,dfloat3(0,-WALL_VEL_UY,-WALL_VEL_UZ));
+    walls[wallCount++] = wall(dfloat3(-1,0,0),NX-1,dfloat3(0,WALL_VEL_UY,WALL_VEL_UZ));
     #endif
 
     #ifdef BC_Y_WALL
-    walls[wallCount++] = wall(dfloat3(0, 1, 0), 0);
-    walls[wallCount++] = wall(dfloat3(0, -1, 0), (NY - 1));
+    walls[wallCount++] = wall(dfloat3(0,1,0),0,dfloat3(-WALL_VEL_UX,0,-WALL_VEL_UZ));
+    walls[wallCount++] = wall(dfloat3(0,-1,0),NY-1,dfloat3(WALL_VEL_UX,0,WALL_VEL_UZ));
     #endif
     
     #ifdef BC_Z_WALL
-    walls[wallCount++] = wall(dfloat3(0, 0, 1), 0);
-    walls[wallCount++] = wall(dfloat3(0, 0, -1), (NZ - 1));
+    walls[wallCount++] = wall(dfloat3(0,0,1),0,dfloat3(-WALL_VEL_UX,-WALL_VEL_UY,0));
+    walls[wallCount++] = wall(dfloat3(0,0,-1),NZ_TOTAL-1,dfloat3(WALL_VEL_UX,WALL_VEL_UY,0));
     #endif
 
     for (int i = 0; i < wallCount; ++i) {

@@ -56,12 +56,13 @@ struct EllipsoidWallContactResult {
 
 /**
  * @brief Compute the normal force during a collision.
- * @param n: The normal vector at the point of contact.
- * @param G: The relative velocity vector at the contact point.
- * @param displacement: The displacement value representing the overlap or penetration depth.
+ * @param n: Unit normal from body i toward the collision partner. For a wall,
+ *           this is the particle-to-wall direction, `-Wall.normal`.
+ * @param G: Velocity of body i at contact minus the partner/contact-wall velocity.
+ * @param displacement: Positive overlap or penetration depth.
  * @param stiffness: The stiffness coefficient for the normal force calculation.
  * @param damping: The damping coefficient for the normal force calculation.
- * @return The computed normal force vector.
+ * @return The normal force acting on body i. Its elastic part points opposite n.
  */
 __device__ 
 dfloat3 computeNormalForce(const dfloat3& n, const dfloat3& G, dfloat displacement, dfloat stiffness, dfloat damping); 
@@ -118,8 +119,9 @@ void accumulateForceAndTorque(
 // ****************************************************************************
 
 /**
- *  @brief Calculate the index for wall collisions based on the normal vector.
- *  @param n: The normal vector of the wall.
+ *  @brief Calculate the history slot for an axis-aligned wall contact.
+ *  @param n: Particle-to-wall force-law normal (`-Wall.normal`). A zero vector
+ *            selects slot 3, reserved for the cylindrical/duct wall.
  *  @return The calculated index used to identify wall collisions.
  */
 __device__ 
@@ -187,8 +189,8 @@ void endCollision(CollisionData &collisionData, int index, int currentTimeStep);
  * @param G_ct: The relative tangential velocity vector at the contact point.
  * @param G: The relative velocity vector at the contact point.
  * @param tang_index_out: Reference to an integer to store the index of the tangential displacement record.
- * @param wallNormal: The normal vector of the wall (only used if isWall is true), or a hack-encoded
- *                    value used by ellipsoidCylinderCollision to force a specific tang_index.
+ * @param wallNormal: Particle-to-wall force-law normal for an axis-aligned wall.
+ *                    A zero vector selects the reserved curved-wall slot 3.
  * @param n: The actual current contact normal, used to re-project the accumulated tangential
  *           displacement onto the current tangent plane before it is used/stored.
  * @return The tangential displacement vector associated with the collision.
@@ -213,34 +215,24 @@ dfloat3 getOrUpdateTangentialDisplacement(
 
 
 /**
- *  @brief Handle collision mechanics between a sphere and a wall.
- *  @param pc_i: Pointer to the `ParticleCenter` structure containing sphere information.
- *  @param wallData: The data structure representing the wall.
- *  @param displacement: The displacement value representing how far the sphere has moved.
- *  @param step: The current time step for collision processing.
+ *  @brief Apply the wall force and torque to a sphere.
+ *  @param ctx: Contact data following the wall convention documented by CollisionContext.
+ *  @param d_pwForces: Optional Cartesian wall reaction-force accumulator.
  */
 __device__
 void sphereWallCollision(const CollisionContext& ctx, ParticleWallForces *d_pwForces);
 
 /**
- *  @brief Handle collision mechanics between a capsule's end cap and a wall.
- *  @param pc_i: Pointer to the `ParticleCenter` structure containing capsule information.
- *  @param wallData: The data structure representing the wall.
- *  @param displacement: The displacement value for the capsule's end cap.
- *  @param step: The current time step for collision processing.
- *  @param endpoint: The endpoint of the capsule's end cap.
+ *  @brief Apply the wall force and contact-arm torque to a capsule end cap.
+ *  @param ctx: Contact data following the wall convention documented by CollisionContext.
  */
 __device__
 void capsuleWallCollisionCap(const CollisionContext& ctx);
 
 /**
- *  @brief Handle collision mechanics between an ellipsoid particle and a wall.
- *  @param pc_i: Pointer to the ParticleCenter structure representing the ellipsoid particle.
- *  @param wallData: Structure containing information about the wall, such as normal and distance.
- *  @param displacement: The displacement value 
- *  @param endpoint: The point on the ellipsoid's surface where the collision occurs.
- *  @param cr: gaussian radius on the contact point
- *  @param step: The current simulation step or time index.
+ *  @brief Apply the wall force and contact-arm torque to an ellipsoid.
+ *  @param ctx: Contact data following the wall convention documented by CollisionContext.
+ *  @param cr: Gaussian curvature radius at the contact point.
  */
 __device__
 void ellipsoidWallCollision(const CollisionContext& ctx, dfloat cr[1]);
@@ -302,7 +294,7 @@ void ellipsoidEllipsoidCollision(const CollisionContext& ctx,dfloat3 closestOnA[
 
 /**
  * @brief Handle collision mechanics between an ellipsoid and a cylinder.
- * @param pc_i: Pointer to the ParticleCenter structure representing the ellipsoid particle.
+ * @param ctx: Contact data; ctx.wall.velocity is the wall velocity at contact.
  * @param closestOnB: Closest point on the cylinder surface.
  * @param cr1: gaussian radius on the contact point for ellipsoid 1
  * @param P1: One endpoint of the cylinder axis.

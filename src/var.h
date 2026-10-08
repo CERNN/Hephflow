@@ -46,7 +46,7 @@ constexpr unsigned int GPUS_TO_USE[N_GPUS] = {0, 1};
 /* ============================ PROBLEM SETUP ============================= */
 
 #ifndef BC_PROBLEM
-#define BC_PROBLEM 001_taylorGreen
+#define BC_PROBLEM 003_viscoelasitcParallelPlates_D3Q19
 #endif
 
 /* ======================= CASE CONFIGURATION INCLUDES ===================== */

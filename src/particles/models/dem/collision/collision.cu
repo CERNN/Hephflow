@@ -328,7 +328,7 @@ void capsuleWallCollisionCap(const CollisionContext& ctx) {
     const dfloat3 v_i = pc_i->getVel();             // Center of mass velocity
     const dfloat3 w_i = pc_i->getW();
     // Wall info
-    dfloat3 wall_speed = dfloat3(0, 0, 0);          // Wall velocity (assumed zero)
+    const dfloat3 wall_speed = wallData.velocity;
     dfloat3 n = wallData.normal * -1.0f;            // Invert normal: collision from sphere to wall
 
     // Relative velocity
@@ -717,9 +717,8 @@ void ellipsoidCylinderCollision(const CollisionContext& ctx, dfloat3 closestOnB[
     const dfloat m_i = pc_i->getVolume() * pc_i->getDensity();
 
 
-    //wall information        
-    dfloat3 wall_speed = dfloat3(0,0,0); 
-    dfloat3 wall_rotation = dfloat3(0,0,0);
+    // Wall velocity is defined at the contact point, just as for Cartesian walls.
+    const dfloat3 wall_speed = ctx.wall.velocity;
 
     dfloat3 wallNormal[1];
     segmentProjection(endpoint, P1, P2, cRadius, cyDir, wallNormal);
@@ -731,7 +730,7 @@ void ellipsoidCylinderCollision(const CollisionContext& ctx, dfloat3 closestOnB[
     //vector center-> contact 
     dfloat3 rri = pos_c_i - pos_i;
 
-    dfloat3 G = (v_i + cross_product(w_i,rri)) - (wall_speed + cross_product(wall_rotation,cRadius));
+    dfloat3 G = (v_i + cross_product(w_i,rri)) - wall_speed;
     dfloat3 G_cn = dot_product(G,n) * n;
     dfloat3 G_ct = G - G_cn;
 

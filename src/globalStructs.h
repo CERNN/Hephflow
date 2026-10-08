@@ -521,8 +521,11 @@ typedef struct ghostInterfaceData  {
 } GhostInterfaceData;
 
 typedef struct wall{
+    // Unit normal from the wall into the admissible particle/fluid region.
+    // Particle-wall force routines use the opposite direction (particle -> wall).
     dfloat3 normal;
     dfloat distance;
+    // Translational velocity of the wall at the contact point.
     dfloat3 velocity;
 
     __host__ __device__

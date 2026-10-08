@@ -464,9 +464,12 @@ protected:
 
 struct CollisionContext {
     ParticleCenter* pc_i;      // Main particle (i)
+    // wall.normal points from the wall into the admissible region; wall.velocity
+    // is the wall velocity at contact. Responses use n = -wall.normal.
     Wall wall;                 // Wall info (for wall collisions)
-    dfloat displacement;       // Overlap/displacement
+    dfloat displacement;       // Positive overlap/penetration depth
     unsigned int step;         // Current timestep
+    // Point on particle i; contact torque uses (contactPoint - center) x force.
     dfloat3 contactPoint;      // For capsule/ellipsoid
     ParticleCenter* pc_j;      // Partner particle (j), nullptr for wall collisions
     int partnerID;             // Partner particle ID (for pairwise collisions)
@@ -476,4 +479,3 @@ struct CollisionContext {
 
 #endif //PARTICLE_MODEL
 #endif //!__PARTICLE_CENTER_H
-
