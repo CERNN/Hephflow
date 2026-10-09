@@ -37,10 +37,9 @@ if (outerWallDistance > 0.0 && innerWallDistance > 0.0) {
 
     // Taper perturbations to zero at both physical walls.
     const dfloat perturbation = 0.2 * U_BULK * profileShape;
-    const int l = idxScalarGlobal(x, y, z);
-    const int Nt = NUMBER_LBM_NODES_LOCAL;
+    const int l = index;
+    const int Nt = NUMBER_LBM_POP_NODES;
     uz += perturbation * randomNumbers[l + z - Nt * ((l + z) / Nt)];
     ux += perturbation * randomNumbers[l + x - Nt * ((l + x) / Nt)];
     uy += perturbation * randomNumbers[l + y - Nt * ((l + y) / Nt)];
 }
-

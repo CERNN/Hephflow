@@ -8,8 +8,8 @@ omega = OMEGA;
 #endif
 
  
-int l = idxScalarGlobal(x, y, z);
-int Nt = NUMBER_LBM_NODES;
+int l = index;
+int Nt = NUMBER_LBM_POP_NODES;
 
 #ifdef A_XX_DIST
 AxxVar = 1.0 + 2*Weissenberg_number*Weissenberg_number;

@@ -36,6 +36,6 @@ omega = OMEGA;
 // uy = -U_MAX * cos(kx * x) * sin(ky * y);
 
 // Example: Random perturbation (requires RANDOM_NUMBERS defined)
-// int l = idxScalarGlobal(x, y, z);
-// int Nt = NUMBER_LBM_NODES;
+// int l = index;
+// int Nt = NUMBER_LBM_POP_NODES;
 // ux += U_MAX * 0.05 * randomNumbers[l + x - Nt*((l + x) / Nt)];

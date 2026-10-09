@@ -12,8 +12,8 @@ uz = U_0_Z;
 
 // Add random perturbations
 dfloat pert = 0.01;
-int l = idxScalarGlobal(x, y, z);
-int Nt = NUMBER_LBM_NODES;
+int l = index;
+int Nt = NUMBER_LBM_POP_NODES;
 dfloat xc = (NX-1)/2.0;
 dfloat yc = (NY-1)/2.0;
 

@@ -23,9 +23,19 @@
 #define BIN_SAVE (false)                    // Enable binary output
 
 /* --------------------- CHECKPOINT CONFIGURATION --------------------- */
+#ifndef LOAD_CHECKPOINT
 #define LOAD_CHECKPOINT false               // Load simulation from checkpoint
+#endif
+#ifndef SIMULATION_FOLDER_LOAD_CHECKPOINT
+#ifdef HEPHFLOW_LOAD_CHECKPOINT_FROM_OUTPUT
+#define SIMULATION_FOLDER_LOAD_CHECKPOINT PATH_FILES
+#else
 #define SIMULATION_FOLDER_LOAD_CHECKPOINT "TEST"
+#endif
+#endif
+#ifndef CHECKPOINT_SAVE
 #define CHECKPOINT_SAVE false               // Save checkpoints during simulation
+#endif
 #define LOAD_FIELD false                    // Load initial field from file
 #define LOAD_FIELD_STEP 0                   // Timestep to load field from
 

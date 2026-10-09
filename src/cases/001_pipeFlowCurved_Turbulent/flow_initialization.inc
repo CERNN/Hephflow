@@ -17,11 +17,9 @@ if (radius < PIPE_RADIUS) {
 
     // Same perturbation used by the curved-boundary case.
     const dfloat pert = 0.2;
-    const int l = idxScalarGlobal(x, y, z);
-    const int Nt = NUMBER_LBM_NODES_LOCAL;
+    const int l = index;
+    const int Nt = NUMBER_LBM_POP_NODES;
     uz += (ub_f*U_TAU)*pert*randomNumbers[l + z - Nt*((l + z)/Nt)];
     ux += (ub_f*U_TAU)*pert*randomNumbers[l + x - Nt*((l + x)/Nt)];
     uy += (ub_f*U_TAU)*pert*randomNumbers[l + y - Nt*((l + y)/Nt)];
 }
-
-

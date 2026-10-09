@@ -4,8 +4,8 @@ uy = U_0_Y;
 uz = U_0_Z;
 
 dfloat pert = 0.001;
-int l = idxScalarGlobal(x, y, z);
-int Nt = NUMBER_LBM_NODES;
+int l = index;
+int Nt = NUMBER_LBM_POP_NODES;
 ux += 0*randomNumbers[l + x - Nt*((l + x) / Nt)];
 uy += 0*randomNumbers[l + y - Nt*((l + y) / Nt)];
 uz += 0*randomNumbers[l + z - Nt*((l + z) / Nt)];

@@ -1,10 +1,6 @@
 #ifdef TESTS
 if (step == N_STEPS - 1) {
-    for (int g = 0; g < N_GPUS; ++g) {
-        checkCudaErrors(cudaSetDevice(GPUS_TO_USE[g]));
-        checkCudaErrors(cudaDeviceSynchronize());
-        devices[g].cudaMemcpyDeviceField(hostField, g, slice);
-    }
+    deviceField.copyMacroscopicDeviceField(hostField, devices.data());
 
     double phiSum = 0.0;
     double initialPhiSum = 0.0;

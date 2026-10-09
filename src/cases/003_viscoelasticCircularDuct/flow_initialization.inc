@@ -15,8 +15,8 @@
 
     // perturbation
     dfloat pert = 0.1;
-    int l = idxScalarGlobal(x, y, z);
-    int Nt = NUMBER_LBM_NODES;
+    int l = index;
+    int Nt = NUMBER_LBM_POP_NODES;
     uz += (ub_f*U_TAU)*pert*randomNumbers[l + z - Nt*((l + z) / Nt)];
     ux += (ub_f*U_TAU)*pert*randomNumbers[l + x - Nt*((l + x) / Nt)];
     uy += (ub_f*U_TAU)*pert*randomNumbers[l + y - Nt*((l + y) / Nt)];
@@ -24,8 +24,8 @@
 
 
 /*dfloat pert = 0.05;
-int l = idxScalarGlobal(x, y, z);
-int Nt = NUMBER_LBM_NODES;
+int l = index;
+int Nt = NUMBER_LBM_POP_NODES;
 
 ux += (U_MAX)*pert*randomNumbers[l + x - Nt*((l + x) / Nt)];
 uy += (U_MAX)*pert*randomNumbers[l + y - Nt*((l + y) / Nt)];

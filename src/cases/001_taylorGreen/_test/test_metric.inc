@@ -1,8 +1,7 @@
 #ifdef TESTS
 if (((step + 1) % TGV_SAMPLE_EVERY == 0) || step == N_STEPS - 1) {
     checkCudaErrors(cudaDeviceSynchronize());
-    for (int g = 0; g < N_GPUS; ++g)
-        devices[g].cudaMemcpyDeviceField(hostField, g, slice);
+    deviceField.copyMacroscopicDeviceField(hostField, devices.data());
     checkCudaErrors(cudaDeviceSynchronize());
 
     const dfloat elapsed = static_cast<dfloat>(step + 1);
