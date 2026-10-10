@@ -32,7 +32,7 @@ Hephflow builds on the codebase of the previous project [VISCOPLASTIC-LBM](https
 ## Quick Start
 
 1. **Install CUDA Toolkit**: Download from [Nvidia's website](https://developer.nvidia.com/cuda-toolkit)
-2. **Set active case**: Edit `src/var.h` and change `#define BC_PROBLEM` to your desired case (e.g., `001_lidDrivenCavity_3D`)
+2. **Set active case**: Edit `src/var.h` and change `#define BC_PROBLEM` to your desired path below `src/cases/` (e.g., `Newtonian/Laminar/001_lidDrivenCavity_3D`)
 3. **Compile**: Run `sh compile.sh <VELOCITY_SET> <CASE_ID>` (e.g., `sh compile.sh D3Q19 001`)
    - The script auto-detects your GPU's compute capability via `nvidia-smi`
 4. **Run**: Execute the compiled binary from the `bin/` directory
@@ -61,7 +61,7 @@ To compile and run Hephflow, you will need:
 
 2. **Select Simulation Case**:
    - Edit `src/var.h` and modify `#define BC_PROBLEM` to select your case
-   - Available cases are in `src/cases/` directory (e.g., `001_lidDrivenCavity_3D`)
+   - Available cases are organized by physics under `src/cases/` (e.g., `Newtonian/Laminar/001_lidDrivenCavity_3D`)
    - Each case contains required `.inc` files defining the simulation parameters
 
 3. **Compile the Project**:
@@ -132,13 +132,13 @@ The following table provides an overview of key files and directories in the pro
 | 5 | `definitions.h` | LBM constants and macro definitions |
 | 6 | `arrayIndex.h` | Index calculation functions for moment ordering |
 | 7 | `auxFunctions.cu`/`auxFunctions.cuh` | Auxiliary GPU functions |
-| 8 | `cases/` | Template-based simulation case definitions (35+ cases available) |
-| 9 | `cases/<CASE_ID>/constants.inc` | Grid size, Reynolds number, physical parameters, forces |
-| 10 | `cases/<CASE_ID>/model.inc` | Velocity set, collision model, physics models selection |
-| 11 | `cases/<CASE_ID>/bc_initialization.inc` | Boundary condition node type assignment |
-| 12 | `cases/<CASE_ID>/bc_definition.inc` | Mathematical boundary condition implementation |
-| 13 | `cases/<CASE_ID>/flow_initialization.inc` | Initial velocity and density field setup |
-| 14 | `cases/<CASE_ID>/output.inc` | Data saving configuration (VTK, binary, checkpoints) |
+| 8 | `cases/` | Physics-based simulation case definitions |
+| 9 | `cases/<CATEGORY>/<CASE_ID>/constants.inc` | Grid size, Reynolds number, physical parameters, forces |
+| 10 | `cases/<CATEGORY>/<CASE_ID>/model.inc` | Velocity set, collision model, physics models selection |
+| 11 | `cases/<CATEGORY>/<CASE_ID>/bc_initialization.inc` | Boundary condition node type assignment |
+| 12 | `cases/<CATEGORY>/<CASE_ID>/bc_definition.inc` | Mathematical boundary condition implementation |
+| 13 | `cases/<CATEGORY>/<CASE_ID>/flow_initialization.inc` | Initial velocity and density field setup |
+| 14 | `cases/<CATEGORY>/<CASE_ID>/output.inc` | Data saving configuration (VTK, binary, checkpoints) |
 | 15 | `collision_reconstruction/` | Collision and reconstruction implementations for various lattice models |
 | 16 | `includeFiles/popSave` | Kernel for loading populations from global memory |
 | 17 | `includeFiles/popLoad` | Kernel for saving populations to global memory |
@@ -160,21 +160,26 @@ Hephflow uses a **template-based case system** where each simulation is defined 
 
 ### Case Selection
 
-1. **Choose a case**: Browse available cases in `src/cases/` directory
+1. **Choose a case**: Browse the physics categories in `src/cases/`
 2. **Set active case**: Edit `src/var.h` and modify:
    ```cpp
-   #define BC_PROBLEM 001_lidDrivenCavity_3D  // Change this line
+   #define BC_PROBLEM Newtonian/Laminar/001_lidDrivenCavity_3D
    ```
 3. **Compile**: Run `sh compile.sh <VELOCITY_SET> <CASE_ID>`
 
-### Example of Available Case Categories
+### Available Case Categories
 
-**Basic Flow Validation Cases:**
-- `001_lidDrivenCavity_2D/3D` - Square cavity with moving lid
-- `001_parallelPlates_D3Q19/D3Q27` - Poiseuille flow validation  
-- `001_taylorGreen` - Analytical vortex decay
-- `001_squaredDuct` - Rectangular duct flow
-- `001_voxel` - Complex geometry via voxelization
+- `Benchmarks/` - performance and IBM benchmarks
+- `Newtonian/Laminar/` and `Newtonian/Turbulent/` - single-phase Newtonian flows
+- `Viscoplastic/` - Bingham and Herschel-Bulkley flows
+- `Viscoelastic/` - constitutive-model and coupled IBM cases
+- `ScalarTransport/` - transported scalar fields
+- `Thermal/` - conduction, convection, and thermal-viscoplastic cases
+- `ImmersedBoundaries/` - fixed bodies, Couette configurations, and particle settling
+- `Multiphase/` - phase-field and complex-rheology cases
+- `Templates/` and `Experimental/` - case templates and incomplete work
+
+See `src/cases/README.md` for the full organization.
 
 ### Required Case Files
 
@@ -229,9 +234,9 @@ Each case directory must contain these 6 files:
 
 ### Creating a New Case
 
-1. Copy a similar case directory. Example `cp -r 001_lidDrivenCavity_3D 001_myNewCase`
+1. Copy a similar case directory within the appropriate category. Example: `cp -r Newtonian/Laminar/001_lidDrivenCavity_3D Newtonian/Laminar/001_myNewCase`
 2. Modify the 6 `.inc` files for your specific problem
-3. Update `BC_PROBLEM` in `var.h` to point to your new case
+3. Update `BC_PROBLEM` in `var.h` with the full path below `src/cases/`
 
 
 ## Using Voxels for Immersed Bodies

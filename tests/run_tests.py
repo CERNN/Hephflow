@@ -32,7 +32,7 @@ if sys.platform == 'win32':
 # Test suite configuration: maps case names to their compilation parameters
 TEST_SUITE = {
     'phase_ch_regression': {
-        'case_dir': '007_phaseFieldVerification',
+        'case_dir': 'Multiphase/007_phaseFieldVerification',
         'velocity_set': 'D3Q19',
         'case_number': 'acv_ch_regression_',
         'block_size': (8, 8, 8),
@@ -44,7 +44,7 @@ TEST_SUITE = {
                     'PHASE_TEST_FORCE_CHEMICAL']
     },
     'phase_ac_planar_chemical': {
-        'case_dir': '007_phaseFieldVerification',
+        'case_dir': 'Multiphase/007_phaseFieldVerification',
         'velocity_set': 'D3Q19',
         'case_number': 'acv_planar_mu_',
         'block_size': (8, 8, 8),
@@ -54,7 +54,7 @@ TEST_SUITE = {
                     'PHASE_TEST_STEPS=1000', 'PHASE_TEST_FORCE_CHEMICAL']
     },
     'phase_ac_planar_csf': {
-        'case_dir': '007_phaseFieldVerification',
+        'case_dir': 'Multiphase/007_phaseFieldVerification',
         'velocity_set': 'D3Q19',
         'case_number': 'acv_planar_csf_',
         'block_size': (8, 8, 8),
@@ -64,7 +64,7 @@ TEST_SUITE = {
                     'PHASE_TEST_STEPS=1000', 'PHASE_TEST_FORCE_CSF']
     },
     'phase_ac_planar_double': {
-        'case_dir': '007_phaseFieldVerification',
+        'case_dir': 'Multiphase/007_phaseFieldVerification',
         'velocity_set': 'D3Q19',
         'case_number': 'acv_planar_double_',
         'block_size': (8, 8, 8),
@@ -74,7 +74,7 @@ TEST_SUITE = {
                     'PHASE_TEST_STEPS=1000', 'PHASE_TEST_FORCE_CHEMICAL']
     },
     'phase_ac_stationary_droplet': {
-        'case_dir': '007_phaseFieldVerification',
+        'case_dir': 'Multiphase/007_phaseFieldVerification',
         'velocity_set': 'D3Q19',
         'case_number': 'acv_drop_',
         'block_size': (8, 8, 8),
@@ -86,7 +86,7 @@ TEST_SUITE = {
                     'PHASE_TEST_STEPS=2000', 'PHASE_TEST_FORCE_CSF']
     },
     'phase_ac_diagonal_translation': {
-        'case_dir': '007_phaseFieldVerification',
+        'case_dir': 'Multiphase/007_phaseFieldVerification',
         'velocity_set': 'D3Q19',
         'case_number': 'acv_translate_',
         'block_size': (8, 8, 8),
@@ -97,7 +97,7 @@ TEST_SUITE = {
                     'PHASE_TEST_STEPS=800', 'PHASE_TEST_FORCE_CHEMICAL']
     },
     'phase_ac_clipping_accounting': {
-        'case_dir': '007_phaseFieldVerification',
+        'case_dir': 'Multiphase/007_phaseFieldVerification',
         'velocity_set': 'D3Q19',
         'case_number': 'acv_clip_',
         'block_size': (8, 8, 8),
@@ -109,7 +109,7 @@ TEST_SUITE = {
                     'PHASE_TEST_MOBILITY=0.2_df', 'PHI_CLAMP_ENABLED=1']
     },
     'phase_ac_capillary_droplet': {
-        'case_dir': '007_phaseFieldVerification',
+        'case_dir': 'Multiphase/007_phaseFieldVerification',
         'velocity_set': 'D3Q19',
         'case_number': 'acv_capillary_',
         'block_size': (8, 8, 8),
@@ -123,7 +123,7 @@ TEST_SUITE = {
                     'PHASE_TEST_STEPS=2000', 'PHASE_TEST_FORCE_CSF']
     },
     'phase_ac_capillary_chemical': {
-        'case_dir': '007_phaseFieldVerification',
+        'case_dir': 'Multiphase/007_phaseFieldVerification',
         'velocity_set': 'D3Q19',
         'case_number': 'acv_capillary_mu_',
         'block_size': (8, 8, 8),
@@ -137,7 +137,7 @@ TEST_SUITE = {
                     'PHASE_TEST_FORCE_CHEMICAL']
     },
     'phase_ac_multigpu_interface': {
-        'case_dir': '007_phaseFieldVerification',
+        'case_dir': 'Multiphase/007_phaseFieldVerification',
         'velocity_set': 'D3Q19',
         'case_number': 'acv_multigpu_',
         'block_size': (8, 8, 8),
@@ -151,21 +151,25 @@ TEST_SUITE = {
                     'HEPHFLOW_N_GPUS=2']
     },
     '001_parallelPlates_D3Q19': {
+        'case_dir': 'Newtonian/Laminar/001_parallelPlates_D3Q19',
         'velocity_set': 'D3Q19',
         'case_number': '011',
         'block_size': (8, 8, 8)  # (BLOCK_NX, BLOCK_NY, BLOCK_NZ)
     },
     '001_parallelPlates_D3Q27': {
+        'case_dir': 'Newtonian/Laminar/001_parallelPlates_D3Q27',
         'velocity_set': 'D3Q27',
         'case_number': '011',
         'block_size': (8, 8, 4)  # Smaller blocks for D3Q27 to fit shared memory
     },
     '001_taylorGreen': {
+        'case_dir': 'Newtonian/Laminar/001_taylorGreen',
         'velocity_set': 'D3Q19',
         'case_number': '001_tgv_validation_',
         'block_size': (8, 8, 8)
     },
     '006_singleParticleSettling': {
+        'case_dir': 'ImmersedBoundaries/Settling/006_singleParticleSettling',
         'velocity_set': 'D3Q19',
         'case_number': '006_settling_test_',
         'block_size': (8, 8, 8),
@@ -353,6 +357,7 @@ class TestRunner:
             return False
         
         config = TEST_SUITE[case_name]
+        case_path = config.get('case_dir', case_name)
         if config.get('validation') == 'phase_field':
             return self._compile_phase_case(config)
         velocity_set = os.environ.get('HEPHFLOW_TEST_VELOCITY_SET', config['velocity_set'])
@@ -373,16 +378,11 @@ class TestRunner:
             
             # Update BC_PROBLEM definition
             var_h_modified = re.sub(
-                r'#define BC_PROBLEM \w+',
-                f'#define BC_PROBLEM {case_name}',
-                var_h_original
-            )
-            
-            # Add TESTS define right after BC_PROBLEM
-            var_h_modified = re.sub(
-                f'(#define BC_PROBLEM {case_name}\n)',
-                f'#define BC_PROBLEM {case_name}\n#define TESTS 1\n',
-                var_h_modified
+                r'^#define BC_PROBLEM\s+\S+',
+                f'#define BC_PROBLEM {case_path}\n#define TESTS 1',
+                var_h_original,
+                count=1,
+                flags=re.MULTILINE
             )
             
             # Write modified var.h
@@ -409,7 +409,7 @@ class TestRunner:
             with open(memory_layout_path, 'w') as f:
                 f.write(memory_layout_modified)
             
-            print(f"  Updated BC_PROBLEM to {case_name} and enabled TESTS in var.h", flush=True)
+            print(f"  Updated BC_PROBLEM to {case_path} and enabled TESTS in var.h", flush=True)
             print(f"  Updated block size to {block_nx}x{block_ny}x{block_nz} in memory_layout.h", flush=True)
             print(f"  Compiling with output prefix {case_number}...", flush=True)
             

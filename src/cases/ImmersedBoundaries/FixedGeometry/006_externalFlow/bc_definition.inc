@@ -14,7 +14,7 @@ dfloat inv_rho;
 // Check if solid body walls
 //if ((nodeType & ((1 << 8) | (1 << 9) | (1 << 10))) == 0) {
  
-#include "../../cases/voxel/bc_definition"
+#include "cases/Newtonian/Laminar/001_voxel/bc_definition.inc"
 
 switch (nodeType){
     case  (FRONT + BC_OUTFLOW):
@@ -68,4 +68,4 @@ switch (nodeType){
         case (SOUTH + BC_FREESLIP):
         break;*/
 }
- 
+

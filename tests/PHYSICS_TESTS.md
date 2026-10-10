@@ -10,7 +10,7 @@ Physics regression test suite that validates simulation accuracy after kernel mo
 src/
 ├── main.cu                          # Main simulation loop with TESTS integration
 ├── include/case_definitions.h       # Includes CASE_TEST_METRIC macro
-└── cases/{CASE_NAME}/_test/
+└── cases/{CATEGORY}/{CASE_NAME}/_test/
     ├── test_metric.inc              # Test computation logic (runs at final timestep)
     ├── tolerances.txt               # Error thresholds for pass/fail
     └── reference_data.txt           # Expected baseline values
@@ -67,7 +67,7 @@ python tests/run_tests.py 001_parallelPlates_D3Q19
 python tests/run_tests.py 001_parallelPlates_D3Q19 002_anotherCase
 
 # View results
-cat src/cases/001_parallelPlates_D3Q19/_test/test_results.txt
+cat src/cases/Newtonian/Laminar/001_parallelPlates_D3Q19/_test/test_results.txt
 ```
 
 The Python runner automatically:
@@ -95,7 +95,7 @@ test_results.txt contains:
 
 ## Adding New Test Cases
 
-1. Create `src/cases/{NEW_CASE}/_test/` directory
+1. Create `src/cases/{CATEGORY}/{NEW_CASE}/_test/` directory
 2. Add `test_metric.inc` with test computation logic
 3. Create `tolerances.txt` with acceptable thresholds
 4. Create `reference_data.txt` with baseline values

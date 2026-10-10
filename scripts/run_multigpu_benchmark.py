@@ -453,7 +453,7 @@ def write_reports(result: dict[str, Any], output_dir: Path) -> None:
 
 def self_test(repo_root: Path) -> int:
     var_path = repo_root / "src" / "var.h"
-    constants_path = repo_root / "src" / "cases" / "000_benchmark" / "constants.inc"
+    constants_path = repo_root / "src" / "cases" / "Benchmarks" / "000_benchmark" / "constants.inc"
     var_original = var_path.read_bytes().decode("utf-8")
     constants_original = constants_path.read_bytes().decode("utf-8")
     var_new, constants_new = configured_sources(
@@ -540,7 +540,7 @@ def main() -> int:
     log_dir.mkdir()
 
     var_path = src_dir / "var.h"
-    constants_path = src_dir / "cases" / "000_benchmark" / "constants.inc"
+    constants_path = src_dir / "cases" / "Benchmarks" / "000_benchmark" / "constants.inc"
     originals = {
         var_path: var_path.read_bytes(),
         constants_path: constants_path.read_bytes(),

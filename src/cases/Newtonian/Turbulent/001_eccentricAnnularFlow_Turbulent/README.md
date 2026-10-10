@@ -24,7 +24,7 @@ and z-axis rotation are compatible with the periodic, extruded duct.
 To build the case, select it in `src/var.h`:
 
 ```cpp
-#define BC_PROBLEM 001_eccentricAnnularFlow_Turbulent
+#define BC_PROBLEM Newtonian/Turbulent/001_eccentricAnnularFlow_Turbulent
 ```
 
 Then run `compile.sh` from `src/`. `NODE_TYPE_SAVE` is enabled by default so

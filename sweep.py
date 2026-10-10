@@ -14,14 +14,14 @@ Quick start (in-file config)
 Usage
 -----
 Single variable:
-    python sweep.py 007_twoLayerChannel N=32,64,128,256,512
+    python sweep.py Multiphase/ComplexRheology/007_twoLayerChannel N=32,64,128,256,512
 
 Multiple variables — cartesian product (default):
-    python sweep.py 007_twoLayerChannel N=32,64,128 TAU=0.6,0.8
+    python sweep.py Multiphase/ComplexRheology/007_twoLayerChannel N=32,64,128 TAU=0.6,0.8
     → runs: (32,0.6), (32,0.8), (64,0.6), (64,0.8), (128,0.6), (128,0.8)
 
 Multiple variables — paired/zip mode:
-    python sweep.py 007_twoLayerChannel N=32,64 TAU=0.6,0.8 --zip
+    python sweep.py Multiphase/ComplexRheology/007_twoLayerChannel N=32,64 TAU=0.6,0.8 --zip
     → runs: (32,0.6), (64,0.8)
 
 Flags
@@ -60,7 +60,7 @@ MEMORY_LAYOUT_H = SRC_DIR / "include" / "memory_layout.h"
 # In-file sweep configuration (used by default with: python sweep.py)
 # ---------------------------------------------------------------------------
 
-CASE_NAME = "007_twoLayerChannel"
+CASE_NAME = "Multiphase/ComplexRheology/007_twoLayerChannel"
 
 # PARAM_GROUPS defines the sweep axes.
 # - Variables in the SAME dict are LOCKED (zipped together, move as a pair).
@@ -396,7 +396,7 @@ def build_parser() -> argparse.ArgumentParser:
         "case",
         nargs="?",
         default=None,
-        help="Case folder name, e.g. 007_twoLayerChannel (optional if using in-file config)",
+        help="Case path below src/cases, e.g. Multiphase/ComplexRheology/007_twoLayerChannel (optional if using in-file config)",
     )
     p.add_argument(
         "params",
@@ -529,7 +529,7 @@ def main() -> int:
     # --- Determine prefix ---
     prefix = args.prefix
     if prefix is None:
-        m = re.match(r'^(\d+)', case_name)
+        m = re.match(r'^(\d+)', Path(case_name).name)
         prefix = m.group(1) if m else "000"
 
     total = len(combos)
