@@ -1,7 +1,7 @@
 #ifndef __SAVEFIELD_STRUCTS_H
 #define __SAVEFIELD_STRUCTS_H
 
-#include "main.cuh"
+#include "var.h"
 
 typedef struct saveField{
     int aux;

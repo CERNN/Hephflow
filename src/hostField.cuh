@@ -19,9 +19,6 @@ __host__ void treatData(const TreatDataParams* params);
 // ============================================================================
 // HOST FIELD STRUCTURE
 // ============================================================================
-// NOTE: This struct requires main.cuh to be included first for allocateHostMemory()
-//       and other function declarations. main.cuh must be included before hostField.cuh
-
 typedef struct hostField{
     dfloat* h_fMom;
     dfloat* rho;

@@ -1,27 +1,16 @@
 /**
- *  @file main.cuh
+ *  @file ghostInterface.cu
  *  Contributors history:
  *  @author Waine Jr. (waine@alunos.utfpr.edu.br)
  *  @author Marco Aurelio Ferrari (e.marcoferrari@utfpr.edu.br)
  *  @author Ricardo de Souza
- *  @brief Main routine
+ *  @brief Ghost-interface memory and copy utilities.
  *  @version 0.4.0
  *  @date 01/09/2025
  */
 
-// main.cuh
-#ifndef MAIN_CUH
-#define MAIN_CUH
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <chrono>
-#include <cstring>
-#include <future>
-#include <iomanip>
-#include <mutex>
-#include <sstream>
-#include <stdexcept>
 
 // CUDA INCLUDE
 #include <cuda.h>
@@ -29,35 +18,8 @@
 #include "device_launch_parameters.h"
 
 // FILE INCLUDES
-#include "var.h"
-#include "globalStructs.h"
-#include "auxFunctions.cuh"
-#include "treatData.cuh"
-
-#ifdef PARTICLE_MODEL
-    #include "./particles/class/Particle.cuh"
-    #include "./particles/utils/particlesReport.cuh"
-    #include "./particles/models/particleSim.cuh"
-    #include "./particles/models/dem/collision/collisionDetection.cuh"
-    #include "./particles/models/dem/particleMovement.cuh"
-#endif //PARTICLE_MODEL
-
-#ifdef OMEGA_FIELD
-    #include "non_newtonian/nnf.h"
-#endif //OMEGA_FIELD
-
+#include "ghostInterface.cuh"
 #include "include/errorDef.h"
-#include "include/cuda_utils.cuh"
-//#include "structs.h"
-//#include "globalFunctions.h"
-#include "lbmInitialization.cuh"
-#include "mlbm.cuh"
-#include "saveData.cuh"
-#include "checkpoint.cuh"
-
-#ifdef CURVED_BOUNDARY_CONDITION
-    #include "curvedBC.cuh"
-#endif // CURVED_BOUNDARY_CONDITION
 
 //TODO: maybe move to inside deviceField?
 /**
@@ -66,7 +28,7 @@
  *  @param pt2: reference to the second dfloat pointer to be swapped
  */
 __host__ __device__
-void interfaceSwap(dfloat* &pt1, dfloat* &pt2) {
+static void interfaceSwap(dfloat* &pt1, dfloat* &pt2) {
     dfloat *temp = pt1;
     pt1 = pt2;
     pt2 = temp;
@@ -514,7 +476,7 @@ void swapGhostInterfaces(GhostInterfaceData& ghostInterface, GhostInterfaceData&
  *  @brief Allocates memory for the ghost interface data.
  *  @param ghostInterface: reference to the ghost interface data structure
  */
-inline cudaError_t allocateZeroedInterfaceBuffer(void** pointer, size_t bytes)
+static cudaError_t allocateZeroedInterfaceBuffer(void** pointer, size_t bytes)
 {
     cudaError_t error = cudaMalloc(pointer, bytes);
     if (error != cudaSuccess) return error;
@@ -966,12 +928,3 @@ void interfaceMalloc(ghostInterfaceData &ghostInterface, ghostInterfaceData &gho
  * @details This function is now inlined in deviceField.cuh:initializeDomainDeviceField()
  */
 
-#include "hostField.cuh"
-#include "deviceField.cuh"
-#include "saveField.cuh"
-#include "include/memory_estimate.h"
-#ifdef PARTICLE_MODEL
-#include "particleField.cuh"
-#endif // PARTICLE_MODEL
-
-#endif // MAIN_CUH

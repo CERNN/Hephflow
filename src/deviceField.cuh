@@ -2,8 +2,8 @@
 #define __DEVICEFIELD_STRUCTS_H
 
 #include "var.h"
-#include "main.cuh"
 #include "hostField.cuh"
+#include "ghostInterface.cuh"
 #include "fragments/phiTransport/phase_kernels.cuh"
 #include <algorithm>
 #include <thread>
