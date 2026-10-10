@@ -16,7 +16,7 @@
 // Enable specific physics models (uncomment to activate)
 //#define THERMAL_MODEL                 // Thermal coupling
 #define PARTICLE_MODEL                  // IBM particle simulation
-//#define FENE_P                        // FENE-P viscoelastic model
+//#define VISCOELASTIC_MODEL                        // FENE-P viscoelastic model
 
 /* --------------------- LES MODELS --------------------- */
 // Uncomment the one to use. Comment all to simulate newtonian fluid

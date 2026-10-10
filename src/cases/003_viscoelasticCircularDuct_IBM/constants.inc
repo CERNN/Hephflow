@@ -84,7 +84,7 @@ constexpr dfloat SPHERE_SPHERE_DAMPING_CONST = -2.0_df * constexprLn(PP_REST_COE
     sqrtt(M_PI * M_PI + constexprLn(PP_REST_COEF) * constexprLn(PP_REST_COEF));
 #endif
 
-#ifdef FENE_P
+#ifdef VISCOELASTIC_MODEL
 #define OLDROYD_B
 #define CONVECTION_DIFFUSION_TRANSPORT
 #define D3G19

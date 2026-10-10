@@ -18,7 +18,7 @@
 //#define MODEL_CONST_SMAGORINSKY //https://doi.org/10.1016/j.jcp.2005.03.022
 
 /* --------------------- PHYSICS MODELS --------------------- */
-#define FENE_P
+#define VISCOELASTIC_MODEL
 
 // Enable phase-dependent viscosity blending via omega field
 #define NON_NEWTONIAN_FLUID

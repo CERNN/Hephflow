@@ -1,6 +1,6 @@
 /* Oldroyd-B circular duct using the same stationary IBM geometry as the baseline. */
 #define PARTICLE_MODEL
-#define FENE_P
+#define VISCOELASTIC_MODEL
 #define D3Q19
 #define COLLISION_TYPE MR_LBM_2ND_ORDER
 

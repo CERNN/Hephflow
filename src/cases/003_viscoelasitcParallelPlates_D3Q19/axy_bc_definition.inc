@@ -23,7 +23,7 @@ switch (nodeType) {
     {
         // Interior neighbour is at (y-1): load its Ābar
         // (sum of its gNode populations, not the physical A)
-        #if defined(CONFORMATION_LOG) || defined(CONFORMATION_SQRT)
+        #if CONF_REPRESENTATION != CONF_REP_STANDARD
         const double AbarInt = veExtrapolateStoredFromPhysicalAY(
             fMom,threadIdx.x,threadIdx.y,threadIdx.z,blockIdx.x,blockIdx.y,blockIdx.z,-1).xy;
         #else
@@ -88,7 +88,7 @@ switch (nodeType) {
     case SOUTH:
     {
         // Interior neighbour is at (y+1)
-        #if defined(CONFORMATION_LOG) || defined(CONFORMATION_SQRT)
+        #if CONF_REPRESENTATION != CONF_REP_STANDARD
         const double AbarInt = veExtrapolateStoredFromPhysicalAY(
             fMom,threadIdx.x,threadIdx.y,threadIdx.z,blockIdx.x,blockIdx.y,blockIdx.z,1).xy;
         #else

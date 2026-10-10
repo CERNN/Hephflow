@@ -168,11 +168,11 @@ static inline fluidPhaseProps makeCasePhaseProps(){
 
 /* ============================================================================
  * VISCOELASTIC FLUID PARAMETERS (FENE-P)
- * Requires #define FENE_P in model.inc
+ * Requires #define VISCOELASTIC_MODEL in model.inc
  * Uses additional distributions for conformation tensor components
  * ========================================================================== */
 
-#ifdef FENE_P
+#ifdef VISCOELASTIC_MODEL
 // Model selection
 #define OLDROYD_B                                        // Oldroyd-B constitutive model
 #define CONVECTION_DIFFUSION_TRANSPORT                   // Transport equation method

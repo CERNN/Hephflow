@@ -74,7 +74,7 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 
 /* --------------------- FENE-P VISCOELASTIC MODEL CONFIGURATION --------------------- */
 
-#ifdef FENE_P
+#ifdef VISCOELASTIC_MODEL
     #define OLDROYD_B
     #define CONVECTION_DIFFUSION_TRANSPORT
     #define D3G19

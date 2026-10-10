@@ -7,7 +7,7 @@
 // Uncomment to enable specific physics models
 //#define THERMAL_MODEL               // Enable thermal LBM (requires g_bc_definition.inc)
 //#define PARTICLE_MODEL              // Enable IBM particles (requires particleCreation.inc)
-//#define FENE_P                      // Enable FENE-P viscoelastic model (requires a*_bc_definition.inc files)
+//#define VISCOELASTIC_MODEL                      // Enable FENE-P viscoelastic model (requires a*_bc_definition.inc files)
 
 /* --------------------- VELOCITY SET --------------------- */
 // Choose ONE velocity set (D3Q19 is default, D3Q27 for higher accuracy)

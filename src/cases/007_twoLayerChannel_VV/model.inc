@@ -18,7 +18,7 @@
 //#define MODEL_CONST_SMAGORINSKY //https://doi.org/10.1016/j.jcp.2005.03.022
 
 /* --------------------- PHYSICS MODELS --------------------- */
-#define FENE_P
+#define VISCOELASTIC_MODEL
 
 /* --------------------- OTHER DEFINITIONS --------------------- */
 //#define DENSITY_CORRECTION

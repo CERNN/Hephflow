@@ -13,7 +13,7 @@
 /* --------------------- PHYSICS MODELS --------------------- */
 //#define THERMAL_MODEL
 //#define PARTICLE_MODEL
-//#define FENE_P
+//#define VISCOELASTIC_MODEL
 //#define BINGHAM
 
 /* --------------------- LES MODELS --------------------- */

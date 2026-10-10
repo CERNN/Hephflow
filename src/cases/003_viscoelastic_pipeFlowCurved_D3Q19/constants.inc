@@ -93,8 +93,8 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 #define LOAD_FIELD_STEP 0                   // Step to load field from
 
 /* --------------------- CONFORMATION TRANSPORT --------------------- */
-#ifdef FENE_P
-    // FENE_P enables the conformation infrastructure; this case selects the
+#ifdef VISCOELASTIC_MODEL
+    // VISCOELASTIC_MODEL enables the conformation infrastructure; this case selects the
     // Oldroyd-B relaxation model explicitly through CASE_PHASE_PROPS.
     #define OLDROYD_B
     #define CONVECTION_DIFFUSION_TRANSPORT
@@ -142,4 +142,4 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
     constexpr dfloat CONF_DIFF_FLUC = CONF_DIFFUSIVITY - CONF_DIFF_REF;
     constexpr dfloat CONF_AAA = 3.0_df * CONF_DIFF_FLUC * CONF_OMEGA;
     constexpr dfloat CONF_DIFF_FLUC_COEF = CONF_AAA / (1.0_df + CONF_AAA);
-#endif // FENE_P
+#endif // VISCOELASTIC_MODEL

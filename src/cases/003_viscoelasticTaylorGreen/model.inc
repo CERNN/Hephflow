@@ -14,7 +14,10 @@
 
 /* --------------------- PHYSICS MODELS --------------------- */
 // Enable specific physics models (uncomment to activate)
-#define FENE_P                        // FENE-P viscoelastic model
+#define VISCOELASTIC_MODEL                        // FENE-P viscoelastic model
+// Taylor-Green evolves the standard conformation tensor, so retain the
+// existing stress-gradient path rather than the log-only FrÃ©chet path.
+#define CONF_FORCE_GRADIENT 0
 //#define BINGHAM                       // Bingham viscoplastic model
 //#define THERMAL_MODEL                 // Thermal coupling
 //#define PARTICLE_MODEL                // IBM particle simulation

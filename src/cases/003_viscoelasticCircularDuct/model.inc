@@ -14,7 +14,7 @@
 
 /* --------------------- PHYSICS MODELS --------------------- */
 // Enable specific physics models (uncomment to activate)
-#define FENE_P                        // FENE-P viscoelastic model
+#define VISCOELASTIC_MODEL                        // FENE-P viscoelastic model
 //#define BINGHAM                       // Bingham viscoplastic model
 //#define THERMAL_MODEL                 // Thermal coupling
 //#define PARTICLE_MODEL                // IBM particle simulation

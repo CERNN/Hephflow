@@ -107,7 +107,7 @@ static inline fluidPhaseProps makeCasePhasePropsPhase2(){
 #define SIMULATION_FOLDER_LOAD_CHECKPOINT "TEST" // Checkpoint folder
 
 /* --------------------- FENE-P VISCOELASTIC MODEL CONFIGURATION --------------------- */
-#ifdef FENE_P
+#ifdef VISCOELASTIC_MODEL
         #define OLDROYD_B
         #define CONVECTION_DIFFUSION_TRANSPORT
         #define D3G19

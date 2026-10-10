@@ -6,7 +6,7 @@
 /* --------------------- PHYSICS MODELS --------------------- */
 #define PARTICLE_MODEL                  // Enable IBM particles
 //#define THERMAL_MODEL                 // Enable thermal LBM
-//#define FENE_P                        // Enable viscoelastic FENE-P model
+//#define VISCOELASTIC_MODEL                        // Enable viscoelastic FENE-P model
 
 /* --------------------- VELOCITY SET --------------------- */
 #define D3Q19

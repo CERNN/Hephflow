@@ -13,7 +13,11 @@
 #define TREATFIELD (false)                  // Treat data over entire field
 #define TREATPOINT (false)                  // Treat data at specific points
 #define TREATLINE (false)                   // Save macroscopic along a line
+#ifdef HEPHFLOW_SAVEDATA_OVERRIDE
+#define SAVEDATA (HEPHFLOW_SAVEDATA_OVERRIDE)
+#else
 #define SAVEDATA (true)                     // Save treated data to file
+#endif // HEPHFLOW_SAVEDATA_OVERRIDE
 #define CONSOLEPRINT (false)                // Print treated data to console
 
 /* --------------------- FLOW STATISTICS --------------------- */
@@ -24,12 +28,23 @@
 
 /* --------------------- OUTPUT CONTROL --------------------- */
 #define ONLY_FINAL_MACRO (false)             // Save only final timestep macroscopic
+#ifdef HEPHFLOW_MACR_SAVE_OVERRIDE
+#define MACR_SAVE (HEPHFLOW_MACR_SAVE_OVERRIDE)
+#else
 #define MACR_SAVE (2560)                    // Macroscopic save frequency (steps)
+#endif // HEPHFLOW_MACR_SAVE_OVERRIDE
+#ifdef HEPHFLOW_REPORT_SAVE_OVERRIDE
+#define REPORT_SAVE (HEPHFLOW_REPORT_SAVE_OVERRIDE)
+#else
 #define REPORT_SAVE (32)                    // Console report frequency (steps)
+#endif // HEPHFLOW_REPORT_SAVE_OVERRIDE
+#ifdef HEPHFLOW_VTK_SAVE_OVERRIDE
+#define VTK_SAVE (HEPHFLOW_VTK_SAVE_OVERRIDE)
+#else
 #define VTK_SAVE (true)                     // Enable VTK output for visualization
+#endif // HEPHFLOW_VTK_SAVE_OVERRIDE
 #define BIN_SAVE (false)                    // Enable binary output
 
 /* --------------------- BOUNDARY FORCES --------------------- */
 //#define BC_FORCES                         // Compute boundary forces
 //#define SAVE_BC_FORCES                    // Save boundary forces to file
-

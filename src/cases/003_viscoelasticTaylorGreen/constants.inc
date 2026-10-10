@@ -30,7 +30,11 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 
 /* --------------------- TIME STEPPING --------------------- */
 constexpr int CONFORMATION_SWITCH = 0;      // Step to switch on conformation
+#ifdef HEPHFLOW_N_STEPS_OVERRIDE
+constexpr int N_STEPS = HEPHFLOW_N_STEPS_OVERRIDE;
+#else
 constexpr int N_STEPS = (int)(20.0/Ct)+1;   // Total simulation steps
+#endif // HEPHFLOW_N_STEPS_OVERRIDE
 constexpr int INI_STEP = 0;                 // Initial step (for restarts)
 
 /* --------------------- BODY FORCES --------------------- */
@@ -56,14 +60,22 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
 #define BC_Z_PERIODIC                       // Periodic in Z
 
 /* --------------------- INITIALIZATION LOADING --------------------- */
+#ifdef HEPHFLOW_LOAD_CHECKPOINT_OVERRIDE
+#define LOAD_CHECKPOINT HEPHFLOW_LOAD_CHECKPOINT_OVERRIDE
+#else
 #define LOAD_CHECKPOINT false               // Load from checkpoint
+#endif // HEPHFLOW_LOAD_CHECKPOINT_OVERRIDE
 #define SIMULATION_FOLDER_LOAD_CHECKPOINT "TEST" // Checkpoint folder
+#ifdef HEPHFLOW_CHECKPOINT_SAVE_OVERRIDE
+#define CHECKPOINT_SAVE HEPHFLOW_CHECKPOINT_SAVE_OVERRIDE
+#else
 #define CHECKPOINT_SAVE false               // Save checkpoints
+#endif // HEPHFLOW_CHECKPOINT_SAVE_OVERRIDE
 #define LOAD_FIELD false                    // Load field data
 #define LOAD_FIELD_STEP 0                   // Field loading step
 
 /* ========== FENE-P VISCOELASTIC MODEL CONFIGURATION ========== */
-#ifdef FENE_P
+#ifdef VISCOELASTIC_MODEL
 #define OLDROYD_B
 #define CONVECTION_DIFFUSION_TRANSPORT
 #define D3G19
@@ -111,4 +123,4 @@ __device__ const dfloat RHO_BC[4] = {RHO_0, RHO_0, RHO_0, RHO_0};
         return pp;
     }
     #define CASE_PHASE_PROPS makeCasePhaseProps()
-#endif
+#endif // VISCOELASTIC_MODEL

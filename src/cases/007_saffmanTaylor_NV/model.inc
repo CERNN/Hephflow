@@ -22,7 +22,7 @@
 // same two-phase problem with identical Newtonian fluids and no conformation
 // transport. The default remains the intended Newtonian-viscoelastic case.
 #ifndef SAFFMAN_TAYLOR_NEWTONIAN_BASELINE
-    #define FENE_P
+    #define VISCOELASTIC_MODEL
 #endif
 
 // Enable phase-dependent viscosity blending via omega field

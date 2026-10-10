@@ -16,7 +16,7 @@
 // Enable specific physics models (uncomment to activate)
 //#define THERMAL_MODEL                 // Thermal coupling
 //#define PARTICLE_MODEL                // IBM particle simulation
-#define FENE_P                         // Enables conformation transport
+#define VISCOELASTIC_MODEL                         // Enables conformation transport
 
 /* --------------------- LES MODELS --------------------- */
 // Uncomment the one to use. Comment all to simulate newtonian fluid
