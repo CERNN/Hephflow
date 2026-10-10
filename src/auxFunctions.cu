@@ -1,7 +1,7 @@
 
 #include "auxFunctions.cuh"
 
-__host__ 
+__host__
 void reduceDensityPartial(
     const dfloat* fMom,
     const unsigned int* nodeType,
@@ -14,12 +14,13 @@ void reduceDensityPartial(
     unsigned long long* hostCount,
     cudaStream_t stream
 ){
-    densityReductionBlocks<<<
-        dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL),
-        dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ), 0, stream>>>(
-            fMom, nodeType, sumBuffer0, countBuffer0, localNZ);
+    densityReductionBlocks<<<dim3(NUM_BLOCK_X, NUM_BLOCK_Y,
+        static_cast<unsigned int>(ceilDivSize(localNZ, BLOCK_NZ))),
+        dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ), 0, stream>>>
+        ( fMom, nodeType, sumBuffer0, countBuffer0, localNZ);
 
-    size_t elementCount = NUM_BLOCK_LOCAL;
+    const size_t numBlocksZ = ceilDivSize(localNZ, BLOCK_NZ);
+    size_t elementCount = NUM_BLOCK_X * NUM_BLOCK_Y * numBlocksZ;
     dfloat* inputSums = sumBuffer0;
     dfloat* outputSums = sumBuffer1;
     unsigned long long* inputCounts = countBuffer0;
@@ -27,10 +28,8 @@ void reduceDensityPartial(
     constexpr size_t REDUCTION_THREADS = 256;
 
     while (elementCount > 1) {
-        const size_t outputCount =
-            (elementCount + REDUCTION_THREADS - 1) / REDUCTION_THREADS;
-        densityReductionPass<<<outputCount, REDUCTION_THREADS, 0, stream>>>(
-            inputSums, inputCounts, outputSums, outputCounts, elementCount);
+        const size_t outputCount = (elementCount + REDUCTION_THREADS - 1) / REDUCTION_THREADS;
+        densityReductionPass<<<outputCount, REDUCTION_THREADS, 0, stream>>>(inputSums, inputCounts, outputSums, outputCounts, elementCount);
         elementCount = outputCount;
         dfloat* oldInputSums = inputSums;
         inputSums = outputSums;
@@ -40,11 +39,8 @@ void reduceDensityPartial(
         outputCounts = oldInputCounts;
     }
 
-    checkCudaErrors(cudaMemcpyAsync(
-        hostSum, inputSums, sizeof(dfloat), cudaMemcpyDeviceToHost, stream));
-    checkCudaErrors(cudaMemcpyAsync(
-        hostCount, inputCounts, sizeof(unsigned long long),
-        cudaMemcpyDeviceToHost, stream));
+    checkCudaErrors(cudaMemcpyAsync( hostSum, inputSums, sizeof(dfloat), cudaMemcpyDeviceToHost, stream));
+    checkCudaErrors(cudaMemcpyAsync( hostCount, inputCounts, sizeof(unsigned long long), cudaMemcpyDeviceToHost, stream));
 }
 
 
@@ -121,4 +117,3 @@ void meanFlowComputation(
         }
     }
 }
-

@@ -12,12 +12,12 @@ const Sym3 veDirectStored(
     fMom[idxMom(tx,ty,tz,A_YZ_C_INDEX,bx,by,bz)],
     fMom[idxMom(tx,ty,tz,A_ZZ_C_INDEX,bx,by,bz)]);
 
-#ifdef CONFORMATION_LOG
+#if CONF_REPRESENTATION == CONF_REP_LOG
 VeEigenSym3 veDirectPsiEigen;
 const Sym3 veDirectPhysicalA=veExpSymmetric(veDirectStored,&veDirectPsiEigen);
 #else
 const Sym3 veDirectPhysicalA=vePhysicalAFromStored(veDirectStored);
-#endif
+#endif // CONF_REPRESENTATION == CONF_REP_LOG
 
 const int veDirectLocalIndex=tx+BLOCK_NX*(ty+BLOCK_NY*tz);
 
@@ -33,7 +33,7 @@ const int veDirectLocalIndex=tx+BLOCK_NX*(ty+BLOCK_NY*tz);
 
 STAGE_SYM3(0,veDirectPhysicalA);
 STAGE_SYM3(6,veDirectStored);
-__syncthreads();
+activeBarrier.arrive_and_wait();
 
 const int veXm=veDirectLocalIndex-1, veXp=veDirectLocalIndex+1;
 const int veYm=veDirectLocalIndex-BLOCK_NX, veYp=veDirectLocalIndex+BLOCK_NX;
@@ -61,18 +61,22 @@ const int veZm=veDirectLocalIndex-BLOCK_NX*BLOCK_NY, veZp=veDirectLocalIndex+BLO
             (haloFace)[veHaloBase+9],(haloFace)[veHaloBase+10],(haloFace)[veHaloBase+11]); \
     }
 
-LOAD_DIRECTION_NEIGHBOR(X,m,tx>0,veXm,polymerStressHalo.X_1,
+LOAD_DIRECTION_NEIGHBOR(X,m,x>0 && tx>0,veXm,polymerStressHalo.X_1,
     g_idxPolymerStressHaloX(ty,tz,0,bxm1,by,bz));
-LOAD_DIRECTION_NEIGHBOR(X,p,tx<BLOCK_NX-1,veXp,polymerStressHalo.X_0,
+LOAD_DIRECTION_NEIGHBOR(X,p,x+1<NX && tx<BLOCK_NX-1,veXp,polymerStressHalo.X_0,
     g_idxPolymerStressHaloX(ty,tz,0,bxp1,by,bz));
-LOAD_DIRECTION_NEIGHBOR(Y,m,ty>0,veYm,polymerStressHalo.Y_1,
+LOAD_DIRECTION_NEIGHBOR(Y,m,y>0 && ty>0,veYm,polymerStressHalo.Y_1,
     g_idxPolymerStressHaloY(tx,tz,0,bx,bym1,bz));
-LOAD_DIRECTION_NEIGHBOR(Y,p,ty<BLOCK_NY-1,veYp,polymerStressHalo.Y_0,
+LOAD_DIRECTION_NEIGHBOR(Y,p,y+1<NY && ty<BLOCK_NY-1,veYp,polymerStressHalo.Y_0,
     g_idxPolymerStressHaloY(tx,tz,0,bx,byp1,bz));
-LOAD_DIRECTION_NEIGHBOR(Z,m,tz>0,veZm,polymerStressHalo.Z_1,
-    g_idxPolymerStressHaloZ(tx,ty,0,bx,by,bzm1));
-LOAD_DIRECTION_NEIGHBOR(Z,p,tz<BLOCK_NZ-1,veZp,polymerStressHalo.Z_0,
-    g_idxPolymerStressHaloZ(tx,ty,0,bx,by,bzp1));
+LOAD_DIRECTION_NEIGHBOR(Z,m,z_local>0 && tz>0,veZm,
+    z_local==0 ? polymerStressHalo.auxZ_1 : polymerStressHalo.Z_1,
+    z_local==0 ? g_idxPolymerStressHaloZ(tx,ty,0,bx,by,0)
+               : g_idxPolymerStressHaloZ(tx,ty,0,bx,by,bzm1));
+LOAD_DIRECTION_NEIGHBOR(Z,p,z_local+1<localNZ && tz<BLOCK_NZ-1,veZp,
+    z_local+1>=localNZ ? polymerStressHalo.auxZ_0 : polymerStressHalo.Z_0,
+    z_local+1>=localNZ ? g_idxPolymerStressHaloZ(tx,ty,0,bx,by,0)
+                       : g_idxPolymerStressHaloZ(tx,ty,0,bx,by,bzp1));
 
 #undef LOAD_DIRECTION_NEIGHBOR
 #undef STAGE_SYM3
@@ -132,6 +136,6 @@ if((nodeType&0b11110000)==0b11110000) {
 const dfloat directDivStressX=direct_dSxxdx+direct_dSxydy+direct_dSxzdz;
 const dfloat directDivStressY=direct_dSxydx+direct_dSyydy+direct_dSyzdz;
 const dfloat directDivStressZ=direct_dSxzdx+direct_dSyzdy+direct_dSzzdz;
-#endif
+#endif // CONFORMATION_DIRECT_STRESS_HALO
 
-__syncthreads();
+activeBarrier.arrive_and_wait();

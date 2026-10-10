@@ -61,7 +61,8 @@ void sumReductionThread(dfloat* g_idata, dfloat* g_odata, int m_index)
     //total number of threads in block
     unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
 
-    sdata[tid] = g_idata[i];
+    const bool active = blockIdx.x * blockDim.x + threadIdx.x < NX && blockIdx.y * blockDim.y + threadIdx.y < NY && blockIdx.z * blockDim.z + threadIdx.z < NZ;
+    sdata[tid] = active ? g_idata[i] : 0.0_df;
     __syncthreads();
     
     // Reduction that handles non-power-of-2 block sizes
@@ -100,11 +101,15 @@ void sumReductionThread_TKE(dfloat* g_idata, dfloat* g_odata, dfloat *meanMom)
     //total number of threads in block
     unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
 
-    dfloat fluc_ux = (g_idata[ix] - meanMom[ix])*(g_idata[ix] - meanMom[ix]);
-    dfloat fluc_uy = (g_idata[iy] - meanMom[iy])*(g_idata[iy] - meanMom[iy]);
-    dfloat fluc_uz = (g_idata[iz] - meanMom[iz])*(g_idata[iz] - meanMom[iz]);
-
-    sdata[tid] = (fluc_ux*fluc_ux + fluc_uy*fluc_uy + fluc_uz*fluc_uz)/2;
+    const bool active = blockIdx.x * blockDim.x + threadIdx.x < NX && blockIdx.y * blockDim.y + threadIdx.y < NY && blockIdx.z * blockDim.z + threadIdx.z < NZ;
+    if (active) {
+        dfloat fluc_ux = (g_idata[ix] - meanMom[ix])*(g_idata[ix] - meanMom[ix]);
+        dfloat fluc_uy = (g_idata[iy] - meanMom[iy])*(g_idata[iy] - meanMom[iy]);
+        dfloat fluc_uz = (g_idata[iz] - meanMom[iz])*(g_idata[iz] - meanMom[iz]);
+        sdata[tid] = (fluc_ux*fluc_ux + fluc_uy*fluc_uy + fluc_uz*fluc_uz)/2;
+    } else {
+        sdata[tid] = 0.0_df;
+    }
     __syncthreads();
     
     // Reduction that handles non-power-of-2 block sizes
@@ -137,10 +142,8 @@ void densityReductionBlocks(
     __shared__ dfloat sums[BLOCK_LBM_SIZE];
     __shared__ unsigned long long counts[BLOCK_LBM_SIZE];
 
-    const unsigned int tid = threadIdx.x
-        + blockDim.x * (threadIdx.y + blockDim.y * threadIdx.z);
-    const unsigned int bid = blockIdx.x
-        + gridDim.x * (blockIdx.y + gridDim.y * blockIdx.z);
+    const unsigned int tid = threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * threadIdx.z);
+    const unsigned int bid = blockIdx.x + gridDim.x * (blockIdx.y + gridDim.y * blockIdx.z);
     const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
     const unsigned int z = blockIdx.z * blockDim.z + threadIdx.z;
@@ -148,14 +151,10 @@ void densityReductionBlocks(
     dfloat rhoFluctuation = 0.0_df;
     unsigned long long active = 0;
     if (x < NX && y < NY && z < localNZ) {
-        const size_t scalarIndex = idxScalarBlock(
-            threadIdx.x, threadIdx.y, threadIdx.z,
-            blockIdx.x, blockIdx.y, blockIdx.z);
+        const size_t scalarIndex = idxScalarBlock( threadIdx.x, threadIdx.y, threadIdx.z, blockIdx.x, blockIdx.y, blockIdx.z);
         const unsigned int type = nodeType[scalarIndex];
         if ((type & SOLID_NODE) != SOLID_NODE) {
-            const size_t momentIndex = idxMom(
-                threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX,
-                blockIdx.x, blockIdx.y, blockIdx.z);
+            const size_t momentIndex = idxMom( threadIdx.x, threadIdx.y, threadIdx.z, M_RHO_INDEX, blockIdx.x, blockIdx.y, blockIdx.z);
             rhoFluctuation = loadMoment(fMom, momentIndex, M_RHO_INDEX);
             active = 1;
         }
@@ -229,12 +228,17 @@ void sumReductionThread_KE(dfloat* g_idata, dfloat* g_odata)
     //total number of threads in block
     unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
 
-    const dfloat rho = RHO_0 + loadMoment(g_idata, ip, M_RHO_INDEX);
-    const dfloat ux = loadMoment(g_idata, ix, M_UX_INDEX);
-    const dfloat uy = loadMoment(g_idata, iy, M_UY_INDEX);
-    const dfloat uz = loadMoment(g_idata, iz, M_UZ_INDEX);
-    sdata[tid] = rho * (ux*ux + uy*uy + uz*uz)
-        / (2*F_M_I_SCALE*F_M_I_SCALE);
+    const bool active = blockIdx.x * blockDim.x + threadIdx.x < NX && blockIdx.y * blockDim.y + threadIdx.y < NY && blockIdx.z * blockDim.z + threadIdx.z < NZ;
+    if (active) {
+        const dfloat rho = RHO_0 + loadMoment(g_idata, ip, M_RHO_INDEX);
+        const dfloat ux = loadMoment(g_idata, ix, M_UX_INDEX);
+        const dfloat uy = loadMoment(g_idata, iy, M_UY_INDEX);
+        const dfloat uz = loadMoment(g_idata, iz, M_UZ_INDEX);
+        sdata[tid] = rho * (ux*ux + uy*uy + uz*uz)
+            / (2*F_M_I_SCALE*F_M_I_SCALE);
+    } else {
+        sdata[tid] = 0.0_df;
+    }
     __syncthreads();
     
     // Reduction that handles non-power-of-2 block sizes
@@ -275,7 +279,10 @@ void sumReductionThread_SE(dfloat* g_idata, dfloat* g_odata)
     unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
     
     //sdata[tid] = ((g_idata[ixx] - 1.0_df - CONF_ZERO)*(g_idata[ixx] - 1.0_df - CONF_ZERO) + (g_idata[iyy] - 1.0_df - CONF_ZERO)*(g_idata[iyy] - 1.0_df - CONF_ZERO) + (g_idata[izz] - 1.0_df - CONF_ZERO)*(g_idata[izz] - 1.0_df - CONF_ZERO));
-    sdata[tid] = (g_idata[ixx] + g_idata[iyy]+ g_idata[izz] - 3.0_df - 3.0_df*CONF_ZERO);
+    const bool active = blockIdx.x * blockDim.x + threadIdx.x < NX && blockIdx.y * blockDim.y + threadIdx.y < NY && blockIdx.z * blockDim.z + threadIdx.z < NZ;
+    sdata[tid] = active
+        ? (g_idata[ixx] + g_idata[iyy]+ g_idata[izz] - 3.0_df - 3.0_df*CONF_ZERO)
+        : 0.0_df;
     __syncthreads();
     
     // Reduction that handles non-power-of-2 block sizes
@@ -313,7 +320,8 @@ void sumReductionScalar(dfloat* g_idata, dfloat* g_odata)
     //total number of threads in block
     unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
 
-    sdata[tid] = g_idata[i];
+    const bool active = blockIdx.x * blockDim.x + threadIdx.x < NX && blockIdx.y * blockDim.y + threadIdx.y < NY && blockIdx.z * blockDim.z + threadIdx.z < NZ;
+    sdata[tid] = active ? g_idata[i] : 0.0_df;
     __syncthreads();
     
     // Reduction that handles non-power-of-2 block sizes
@@ -370,4 +378,21 @@ void sumReductionBlock(dfloat* g_idata, dfloat* g_odata)
     if (tid == 0) {
         g_odata[bid] = sdata[0];
     }
+}
+
+__global__
+void sumReductionLinear(const dfloat* input, dfloat* output, size_t count)
+{
+    constexpr unsigned int REDUCTION_THREADS = 256;
+    __shared__ dfloat values[REDUCTION_THREADS];
+    const unsigned int tid = threadIdx.x;
+    const size_t index = static_cast<size_t>(blockIdx.x) * blockDim.x + tid;
+    values[tid] = index < count ? input[index] : 0.0_df;
+    __syncthreads();
+
+    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) values[tid] += values[tid + stride];
+        __syncthreads();
+    }
+    if (tid == 0) output[blockIdx.x] = values[0];
 }

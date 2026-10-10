@@ -17,12 +17,12 @@ const Sym3 veDirectStored(
     fMom[idxMom(tx, ty, tz, A_YZ_C_INDEX, bx, by, bz)],
     fMom[idxMom(tx, ty, tz, A_ZZ_C_INDEX, bx, by, bz)]);
 
-#ifdef CONFORMATION_LOG
+#if CONF_REPRESENTATION == CONF_REP_LOG
     VeEigenSym3 veDirectPsiEigen;
     const Sym3 veDirectPhysicalA = veExpSymmetric(veDirectStored,&veDirectPsiEigen);
 #else
     const Sym3 veDirectPhysicalA =vePhysicalAFromStored(veDirectStored);
-#endif // CONFORMATION_LOG
+#endif // CONF_REPRESENTATION == CONF_REP_LOG
 
 // Select the tensor whose divergence enters momentum. Oldroyd-B uses A because subtracting I cannot change its
 // divergence; every nonlinear closure must use its model-specific reduced stress S(A).
@@ -39,7 +39,7 @@ s_pop[veDirectLocalIndex + 3*BLOCK_LBM_SIZE] = veDirectForceTensor.yy;
 s_pop[veDirectLocalIndex + 4*BLOCK_LBM_SIZE] = veDirectForceTensor.yz;
 s_pop[veDirectLocalIndex + 5*BLOCK_LBM_SIZE] = veDirectForceTensor.zz;
 
-__syncthreads();
+activeBarrier.arrive_and_wait();
 
 const int veXm=veDirectLocalIndex -1;
 const int veXp=veDirectLocalIndex +1;
@@ -52,7 +52,7 @@ const int veZp=veDirectLocalIndex + BLOCK_NX*BLOCK_NY;
 // (Sxy,Syy,Syz), and Z faces provide (Sxz,Syz,Szz); no unused tensor components are allocated in the face buffers.
 // X-face neighbors provide (Sxx, Sxy, Sxz).
 dfloat Sxx_xm1, Sxy_xm1, Sxz_xm1, Sxx_xp1, Sxy_xp1, Sxz_xp1;
-if(tx>0) {
+if(x>0 && tx>0) {
     Sxx_xm1 = s_pop[veXm + 0*BLOCK_LBM_SIZE];
     Sxy_xm1 = s_pop[veXm + 1*BLOCK_LBM_SIZE];
     Sxz_xm1 = s_pop[veXm + 2*BLOCK_LBM_SIZE];
@@ -62,7 +62,7 @@ if(tx>0) {
     Sxy_xm1 = polymerStressHalo.X_1[h+1];
     Sxz_xm1 = polymerStressHalo.X_1[h+2];
 }
-if(tx<BLOCK_NX-1) {
+if(x+1<NX && tx<BLOCK_NX-1) {
     Sxx_xp1 = s_pop[veXp + 0*BLOCK_LBM_SIZE];
     Sxy_xp1 = s_pop[veXp + 1*BLOCK_LBM_SIZE];
     Sxz_xp1 = s_pop[veXp + 2*BLOCK_LBM_SIZE];
@@ -75,7 +75,7 @@ if(tx<BLOCK_NX-1) {
 
 // Y-face neighbors provide (Sxy, Syy, Syz).
 dfloat Sxy_ym1, Syy_ym1, Syz_ym1, Sxy_yp1, Syy_yp1, Syz_yp1;
-if(ty>0) {
+if(y>0 && ty>0) {
     Sxy_ym1 = s_pop[veYm + 1*BLOCK_LBM_SIZE];
     Syy_ym1 = s_pop[veYm + 3*BLOCK_LBM_SIZE];
     Syz_ym1 = s_pop[veYm + 4*BLOCK_LBM_SIZE];
@@ -85,7 +85,7 @@ if(ty>0) {
     Syy_ym1 = polymerStressHalo.Y_1[h+1];
     Syz_ym1 = polymerStressHalo.Y_1[h+2];
 }
-if(ty<BLOCK_NY-1) {
+if(y+1<NY && ty<BLOCK_NY-1) {
     Sxy_yp1 = s_pop[veYp + 1*BLOCK_LBM_SIZE];
     Syy_yp1 = s_pop[veYp + 3*BLOCK_LBM_SIZE];
     Syz_yp1 = s_pop[veYp + 4*BLOCK_LBM_SIZE];
@@ -98,7 +98,7 @@ if(ty<BLOCK_NY-1) {
 
 // Z-face neighbors provide (Sxz, Syz, Szz).
 dfloat Sxz_zm1, Syz_zm1, Szz_zm1, Sxz_zp1, Syz_zp1, Szz_zp1;
-if(tz>0) {
+if(z_local>0 && tz>0) {
     Sxz_zm1 = s_pop[veZm + 2*BLOCK_LBM_SIZE];
     Syz_zm1 = s_pop[veZm + 4*BLOCK_LBM_SIZE];
     Szz_zm1 = s_pop[veZm + 5*BLOCK_LBM_SIZE];
@@ -108,7 +108,7 @@ if(tz>0) {
     Syz_zm1 = polymerStressHalo.Z_1[h+1];
     Szz_zm1 = polymerStressHalo.Z_1[h+2];
 }
-if(tz<BLOCK_NZ-1) {
+if(z_local+1<localNZ && tz<BLOCK_NZ-1) {
     Sxz_zp1 = s_pop[veZp + 2*BLOCK_LBM_SIZE];
     Syz_zp1 = s_pop[veZp + 4*BLOCK_LBM_SIZE];
     Szz_zp1 = s_pop[veZp + 5*BLOCK_LBM_SIZE];
@@ -167,4 +167,4 @@ if ((nodeType & 0b11110000)==0b11110000) {
 const dfloat directDivStressX = direct_dSxxdx + direct_dSxydy + direct_dSxzdz;
 const dfloat directDivStressY = direct_dSxydx + direct_dSyydy + direct_dSyzdz;
 const dfloat directDivStressZ = direct_dSxzdx + direct_dSyzdz + direct_dSzzdz;
-__syncthreads();
+activeBarrier.arrive_and_wait();

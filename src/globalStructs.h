@@ -239,12 +239,9 @@ typedef struct dfloat3SoA {
         checkCudaErrors(cudaStreamCreate(&(streamY)));
         checkCudaErrors(cudaStreamCreate(&(streamZ)));
 
-        checkCudaErrors(cudaMemcpyAsync(this->x+baseIdx, arrayRef.x+baseIdxRef, 
-            memSize, cudaMemcpyDefault, streamX));
-        checkCudaErrors(cudaMemcpyAsync(this->y+baseIdx, arrayRef.y+baseIdxRef, 
-            memSize, cudaMemcpyDefault, streamY));
-        checkCudaErrors(cudaMemcpyAsync(this->z+baseIdx, arrayRef.z+baseIdxRef, 
-            memSize, cudaMemcpyDefault, streamZ));
+        checkCudaErrors(cudaMemcpyAsync(this->x+baseIdx, arrayRef.x+baseIdxRef, memSize, cudaMemcpyDefault, streamX));
+        checkCudaErrors(cudaMemcpyAsync(this->y+baseIdx, arrayRef.y+baseIdxRef, memSize, cudaMemcpyDefault, streamY));
+        checkCudaErrors(cudaMemcpyAsync(this->z+baseIdx, arrayRef.z+baseIdxRef, memSize, cudaMemcpyDefault, streamZ));
 
         checkCudaErrors(cudaStreamSynchronize(streamX));
         checkCudaErrors(cudaStreamSynchronize(streamY));
@@ -277,6 +274,7 @@ typedef struct dfloat3SoA {
         return dfloat3(this->x[idx], this->y[idx], this->z[idx]);
     }
 
+    /** @brief Shifts a three-component value left by the requested offset. */
     __host__ __device__
     void leftShift(size_t idx, size_t left_shift){
         this->x[idx-left_shift] = this->x[idx];
@@ -441,7 +439,7 @@ typedef struct macroInterfaceGPUData {
         gpuDirection nz;
         #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
         gpuDirection mu;
-        #endif
+        #endif // PHASE_NEEDS_CHEMICAL_POTENTIAL
     #endif //PHI_DIST
     #ifdef A_XX_DIST
         gpuDirection Axx;
@@ -555,7 +553,7 @@ typedef struct curvedBoundary{
     // order matches conformation[]; direction order is x, y, z.
     dfloat conformationFluxT30[18];
     dfloat conformationInteriorVelocityT30[3];
-    #endif
+#endif // CONFORMATION_TENSOR
 
 }CurvedBoundary;
 
@@ -609,6 +607,8 @@ struct PolymerStressHaloPtrs {
     dfloat* Y_1;
     dfloat* Z_0;
     dfloat* Z_1;
+    dfloat* auxZ_0;
+    dfloat* auxZ_1;
 };
 
 /**
@@ -624,15 +624,17 @@ struct DeviceKernelParams {
     ghostFacePtrs pop;                      ///< Ghost face pointers (8 ptrs, no host data)
     ghostFacePtrs popCopy;
     unsigned int step;                      ///< Current time step
+    bool streamingParity;                   ///< Runtime storage generation after restart normalization.
     bool save;                              ///< Whether to save data
     size_t localNZ; 
     int zStart;
+    unsigned int numBlocksZ;                ///< Runtime block depth of this GPU slab.
     unsigned int zBlockOffset;              ///< Maps split-kernel launch Z to the local slab block index.
     bool mapBoundaryBlocks;                 ///< Maps a two-plane launch to local Z blocks 0 and N-1.
 
     #ifdef CONFORMATION_PHYSICAL_A_HALO
-    PolymerStressHaloPtrs polymerStressHalo;
-    #endif
+        PolymerStressHaloPtrs polymerStressHalo;
+    #endif // CONFORMATION_PHYSICAL_A_HALO
 
     gpuDirection rho_macro;
     gpuDirection ux_macro;
@@ -707,7 +709,7 @@ struct DeviceKernelParams {
     gpuDirection nz_macro;
     #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
     gpuDirection mu_macro;
-    #endif
+    #endif // PHASE_NEEDS_CHEMICAL_POTENTIAL
 
     gpuDirection phi_macroCopy;
     gpuDirection nx_macroCopy;
@@ -715,7 +717,7 @@ struct DeviceKernelParams {
     gpuDirection nz_macroCopy;
     #ifdef PHASE_NEEDS_CHEMICAL_POTENTIAL
     gpuDirection mu_macroCopy;
-    #endif
+    #endif // PHASE_NEEDS_CHEMICAL_POTENTIAL
     #endif //PHI_DIST
     #endif //NON_NEWTONIAN_FLUID || CONFORMATION_TENSOR
 
@@ -736,32 +738,32 @@ struct DeviceKernelParams {
     dfloat* d_Local_Fz;                     ///< Local body force Z component (for export)
         #ifdef SECOND_DIST
     dfloat* d_Source_C;                     ///< Temperature source term T_Q_INTERNAL_D_Cp
-        #endif
+#endif // SECOND_DIST
         #ifdef PHI_DIST
     dfloat* d_Source_Phi;                   ///< Phase-field source term
-        #endif
+#endif // PHI_DIST
         #ifdef LAMBDA_DIST
     dfloat* d_Source_Lambda;                ///< Structure-parameter source term
-        #endif
+#endif // LAMBDA_DIST
         #ifdef CONFORMATION_TENSOR
             #ifdef A_XX_DIST
     dfloat* d_Source_Gxx;                   ///< Conformation source Gxx
-            #endif
+#endif // A_XX_DIST
             #ifdef A_XY_DIST
     dfloat* d_Source_Gxy;                   ///< Conformation source Gxy
-            #endif
+#endif // A_XY_DIST
             #ifdef A_XZ_DIST
     dfloat* d_Source_Gxz;                   ///< Conformation source Gxz
-            #endif
+#endif // A_XZ_DIST
             #ifdef A_YY_DIST
     dfloat* d_Source_Gyy;                   ///< Conformation source Gyy
-            #endif
+#endif // A_YY_DIST
             #ifdef A_YZ_DIST
     dfloat* d_Source_Gyz;                   ///< Conformation source Gyz
-            #endif
+#endif // A_YZ_DIST
             #ifdef A_ZZ_DIST
     dfloat* d_Source_Gzz;                   ///< Conformation source Gzz
-            #endif
+#endif // A_ZZ_DIST
         #endif //CONFORMATION_TENSOR
     #endif //SAVE_LOCAL_FORCES
     
@@ -802,48 +804,48 @@ struct SaveDataParams {
     // Optional fields (compiled conditionally)
     #ifdef OMEGA_FIELD
     dfloat* h_omega;
-    #endif
+    #endif // OMEGA_FIELD
     
     #ifdef SECOND_DIST
     dfloat* h_C;
-    #endif
+    #endif // SECOND_DIST
     
     #ifdef PHI_DIST
     dfloat* h_phi;
-    #endif
+    #endif // PHI_DIST
     
     #ifdef LAMBDA_DIST
     dfloat* h_lambda;
-    #endif
+    #endif // LAMBDA_DIST
     
     #ifdef A_XX_DIST
     dfloat* h_Axx;
-    #endif
+    #endif // A_XX_DIST
     #ifdef A_XY_DIST
     dfloat* h_Axy;
-    #endif
+    #endif // A_XY_DIST
     #ifdef A_XZ_DIST
     dfloat* h_Axz;
-    #endif
+    #endif // A_XZ_DIST
     #ifdef A_YY_DIST
     dfloat* h_Ayy;
-    #endif
+    #endif // A_YY_DIST
     #ifdef A_YZ_DIST
     dfloat* h_Ayz;
-    #endif
+    #endif // A_YZ_DIST
     #ifdef A_ZZ_DIST
     dfloat* h_Azz;
-    #endif
+    #endif // A_ZZ_DIST
     
     #if NODE_TYPE_SAVE
     unsigned int* h_nodeTypeSave;
-    #endif
+    #endif // NODE_TYPE_SAVE
     
     #if defined(BC_FORCES) && defined(SAVE_BC_FORCES)
     dfloat* h_BC_Fx;
     dfloat* h_BC_Fy;
     dfloat* h_BC_Fz;
-    #endif
+#endif // defined(BC_FORCES) && defined(SAVE_BC_FORCES)
     
     #ifdef SAVE_LOCAL_FORCES
     dfloat* h_Local_Fx;
@@ -851,32 +853,32 @@ struct SaveDataParams {
     dfloat* h_Local_Fz;
         #ifdef SECOND_DIST
     dfloat* h_Source_C;
-        #endif
+#endif // SECOND_DIST
         #ifdef PHI_DIST
     dfloat* h_Source_Phi;
-        #endif
+#endif // PHI_DIST
         #ifdef LAMBDA_DIST
     dfloat* h_Source_Lambda;
-        #endif
+#endif // LAMBDA_DIST
         #ifdef CONFORMATION_TENSOR
             #ifdef A_XX_DIST
     dfloat* h_Source_Gxx;
-            #endif
+#endif // A_XX_DIST
             #ifdef A_XY_DIST
     dfloat* h_Source_Gxy;
-            #endif
+#endif // A_XY_DIST
             #ifdef A_XZ_DIST
     dfloat* h_Source_Gxz;
-            #endif
+#endif // A_XZ_DIST
             #ifdef A_YY_DIST
     dfloat* h_Source_Gyy;
-            #endif
+#endif // A_YY_DIST
             #ifdef A_YZ_DIST
     dfloat* h_Source_Gyz;
-            #endif
+#endif // A_YZ_DIST
             #ifdef A_ZZ_DIST
     dfloat* h_Source_Gzz;
-            #endif
+#endif // A_ZZ_DIST
         #endif //CONFORMATION_TENSOR
     #endif //SAVE_LOCAL_FORCES
 
@@ -901,13 +903,13 @@ struct TreatDataParams {
     // Optional fields (compiled conditionally)
     #if MEAN_FLOW
     dfloat* d_fMom_mean;
-    #endif
+#endif // MEAN_FLOW
     
     #ifdef BC_FORCES
     dfloat* d_BC_Fx;
     dfloat* d_BC_Fy;
     dfloat* d_BC_Fz;
-    #endif
+#endif // BC_FORCES
     
     #ifdef SAVE_LOCAL_FORCES
     dfloat* d_Local_Fx;
@@ -915,34 +917,34 @@ struct TreatDataParams {
     dfloat* d_Local_Fz;
         #ifdef SECOND_DIST
     dfloat* d_Source_C;
-        #endif
+#endif // SECOND_DIST
         #ifdef PHI_DIST
     dfloat* d_Source_Phi;
-        #endif
+#endif // PHI_DIST
         #ifdef LAMBDA_DIST
     dfloat* d_Source_Lambda;
-        #endif
+#endif // LAMBDA_DIST
         #ifdef CONFORMATION_TENSOR
             #ifdef A_XX_DIST
     dfloat* d_Source_Gxx;
-            #endif
+#endif // A_XX_DIST
             #ifdef A_XY_DIST
     dfloat* d_Source_Gxy;
-            #endif
+#endif // A_XY_DIST
             #ifdef A_XZ_DIST
     dfloat* d_Source_Gxz;
-            #endif
+#endif // A_XZ_DIST
             #ifdef A_YY_DIST
     dfloat* d_Source_Gyy;
-            #endif
+#endif // A_YY_DIST
             #ifdef A_YZ_DIST
     dfloat* d_Source_Gyz;
-            #endif
+#endif // A_YZ_DIST
             #ifdef A_ZZ_DIST
     dfloat* d_Source_Gzz;
-            #endif
+#endif // A_ZZ_DIST
         #endif //CONFORMATION_TENSOR
-    #endif
+#endif // SAVE_LOCAL_FORCES
     
     // Metadata
     unsigned int step;

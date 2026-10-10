@@ -1,6 +1,6 @@
 // D3Q19 cooperative load for the direction set selected by
 // COOPERATIVE_GHOST_LOAD_MASK. Selected faces share one barrier pair.
-__syncthreads();
+activeBarrier.arrive_and_wait();
 
 constexpr int coopAllFaceNodes = BLOCK_NY * BLOCK_NZ;
 static_assert(BLOCK_NX * BLOCK_NZ == coopAllFaceNodes &&
@@ -142,7 +142,7 @@ for (int coopLinear = coopAllTid;
     s_pop[coopLinear] = coopSource[coopSourceIndex];
 }
 
-__syncthreads();
+activeBarrier.arrive_and_wait();
 
 #if COOPERATIVE_GHOST_LOAD_MASK & 1
 const int coopXNode = ty + BLOCK_NY * tz;
@@ -159,7 +159,7 @@ if (tx == 0) {
     pop[14] = s_pop[coopXOffset + 1 * coopAllFaceValues + 3 * coopAllFaceNodes + coopXNode];
     pop[16] = s_pop[coopXOffset + 1 * coopAllFaceValues + 4 * coopAllFaceNodes + coopXNode];
 }
-#endif
+#endif // COOPERATIVE_GHOST_LOAD_MASK & 1
 
 #if COOPERATIVE_GHOST_LOAD_MASK & 2
 const int coopYNode = tx + BLOCK_NX * tz;
@@ -176,7 +176,7 @@ if (ty == 0) {
     pop[13] = s_pop[coopYOffset + 1 * coopAllFaceValues + 3 * coopAllFaceNodes + coopYNode];
     pop[18] = s_pop[coopYOffset + 1 * coopAllFaceValues + 4 * coopAllFaceNodes + coopYNode];
 }
-#endif
+#endif // COOPERATIVE_GHOST_LOAD_MASK & 2
 
 #if COOPERATIVE_GHOST_LOAD_MASK & 4
 const int coopZNode = tx + BLOCK_NX * ty;
@@ -193,4 +193,4 @@ if (tz == 0) {
     pop[15] = s_pop[coopZOffset + 1 * coopAllFaceValues + 3 * coopAllFaceNodes + coopZNode];
     pop[17] = s_pop[coopZOffset + 1 * coopAllFaceValues + 4 * coopAllFaceNodes + coopZNode];
 }
-#endif
+#endif // COOPERATIVE_GHOST_LOAD_MASK & 4

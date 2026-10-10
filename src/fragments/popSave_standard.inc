@@ -3,7 +3,7 @@
 constexpr bool popSaveParity = true;
 #else
 const bool popSaveParity = stepParity;
-#endif
+#endif // STREAMING_AB
 dfloat* storeGhostXWest  = storeGhostInterface.X_0; // Write own west face
 dfloat* storeGhostXEast  = storeGhostInterface.X_1; // Write own east face
 dfloat* storeGhostYSouth = storeGhostInterface.Y_0; // Write own south face
@@ -20,11 +20,15 @@ const int storeBzBack  =  (popSaveParity ? bz : bzm1);
 const int storeBzFront =  (popSaveParity ? bz : bzp1);
 
     #ifdef COOPERATIVE_GHOST_SAVE_MASK
+    if (cooperativePhysicalBlock) {
         #include "popSave_cooperative.inc"
-    #endif
+    }
+#endif // COOPERATIVE_GHOST_SAVE_MASK
 
     if(popSaveParity){
-        #if !defined(COOPERATIVE_GHOST_SAVE_MASK) || !(COOPERATIVE_GHOST_SAVE_MASK & 1)
+        #if defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 1)
+        if (!cooperativePhysicalBlock) {
+#endif // defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 1)
         if (INTERFACE_BC_WEST){//w
             storeGhostXWest[idxPopX(ty, tz, 0, storeBxWest, by, bz)] = pop[ 2]; 
             storeGhostXWest[idxPopX(ty, tz, 1, storeBxWest, by, bz)] = pop[ 8];
@@ -50,9 +54,13 @@ const int storeBzFront =  (popSaveParity ? bz : bzp1);
             storeGhostXEast[idxPopX(ty, tz, 8, storeBxEast, by, bz)] = pop[26];
             #endif //D3Q27       
         }
-        #endif // X direction
+        #if defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 1)
+        }
+#endif // defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 1)
 
-        #if !defined(COOPERATIVE_GHOST_SAVE_MASK) || !(COOPERATIVE_GHOST_SAVE_MASK & 2)
+        #if defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 2)
+        if (!cooperativePhysicalBlock) {
+#endif // defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 2)
 
         if (INTERFACE_BC_SOUTH){//s          
             storeGhostYSouth[idxPopY(tx, tz, 0, bx, storeBySouth, bz)] = pop[ 4];
@@ -80,9 +88,13 @@ const int storeBzFront =  (popSaveParity ? bz : bzp1);
             #endif //D3Q27
         }
         
-        #endif // Y direction
+        #if defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 2)
+        }
+#endif // defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 2)
 
-        #if !defined(COOPERATIVE_GHOST_SAVE_MASK) || !(COOPERATIVE_GHOST_SAVE_MASK & 4)
+        #if defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 4)
+        if (!cooperativePhysicalBlock) {
+#endif // defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 4)
         if (INTERFACE_BC_BACK){ //b
             storeGhostZBack[idxPopZ(tx, ty, 0, bx, by, storeBzBack)] = pop[ 6];
             storeGhostZBack[idxPopZ(tx, ty, 1, bx, by, storeBzBack)] = pop[10];
@@ -108,10 +120,14 @@ const int storeBzFront =  (popSaveParity ? bz : bzp1);
             storeGhostZFront[idxPopZ(tx, ty, 8, bx, by, storeBzFront)] = pop[25];
             #endif //D3Q27
         }
-        #endif // Z direction
+        #if defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 4)
+        }
+#endif // defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 4)
     
     }else{
-        #if !defined(COOPERATIVE_GHOST_SAVE_MASK) || !(COOPERATIVE_GHOST_SAVE_MASK & 1)
+        #if defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 1)
+        if (!cooperativePhysicalBlock) {
+#endif // defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 1)
         if (INTERFACE_BC_WEST){//w
             storeGhostXEast[idxPopX(ty, tz, 0, storeBxWest, by, bz)] = pop[ 2]; 
             storeGhostXEast[idxPopX(tym1, tz, 1, storeBxWest, byAtSouth, bz)] = pop[ 8];
@@ -137,9 +153,13 @@ const int storeBzFront =  (popSaveParity ? bz : bzp1);
             storeGhostXWest[idxPopX(tym1, tzm1, 8, storeBxEast, byAtSouth, bzAtBack)] = pop[26];
             #endif //D3Q27       
         }
-        #endif // X direction
+        #if defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 1)
+        }
+#endif // defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 1)
 
-        #if !defined(COOPERATIVE_GHOST_SAVE_MASK) || !(COOPERATIVE_GHOST_SAVE_MASK & 2)
+        #if defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 2)
+        if (!cooperativePhysicalBlock) {
+#endif // defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 2)
 
         if (INTERFACE_BC_SOUTH){//s          
             storeGhostYNorth[idxPopY(tx, tz, 0, bx, storeBySouth, bz)] = pop[ 4];
@@ -166,6 +186,10 @@ const int storeBzFront =  (popSaveParity ? bz : bzp1);
             storeGhostYSouth[idxPopY(txm1, tzp1, 8, bxAtWest, storeByNorth, bzAtFront)] = pop[25];
             #endif //D3Q27
         }
+
+        #if defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 2)
+        }
+#endif // defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 2)
         
         // Edge-block overrides for multi-GPU transfer: the transfer always reads
         // from pop.Z_0[0] (back face) and pop.Z_1[top] (front face).
@@ -177,9 +201,9 @@ const int storeBzFront =  (popSaveParity ? bz : bzp1);
         dfloat* storeZFront_edge = (bz == top) ? ghostInterface.Z_1 : storeGhostZBack;
         const int     storeBzFront_edge = (bz == top) ? top : storeBzFront;
         
-        #endif // Y direction
-
-        #if !defined(COOPERATIVE_GHOST_SAVE_MASK) || !(COOPERATIVE_GHOST_SAVE_MASK & 4)
+        #if defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 4)
+        if (!cooperativePhysicalBlock) {
+#endif // defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 4)
         if (INTERFACE_BC_BACK){ //b
             storeZBack_edge[idxPopZ(tx, ty, 0, bx, by, storeBzBack_edge)] = pop[ 6];
             storeZBack_edge[idxPopZ(txm1, ty, 1, bxAtWest, by, storeBzBack_edge)] = pop[10];
@@ -205,5 +229,7 @@ const int storeBzFront =  (popSaveParity ? bz : bzp1);
             storeZFront_edge[idxPopZ(txm1, typ1, 8, bxAtWest, byAtNorth, storeBzFront_edge)] = pop[25];
             #endif //D3Q27
         }
-        #endif // Z direction
+        #if defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 4)
+        }
+#endif // defined(COOPERATIVE_GHOST_SAVE_MASK) && (COOPERATIVE_GHOST_SAVE_MASK & 4)
     }

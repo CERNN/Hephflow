@@ -56,21 +56,23 @@ void mean_moment( dfloat *fMom,  dfloat *meanMom, int m_index, size_t step, int 
 
 /**
  *  @brief Calculate the total kinetic energy of the flow
- *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param fMom: Pointer to the global host snapshot containing the current
+ *               macroscopic moments in blocked layout.
  *  @param step: Current time step
  */
 __host__ 
-void totalKineticEnergy(dfloat *fMom, size_t step);
+void totalKineticEnergy(const dfloat *fMom, size_t step);
 
 #ifdef CONVECTION_DIFFUSION_TRANSPORT
 #ifdef CONFORMATION_TENSOR
 /**
  *  @brief Calculate the total spring energy of the polymers in the flow
- *  @param fMom: Pointer to the device array containing the current macroscopic moments.
+ *  @param fMom: Pointer to the global host snapshot containing the current
+ *               macroscopic moments in blocked layout.
  *  @param step: Current time step
  */
 __host__ 
-void totalSpringEnergy(dfloat *fMom,size_t step);
+void totalSpringEnergy(const dfloat *fMom,size_t step);
 #endif //CONFORMATION_TENSOR
 #endif //CONVECTION_DIFFUSION_TRANSPORT
 /**
@@ -80,11 +82,7 @@ void totalSpringEnergy(dfloat *fMom,size_t step);
  *  @param step: Current time step 
  */
 __host__ 
-void turbulentKineticEnergy(
-    dfloat *fMom, 
-    dfloat *m_fMom, 
-    size_t step
-);
+void turbulentKineticEnergy( dfloat *fMom, dfloat *m_fMom, size_t step );
 
 /**
  *  @brief Calculate the total drag caused by boudary conditions
@@ -106,14 +104,7 @@ void totalBcDrag(dfloat *d_BC_Fx, dfloat* d_BC_Fy, dfloat* d_BC_Fz, size_t step)
  *  @param step: Current time step
  */
 __host__
-void forceProfile(
-    dfloat* d_Local_Fx,
-    dfloat* d_Local_Fy,
-    dfloat* d_Local_Fz,
-    int dir_index,
-    int x0, int y0, int z0,
-    unsigned int step
-);
+void forceProfile( dfloat* d_Local_Fx, dfloat* d_Local_Fy, dfloat* d_Local_Fz, int dir_index, int x0, int y0, int z0, unsigned int step );
 
 /**
  *  @brief Save a scalar source term profile along a line
@@ -124,13 +115,7 @@ void forceProfile(
  *  @param step: Current time step
  */
 __host__
-void sourceProfile(
-    dfloat* dArray,
-    const char* baseName,
-    int dir_index,
-    int x0, int y0, int z0,
-    unsigned int step
-);
+void sourceProfile( dfloat* dArray, const char* baseName, int dir_index, int x0, int y0, int z0, unsigned int step );
 
 /**
  *  @brief Save the rho profile in the middle of the domian
@@ -140,12 +125,7 @@ void sourceProfile(
  *  @param step: Current time step
  */
 __host__
-void rhoProfile(
-    dfloat* fMom,
-    int dir_index,
-    int x0, int y0, int z0,
-    unsigned int step
-);
+void rhoProfile( dfloat* fMom, int dir_index, int x0, int y0, int z0, unsigned int step );
 
 
 
@@ -157,12 +137,7 @@ void rhoProfile(
  *  @param step: Current time step
  */
 __host__
-void velocityProfile(
-    dfloat* fMom,
-    int dir_index,
-    int x0, int y0, int z0,
-    unsigned int step
-);
+void velocityProfile( dfloat* fMom, int dir_index, int x0, int y0, int z0, unsigned int step );
 
 /**
  *  @brief Save the omega profile in the middle of the domian
@@ -172,12 +147,7 @@ void velocityProfile(
  *  @param step: Current time step
  */
 __host__
-void omegaProfile(
-    dfloat* fMom,
-    int dir_index,
-    int x0, int y0, int z0,
-    unsigned int step
-);
+void omegaProfile( dfloat* fMom, int dir_index, int x0, int y0, int z0, unsigned int step );
 
 /**
  *  @brief Save the phi profile in the middle of the domian
@@ -187,12 +157,7 @@ void omegaProfile(
  *  @param step: Current time step
  */
 __host__
-void phiProfile(
-    dfloat* fMom,
-    int dir_index,
-    int x0, int y0, int z0,
-    unsigned int step
-);
+void phiProfile( dfloat* fMom, int dir_index, int x0, int y0, int z0, unsigned int step );
 
 #ifdef CONFORMATION_TENSOR
 /**
@@ -203,12 +168,7 @@ void phiProfile(
  *  @param step: Current time step.
  */
 __host__
-void conformationProfile(
-    dfloat* fMom,
-    int dir_index,
-    int x0, int y0, int z0,
-    unsigned int step
-);
+void conformationProfile( dfloat* fMom, int dir_index, int x0, int y0, int z0, unsigned int step );
 #endif //CONFORMATION_TENSOR
 
 
@@ -220,12 +180,7 @@ void conformationProfile(
  *  @param zOffset: Offset within a global vector
  */
 __host__
-void computeNusseltNumber(
-    dfloat* h_fMom,
-    dfloat* fMom,
-    unsigned int step,
-    size_t zOffset
-);
+void computeNusseltNumber( dfloat* h_fMom, dfloat* fMom, unsigned int step, size_t zOffset );
 
 /**
  *  @brief Calculate the turbulent kinetic energy based on the velocity field
@@ -235,12 +190,7 @@ void computeNusseltNumber(
  *  @param step: Current time step
  */
 __host__
-void computeTurbulentEnergies(
-    dfloat* h_fMom,
-    dfloat* fMom,
-    dfloat* fMom_mean,
-    unsigned int step
-);
+void computeTurbulentEnergies( dfloat* h_fMom, dfloat* fMom, dfloat* fMom_mean, unsigned int step );
 
 /**
  *  @brief //copy full macroscopic field
@@ -250,11 +200,6 @@ void computeTurbulentEnergies(
  *  @param zOffset: Offset within a global vector
  */
 __host__
-void copyMacroscopic(
-    dfloat* h_fMom,
-    dfloat* fMom,
-    unsigned int step,
-    size_t zOffset
-);
+void copyMacroscopic( dfloat* h_fMom, dfloat* fMom, unsigned int step, size_t zOffset );
 
 #endif // !__TREAT_DATA_CUH

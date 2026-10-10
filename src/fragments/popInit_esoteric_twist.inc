@@ -1,14 +1,14 @@
 // Encode arbitrary populations in Listing A4's parity-0 Esoteric Twist layout.
-const int initTwTxP1 = (tx + 1) % BLOCK_NX;
-const int initTwTyP1 = (ty + 1) % BLOCK_NY;
-const int initTwTzP1 = (tz + 1) % BLOCK_NZ;
+const int initTwTxP1 = (x + 1 >= NX) ? 0 : (tx + 1) % BLOCK_NX;
+const int initTwTyP1 = (y + 1 >= NY) ? 0 : (ty + 1) % BLOCK_NY;
+const int initTwTzP1 = (z_local + 1 >= localNZ) ? 0 : (tz + 1) % BLOCK_NZ;
 const int initTwBxP1 = (bx + 1) % NUM_BLOCK_X;
 const int initTwByP1 = (by + 1) % NUM_BLOCK_Y;
-const int initTwBzP1 = (bz + 1) % NUM_BLOCK_Z_LOCAL;
+const int initTwBzP1 = (bz + 1) % numBlocksZ;
 
-const int initTwBxAtEast  = (tx == (BLOCK_NX - 1)) ? initTwBxP1 : bx;
-const int initTwByAtNorth = (ty == (BLOCK_NY - 1)) ? initTwByP1 : by;
-const int initTwBzAtFront = (tz == (BLOCK_NZ - 1)) ? initTwBzP1 : bz;
+const int initTwBxAtEast  = (tx == (BLOCK_NX - 1) || x == NX - 1) ? initTwBxP1 : bx;
+const int initTwByAtNorth = (ty == (BLOCK_NY - 1) || y == NY - 1) ? initTwByP1 : by;
+const int initTwBzAtFront = (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ) ? initTwBzP1 : bz;
 
 if (tx == 0) {
     ghostInterface.pop.X_0[idxPopX(ty,         tz,         0, bx, by,                bz)] = pop[ 2];
@@ -16,7 +16,8 @@ if (tx == 0) {
     ghostInterface.pop.X_0[idxPopX(ty,         tz,         2, bx, by,                bz)] = pop[10];
     ghostInterface.pop.X_0[idxPopX(initTwTyP1, tz,         3, bx, initTwByAtNorth,   bz)] = pop[14];
     ghostInterface.pop.X_0[idxPopX(ty,         initTwTzP1, 4, bx, by,                initTwBzAtFront)] = pop[16];
-} else if (tx == (BLOCK_NX - 1)) {
+}
+if (tx == (BLOCK_NX - 1) || x == NX - 1) {
     ghostInterface.pop.X_1[idxPopX(ty,         tz,         0, initTwBxP1, by,              bz)] = pop[ 1];
     ghostInterface.pop.X_1[idxPopX(initTwTyP1, tz,         1, initTwBxP1, initTwByAtNorth, bz)] = pop[ 7];
     ghostInterface.pop.X_1[idxPopX(ty,         initTwTzP1, 2, initTwBxP1, by,              initTwBzAtFront)] = pop[ 9];
@@ -30,7 +31,8 @@ if (ty == 0) {
     ghostInterface.pop.Y_0[idxPopY(tx,         tz,         2, bx,             by, bz)] = pop[12];
     ghostInterface.pop.Y_0[idxPopY(initTwTxP1, tz,         3, initTwBxAtEast, by, bz)] = pop[13];
     ghostInterface.pop.Y_0[idxPopY(tx,         initTwTzP1, 4, bx,             by, initTwBzAtFront)] = pop[18];
-} else if (ty == (BLOCK_NY - 1)) {
+}
+if (ty == (BLOCK_NY - 1) || y == NY - 1) {
     ghostInterface.pop.Y_1[idxPopY(tx,         tz,         0, bx,             initTwByP1, bz)] = pop[ 3];
     ghostInterface.pop.Y_1[idxPopY(initTwTxP1, tz,         1, initTwBxAtEast, initTwByP1, bz)] = pop[ 7];
     ghostInterface.pop.Y_1[idxPopY(tx,         initTwTzP1, 2, bx,             initTwByP1, initTwBzAtFront)] = pop[11];
@@ -44,7 +46,8 @@ if (tz == 0) {
     ghostInterface.pop.Z_0[idxPopZ(tx,         ty,         2, bx,             by,              bz)] = pop[12];
     ghostInterface.pop.Z_0[idxPopZ(initTwTxP1, ty,         3, initTwBxAtEast, by,              bz)] = pop[15];
     ghostInterface.pop.Z_0[idxPopZ(tx,         initTwTyP1, 4, bx,             initTwByAtNorth, bz)] = pop[17];
-} else if (tz == (BLOCK_NZ - 1)) {
+}
+if (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ) {
     ghostInterface.pop.Z_1[idxPopZ(tx,         ty,         0, bx,             by,              initTwBzP1)] = pop[ 5];
     ghostInterface.pop.Z_1[idxPopZ(initTwTxP1, ty,         1, initTwBxAtEast, by,              initTwBzP1)] = pop[ 9];
     ghostInterface.pop.Z_1[idxPopZ(tx,         initTwTyP1, 2, bx,             initTwByAtNorth, initTwBzP1)] = pop[11];

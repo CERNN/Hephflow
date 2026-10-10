@@ -1,5 +1,33 @@
 #include "treatData.cuh"
 
+namespace {
+    dfloat reduceBlockSumsToHost(dfloat* blockSums, size_t count){
+        constexpr size_t REDUCTION_THREADS = 256;
+        if (count == 0) return 0.0_df;
+
+        dfloat* scratch = nullptr;
+        checkCudaErrors(cudaMalloc((void**)&scratch, count * sizeof(dfloat)));
+        dfloat* input = blockSums;
+        dfloat* output = scratch;
+        size_t remaining = count;
+
+        while (remaining > 1) {
+            const size_t outputCount = (remaining + REDUCTION_THREADS - 1) / REDUCTION_THREADS;
+            sumReductionLinear<<<static_cast<unsigned int>(outputCount), static_cast<unsigned int>(REDUCTION_THREADS)>>>(input, output, remaining);
+            remaining = outputCount;
+            dfloat* previousInput = input;
+            input = output;
+            output = previousInput;
+        }
+
+        dfloat result = 0.0_df;
+        checkCudaErrors(cudaMemcpy(&result, input, sizeof(dfloat), cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaFree(scratch));
+
+        return result;
+    }
+}
+
 __host__
 void treatData(const TreatDataParams* params)
 {
@@ -7,109 +35,68 @@ void treatData(const TreatDataParams* params)
     dfloat* h_fMom = params->h_fMom;
     const unsigned int* h_nodeType = params->h_nodeType;
     #if MEAN_FLOW
-    dfloat* fMom_mean = params->d_fMom_mean;
-    #endif
+        dfloat* fMom_mean = params->d_fMom_mean;
+    #endif // MEAN_FLOW
     #ifdef BC_FORCES
-    dfloat* d_BC_Fx = params->d_BC_Fx;
-    dfloat* d_BC_Fy = params->d_BC_Fy;
-    dfloat* d_BC_Fz = params->d_BC_Fz;
-    #endif
+        dfloat* d_BC_Fx = params->d_BC_Fx;
+        dfloat* d_BC_Fy = params->d_BC_Fy;
+        dfloat* d_BC_Fz = params->d_BC_Fz;
+    #endif // BC_FORCES
     #ifdef SAVE_LOCAL_FORCES
-    dfloat* d_Local_Fx = params->d_Local_Fx;
-    dfloat* d_Local_Fy = params->d_Local_Fy;
-    dfloat* d_Local_Fz = params->d_Local_Fz;
-        #ifdef SECOND_DIST
-    dfloat* d_Source_C = params->d_Source_C;
-        #endif
-        #ifdef PHI_DIST
-    dfloat* d_Source_Phi = params->d_Source_Phi;
-        #endif
-        #ifdef LAMBDA_DIST
-    dfloat* d_Source_Lambda = params->d_Source_Lambda;
-        #endif
-        #ifdef CONFORMATION_TENSOR
-            #ifdef A_XX_DIST
-    dfloat* d_Source_Gxx = params->d_Source_Gxx;
-            #endif
-            #ifdef A_XY_DIST
-    dfloat* d_Source_Gxy = params->d_Source_Gxy;
-            #endif
-            #ifdef A_XZ_DIST
-    dfloat* d_Source_Gxz = params->d_Source_Gxz;
-            #endif
-            #ifdef A_YY_DIST
-    dfloat* d_Source_Gyy = params->d_Source_Gyy;
-            #endif
-            #ifdef A_YZ_DIST
-    dfloat* d_Source_Gyz = params->d_Source_Gyz;
-            #endif
-            #ifdef A_ZZ_DIST
-    dfloat* d_Source_Gzz = params->d_Source_Gzz;
-            #endif
-        #endif //CONFORMATION_TENSOR
-    #endif
+        dfloat* d_Local_Fx = params->d_Local_Fx;
+        dfloat* d_Local_Fy = params->d_Local_Fy;
+        dfloat* d_Local_Fz = params->d_Local_Fz;
+    #ifdef SECOND_DIST
+            dfloat* d_Source_C = params->d_Source_C;
+    #endif // SECOND_DIST
+    #ifdef PHI_DIST
+            dfloat* d_Source_Phi = params->d_Source_Phi;
+    #endif // PHI_DIST
+    #ifdef LAMBDA_DIST
+            dfloat* d_Source_Lambda = params->d_Source_Lambda;
+    #endif // LAMBDA_DIST
+    #ifdef CONFORMATION_TENSOR
+    #ifdef A_XX_DIST
+                dfloat* d_Source_Gxx = params->d_Source_Gxx;
+    #endif // A_XX_DIST
+    #ifdef A_XY_DIST
+                dfloat* d_Source_Gxy = params->d_Source_Gxy;
+    #endif // A_XY_DIST
+    #ifdef A_XZ_DIST
+                dfloat* d_Source_Gxz = params->d_Source_Gxz;
+    #endif // A_XZ_DIST
+    #ifdef A_YY_DIST
+                dfloat* d_Source_Gyy = params->d_Source_Gyy;
+    #endif // A_YY_DIST
+    #ifdef A_YZ_DIST
+                dfloat* d_Source_Gyz = params->d_Source_Gyz;
+    #endif // A_YZ_DIST
+    #ifdef A_ZZ_DIST
+                dfloat* d_Source_Gzz = params->d_Source_Gzz;
+    #endif // A_ZZ_DIST
+    #endif //CONFORMATION_TENSOR
+    #endif //SAVE_LOCAL_FORCES
     unsigned int step = params->step;
     size_t zOffset = params->zOffset;
 
     #ifdef TREAT_DATA_INCLUDE
-    #include CASE_TREAT_DATA
+        #include CASE_TREAT_DATA
     #endif //TREAT_DATA_INCLUDE
-
-    //totalKineticEnergy(fMom,step);         
 }
 
 __host__
 void mean_moment(dfloat *fMom, dfloat *meanMom, int m_index, size_t step, int target){
 
     dfloat* sum;
-    cudaMalloc((void**)&sum, NUM_BLOCK_LOCAL * sizeof(dfloat));
+    cudaMalloc((void**)&sum, NUM_BLOCK * sizeof(dfloat));
 
-    int nt_x = BLOCK_NX;
-    int nt_y = BLOCK_NY;
-    int nt_z = BLOCK_NZ;
-    int nb_x = NX / nt_x;
-    int nb_y = NY / nt_y;
-    int nb_z = (NZ/N_GPUS) / nt_z;
-
-    sumReductionThread << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom, sum,m_index);
-
-    nb_x = NUM_BLOCK_X;
-    nb_y = NUM_BLOCK_Y;
-    nb_z = NUM_BLOCK_Z_LOCAL;
-
-    int current_block_size = nb_x * nb_y * nb_z;
-   
-    while (true) {
-        current_block_size = nb_x * nb_y * nb_z;
-        if (current_block_size <= BLOCK_LBM_SIZE) { // last reduction
-            sumReductionBlock << <1, dim3(nb_x, nb_y, nb_z) >> > (sum, sum);
-            break;
-        }
-        else {
-            nb_x = (nb_x < BLOCK_NX ? 1 : nb_x / BLOCK_NX);
-            nb_y = (nb_y < BLOCK_NY ? 1 : nb_y / BLOCK_NY);
-            nb_z = (nb_z < BLOCK_NZ ? 1 : nb_z / BLOCK_NZ);
-            if (nb_x * nb_y * nb_z * nt_x * nt_y * nt_z > current_block_size) {
-                if (nb_x > nb_y && nb_x > nb_z)
-                    nt_x /= 2;
-                else if (nb_y > nb_x && nb_y > nb_z)
-                    nt_y /= 2;
-                else
-                    nt_z /= 2;
-            }
-            sumReductionBlock << <dim3(nb_x, nb_y, nb_z), dim3(nt_x, nt_y, nt_z) >> > (sum, sum);
-        }
-    }
-
-    checkCudaErrors(cudaDeviceSynchronize());
-    dfloat temp;
-    
-    checkCudaErrors(cudaMemcpy(&temp, sum, sizeof(dfloat), cudaMemcpyDeviceToHost)); 
+    sumReductionThread << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom, sum,m_index);
+    dfloat temp = reduceBlockSumsToHost(sum, NUM_BLOCK);
 
     if (m_index == M_RHO_INDEX){
-        temp = (temp/(dfloat)NUMBER_LBM_NODES_LOCAL); 
+        temp = temp / static_cast<dfloat>(static_cast<size_t>(NX) * NY * NZ);
     }else{
-        temp = (temp/(dfloat)NUMBER_LBM_NODES_LOCAL);
+        temp = temp / static_cast<dfloat>(static_cast<size_t>(NX) * NY * NZ);
     }
                 
     if (target == 0){
@@ -119,63 +106,37 @@ void mean_moment(dfloat *fMom, dfloat *meanMom, int m_index, size_t step, int ta
         checkCudaErrors(cudaMemcpy(meanMom, &temp, sizeof(dfloat), cudaMemcpyHostToHost)); 
     }
 
-
     cudaFree(sum);
-
-
-    
 }
 
 __host__ 
 void totalKineticEnergy(
-    dfloat *fMom, 
+    const dfloat *fMom,
     size_t step
 ){
-    dfloat* sumKE;
-    cudaMalloc((void**)&sumKE, NUM_BLOCK_LOCAL * sizeof(dfloat));
-
-    int nt_x = BLOCK_NX;
-    int nt_y = BLOCK_NY;
-    int nt_z = BLOCK_NZ;
-    int nb_x = NX / nt_x;
-    int nb_y = NY / nt_y;
-    int nb_z = (NZ/N_GPUS) / nt_z;
-
-    sumReductionThread_KE << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom, sumKE);
-
-    nb_x = NUM_BLOCK_X;
-    nb_y = NUM_BLOCK_Y;
-    nb_z = NUM_BLOCK_Z_LOCAL;
-
-    int current_block_size = nb_x * nb_y * nb_z;
-
-    while (true) {
-        current_block_size = nb_x * nb_y * nb_z;
-        if (current_block_size <= BLOCK_LBM_SIZE) { // last reduction
-            sumReductionBlock << <1, dim3(nb_x, nb_y, nb_z) >> > (sumKE, sumKE);
-            break;
-        }
-        else {
-            nb_x = (nb_x < BLOCK_NX ? 1 : nb_x / BLOCK_NX);
-            nb_y = (nb_y < BLOCK_NY ? 1 : nb_y / BLOCK_NY);
-            nb_z = (nb_z < BLOCK_NZ ? 1 : nb_z / BLOCK_NZ);
-            if (nb_x * nb_y * nb_z * nt_x * nt_y * nt_z > current_block_size) {
-                if (nb_x > nb_y && nb_x > nb_z)
-                    nt_x /= 2;
-                else if (nb_y > nb_x && nb_y > nb_z)
-                    nt_y /= 2;
-                else
-                    nt_z /= 2;
+    // treatData receives a decomposition-independent host snapshot. Reduce
+    // physical cells directly instead of passing pinned host memory to a CUDA
+    // kernel or including padded lanes in the result.
+    dfloat total = 0.0_df;
+    for (int z = 0; z < NZ; ++z) {
+        for (int y = 0; y < NY; ++y) {
+            for (int x = 0; x < NX; ++x) {
+                const int tx = x % BLOCK_NX;
+                const int ty = y % BLOCK_NY;
+                const int tz = z % BLOCK_NZ;
+                const int bx = x / BLOCK_NX;
+                const int by = y / BLOCK_NY;
+                const int bz = z / BLOCK_NZ;
+                const dfloat rho = RHO_0 + fMom[idxMom(tx, ty, tz, M_RHO_INDEX, bx, by, bz)];
+                const dfloat ux = fMom[idxMom(tx, ty, tz, M_UX_INDEX, bx, by, bz)] / F_M_I_SCALE;
+                const dfloat uy = fMom[idxMom(tx, ty, tz, M_UY_INDEX, bx, by, bz)] / F_M_I_SCALE;
+                const dfloat uz = fMom[idxMom(tx, ty, tz, M_UZ_INDEX, bx, by, bz)] / F_M_I_SCALE;
+                total += 0.5_df * rho * (ux * ux + uy * uy + uz * uz);
             }
-            sumReductionBlock << <dim3(nb_x, nb_y, nb_z), dim3(nt_x, nt_y, nt_z) >> > (sumKE, sumKE);
         }
     }
 
-    checkCudaErrors(cudaDeviceSynchronize());
-    dfloat temp;
-    
-    checkCudaErrors(cudaMemcpy(&temp, sumKE, sizeof(dfloat), cudaMemcpyDeviceToHost)); 
-    temp = (temp)/(NUMBER_LBM_NODES_LOCAL);
+    const dfloat temp = total / static_cast<dfloat>(static_cast<size_t>(NX) * NY * NZ);
 
     std::ostringstream strDataInfo("");
     strDataInfo << std::scientific;
@@ -183,65 +144,36 @@ void totalKineticEnergy(
 
     strDataInfo <<"step,"<< step<< "," << temp;// << "," << mean_counter;
 
-
-
     saveTreatData("_totalKineticEnergy",strDataInfo.str(),step);
-    cudaFree(sumKE);
 }
 
 #ifdef CONVECTION_DIFFUSION_TRANSPORT
 #ifdef CONFORMATION_TENSOR
 __host__ 
 void totalSpringEnergy(
-    dfloat *fMom, 
+    const dfloat *fMom,
     size_t step
 ){
-    dfloat* sumKE;
-    cudaMalloc((void**)&sumKE, NUM_BLOCK_LOCAL * sizeof(dfloat));
-
-    int nt_x = BLOCK_NX;
-    int nt_y = BLOCK_NY;
-    int nt_z = BLOCK_NZ;
-    int nb_x = NX / nt_x;
-    int nb_y = NY / nt_y;
-    int nb_z = (NZ/N_GPUS) / nt_z;
-
-    sumReductionThread_SE << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom, sumKE);
-
-    nb_x = NUM_BLOCK_X;
-    nb_y = NUM_BLOCK_Y;
-    nb_z = NUM_BLOCK_Z_LOCAL;
-
-    int current_block_size = nb_x * nb_y * nb_z;
-
-    while (true) {
-        current_block_size = nb_x * nb_y * nb_z;
-        if (current_block_size <= BLOCK_LBM_SIZE) { // last reduction
-            sumReductionBlock << <1, dim3(nb_x, nb_y, nb_z) >> > (sumKE, sumKE);
-            break;
-        }
-        else {
-            nb_x = (nb_x < BLOCK_NX ? 1 : nb_x / BLOCK_NX);
-            nb_y = (nb_y < BLOCK_NY ? 1 : nb_y / BLOCK_NY);
-            nb_z = (nb_z < BLOCK_NZ ? 1 : nb_z / BLOCK_NZ);
-            if (nb_x * nb_y * nb_z * nt_x * nt_y * nt_z > current_block_size) {
-                if (nb_x > nb_y && nb_x > nb_z)
-                    nt_x /= 2;
-                else if (nb_y > nb_x && nb_y > nb_z)
-                    nt_y /= 2;
-                else
-                    nt_z /= 2;
+    dfloat traceDeparture = 0.0_df;
+    for (int z = 0; z < NZ; ++z) {
+        for (int y = 0; y < NY; ++y) {
+            for (int x = 0; x < NX; ++x) {
+                const int tx = x % BLOCK_NX;
+                const int ty = y % BLOCK_NY;
+                const int tz = z % BLOCK_NZ;
+                const int bx = x / BLOCK_NX;
+                const int by = y / BLOCK_NY;
+                const int bz = z / BLOCK_NZ;
+                traceDeparture +=
+                    fMom[idxMom(tx, ty, tz, A_XX_C_INDEX, bx, by, bz)] +
+                    fMom[idxMom(tx, ty, tz, A_YY_C_INDEX, bx, by, bz)] +
+                    fMom[idxMom(tx, ty, tz, A_ZZ_C_INDEX, bx, by, bz)] -
+                    3.0_df - 3.0_df * CONF_ZERO;
             }
-            sumReductionBlock << <dim3(nb_x, nb_y, nb_z), dim3(nt_x, nt_y, nt_z) >> > (sumKE, sumKE);
         }
     }
 
-    checkCudaErrors(cudaDeviceSynchronize());
-    dfloat temp;
-    
-    checkCudaErrors(cudaMemcpy(&temp, sumKE, sizeof(dfloat), cudaMemcpyDeviceToHost)); 
-    temp = (temp/2.0_df) * nu_p * inv_lambda;
-    temp = (temp)/(NUMBER_LBM_NODES_LOCAL);
+    const dfloat temp = 0.5_df * nu_p * inv_lambda * traceDeparture / static_cast<dfloat>(static_cast<size_t>(NX) * NY * NZ);
 
     std::ostringstream strDataInfo("");
     strDataInfo << std::scientific;
@@ -249,10 +181,7 @@ void totalSpringEnergy(
 
     strDataInfo <<"step,"<< step<< "," << temp;// << "," << mean_counter;
 
-
-
     saveTreatData("_totalSpringEnergy",strDataInfo.str(),step);
-    cudaFree(sumKE);
 }
 #endif //CONFORMATION_TENSOR
 #endif //CONVECTION_DIFFUSION_TRANSPORT
@@ -265,54 +194,17 @@ void turbulentKineticEnergy(
 ){
 
     dfloat* sumTKE;
-    cudaMalloc((void**)&sumTKE, NUM_BLOCK_LOCAL * sizeof(dfloat));
+    cudaMalloc((void**)&sumTKE, NUM_BLOCK * sizeof(dfloat));
 
-    int nt_x = BLOCK_NX;
-    int nt_y = BLOCK_NY;
-    int nt_z = BLOCK_NZ;
-    int nb_x = NX / nt_x;
-    int nb_y = NY / nt_y;
-    int nb_z = (NZ/N_GPUS) / nt_z;
-
-    sumReductionThread_TKE << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom,m_fMom,sumTKE);
-
-    int current_block_size = nb_x * nb_y * nb_z;
-
-    while (true) {
-        current_block_size = nb_x * nb_y * nb_z;
-        if (current_block_size <= BLOCK_LBM_SIZE) { // last reduction
-            sumReductionBlock << <1, dim3(nb_x, nb_y, nb_z) >> > (sumTKE, sumTKE);
-            break;
-        }
-        else {
-            nb_x = (nb_x < BLOCK_NX ? 1 : nb_x / BLOCK_NX);
-            nb_y = (nb_y < BLOCK_NY ? 1 : nb_y / BLOCK_NY);
-            nb_z = (nb_z < BLOCK_NZ ? 1 : nb_z / BLOCK_NZ);
-            if (nb_x * nb_y * nb_z * nt_x * nt_y * nt_z > current_block_size) {
-                if (nb_x > nb_y && nb_x > nb_z)
-                    nt_x /= 2;
-                else if (nb_y > nb_x && nb_y > nb_z)
-                    nt_y /= 2;
-                else
-                    nt_z /= 2;
-            }
-            sumReductionBlock << <dim3(nb_x, nb_y, nb_z), dim3(nt_x, nt_y, nt_z) >> > (sumTKE, sumTKE);
-        }
-    }
-
-    checkCudaErrors(cudaDeviceSynchronize());
-    dfloat temp;
-    
-    checkCudaErrors(cudaMemcpy(&temp, sumTKE, sizeof(dfloat), cudaMemcpyDeviceToHost)); 
-    temp = (temp)/(U_MAX*U_MAX*NUMBER_LBM_NODES_LOCAL);
+    sumReductionThread_TKE << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (fMom, sumTKE, m_fMom);
+    dfloat temp = reduceBlockSumsToHost(sumTKE, NUM_BLOCK);
+    temp /= U_MAX * U_MAX * static_cast<dfloat>(static_cast<size_t>(NX) * NY * NZ);
 
     std::ostringstream strDataInfo("");
     strDataInfo << std::scientific;
     strDataInfo << std::setprecision(6);
 
     strDataInfo <<"step,"<< step<< "," << temp;// << "," << mean_counter;
-
-
 
     saveTreatData("_turbulentKineticEnergy",strDataInfo.str(),step);
     cudaFree(sumTKE);
@@ -345,8 +237,7 @@ void forceProfile(
         z_loc = z0;
         strDataInfo << " step " << step;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             // Save Fx component
             hostVal = d_Local_Fx[idx];
             strDataInfo << "\t" << hostVal;
@@ -359,8 +250,7 @@ void forceProfile(
         strDataInfo << std::scientific << std::setprecision(6);
         strDataInfo << "step " << step;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = d_Local_Fy[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -371,8 +261,7 @@ void forceProfile(
         strDataInfo << std::scientific << std::setprecision(6);
         strDataInfo << "step " << step;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = d_Local_Fz[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -386,8 +275,7 @@ void forceProfile(
         strDataInfo << std::scientific << std::setprecision(6);
         strDataInfo << "step " << step;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = d_Local_Fx[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -398,8 +286,7 @@ void forceProfile(
         strDataInfo << std::scientific << std::setprecision(6);
         strDataInfo << "step " << step;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = d_Local_Fy[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -409,8 +296,7 @@ void forceProfile(
         strDataInfo << std::scientific << std::setprecision(6);
         strDataInfo << "step " << step;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = d_Local_Fz[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -424,8 +310,7 @@ void forceProfile(
         strDataInfo << std::scientific << std::setprecision(6);
         strDataInfo << "step " << step;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = d_Local_Fx[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -436,8 +321,7 @@ void forceProfile(
         strDataInfo << std::scientific << std::setprecision(6);
         strDataInfo << "step " << step;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = d_Local_Fy[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -447,8 +331,7 @@ void forceProfile(
         strDataInfo << std::scientific << std::setprecision(6);
         strDataInfo << "step " << step;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = d_Local_Fz[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -484,8 +367,7 @@ void sourceProfile(
         x_loc = x0;
         z_loc = z0;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = dArray[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -497,8 +379,7 @@ void sourceProfile(
         y_loc = y0;
         z_loc = z0;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = dArray[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -510,8 +391,7 @@ void sourceProfile(
         y_loc = y0;
         x_loc = x0;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                                        x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxScalarBlock(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = dArray[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -537,59 +417,17 @@ void totalBcDrag(
     dfloat* sum_BC_Fy;
     dfloat* sum_BC_Fz;
 
-    cudaMalloc((void**)&sum_BC_Fx, NUM_BLOCK_LOCAL * sizeof(dfloat));
-    cudaMalloc((void**)&sum_BC_Fy, NUM_BLOCK_LOCAL * sizeof(dfloat));
-    cudaMalloc((void**)&sum_BC_Fz, NUM_BLOCK_LOCAL * sizeof(dfloat));
+    cudaMalloc((void**)&sum_BC_Fx, NUM_BLOCK * sizeof(dfloat));
+    cudaMalloc((void**)&sum_BC_Fy, NUM_BLOCK * sizeof(dfloat));
+    cudaMalloc((void**)&sum_BC_Fz, NUM_BLOCK * sizeof(dfloat));
 
-    int nt_x = BLOCK_NX;
-    int nt_y = BLOCK_NY;
-    int nt_z = BLOCK_NZ;
-    int nb_x = NX / nt_x;
-    int nb_y = NY / nt_y;
-    int nb_z = (NZ/N_GPUS) / nt_z;
+    sumReductionScalar << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (d_BC_Fx, sum_BC_Fx);
+    sumReductionScalar << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (d_BC_Fy, sum_BC_Fy);
+    sumReductionScalar << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (d_BC_Fz, sum_BC_Fz);
 
-    sumReductionScalar << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (d_BC_Fx, sum_BC_Fx);
-    sumReductionScalar << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (d_BC_Fy, sum_BC_Fy);
-    sumReductionScalar << <dim3(NUM_BLOCK_X, NUM_BLOCK_Y, NUM_BLOCK_Z_LOCAL), dim3(BLOCK_NX, BLOCK_NY, BLOCK_NZ) >> > (d_BC_Fz, sum_BC_Fz);
-
-    nb_x = NUM_BLOCK_X;
-    nb_y = NUM_BLOCK_Y;
-    nb_z = NUM_BLOCK_Z_LOCAL;
-
-    int current_block_size = nb_x * nb_y * nb_z;
-
-    while (true) {
-        current_block_size = nb_x * nb_y * nb_z;
-        if (current_block_size <= BLOCK_LBM_SIZE) { // last reduction
-            sumReductionBlock << <1, dim3(nb_x, nb_y, nb_z) >> > (sum_BC_Fx, sum_BC_Fx);
-            sumReductionBlock << <1, dim3(nb_x, nb_y, nb_z) >> > (sum_BC_Fy, sum_BC_Fy);
-            sumReductionBlock << <1, dim3(nb_x, nb_y, nb_z) >> > (sum_BC_Fz, sum_BC_Fz);
-            break;
-        }
-        else {
-            nb_x = (nb_x < BLOCK_NX ? 1 : nb_x / BLOCK_NX);
-            nb_y = (nb_y < BLOCK_NY ? 1 : nb_y / BLOCK_NY);
-            nb_z = (nb_z < BLOCK_NZ ? 1 : nb_z / BLOCK_NZ);
-            if (nb_x * nb_y * nb_z * nt_x * nt_y * nt_z > current_block_size) {
-                if (nb_x > nb_y && nb_x > nb_z)
-                    nt_x /= 2;
-                else if (nb_y > nb_x && nb_y > nb_z)
-                    nt_y /= 2;
-                else
-                    nt_z /= 2;
-            }
-            sumReductionBlock << <dim3(nb_x, nb_y, nb_z), dim3(nt_x, nt_y, nt_z) >> > (sum_BC_Fx, sum_BC_Fx);
-            sumReductionBlock << <dim3(nb_x, nb_y, nb_z), dim3(nt_x, nt_y, nt_z) >> > (sum_BC_Fy, sum_BC_Fy);
-            sumReductionBlock << <dim3(nb_x, nb_y, nb_z), dim3(nt_x, nt_y, nt_z) >> > (sum_BC_Fz, sum_BC_Fz);
-        }
-    }
-
-    checkCudaErrors(cudaDeviceSynchronize());
-    dfloat temp_x, temp_y, temp_z;
-    
-    checkCudaErrors(cudaMemcpy(&temp_x, sum_BC_Fx, sizeof(dfloat), cudaMemcpyDeviceToHost)); 
-    checkCudaErrors(cudaMemcpy(&temp_y, sum_BC_Fy, sizeof(dfloat), cudaMemcpyDeviceToHost)); 
-    checkCudaErrors(cudaMemcpy(&temp_z, sum_BC_Fz, sizeof(dfloat), cudaMemcpyDeviceToHost)); 
+    const dfloat temp_x = reduceBlockSumsToHost(sum_BC_Fx, NUM_BLOCK);
+    const dfloat temp_y = reduceBlockSumsToHost(sum_BC_Fy, NUM_BLOCK);
+    const dfloat temp_z = reduceBlockSumsToHost(sum_BC_Fz, NUM_BLOCK);
 
 
     std::ostringstream strDataInfo("");
@@ -629,8 +467,7 @@ void rhoProfile(
         y_loc = y0;
         z_loc = z0;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             0, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, 0, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = fMom[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -642,8 +479,7 @@ void rhoProfile(
         x_loc = x0;
         z_loc = z0;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             0, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, 0, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             // optional: validate idx if you have TOTAL_SIZE available
             hostVal = fMom[idx];
             strDataInfo << "\t" << hostVal;
@@ -656,8 +492,7 @@ void rhoProfile(
         y_loc = y0;
         x_loc = x0;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             0, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, 0, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = fMom[idx];
             strDataInfo << "\t" << hostVal;
         }
@@ -693,8 +528,7 @@ void velocityProfile(
         x_loc = x0;
         z_loc = z0;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, 1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             // optional: validate idx if you have TOTAL_SIZE available
             hostVal = fMom[idx];
             strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
@@ -707,8 +541,7 @@ void velocityProfile(
         x_loc = x0;
         z_loc = z0;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, 2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = fMom[idx];
             strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
@@ -720,8 +553,7 @@ void velocityProfile(
         x_loc = x0;
         z_loc = z0;
         for (y_loc = 0; y_loc < NY; ++y_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, 3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = fMom[idx];
             strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
@@ -733,8 +565,7 @@ void velocityProfile(
         y_loc = y0;
         z_loc = z0;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, 1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = fMom[idx];
             strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
@@ -746,8 +577,7 @@ void velocityProfile(
         y_loc = y0;
         z_loc = z0;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, 2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = fMom[idx];
             strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
@@ -759,8 +589,7 @@ void velocityProfile(
         y_loc = y0;
         z_loc = z0;
         for (x_loc = 0; x_loc < NX; ++x_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, 3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = fMom[idx];
             strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
@@ -772,8 +601,7 @@ void velocityProfile(
         y_loc = y0;
         x_loc = x0;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, 1, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = fMom[idx];
             strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
@@ -785,8 +613,7 @@ void velocityProfile(
         y_loc = y0;
         x_loc = x0;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, 2, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = fMom[idx];
             strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
@@ -798,8 +625,7 @@ void velocityProfile(
         y_loc = y0;
         x_loc = x0;
         for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, 3, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             hostVal = fMom[idx];
             strDataInfo << "\t" << (hostVal / F_M_I_SCALE);
         }
@@ -821,61 +647,58 @@ void omegaProfile(
     unsigned int step
 ){
     #ifdef OMEGA_FIELD
-    std::ostringstream strDataInfo;
-    strDataInfo << std::scientific;
-    strDataInfo << std::setprecision(6);
-    strDataInfo << "step " << step;
+        std::ostringstream strDataInfo;
+        strDataInfo << std::scientific;
+        strDataInfo << std::setprecision(6);
+        strDataInfo << "step " << step;
 
-    int x_loc, y_loc, z_loc;
-    dfloat hostVal; // use a stack host variable for single-element copies
-    std::stringstream name;
+        int x_loc, y_loc, z_loc;
+        dfloat hostVal; // use a stack host variable for single-element copies
+        std::stringstream name;
 
-    switch (dir_index)
-    {
-    case 1: // omega on x-direction
-        y_loc = y0;
-        z_loc = z0;
-        for (x_loc = 0; x_loc < NX; ++x_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             M_OMEGA_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
-            hostVal = fMom[idx];
-            strDataInfo << "\t" << hostVal;
-        }
-        name << "omegaProfile_dx_y" << y0 << "_z" << z0;
-        saveTreatData(name.str(), strDataInfo.str(), step);
-        break;
+        switch (dir_index)
+        {
+            case 1: // omega on x-direction
+            y_loc = y0;
+            z_loc = z0;
+            for (x_loc = 0; x_loc < NX; ++x_loc) {
+                size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, M_OMEGA_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+                hostVal = fMom[idx];
+                strDataInfo << "\t" << hostVal;
+                }
+            name << "omegaProfile_dx_y" << y0 << "_z" << z0;
+            saveTreatData(name.str(), strDataInfo.str(), step);
+            break;
 
-    case 2: // omega on y-direction
-        x_loc = x0;
-        z_loc = z0;
-        for (y_loc = 0; y_loc < NY; ++y_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             M_OMEGA_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+            case 2: // omega on y-direction
+            x_loc = x0;
+            z_loc = z0;
+            for (y_loc = 0; y_loc < NY; ++y_loc) {
+                size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, M_OMEGA_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
             // optional: validate idx if you have TOTAL_SIZE available
-            hostVal = fMom[idx];
-            strDataInfo << "\t" << hostVal;
-        }
-        name << "omegaProfile_dy_x" << x0 << "_z" << z0;
-        saveTreatData(name.str(), strDataInfo.str(), step);
-        break;
+                hostVal = fMom[idx];
+                strDataInfo << "\t" << hostVal;
+                }
+            name << "omegaProfile_dy_x" << x0 << "_z" << z0;
+            saveTreatData(name.str(), strDataInfo.str(), step);
+            break;
 
-    case 3: // omega on z-direction
-        y_loc = y0;
-        x_loc = x0;
-        for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             M_OMEGA_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
-            hostVal = fMom[idx];
-            strDataInfo << "\t" << hostVal;
-        }
-        name << "omegaProfile_dz_x" << x0 << "_y" << y0;
-        saveTreatData(name.str(), strDataInfo.str(), step);
-        break;
+            case 3: // omega on z-direction
+            y_loc = y0;
+            x_loc = x0;
+            for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
+                size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, M_OMEGA_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+                hostVal = fMom[idx];
+                strDataInfo << "\t" << hostVal;
+                }
+            name << "omegaProfile_dz_x" << x0 << "_y" << y0;
+            saveTreatData(name.str(), strDataInfo.str(), step);
+            break;
 
-    default:
-        std::cerr << "omegaProfile: unknown dir_index " << dir_index << std::endl;
-        break;
-    }
+            default:
+            std::cerr << "omegaProfile: unknown dir_index " << dir_index << std::endl;
+            break;
+            }
     #endif //OMEGA_FIELD
 }
 
@@ -887,60 +710,57 @@ void phiProfile(
     unsigned int step
 ){
     #ifdef PHI_DIST
-    std::ostringstream strDataInfo;
-    strDataInfo << std::scientific;
-    strDataInfo << std::setprecision(6);
-    strDataInfo << "step " << step;
+        std::ostringstream strDataInfo;
+        strDataInfo << std::scientific;
+        strDataInfo << std::setprecision(6);
+        strDataInfo << "step " << step;
 
-    int x_loc, y_loc, z_loc;
-    dfloat hostVal;
-    std::stringstream name;
+        int x_loc, y_loc, z_loc;
+        dfloat hostVal;
+        std::stringstream name;
 
-    switch (dir_index)
-    {
-    case 1: // phi on x-direction
-        y_loc = y0;
-        z_loc = z0;
-        for (x_loc = 0; x_loc < NX; ++x_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             M3_PHI_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
-            hostVal = fMom[idx];
-            strDataInfo << "\t" << hostVal;
-        }
-        name << "phiProfile_dx_y" << y0 << "_z" << z0;
-        saveTreatData(name.str(), strDataInfo.str(), step);
-        break;
+        switch (dir_index)
+        {
+            case 1: // phi on x-direction
+            y_loc = y0;
+            z_loc = z0;
+            for (x_loc = 0; x_loc < NX; ++x_loc) {
+                size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, M3_PHI_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+                hostVal = fMom[idx];
+                strDataInfo << "\t" << hostVal;
+                }
+            name << "phiProfile_dx_y" << y0 << "_z" << z0;
+            saveTreatData(name.str(), strDataInfo.str(), step);
+            break;
 
-    case 2: // phi on y-direction
-        x_loc = x0;
-        z_loc = z0;
-        for (y_loc = 0; y_loc < NY; ++y_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             M3_PHI_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
-            hostVal = fMom[idx];
-            strDataInfo << "\t" << hostVal;
-        }
-        name << "phiProfile_dy_x" << x0 << "_z" << z0;
-        saveTreatData(name.str(), strDataInfo.str(), step);
-        break;
+            case 2: // phi on y-direction
+            x_loc = x0;
+            z_loc = z0;
+            for (y_loc = 0; y_loc < NY; ++y_loc) {
+                size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, M3_PHI_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+                hostVal = fMom[idx];
+                strDataInfo << "\t" << hostVal;
+                }
+            name << "phiProfile_dy_x" << x0 << "_z" << z0;
+            saveTreatData(name.str(), strDataInfo.str(), step);
+            break;
 
-    case 3: // phi on z-direction
-        y_loc = y0;
-        x_loc = x0;
-        for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
-            size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-                             M3_PHI_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
-            hostVal = fMom[idx];
-            strDataInfo << "\t" << hostVal;
-        }
-        name << "phiProfile_dz_x" << x0 << "_y" << y0;
-        saveTreatData(name.str(), strDataInfo.str(), step);
-        break;
+            case 3: // phi on z-direction
+            y_loc = y0;
+            x_loc = x0;
+            for (z_loc = 0; z_loc < NZ_TOTAL; ++z_loc) {
+                size_t idx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, M3_PHI_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+                hostVal = fMom[idx];
+                strDataInfo << "\t" << hostVal;
+                }
+            name << "phiProfile_dz_x" << x0 << "_y" << y0;
+            saveTreatData(name.str(), strDataInfo.str(), step);
+            break;
 
-    default:
-        std::cerr << "phiProfile: unknown dir_index " << dir_index << std::endl;
-        break;
-    }
+            default:
+            std::cerr << "phiProfile: unknown dir_index " << dir_index << std::endl;
+            break;
+            }
     #endif //PHI_DIST
 }
 
@@ -973,18 +793,12 @@ void conformationProfile(
         dfloat hostAyz;
         dfloat hostAzz;
 
-        const size_t idxAxx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-            A_XX_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
-        const size_t idxAxy = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-            A_XY_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
-        const size_t idxAxz = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-            A_XZ_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
-        const size_t idxAyy = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-            A_YY_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
-        const size_t idxAyz = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-            A_YZ_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
-        const size_t idxAzz = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ,
-            A_ZZ_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+        const size_t idxAxx = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, A_XX_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+        const size_t idxAxy = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, A_XY_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+        const size_t idxAxz = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, A_XZ_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+        const size_t idxAyy = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, A_YY_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+        const size_t idxAyz = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, A_YZ_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
+        const size_t idxAzz = idxMom(x_loc % BLOCK_NX, y_loc % BLOCK_NY, z_loc % BLOCK_NZ, A_ZZ_C_INDEX, x_loc / BLOCK_NX, y_loc / BLOCK_NY, z_loc / BLOCK_NZ);
 
         hostAxx = fMom[idxAxx];
         hostAxy = fMom[idxAxy];
@@ -1061,34 +875,34 @@ void computeNusseltNumber(
     #ifdef THERMAL_MODEL
 
     
-    int x0 = 0;
-    int x1 = 1;
-    int x2 = NX-1;
-    int x3 = NX-2;
-    dfloat C_x0;
-    dfloat C_x1;
-    dfloat C_x2;
-    dfloat C_x3;
-    dfloat Nu_sum = 0.0_df;
+        int x0 = 0;
+        int x1 = 1;
+        int x2 = NX-1;
+        int x3 = NX-2;
+        dfloat C_x0;
+        dfloat C_x1;
+        dfloat C_x2;
+        dfloat C_x3;
+        dfloat Nu_sum = 0.0_df;
 
 
-    for (int z = 0; z <NZ_TOTAL; z++){
-        for(int y = 0; y< NY-0;y++){
-            C_x0 = h_fMom[idxMom(x0%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x0/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-            C_x1 = h_fMom[idxMom(x1%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x1/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-            C_x2 = h_fMom[idxMom(x2%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x2/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
-            C_x3 = h_fMom[idxMom(x3%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x3/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
+        for (int z = 0; z <NZ_TOTAL; z++){
+            for(int y = 0; y< NY-0;y++){
+                C_x0 = h_fMom[idxMom(x0%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x0/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
+                C_x1 = h_fMom[idxMom(x1%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x1/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
+                C_x2 = h_fMom[idxMom(x2%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x2/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
+                C_x3 = h_fMom[idxMom(x3%BLOCK_NX, y%BLOCK_NY, z%BLOCK_NZ, M2_C_INDEX, x3/BLOCK_NX, y/BLOCK_NY, z/BLOCK_NZ)];
 
-            Nu_sum +=-(C_x1 - C_x0);
-            Nu_sum +=(C_x3 - C_x2);
-        }
-    }
+                Nu_sum +=-(C_x1 - C_x0);
+                Nu_sum +=(C_x3 - C_x2);
+                }
+            }
 
-    Nu_sum /= (2*(NY-2)*NZ_TOTAL);
-    Nu_sum = Nu_sum/(T_DELTA_T/L);
+        Nu_sum /= (2*(NY-2)*NZ_TOTAL);
+        Nu_sum = Nu_sum/(T_DELTA_T/L);
 
-    strDataInfo <<"step,"<< step<< "," << Nu_sum;// << "," << mean_counter;
-    saveTreatData("_Nu_mean",strDataInfo.str(),step);
+        strDataInfo <<"step,"<< step<< "," << Nu_sum;// << "," << mean_counter;
+        saveTreatData("_Nu_mean",strDataInfo.str(),step);
 
     #endif //THERMAL_MODEL
 }
@@ -1175,12 +989,7 @@ void computeTurbulentEnergies(
                 Syz = (as2/(2*TAU))*(t_uy0*t_uz0-t_myz0);
 
                 Szz = (as2/(2*TAU))*(t_uz0*t_uz0-t_mzz0);
-                SS += ( Sxx * Sxx + 
-                        Syy * Syy + 
-                        Szz * Szz + 2*(
-                        Sxy * Sxy + 
-                        Sxz * Sxz + 
-                        Syz * Syz)) ;
+                SS += ( Sxx * Sxx + Syy * Syy + Szz * Szz + 2*( Sxy * Sxy + Sxz * Sxz + Syz * Syz)) ;
 
                 //STORE AND UPDATE MEANS
 

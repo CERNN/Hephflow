@@ -17,7 +17,6 @@
 #include "var.h"
 #include "globalStructs.h"
 #include "./include/interface.h"
-#include "./include/moment_storage.cuh"
 #ifdef PARTICLE_MODEL
 #include "particles/models/ibm/ibmVar.h"
 #endif //PARTICLE_MODEL
@@ -42,6 +41,36 @@ __host__ __device__
 // ****************************************************************************
 // ***************************   INDEX FUNCTIONS  *****************************
 // ****************************************************************************
+
+/**
+ * @brief Reads one moment from the uniform native-precision moment array.
+ *
+ * @param storage Moment array in blocked storage order.
+ * @param logicalIndex Element index produced by an index helper.
+ * @param moment Moment identifier retained for call-site clarity.
+ * @return Stored moment value.
+ */
+__host__ __device__ __forceinline__
+dfloat loadMoment(const dfloat* storage, size_t logicalIndex, int moment)
+{
+    (void)moment;
+    return storage[logicalIndex];
+}
+
+/**
+ * @brief Writes one moment to the uniform native-precision moment array.
+ *
+ * @param storage Moment array in blocked storage order.
+ * @param logicalIndex Element index produced by an index helper.
+ * @param moment Moment identifier retained for call-site clarity.
+ * @param value Value to store.
+ */
+__host__ __device__ __forceinline__
+void storeMoment(dfloat* storage, size_t logicalIndex, int moment, dfloat value)
+{
+    (void)moment;
+    storage[logicalIndex] = value;
+}
 
 /**
  * @brief Compute the index for moment array

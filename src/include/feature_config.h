@@ -15,102 +15,59 @@
 #if defined(STREAMING_AA_STD) || defined(STREAMING_AA_ESOTERIC_PULL) || defined(STREAMING_AA_ESOTERIC_TWIST) || defined(STREAMING_AA_ESOTERIC_PUSH)
     #ifndef STREAMING_AA
         #define STREAMING_AA
-    #endif
-#endif
+#endif // STREAMING_AA
+#endif // defined(STREAMING_AA_STD) || defined(STREAMING_AA_ESOTERIC_PULL) || defined(STREAMING_AA_ESOTERIC_TWIST) || defined(STREAMING_AA_ESOTERIC_PUSH)
 
 #if defined(STREAMING_AA) && defined(STREAMING_AB)
     #error "Select exactly one population streaming scheme: STREAMING_AA or STREAMING_AB"
 #elif !defined(STREAMING_AA) && !defined(STREAMING_AB)
     #define STREAMING_AA
-#endif
+#endif // defined(STREAMING_AA) && defined(STREAMING_AB)
 
 #if (defined(STREAMING_AA_STD) + defined(STREAMING_AA_ESOTERIC_PULL) + defined(STREAMING_AA_ESOTERIC_TWIST) + defined(STREAMING_AA_ESOTERIC_PUSH)) > 1
     #error "Select only one AA streaming method"
-#endif
+#endif // (defined(STREAMING_AA_STD) + defined(STREAMING_AA_ESOTERIC_PULL) + defined(STREAMING_AA_ESOTERIC_TWIST) + defined(STREAMING_AA_ESOTERIC_PUSH)) > 1
 
 #if defined(STREAMING_AA) && !defined(STREAMING_AA_STD) && !defined(STREAMING_AA_ESOTERIC_PULL) && !defined(STREAMING_AA_ESOTERIC_TWIST) && !defined(STREAMING_AA_ESOTERIC_PUSH)
     #define STREAMING_AA_STD
-#endif
+#endif // defined(STREAMING_AA) && !defined(STREAMING_AA_STD) && !defined(STREAMING_AA_ESOTERIC_PULL) && !defined(STREAMING_AA_ESOTERIC_TWIST) && !defined(STREAMING_AA_ESOTERIC_PUSH)
 
 #if defined(STREAMING_AB) && (defined(STREAMING_AA_ESOTERIC_PULL) || defined(STREAMING_AA_ESOTERIC_TWIST) || defined(STREAMING_AA_ESOTERIC_PUSH))
     #error "AA esoteric streaming methods cannot be combined with STREAMING_AB"
-#endif
+#endif // defined(STREAMING_AB) && (defined(STREAMING_AA_ESOTERIC_PULL) || defined(STREAMING_AA_ESOTERIC_TWIST) || defined(STREAMING_AA_ESOTERIC_PUSH))
 
 #if (defined(STREAMING_AA_ESOTERIC_PULL) || defined(STREAMING_AA_ESOTERIC_TWIST) || defined(STREAMING_AA_ESOTERIC_PUSH)) && !defined(D3Q19)
     #error "AA esoteric streaming methods currently support D3Q19 only"
-#endif
+#endif // (defined(STREAMING_AA_ESOTERIC_PULL) || defined(STREAMING_AA_ESOTERIC_TWIST) || defined(STREAMING_AA_ESOTERIC_PUSH)) && !defined(D3Q19)
 
 #if defined(STREAMING_AB) && defined(OVERLAP_HALO_TRANSFERS)
     #error "STREAMING_AB is not compatible with OVERLAP_HALO_TRANSFERS"
-#endif
+#endif // defined(STREAMING_AB) && defined(OVERLAP_HALO_TRANSFERS)
 
 /* ============================== MODEL MACROS ============================= */
 
-// FENE_P historically enabled the entire conformation subsystem. Keep it as
-// a compatibility alias while allowing cases to use the model-neutral name.
-#if defined(FENE_P) && !defined(VISCOELASTIC_MODEL)
-    #define VISCOELASTIC_MODEL
-#endif
-
 #if defined(VISCOELASTIC_MODEL) && !defined(CONFORMATION_TENSOR)
     #define CONFORMATION_TENSOR
-#endif
+#endif // defined(VISCOELASTIC_MODEL) && !defined(CONFORMATION_TENSOR)
 
 #if defined(CONFORMATION_TENSOR)
-    // Canonical conformation representation selector.  The legacy symbolic
-    // defines remain accepted because existing cases and validation scripts
-    // pass CONFORMATION_LOG on the compiler command line.
+    // Canonical conformation representation selector.
     #define CONF_REP_STANDARD 0
     #define CONF_REP_LOG      1
     #define CONF_REP_SQRT     2
 
-    #if (defined(CONFORMATION_STANDARD) + defined(CONFORMATION_LOG) + \
-         defined(CONFORMATION_SQRT)) > 1
-        #error "Select exactly one conformation representation"
-    #endif
-
     #ifndef CONF_REPRESENTATION
-        #if defined(CONFORMATION_LOG)
-            #define CONF_REPRESENTATION CONF_REP_LOG
-        #elif defined(CONFORMATION_SQRT)
-            #define CONF_REPRESENTATION CONF_REP_SQRT
-        #else
-            #define CONF_REPRESENTATION CONF_REP_STANDARD
-        #endif
-    #endif
+        #define CONF_REPRESENTATION CONF_REP_STANDARD
+#endif // CONF_REPRESENTATION
 
-    #if CONF_REPRESENTATION == CONF_REP_STANDARD
-        #if defined(CONFORMATION_LOG) || defined(CONFORMATION_SQRT)
-            #error "CONF_REPRESENTATION conflicts with a legacy representation define"
-        #endif
-        #ifndef CONFORMATION_STANDARD
-            #define CONFORMATION_STANDARD
-        #endif
-    #elif CONF_REPRESENTATION == CONF_REP_LOG
-        #if defined(CONFORMATION_STANDARD) || defined(CONFORMATION_SQRT)
-            #error "CONF_REPRESENTATION conflicts with a legacy representation define"
-        #endif
-        #ifndef CONFORMATION_LOG
-            #define CONFORMATION_LOG
-        #endif
-    #elif CONF_REPRESENTATION == CONF_REP_SQRT
-        #if defined(CONFORMATION_STANDARD) || defined(CONFORMATION_LOG)
-            #error "CONF_REPRESENTATION conflicts with a legacy representation define"
-        #endif
-        #ifndef CONFORMATION_SQRT
-            #define CONFORMATION_SQRT
-        #endif
-    #else
+    #if CONF_REPRESENTATION < CONF_REP_STANDARD || \
+        CONF_REPRESENTATION > CONF_REP_SQRT
         #error "Invalid CONF_REPRESENTATION"
-    #endif
+#endif // CONF_REPRESENTATION < CONF_REP_STANDARD ||
 
     #define CONF_FORCE_GRAD_EXISTING           0
     #define CONF_FORCE_GRAD_FRECHET            1
     #define CONF_FORCE_GRAD_DIRECT_STRESS_HALO 2
-
-    // Compatibility alias for validation scripts and cases written during
-    // development of the direct-halo formulation.
-    #define CONF_FORCE_GRAD_DIRECT_PHYSICAL_HALO CONF_FORCE_GRAD_DIRECT_STRESS_HALO
 
     #ifndef CONF_FORCE_GRADIENT
         #if CONF_REPRESENTATION == CONF_REP_LOG
@@ -119,52 +76,49 @@
             #define CONF_FORCE_GRADIENT CONF_FORCE_GRAD_DIRECT_STRESS_HALO
         #else
             #define CONF_FORCE_GRADIENT CONF_FORCE_GRAD_EXISTING
-        #endif
-    #endif
+#endif // CONF_REPRESENTATION == CONF_REP_LOG
+#endif // CONF_FORCE_GRADIENT
 
     #if CONF_FORCE_GRADIENT < CONF_FORCE_GRAD_EXISTING || \
         CONF_FORCE_GRADIENT > CONF_FORCE_GRAD_DIRECT_STRESS_HALO
         #error "Invalid CONF_FORCE_GRADIENT"
-    #endif
+#endif // CONF_FORCE_GRADIENT < CONF_FORCE_GRAD_EXISTING ||
     #if CONF_REPRESENTATION == CONF_REP_STANDARD && \
         CONF_FORCE_GRADIENT == CONF_FORCE_GRAD_FRECHET
         #error "Frechet force gradients are only defined for log conformation"
-    #endif
+#endif // CONF_REPRESENTATION == CONF_REP_STANDARD &&
     #if CONF_REPRESENTATION == CONF_REP_SQRT && \
         CONF_FORCE_GRADIENT != CONF_FORCE_GRAD_DIRECT_STRESS_HALO
         #error "Square-root conformation requires the direct polymer-stress halo force path"
-    #endif
+#endif // CONF_REPRESENTATION == CONF_REP_SQRT &&
 
     #if CONF_FORCE_GRADIENT == CONF_FORCE_GRAD_DIRECT_STRESS_HALO
         #define CONFORMATION_DIRECT_STRESS_HALO
-    #endif
+#endif // CONF_FORCE_GRADIENT == CONF_FORCE_GRAD_DIRECT_STRESS_HALO
 
     // Transformed representations need immutable neighboring physical-A values
     // to map the auxiliary LBM diffusion back to the same physical equation as
     // the standard representation.  The direct force path reuses this halo.
-    #if defined(CONFORMATION_LOG) || defined(CONFORMATION_SQRT) || \
+    #if CONF_REPRESENTATION != CONF_REP_STANDARD || \
         defined(CONFORMATION_DIRECT_STRESS_HALO)
         #define CONFORMATION_PHYSICAL_A_HALO
-        #if HEPHFLOW_N_GPUS != 1
-            #error "The physical-A halo is currently single-GPU only"
-        #endif
         #if defined(PHI_DIST)
             #error "The physical-A halo has not been audited for phase blending"
-        #endif
+#endif // defined(PHI_DIST)
         #if defined(CURVED_BOUNDARY_CONDITION)
             #error "The physical-A halo has not been audited for curved boundaries"
-        #endif
+#endif // defined(CURVED_BOUNDARY_CONDITION)
         #if defined(OVERLAP_HALO_TRANSFERS)
             #error "The physical-A halo is incompatible with split/overlapped launches"
-        #endif
-    #endif
+#endif // defined(OVERLAP_HALO_TRANSFERS)
+#endif // CONF_REPRESENTATION != CONF_REP_STANDARD ||
 
     #if defined(VE_FORCE_LEGACY_COEFFICIENT) && defined(VE_FORCE_FULL_DIVERGENCE)
         #error "Select exactly one viscoelastic force policy"
     #elif !defined(VE_FORCE_LEGACY_COEFFICIENT) && !defined(VE_FORCE_FULL_DIVERGENCE)
         #define VE_FORCE_LEGACY_COEFFICIENT
-    #endif
-#endif
+#endif // defined(VE_FORCE_LEGACY_COEFFICIENT) && defined(VE_FORCE_FULL_DIVERGENCE)
+#endif // defined(CONFORMATION_TENSOR)
 
 #if defined(POWERLAW) || defined(BINGHAM) || defined(BI_VISCOSITY) || defined(HERSCHEL_BULKLEY) || defined(KEE_TURCOTEE)
     #define OMEGA_FIELD
@@ -191,60 +145,58 @@
     /* Cases select the high-level phase method in model.inc. */
     #if defined(METHOD_CAHN_HILLIARD) && defined(METHOD_ALLEN_CAHN)
         #error "Select only one phase method in model.inc"
-    #endif
+#endif // defined(METHOD_CAHN_HILLIARD) && defined(METHOD_ALLEN_CAHN)
     #if defined(METHOD_CAHN_HILLIARD) && \
         !defined(PHASE_TRANSPORT_CAHN_HILLIARD) && \
         !defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN)
         #define PHASE_TRANSPORT_CAHN_HILLIARD
-    #endif
+#endif // defined(METHOD_CAHN_HILLIARD) &&
     #if defined(METHOD_ALLEN_CAHN) && \
         !defined(PHASE_TRANSPORT_CAHN_HILLIARD) && \
         !defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN)
         #define PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN
-    #endif
+#endif // defined(METHOD_ALLEN_CAHN) &&
 
     /* Default force; define PHASE_FORCE_CSF explicitly to override it. */
     #if !defined(PHASE_FORCE_CHEMICAL_POTENTIAL) && \
         !defined(PHASE_FORCE_CSF)
         #define PHASE_FORCE_CHEMICAL_POTENTIAL
-    #endif
+#endif // !defined(PHASE_FORCE_CHEMICAL_POTENTIAL) &&
 
     #if (defined(PHASE_TRANSPORT_CAHN_HILLIARD) + \
          defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN)) != 1
         #error "PHI_DIST requires exactly one phase transport model"
-    #endif
+#endif // (defined(PHASE_TRANSPORT_CAHN_HILLIARD) +
     #if (defined(PHASE_FORCE_CHEMICAL_POTENTIAL) + \
          defined(PHASE_FORCE_CSF)) != 1
         #error "PHI_DIST requires exactly one phase capillary-force model"
-    #endif
+#endif // (defined(PHASE_FORCE_CHEMICAL_POTENTIAL) +
     #if defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN) && \
         !defined(INTERFACE_SHARPENING)
         #error "Conservative Allen-Cahn requires INTERFACE_SHARPENING"
-    #endif
+#endif // defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN) &&
 
     #if defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN)
         static_assert(M_AC >= 0.0_df, "M_AC must be non-negative");
-        static_assert(PHI_INTERFACE_WIDTH > 0.0_df,
-                      "PHI_INTERFACE_WIDTH must be positive");
-        static_assert(PHI_NORMAL_EPS > 0.0_df,
-                      "PHI_NORMAL_EPS must be positive");
-    #endif
+        static_assert(PHI_INTERFACE_WIDTH > 0.0_df, "PHI_INTERFACE_WIDTH must be positive");
+        static_assert(PHI_NORMAL_EPS > 0.0_df, "PHI_NORMAL_EPS must be positive");
+#endif // defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN)
 
     #if defined(PHASE_TRANSPORT_CAHN_HILLIARD) || \
         defined(PHASE_FORCE_CHEMICAL_POTENTIAL)
         #define PHASE_NEEDS_CHEMICAL_POTENTIAL
-    #endif
+#endif // defined(PHASE_TRANSPORT_CAHN_HILLIARD) ||
     #if defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN) || \
         defined(PHASE_FORCE_CSF)
         #define PHASE_NEEDS_NORMAL_HALOS
-    #endif
+#endif // defined(PHASE_TRANSPORT_CONSERVATIVE_ALLEN_CAHN) ||
 
     #ifndef PHI_CLAMP_ENABLED
         #define PHI_CLAMP_ENABLED 1
-    #endif
+#endif // PHI_CLAMP_ENABLED
     #if (PHI_CLAMP_ENABLED != 0) && (PHI_CLAMP_ENABLED != 1)
         #error "PHI_CLAMP_ENABLED must be 0 or 1"
-    #endif
+#endif // (PHI_CLAMP_ENABLED != 0) && (PHI_CLAMP_ENABLED != 1)
 #endif //PHI_DIST
 
 
@@ -265,14 +217,14 @@
      defined(COOPERATIVE_GHOST_LOAD_XZ) + defined(COOPERATIVE_GHOST_LOAD_YZ) + \
      defined(COOPERATIVE_GHOST_LOAD_ALL)) > 1
     #error "Select at most one cooperative ghost-load direction set"
-#endif
+#endif // (defined(COOPERATIVE_GHOST_LOAD_X) + defined(COOPERATIVE_GHOST_LOAD_Y) +
 
 #if (defined(COOPERATIVE_GHOST_SAVE_X) + defined(COOPERATIVE_GHOST_SAVE_Y) + \
      defined(COOPERATIVE_GHOST_SAVE_Z) + defined(COOPERATIVE_GHOST_SAVE_XY) + \
      defined(COOPERATIVE_GHOST_SAVE_XZ) + defined(COOPERATIVE_GHOST_SAVE_YZ) + \
      defined(COOPERATIVE_GHOST_SAVE_ALL)) > 1
     #error "Select at most one cooperative ghost-save direction set"
-#endif
+#endif // (defined(COOPERATIVE_GHOST_SAVE_X) + defined(COOPERATIVE_GHOST_SAVE_Y) +
 
 #if defined(COOPERATIVE_GHOST_LOAD_X)
     #define COOPERATIVE_GHOST_LOAD_MASK 1
@@ -288,7 +240,7 @@
     #define COOPERATIVE_GHOST_LOAD_MASK 6
 #elif defined(COOPERATIVE_GHOST_LOAD_ALL)
     #define COOPERATIVE_GHOST_LOAD_MASK 7
-#endif
+#endif // defined(COOPERATIVE_GHOST_LOAD_X)
 
 #if defined(COOPERATIVE_GHOST_SAVE_X)
     #define COOPERATIVE_GHOST_SAVE_MASK 1
@@ -304,16 +256,16 @@
     #define COOPERATIVE_GHOST_SAVE_MASK 6
 #elif defined(COOPERATIVE_GHOST_SAVE_ALL)
     #define COOPERATIVE_GHOST_SAVE_MASK 7
-#endif
+#endif // defined(COOPERATIVE_GHOST_SAVE_X)
 
 #if defined(COOPERATIVE_GHOST_LOAD_MASK) || defined(COOPERATIVE_GHOST_SAVE_MASK)
     #if !defined(D3Q19)
         #error "Cooperative ghost transfer currently supports D3Q19 only"
-    #endif
+#endif // !defined(D3Q19)
     #if defined(STREAMING_AA_ESOTERIC_PULL) || defined(STREAMING_AA_ESOTERIC_TWIST) || defined(STREAMING_AA_ESOTERIC_PUSH)
         #error "Cooperative ghost transfer is not compatible with esoteric AA streaming"
-    #endif
-#endif
+#endif // defined(STREAMING_AA_ESOTERIC_PULL) || defined(STREAMING_AA_ESOTERIC_TWIST) || defined(STREAMING_AA_ESOTERIC_PUSH)
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) || defined(COOPERATIVE_GHOST_SAVE_MASK)
 
 // Enable shared memory staging for ghost interface I/O.
 // All 512 threads cooperatively load/store ghost face data through s_pop,

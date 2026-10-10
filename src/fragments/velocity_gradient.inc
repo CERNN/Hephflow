@@ -1,5 +1,5 @@
 //THIS WORKS but is not efficient
-const int topVel = NUM_BLOCK_Z_LOCAL - 1;
+const int topVel = params.numBlocksZ - 1;
 
 const int planeIdxVel = x + y * NX;
 
@@ -28,21 +28,21 @@ dfloat uy_zp1;
 dfloat uz_zp1;
 
 if (stepParity){
-    ux_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUux.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UX_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
-    uy_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUuy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UY_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
-    uz_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUuz.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UZ_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
+    ux_zm1 = (z_local == 0) ? macroInterfaceGPUux.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, (z_local-1)%BLOCK_NZ, M_UX_INDEX, bx, by, (z_local-1)/BLOCK_NZ)];
+    uy_zm1 = (z_local == 0) ? macroInterfaceGPUuy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, (z_local-1)%BLOCK_NZ, M_UY_INDEX, bx, by, (z_local-1)/BLOCK_NZ)];
+    uz_zm1 = (z_local == 0) ? macroInterfaceGPUuz.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, (z_local-1)%BLOCK_NZ, M_UZ_INDEX, bx, by, (z_local-1)/BLOCK_NZ)];
 
-    ux_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUux.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UX_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
-    uy_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUuy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UY_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
-    uz_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUuz.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UZ_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
+    ux_zp1 = (z_local + 1 >= localNZ) ? macroInterfaceGPUux.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, (z_local+1)%BLOCK_NZ, M_UX_INDEX, bx, by, (z_local+1)/BLOCK_NZ)];
+    uy_zp1 = (z_local + 1 >= localNZ) ? macroInterfaceGPUuy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, (z_local+1)%BLOCK_NZ, M_UY_INDEX, bx, by, (z_local+1)/BLOCK_NZ)];
+    uz_zp1 = (z_local + 1 >= localNZ) ? macroInterfaceGPUuz.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, (z_local+1)%BLOCK_NZ, M_UZ_INDEX, bx, by, (z_local+1)/BLOCK_NZ)];
 }else{
-    ux_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUuxCopy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UX_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
-    uy_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUuyCopy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UY_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
-    uz_zm1 = ((tz == 0) && (bz == 0)) ? macroInterfaceGPUuzCopy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, tzm1, M_UZ_INDEX, bx, by, ((z - 1 + (NZ/N_GPUS)) % (NZ/N_GPUS)) / BLOCK_NZ)];
+    ux_zm1 = (z_local == 0) ? macroInterfaceGPUuxCopy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, (z_local-1)%BLOCK_NZ, M_UX_INDEX, bx, by, (z_local-1)/BLOCK_NZ)];
+    uy_zm1 = (z_local == 0) ? macroInterfaceGPUuyCopy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, (z_local-1)%BLOCK_NZ, M_UY_INDEX, bx, by, (z_local-1)/BLOCK_NZ)];
+    uz_zm1 = (z_local == 0) ? macroInterfaceGPUuzCopy.auxZ_1[planeIdxVel] :  fMom[idxMom(tx, ty, (z_local-1)%BLOCK_NZ, M_UZ_INDEX, bx, by, (z_local-1)/BLOCK_NZ)];
 
-    ux_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUuxCopy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UX_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
-    uy_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUuyCopy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UY_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
-    uz_zp1 = ((tz == (BLOCK_NZ - 1)) && (bz == topVel)) ? macroInterfaceGPUuzCopy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, tzp1, M_UZ_INDEX, bx, by, ((z + 1) % (NZ/N_GPUS)) / BLOCK_NZ)];
+    ux_zp1 = (z_local + 1 >= localNZ) ? macroInterfaceGPUuxCopy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, (z_local+1)%BLOCK_NZ, M_UX_INDEX, bx, by, (z_local+1)/BLOCK_NZ)];
+    uy_zp1 = (z_local + 1 >= localNZ) ? macroInterfaceGPUuyCopy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, (z_local+1)%BLOCK_NZ, M_UY_INDEX, bx, by, (z_local+1)/BLOCK_NZ)];
+    uz_zp1 = (z_local + 1 >= localNZ) ? macroInterfaceGPUuzCopy.auxZ_0[planeIdxVel] :  fMom[idxMom(tx, ty, (z_local+1)%BLOCK_NZ, M_UZ_INDEX, bx, by, (z_local+1)/BLOCK_NZ)];
 }
 
 dfloat duxdx_t30 = (ux_xp1 - ux_xm1) *0.5_df;
@@ -87,5 +87,3 @@ if ((nodeType & 0b11110000) == 0b11110000) { // wall front
     duydz_t30 = (uy_zm1 - uy_t30);
     duzdz_t30 = (uz_zm1 - uz_t30);
 }
-
-

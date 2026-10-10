@@ -13,14 +13,14 @@ const int loadByNorth = (stepParity ? by : byp1);
 const int loadBzBack  = (stepParity ? bz : bzm1);
 const int loadBzFront = (stepParity ? bz : bzp1);
 
-const int top = NUM_BLOCK_Z_LOCAL - 1;
+const int top = params.numBlocksZ - 1;
 
 const int bxAtWest  = (tx == 0)              ? bxm1 : bx;
-const int bxAtEast  = (tx == (BLOCK_NX - 1)) ? bxp1 : bx;
+const int bxAtEast  = (tx == (BLOCK_NX - 1) || x == NX - 1) ? bxp1 : bx;
 const int byAtSouth = (ty == 0)              ? bym1 : by;
-const int byAtNorth = (ty == (BLOCK_NY - 1)) ? byp1 : by;
+const int byAtNorth = (ty == (BLOCK_NY - 1) || y == NY - 1) ? byp1 : by;
 const int bzAtBack  = (tz == 0)              ? bzm1 : bz;
-const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
+const int bzAtFront = (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ) ? bzp1 : bz;
 
     if (stepParity){
         if (tx == 0)
@@ -31,7 +31,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             gNode[13] = loadGhostXEast[g_idxPopX(ty, tz, 3, loadBxWest, by, bz)];
             gNode[15] = loadGhostXEast[g_idxPopX(ty, tz, 4, loadBxWest, by, bz)];
         }
-        else if (tx == (BLOCK_NX - 1))
+        if (tx == (BLOCK_NX - 1) || x == NX - 1)
         { //e
             gNode[ 2] = loadGhostXWest[g_idxPopX(ty, tz, 0, loadBxEast, by, bz)];
             gNode[ 8] = loadGhostXWest[g_idxPopX(ty, tz, 1, loadBxEast, by, bz)];
@@ -48,7 +48,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             gNode[14] = loadGhostYNorth[g_idxPopY(tx, tz, 3, bx, loadBySouth, bz)];
             gNode[17] = loadGhostYNorth[g_idxPopY(tx, tz, 4, bx, loadBySouth, bz)];
         }
-        else if (ty == (BLOCK_NY - 1))
+        if (ty == (BLOCK_NY - 1) || y == NY - 1)
         { //n
             gNode[ 4] = loadGhostYSouth[g_idxPopY(tx, tz, 0, bx, loadByNorth, bz)];
             gNode[ 8] = loadGhostYSouth[g_idxPopY(tx, tz, 1, bx, loadByNorth, bz)];
@@ -73,7 +73,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 gNode[18] = loadGhostZFront[g_idxPopZ(tx, ty, 4, bx, by, loadBzBack)];
             }
         }
-        else if (tz == (BLOCK_NZ - 1))
+        if (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ)
         { //f
             if(bz == top){
                 gNode[ 6] = ghostInterfaceAzz.auxZ_0[g_idxPopZ(tx, ty, 0, bx, by, 0)];
@@ -97,7 +97,8 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             gNode[ 9] = loadGhostXWest[g_idxPopX(ty    , tzm1 ,   2, loadBxWest , by        , bzAtBack  )];
             gNode[13] = loadGhostXWest[g_idxPopX(typ1  , tz   ,   3, loadBxWest , byAtNorth , bz        )];
             gNode[15] = loadGhostXWest[g_idxPopX(ty    , tzp1 ,   4, loadBxWest , by        , bzAtFront )];
-        }else if (tx == (BLOCK_NX - 1)){ //e
+        }
+        if (tx == (BLOCK_NX - 1) || x == NX - 1){ //e
             gNode[ 2] = loadGhostXEast[g_idxPopX(ty    , tz   ,   0, loadBxEast , by        , bz        )];
             gNode[ 8] = loadGhostXEast[g_idxPopX(typ1  , tz   ,   1, loadBxEast , byAtNorth , bz        )];
             gNode[10] = loadGhostXEast[g_idxPopX(ty    , tzp1 ,   2, loadBxEast , by        , bzAtFront )];
@@ -111,7 +112,8 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             gNode[11] = loadGhostYSouth[g_idxPopY(tx    , tzm1 ,   2, bx         , loadBySouth, bzAtBack  )];
             gNode[14] = loadGhostYSouth[g_idxPopY(txp1  , tz   ,   3, bxAtEast   , loadBySouth, bz        )];
             gNode[17] = loadGhostYSouth[g_idxPopY(tx    , tzp1 ,   4, bx         , loadBySouth, bzAtFront )];
-        }else if (ty == (BLOCK_NY - 1)){ //n
+        }
+        if (ty == (BLOCK_NY - 1) || y == NY - 1){ //n
             gNode[ 4] = loadGhostYNorth[g_idxPopY(tx    , tz   ,   0, bx         , loadByNorth, bz        )];
             gNode[ 8] = loadGhostYNorth[g_idxPopY(txp1  , tz   ,   1, bxAtEast   , loadByNorth, bz        )];
             gNode[12] = loadGhostYNorth[g_idxPopY(tx    , tzp1 ,   2, bx         , loadByNorth, bzAtFront )];
@@ -133,7 +135,8 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 gNode[16] = loadGhostZBack[g_idxPopZ(txp1  , ty   ,   3, bxAtEast   , by        , loadBzBack)];
                 gNode[18] = loadGhostZBack[g_idxPopZ(tx    , typ1 ,   4, bx         , byAtNorth , loadBzBack)];
             }
-        }else if (tz == (BLOCK_NZ - 1)){ //f
+        }
+        if (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ){ //f
             if(bz == top){
                 gNode[ 6] = ghostInterfaceAzzCopy.auxZ_0[g_idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
                 gNode[10] = ghostInterfaceAzzCopy.auxZ_0[g_idxPopZ(txp1  , ty   ,   1, bxAtEast   , by        , 0)];

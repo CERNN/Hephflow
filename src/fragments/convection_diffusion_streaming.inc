@@ -19,7 +19,7 @@ s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 14)] = gNode[15];
 s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 15)] = gNode[16];
 s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 16)] = gNode[17];
 s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 17)] = gNode[18];
-#endif
+#endif // D3G19
 #ifdef D3G27
 // Edge neighbors (directions 7-18) only for D3G19
 s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z,  6)] = gNode[ 7];
@@ -42,11 +42,11 @@ s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 22)] = gNode[23];
 s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 23)] = gNode[24];
 s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 24)] = gNode[25];
 s_pop[idxPopBlock(threadIdx.x, threadIdx.y, threadIdx.z, 25)] = gNode[26];
-#endif
+#endif // D3G27
 
 
 //sync threads of the block so all populations are saved
-__syncthreads();
+activeBarrier.arrive_and_wait();
 
 /* pull - face neighbors (directions 1-6) */
 gNode[ 1] = s_pop[idxPopBlock(xm1, threadIdx.y, threadIdx.z, 0)];
@@ -69,4 +69,4 @@ gNode[15] = s_pop[idxPopBlock(xm1, threadIdx.y, zp1, 14)];
 gNode[16] = s_pop[idxPopBlock(xp1, threadIdx.y, zm1, 15)];
 gNode[17] = s_pop[idxPopBlock(threadIdx.x, ym1, zp1, 16)];
 gNode[18] = s_pop[idxPopBlock(threadIdx.x, yp1, zm1, 17)];
-#endif
+#endif // D3G19

@@ -9,9 +9,9 @@ const dfloat* pushZNeg = stepParity ? ghostInterface.Z_1 : ghostInterface.Z_0;
 
 const int pushBxAtWest  = (tx == 0)              ? bxm1 : bx;
 const int pushByAtSouth = (ty == 0)              ? bym1 : by;
-const int pushByAtNorth = (ty == (BLOCK_NY - 1)) ? byp1 : by;
+const int pushByAtNorth = (ty == (BLOCK_NY - 1) || y == NY - 1) ? byp1 : by;
 const int pushBzAtBack  = (tz == 0)              ? bzm1 : bz;
-const int pushBzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
+const int pushBzAtFront = (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ) ? bzp1 : bz;
 
 if (tx == 0) {
     pop[ 1] = pushXPos[idxPopX(ty,   tz,   0, bxm1, by,             bz)];
@@ -19,7 +19,8 @@ if (tx == 0) {
     pop[ 9] = pushXPos[idxPopX(ty,   tzm1, 2, bxm1, by,             pushBzAtBack)];
     pop[13] = pushXPos[idxPopX(typ1, tz,   3, bxm1, pushByAtNorth, bz)];
     pop[15] = pushXPos[idxPopX(ty,   tzp1, 4, bxm1, by,             pushBzAtFront)];
-} else if (tx == (BLOCK_NX - 1)) {
+}
+if (tx == (BLOCK_NX - 1) || x == NX - 1) {
     pop[ 2] = pushXNeg[idxPopX(ty, tz, 0, bx, by, bz)];
     pop[ 8] = pushXNeg[idxPopX(ty, tz, 1, bx, by, bz)];
     pop[10] = pushXNeg[idxPopX(ty, tz, 2, bx, by, bz)];
@@ -33,7 +34,8 @@ if (ty == 0) {
     pop[11] = pushYPos[idxPopY(tx,   tzm1, 2, bx,           bym1, pushBzAtBack)];
     pop[14] = pushYPos[idxPopY(tx,   tz,   3, bx,           by,   bz)];
     pop[17] = pushYPos[idxPopY(tx,   tzp1, 4, bx,           bym1, pushBzAtFront)];
-} else if (ty == (BLOCK_NY - 1)) {
+}
+if (ty == (BLOCK_NY - 1) || y == NY - 1) {
     pop[ 4] = pushYNeg[idxPopY(tx, tz, 0, bx, by, bz)];
     pop[ 8] = pushYNeg[idxPopY(tx, tz, 1, bx, by, bz)];
     pop[12] = pushYNeg[idxPopY(tx, tz, 2, bx, by, bz)];
@@ -41,17 +43,26 @@ if (ty == 0) {
     pop[18] = pushYNeg[idxPopY(tx, tz, 4, bx, by, bz)];
 }
 
-// Direct periodic Z addressing intentionally limits this experiment to one GPU.
 if (tz == 0) {
-    pop[ 5] = pushZPos[idxPopZ(tx,   ty,   0, bx,           by,            bzm1)];
-    pop[ 9] = pushZPos[idxPopZ(txm1, ty,   1, pushBxAtWest, by,            bzm1)];
-    pop[11] = pushZPos[idxPopZ(tx,   tym1, 2, bx,           pushByAtSouth, bzm1)];
-    pop[16] = pushZPos[idxPopZ(tx,   ty,   3, bx,           by,            bz)];
-    pop[18] = pushZPos[idxPopZ(tx,   ty,   4, bx,           by,            bz)];
-} else if (tz == (BLOCK_NZ - 1)) {
-    pop[ 6] = pushZNeg[idxPopZ(tx, ty, 0, bx, by, bz)];
-    pop[10] = pushZNeg[idxPopZ(tx, ty, 1, bx, by, bz)];
-    pop[12] = pushZNeg[idxPopZ(tx, ty, 2, bx, by, bz)];
-    pop[15] = pushZNeg[idxPopZ(tx, ty, 3, bx, by, bz)];
-    pop[17] = pushZNeg[idxPopZ(tx, ty, 4, bx, by, bz)];
+    const dfloat* zSource = (bz == 0)
+        ? (stepParity ? ghostInterface.auxZ_1 : ghostInterfaceCopy.auxZ_1)
+        : pushZPos;
+    const int sourceBz = (bz == 0) ? 0 : bzm1;
+    pop[ 5] = zSource[idxPopZ(tx,   ty,   0, bx,           by,            sourceBz)];
+    pop[ 9] = zSource[idxPopZ(txm1, ty,   1, pushBxAtWest, by,            sourceBz)];
+    pop[11] = zSource[idxPopZ(tx,   tym1, 2, bx,           pushByAtSouth, sourceBz)];
+    pop[16] = zSource[idxPopZ(tx,   ty,   3, bx,           by,            sourceBz)];
+    pop[18] = zSource[idxPopZ(tx,   ty,   4, bx,           by,            sourceBz)];
+}
+if (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ) {
+    const bool slabTop = (bz + 1 == params.numBlocksZ);
+    const dfloat* zSource = slabTop
+        ? (stepParity ? ghostInterface.auxZ_0 : ghostInterfaceCopy.auxZ_0)
+        : pushZNeg;
+    const int sourceBz = slabTop ? 0 : bz;
+    pop[ 6] = zSource[idxPopZ(tx, ty, 0, bx, by, sourceBz)];
+    pop[10] = zSource[idxPopZ(tx, ty, 1, bx, by, sourceBz)];
+    pop[12] = zSource[idxPopZ(tx, ty, 2, bx, by, sourceBz)];
+    pop[15] = zSource[idxPopZ(tx, ty, 3, bx, by, sourceBz)];
+    pop[17] = zSource[idxPopZ(tx, ty, 4, bx, by, sourceBz)];
 }

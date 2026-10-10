@@ -22,6 +22,7 @@
 #include "include/errorDef.h"
 #include "var.h"
 #include "nodeTypeMap.h"
+#include "non_newtonian/conformation_representation.cuh"
 
 #include <iostream>
 #include <fstream>
@@ -34,40 +35,33 @@
  *  @param seed: seed to use for generation
  */
 __host__
-void initializationRandomNumbers(
-    dfloat* randomNumbers, 
-    int seed
-);
+void initializationRandomNumbers( dfloat* randomNumbers, int seed, size_t count );
 
 /**
  *  @brief Initializes moments with equilibrium population, with density and velocity defined in the function itself  
  *  @param fMom: Pointer to the device array containing the current macroscopic moments.
  * @param randomNumbers: vector of random numbers (size is NX*NY*NZ)
  */
-__global__ void gpuInitialization_mom(
-    dfloat *fMom, dfloat* randomNumbers, size_t localNZ, int zStart);
+__global__ void gpuInitialization_mom( dfloat *fMom, dfloat* randomNumbers, size_t localNZ, int zStart);
 
 /**
  *  @brief Initializes populations in the intefaces based on the moments defined in the gpuInitialization_mom       
  *  @param fMom: Pointer to the device array containing the current macroscopic moments.
  *  @param ghostInterface interface block transfer information
  */
-__global__ void gpuInitialization_pop(
-    dfloat *fMom,  ghostInterfaceData ghostInterface, size_t localNZ, int zStart);
+__global__ void gpuInitialization_pop( dfloat *fMom, ghostInterfaceData ghostInterface, size_t localNZ, size_t numBlocksZ, int zStart);
 
 /**
  *  @brief Initialize the boundary condition node type
  *  @param nodeType: node type ID
  */
-__global__ void gpuInitialization_nodeType(
-    unsigned int *dNodeType);
+__global__ void gpuInitialization_nodeType( unsigned int *dNodeType);
 
 /**
  *  @brief Initialize the boundary condition node type
  *  @param nodeType: node type ID
  */
-__host__ void hostInitialization_nodeType_bulk(
-    unsigned int *hNodeType);
+__host__ void hostInitialization_nodeType_bulk( unsigned int *hNodeType);
 
 
 /**
@@ -80,7 +74,7 @@ __host__ void hostInitialization_nodeType(
     int localNZ
     #ifdef CURVED_BOUNDARY_CONDITION
     , unsigned int* numberCurvedBoundaryNodes
-    #endif
+    #endif // CURVED_BOUNDARY_CONDITION
  );
 
 
@@ -90,17 +84,14 @@ __host__ void hostInitialization_nodeType(
  *  @param d_L_Fy: local force in the y direction
  *  @param d_L_Fz: local force in the z direction
  */
-__global__ void gpuInitialization_force(
-    dfloat *d_BC_Fx, dfloat* d_BC_Fy, dfloat* d_BC_Fz);   
+__global__ void gpuInitialization_force( dfloat *d_BC_Fx, dfloat* d_BC_Fy, dfloat* d_BC_Fz);
 
 /**
  *  @brief Initializes boundary conditions based on csv with voxels coordinates
  *  @param filename: csv filename
  *  @param dNodeType: nodeType arrary
  */
-__host__ void read_xyz_file(
-    const std::string& filename, 
-    unsigned int *dNodeType);
+__host__ void read_xyz_file( const std::string& filename, unsigned int *dNodeType);
 
 
 /**
@@ -134,7 +125,7 @@ unsigned int bc_id(unsigned int *dNodeType, int x,int y,int z);
      * @param d_curvedBC_array: device pointer to contiguous array of CurvedBoundary structures
      * @param numberCurvedBoundaryNodes: number of curved boundary nodes
      */
-    void allocateDeviceMemoryCurvedBoundary(CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array, unsigned int numberCurvedBoundaryNodes);
+    void allocateDeviceMemoryCurvedBoundary(CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array, unsigned int numberCurvedBoundaryNodes, size_t paddedNodeCount);
     /**
      * @brief Initialize curved boundary condition structures on device
      * @param hNodeType: host node type array  
@@ -145,7 +136,7 @@ unsigned int bc_id(unsigned int *dNodeType, int x,int y,int z);
      * @param zStart: global z coordinate of the first local plane
      * @param localNZ: number of physical z planes in the local GPU slice
      */
-    void initializeCurvedBoundaryArray(const unsigned int *hNodeType, unsigned int *dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array, unsigned int numberCurvedBoundaryNodes, int zStart, int localNZ);
+    void initializeCurvedBoundaryArray(const unsigned int *hNodeType, unsigned int *dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array, unsigned int numberCurvedBoundaryNodes, int zStart, int localNZ, size_t paddedNodeCount);
     /**
      * @brief Initialize curved boundary condition device field
      * @param hNodeType: host node type array
@@ -155,7 +146,7 @@ unsigned int bc_id(unsigned int *dNodeType, int x,int y,int z);
      * @param zStart: global z coordinate of the first local plane
      * @param localNZ: number of physical z planes in the local GPU slice
      */
-    unsigned int initializeCurvedBoundaryDeviceField(const unsigned int *hNodeType, unsigned int *dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array, int zStart, int localNZ);
+    unsigned int initializeCurvedBoundaryDeviceField(const unsigned int *hNodeType, unsigned int *dNodeType, CurvedBoundary** &d_curvedBC, CurvedBoundary* &d_curvedBC_array, int zStart, int localNZ, size_t paddedNodeCount);
 #endif //CURVED_BOUNDARY_CONDITION
 
 #endif // !__LBM_INITIALIZATION_CUH

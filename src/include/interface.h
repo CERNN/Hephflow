@@ -5,18 +5,18 @@
 
 #define INTERFACE_BC_WEST_PERIO (threadIdx.x == 0) 
 #define INTERFACE_BC_WEST_BLOCK (threadIdx.x == 0 && x!=0) 
-#define INTERFACE_BC_EAST_PERIO (threadIdx.x == (BLOCK_NX - 1))
-#define INTERFACE_BC_EAST_BLOCK (threadIdx.x == (BLOCK_NX - 1) && x!=(NX-1))
+#define INTERFACE_BC_EAST_PERIO (threadIdx.x == (BLOCK_NX - 1) || x == (NX - 1))
+#define INTERFACE_BC_EAST_BLOCK (threadIdx.x == (BLOCK_NX - 1) && x != (NX - 1))
 
 #define INTERFACE_BC_SOUTH_PERIO (threadIdx.y == 0)
 #define INTERFACE_BC_SOUTH_BLOCK (threadIdx.y == 0 && y !=0)
-#define INTERFACE_BC_NORTH_PERIO (threadIdx.y == (BLOCK_NY - 1))
-#define INTERFACE_BC_NORTH_BLOCK (threadIdx.y == (BLOCK_NY - 1) && y!=(NY-1))
+#define INTERFACE_BC_NORTH_PERIO (threadIdx.y == (BLOCK_NY - 1) || y == (NY - 1))
+#define INTERFACE_BC_NORTH_BLOCK (threadIdx.y == (BLOCK_NY - 1) && y != (NY - 1))
 
 #define INTERFACE_BC_BACK_PERIO (threadIdx.z == 0)
 #define INTERFACE_BC_BACK_BLOCK (threadIdx.z == 0 && z !=0)
-#define INTERFACE_BC_FRONT_PERIO (threadIdx.z == (BLOCK_NZ - 1))
-#define INTERFACE_BC_FRONT_BLOCK (threadIdx.z == (BLOCK_NZ - 1) && z!=((NZ/N_GPUS)-1))
+#define INTERFACE_BC_FRONT_PERIO (threadIdx.z == (BLOCK_NZ - 1) || z_local + 1 == localNZ)
+#define INTERFACE_BC_FRONT_BLOCK (threadIdx.z == (BLOCK_NZ - 1) && z_local + 1 != localNZ)
 
 #ifdef BC_X_WALL
     #define INTERFACE_BC_WEST   INTERFACE_BC_WEST_BLOCK
@@ -112,7 +112,7 @@
     #define NUM_PERIODIC_DOMAIN_OFFSET 1
     __device__ const int PERIODIC_DOMAIN_OFFSET[NUM_PERIODIC_DOMAIN_OFFSET][3] = {{0, 0, 0}};
 
-#endif
+#endif // defined(BC_X_PERIODIC) && defined(BC_Y_PERIODIC) && defined(BC_Z_PERIODIC)
 
 
 

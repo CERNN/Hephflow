@@ -1,6 +1,6 @@
 // D3Q19 cooperative save for the directions in COOPERATIVE_GHOST_SAVE_MASK.
 // Selected faces share one packed transfer and one barrier pair.
-__syncthreads();
+activeBarrier.arrive_and_wait();
 
 constexpr int coopSaveFaceNodes = BLOCK_NY * BLOCK_NZ;
 static_assert(BLOCK_NX * BLOCK_NZ == coopSaveFaceNodes &&
@@ -38,7 +38,7 @@ if (INTERFACE_BC_EAST) {
     s_pop[coopSaveXOffset + 1 * coopSaveFaceValues + 4 * coopSaveFaceNodes + coopSaveXNode] = pop[15];
 }
 
-#endif
+#endif // COOPERATIVE_GHOST_SAVE_MASK & 1
 
 #if COOPERATIVE_GHOST_SAVE_MASK & 2
 const int coopSaveYNode = tx + BLOCK_NX * tz;
@@ -57,7 +57,7 @@ if (INTERFACE_BC_NORTH) {
     s_pop[coopSaveYOffset + 1 * coopSaveFaceValues + 4 * coopSaveFaceNodes + coopSaveYNode] = pop[17];
 }
 
-#endif
+#endif // COOPERATIVE_GHOST_SAVE_MASK & 2
 
 #if COOPERATIVE_GHOST_SAVE_MASK & 4
 const int coopSaveZNode = tx + BLOCK_NX * ty;
@@ -76,9 +76,9 @@ if (INTERFACE_BC_FRONT) {
     s_pop[coopSaveZOffset + 1 * coopSaveFaceValues + 4 * coopSaveFaceNodes + coopSaveZNode] = pop[18];
 }
 
-#endif
+#endif // COOPERATIVE_GHOST_SAVE_MASK & 4
 
-__syncthreads();
+activeBarrier.arrive_and_wait();
 
 const int coopSaveTid = tx + BLOCK_NX * (ty + BLOCK_NY * tz);
 for (int coopLinear = coopSaveTid;
@@ -103,7 +103,7 @@ for (int coopLinear = coopSaveTid;
         int destTy = faceTy, destTz = faceTz, destBy = by, destBz = bz;
         #ifndef BC_X_PERIODIC
         coopActive = west ? (bx != 0) : (bx != NUM_BLOCK_X - 1);
-        #endif
+#endif // BC_X_PERIODIC
         if (popSaveParity) {
             coopDestination = west ? storeGhostXWest : storeGhostXEast;
         } else {
@@ -129,7 +129,7 @@ for (int coopLinear = coopSaveTid;
         int destTx = faceTx, destTz = faceTz, destBx = bx, destBz = bz;
         #ifndef BC_Y_PERIODIC
         coopActive = south ? (by != 0) : (by != NUM_BLOCK_Y - 1);
-        #endif
+#endif // BC_Y_PERIODIC
         if (popSaveParity) {
             coopDestination = south ? storeGhostYSouth : storeGhostYNorth;
         } else {
@@ -156,7 +156,7 @@ for (int coopLinear = coopSaveTid;
         int destBz = back ? storeBzBack : storeBzFront;
         #ifndef BC_Z_PERIODIC
         coopActive = back ? (bz != 0) : (bz != top);
-        #endif
+#endif // BC_Z_PERIODIC
         if (popSaveParity) {
             coopDestination = back ? storeGhostZBack : storeGhostZFront;
         } else {

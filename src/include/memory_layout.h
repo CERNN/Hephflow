@@ -12,7 +12,6 @@
 #include "cuda_utils.cuh"   // for BlockDim
 #include "utils.h"        // for myMax
 #include "../arrayIndex.h"   // for domain size definitions
-#include "moment_storage_config.h"
 
 /* ============================= VELOCITY SETS ============================= */
 
@@ -53,7 +52,7 @@ constexpr size_t BYTES_PER_MB = (1 << 20);
     constexpr size_t GPU_MAX_SHARED_MEMORY = 101376;  // sm86/89
 #else
     constexpr size_t GPU_MAX_SHARED_MEMORY = 49152;   // default (sm75 and below)
-#endif
+#endif // (defined(SM_90) || defined(SM_100) || defined(SM_120))
 
 // Note: Q-dependent calculations are in definitions.h after velocity sets are included
 
@@ -70,13 +69,13 @@ constexpr BlockDim optimalBlockDimArray = findOptimalBlockDimensions(MAX_ELEMENT
 
 #ifndef BLOCK_NX
 #define BLOCK_NX 8
-#endif
+#endif // BLOCK_NX
 #ifndef BLOCK_NY
 #define BLOCK_NY 8
-#endif
+#endif // BLOCK_NY
 #ifndef BLOCK_NZ
 #define BLOCK_NZ 8
-#endif
+#endif // BLOCK_NZ
 
 #define BLOCK_LBM_SIZE (BLOCK_NX * BLOCK_NY * BLOCK_NZ)
 
@@ -98,45 +97,17 @@ const size_t BLOCK_SIZE = BLOCK_LBM_SIZE + BLOCK_GHOST_SIZE;
 
 /* ========================= DOMAIN BLOCK CALCULATIONS ===================== */
 
-//TODO: in order to support domains with size that are not multiple of the block size need fix the index function where the transfer populations occur for periodic domains. 
 const size_t NUM_BLOCK_X = (NX / BLOCK_NX) + (NX % BLOCK_NX > 0 ? 1 : 0);
 const size_t NUM_BLOCK_Y = (NY / BLOCK_NY) + (NY % BLOCK_NY > 0 ? 1 : 0);
 const size_t NUM_BLOCK_Z = (NZ / BLOCK_NZ) + (NZ % BLOCK_NZ > 0 ? 1 : 0);
-const size_t NUM_BLOCK_Z_LOCAL = ((NZ/N_GPUS) / BLOCK_NZ) + ((NZ/N_GPUS)  % BLOCK_NZ > 0 ? 1 : 0);
 
 const size_t NUM_BLOCK = NUM_BLOCK_X * NUM_BLOCK_Y * NUM_BLOCK_Z;
-const size_t NUM_BLOCK_LOCAL = NUM_BLOCK_X * NUM_BLOCK_Y * NUM_BLOCK_Z_LOCAL;
 
 const size_t NUMBER_LBM_NODES = NUM_BLOCK * BLOCK_LBM_SIZE;
-const size_t NUMBER_LBM_NODES_LOCAL = NUM_BLOCK_LOCAL * BLOCK_LBM_SIZE;
 
 const size_t NUMBER_GHOST_FACE_XY = BLOCK_NX*BLOCK_NY*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z;
 const size_t NUMBER_GHOST_FACE_XZ = BLOCK_NX*BLOCK_NZ*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z;
 const size_t NUMBER_GHOST_FACE_YZ = BLOCK_NY*BLOCK_NZ*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z;
-
-const size_t NUMBER_GHOST_FACE_XY_LOCAL = BLOCK_NX*BLOCK_NY*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z_LOCAL;
-const size_t NUMBER_GHOST_FACE_XZ_LOCAL = BLOCK_NX*BLOCK_NZ*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z_LOCAL;
-const size_t NUMBER_GHOST_FACE_YZ_LOCAL = BLOCK_NY*BLOCK_NZ*NUM_BLOCK_X*NUM_BLOCK_Y*NUM_BLOCK_Z_LOCAL;
-
-// Single-plane size for P2P inbox buffers (Aux). Only 1 plane is ever received
-// from a neighbor GPU; allocating NUM_BLOCK_Z_LOCAL planes is wasteful.
-const size_t NUMBER_GHOST_FACE_XY_AUX = BLOCK_NX*BLOCK_NY*NUM_BLOCK_X*NUM_BLOCK_Y;
-
-#ifdef CONFORMATION_PHYSICAL_A_HALO
-// Each face stores physical A and its stored representation (six components each).
-const size_t POLYMER_STRESS_HALO_X_SCALARS = 12 * NUMBER_GHOST_FACE_YZ_LOCAL;
-const size_t POLYMER_STRESS_HALO_Y_SCALARS = 12 * NUMBER_GHOST_FACE_XZ_LOCAL;
-const size_t POLYMER_STRESS_HALO_Z_SCALARS = 12 * NUMBER_GHOST_FACE_XY_LOCAL;
-const size_t MEM_SIZE_POLYMER_STRESS_HALO_X = sizeof(dfloat) * POLYMER_STRESS_HALO_X_SCALARS;
-const size_t MEM_SIZE_POLYMER_STRESS_HALO_Y = sizeof(dfloat) * POLYMER_STRESS_HALO_Y_SCALARS;
-const size_t MEM_SIZE_POLYMER_STRESS_HALO_Z = sizeof(dfloat) * POLYMER_STRESS_HALO_Z_SCALARS;
-
-// Two faces per direction and two AB generations. Keep this factorization explicit because it is part of the layout.
-const size_t MEM_SIZE_POLYMER_STRESS_HALO_TOTAL = 2 * 2 *
-    (MEM_SIZE_POLYMER_STRESS_HALO_X + MEM_SIZE_POLYMER_STRESS_HALO_Y + MEM_SIZE_POLYMER_STRESS_HALO_Z);
-#else
-const size_t MEM_SIZE_POLYMER_STRESS_HALO_TOTAL = 0;
-#endif
 
 /* ======================== MEMORY ALLOCATION SIZES ======================== */
 
@@ -148,12 +119,9 @@ const size_t NUMBER_LBM_POP_NODES = NX * NY * NZ;
 
 //memory size
 const size_t MEM_SIZE_SCALAR = sizeof(dfloat) * NUMBER_LBM_NODES;
-const size_t MEM_SIZE_SCALAR_LOCAL = sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL;
 const size_t MEM_SIZE_POP = sizeof(dfloat) * NUMBER_LBM_POP_NODES * Q;
 const size_t MEM_SIZE_MOM = sizeof(dfloat) * NUMBER_LBM_NODES * NUMBER_MOMENTS;
-const size_t MEM_SIZE_MOM_LOCAL = sizeof(dfloat) * NUMBER_LBM_NODES_LOCAL * NUMBER_MOMENTS;
-const size_t MEM_SIZE_MOM_STORAGE = MOM_STORAGE_BYTES_PER_NODE * NUMBER_LBM_NODES;
-const size_t MEM_SIZE_MOM_STORAGE_LOCAL = MOM_STORAGE_BYTES_PER_NODE * NUMBER_LBM_NODES_LOCAL;
+const size_t MEM_SIZE_MOM_STORAGE = MEM_SIZE_MOM;
 
 
 const size_t MEM_SIZE_MAP_BC = sizeof(uint32_t) * NUMBER_LBM_NODES;
@@ -182,13 +150,10 @@ const size_t MEM_SIZE_MAP_BC = sizeof(uint32_t) * NUMBER_LBM_NODES;
     const size_t POLYMER_STRESS_SHARED_SIZE = BLOCK_LBM_SIZE * 12;
 #else
     const size_t POLYMER_STRESS_SHARED_SIZE = 0;
-#endif
+#endif // CONFORMATION_PHYSICAL_A_HALO
 
 
-constexpr int LBM_MAX_SHARED_MEMORY_SIZE = myMax(
-    BLOCK_LBM_SIZE_POP,
-    myMax(VEL_GRAD_BLOCK_SIZE,
-          myMax(CONFORMATION_GRAD_BLOCK_SIZE, POLYMER_STRESS_SHARED_SIZE)))*sizeof(dfloat);
+constexpr int LBM_MAX_SHARED_MEMORY_SIZE = myMax( BLOCK_LBM_SIZE_POP, myMax(VEL_GRAD_BLOCK_SIZE, myMax(CONFORMATION_GRAD_BLOCK_SIZE, POLYMER_STRESS_SHARED_SIZE)))*sizeof(dfloat);
 constexpr int LBM_G_MAX_SHARED_MEMORY_SIZE = myMax(BLOCK_LBM_G_SIZE_POP,1)*sizeof(dfloat);
 
 constexpr int MAX_SHARED_MEMORY_SIZE = myMax(LBM_MAX_SHARED_MEMORY_SIZE, LBM_G_MAX_SHARED_MEMORY_SIZE);

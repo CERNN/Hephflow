@@ -13,14 +13,14 @@ const int loadByNorth = (stepParity ? by : byp1);
 const int loadBzBack  = (stepParity ? bz : bzm1);
 const int loadBzFront = (stepParity ? bz : bzp1);
 
-const int top = NUM_BLOCK_Z_LOCAL - 1;
+const int top = params.numBlocksZ - 1;
 
 const int bxAtWest  = (tx == 0)              ? bxm1 : bx;
-const int bxAtEast  = (tx == (BLOCK_NX - 1)) ? bxp1 : bx;
+const int bxAtEast  = (tx == (BLOCK_NX - 1) || x == NX - 1) ? bxp1 : bx;
 const int byAtSouth = (ty == 0)              ? bym1 : by;
-const int byAtNorth = (ty == (BLOCK_NY - 1)) ? byp1 : by;
+const int byAtNorth = (ty == (BLOCK_NY - 1) || y == NY - 1) ? byp1 : by;
 const int bzAtBack  = (tz == 0)              ? bzm1 : bz;
-const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
+const int bzAtFront = (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ) ? bzp1 : bz;
 
     if (stepParity){
         if (tx == 0)
@@ -31,9 +31,9 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             gNode[ 9] = loadGhostXEast[g_idxPopX(ty, tz, 2, loadBxWest, by, bz)];
             gNode[13] = loadGhostXEast[g_idxPopX(ty, tz, 3, loadBxWest, by, bz)];
             gNode[15] = loadGhostXEast[g_idxPopX(ty, tz, 4, loadBxWest, by, bz)];
-#endif
+#endif // D3G19
         }
-        else if (tx == (BLOCK_NX - 1))
+        if (tx == (BLOCK_NX - 1) || x == NX - 1)
         { //e
             gNode[ 2] = loadGhostXWest[g_idxPopX(ty, tz, 0, loadBxEast, by, bz)];
 #ifdef D3G19
@@ -41,7 +41,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             gNode[10] = loadGhostXWest[g_idxPopX(ty, tz, 2, loadBxEast, by, bz)];
             gNode[14] = loadGhostXWest[g_idxPopX(ty, tz, 3, loadBxEast, by, bz)];
             gNode[16] = loadGhostXWest[g_idxPopX(ty, tz, 4, loadBxEast, by, bz)];
-#endif
+#endif // D3G19
         }
 
         if (ty == 0)
@@ -52,9 +52,9 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             gNode[11] = loadGhostYNorth[g_idxPopY(tx, tz, 2, bx, loadBySouth, bz)];
             gNode[14] = loadGhostYNorth[g_idxPopY(tx, tz, 3, bx, loadBySouth, bz)];
             gNode[17] = loadGhostYNorth[g_idxPopY(tx, tz, 4, bx, loadBySouth, bz)];
-#endif
+#endif // D3G19
         }
-        else if (ty == (BLOCK_NY - 1))
+        if (ty == (BLOCK_NY - 1) || y == NY - 1)
         { //n
             gNode[ 4] = loadGhostYSouth[g_idxPopY(tx, tz, 0, bx, loadByNorth, bz)];
 #ifdef D3G19
@@ -62,7 +62,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             gNode[12] = loadGhostYSouth[g_idxPopY(tx, tz, 2, bx, loadByNorth, bz)];
             gNode[13] = loadGhostYSouth[g_idxPopY(tx, tz, 3, bx, loadByNorth, bz)];
             gNode[18] = loadGhostYSouth[g_idxPopY(tx, tz, 4, bx, loadByNorth, bz)];
-#endif
+#endif // D3G19
         }
 
         if (tz == 0)
@@ -74,7 +74,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 gNode[11] = ghostInterfaceLambda.auxZ_1[g_idxPopZ(tx, ty, 2, bx, by, 0)];
                 gNode[16] = ghostInterfaceLambda.auxZ_1[g_idxPopZ(tx, ty, 3, bx, by, 0)];
                 gNode[18] = ghostInterfaceLambda.auxZ_1[g_idxPopZ(tx, ty, 4, bx, by, 0)];
-#endif
+#endif // D3G19
 
             }else{
                 gNode[ 5] = loadGhostZFront[g_idxPopZ(tx, ty, 0, bx, by, loadBzBack)];
@@ -83,12 +83,12 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 gNode[11] = loadGhostZFront[g_idxPopZ(tx, ty, 2, bx, by, loadBzBack)];
                 gNode[16] = loadGhostZFront[g_idxPopZ(tx, ty, 3, bx, by, loadBzBack)];
                 gNode[18] = loadGhostZFront[g_idxPopZ(tx, ty, 4, bx, by, loadBzBack)];
-#endif
+#endif // D3G19
 
             }
             
         }
-        else if (tz == (BLOCK_NZ - 1))
+        if (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ)
         { //f
             if(bz == top){
                 gNode[ 6] = ghostInterfaceLambda.auxZ_0[g_idxPopZ(tx, ty, 0, bx, by, 0)];
@@ -97,7 +97,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 gNode[12] = ghostInterfaceLambda.auxZ_0[g_idxPopZ(tx, ty, 2, bx, by, 0)];
                 gNode[15] = ghostInterfaceLambda.auxZ_0[g_idxPopZ(tx, ty, 3, bx, by, 0)];
                 gNode[17] = ghostInterfaceLambda.auxZ_0[g_idxPopZ(tx, ty, 4, bx, by, 0)];
-#endif
+#endif // D3G19
             }else{
                 gNode[ 6] = loadGhostZBack[g_idxPopZ(tx, ty, 0, bx, by, loadBzFront)];
 #ifdef D3G19
@@ -105,7 +105,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 gNode[12] = loadGhostZBack[g_idxPopZ(tx, ty, 2, bx, by, loadBzFront)];
                 gNode[15] = loadGhostZBack[g_idxPopZ(tx, ty, 3, bx, by, loadBzFront)];
                 gNode[17] = loadGhostZBack[g_idxPopZ(tx, ty, 4, bx, by, loadBzFront)];
-#endif
+#endif // D3G19
             }
         }
 
@@ -117,15 +117,16 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             gNode[ 9] = loadGhostXWest[g_idxPopX(ty    , tzm1 ,   2, loadBxWest , by        , bzAtBack  )];
             gNode[13] = loadGhostXWest[g_idxPopX(typ1  , tz   ,   3, loadBxWest , byAtNorth , bz        )];
             gNode[15] = loadGhostXWest[g_idxPopX(ty    , tzp1 ,   4, loadBxWest , by        , bzAtFront )];
-#endif
-        }else if (tx == (BLOCK_NX - 1)){ //e
+#endif // D3G19
+        }
+        if (tx == (BLOCK_NX - 1) || x == NX - 1){ //e
             gNode[ 2] = loadGhostXEast[g_idxPopX(ty    , tz   ,   0, loadBxEast , by        , bz        )];
 #ifdef D3G19
             gNode[ 8] = loadGhostXEast[g_idxPopX(typ1  , tz   ,   1, loadBxEast , byAtNorth , bz        )];
             gNode[10] = loadGhostXEast[g_idxPopX(ty    , tzp1 ,   2, loadBxEast , by        , bzAtFront )];
             gNode[14] = loadGhostXEast[g_idxPopX(tym1  , tz   ,   3, loadBxEast , byAtSouth , bz        )];
             gNode[16] = loadGhostXEast[g_idxPopX(ty    , tzm1 ,   4, loadBxEast , by        , bzAtBack  )];
-#endif
+#endif // D3G19
         }
 
         if (ty == 0){ //s
@@ -135,15 +136,16 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             gNode[11] = loadGhostYSouth[g_idxPopY(tx    , tzm1 ,   2, bx         , loadBySouth, bzAtBack  )];
             gNode[14] = loadGhostYSouth[g_idxPopY(txp1  , tz   ,   3, bxAtEast   , loadBySouth, bz        )];
             gNode[17] = loadGhostYSouth[g_idxPopY(tx    , tzp1 ,   4, bx         , loadBySouth, bzAtFront )];
-#endif
-        }else if (ty == (BLOCK_NY - 1)){ //n
+#endif // D3G19
+        }
+        if (ty == (BLOCK_NY - 1) || y == NY - 1){ //n
             gNode[ 4] = loadGhostYNorth[g_idxPopY(tx    , tz   ,   0, bx         , loadByNorth, bz        )];
 #ifdef D3G19
             gNode[ 8] = loadGhostYNorth[g_idxPopY(txp1  , tz   ,   1, bxAtEast   , loadByNorth, bz        )];
             gNode[12] = loadGhostYNorth[g_idxPopY(tx    , tzp1 ,   2, bx         , loadByNorth, bzAtFront )];
             gNode[13] = loadGhostYNorth[g_idxPopY(txm1  , tz   ,   3, bxAtWest   , loadByNorth, bz        )];
             gNode[18] = loadGhostYNorth[g_idxPopY(tx    , tzm1 ,   4, bx         , loadByNorth, bzAtBack  )];
-#endif
+#endif // D3G19
         }
 
         if (tz == 0){ //b
@@ -154,7 +156,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 gNode[11] = ghostInterfaceLambdaCopy.auxZ_1[g_idxPopZ(tx    , tym1 ,   2, bx         , byAtSouth , 0)];
                 gNode[16] = ghostInterfaceLambdaCopy.auxZ_1[g_idxPopZ(txp1  , ty   ,   3, bxAtEast   , by        , 0)];
                 gNode[18] = ghostInterfaceLambdaCopy.auxZ_1[g_idxPopZ(tx    , typ1 ,   4, bx         , byAtNorth , 0)];
-#endif
+#endif // D3G19
             }else{
                 gNode[ 5] = loadGhostZBack[g_idxPopZ(tx    , ty   ,   0, bx         , by        , loadBzBack)];
 #ifdef D3G19
@@ -162,10 +164,11 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 gNode[11] = loadGhostZBack[g_idxPopZ(tx    , tym1 ,   2, bx         , byAtSouth , loadBzBack)];
                 gNode[16] = loadGhostZBack[g_idxPopZ(txp1  , ty   ,   3, bxAtEast   , by        , loadBzBack)];
                 gNode[18] = loadGhostZBack[g_idxPopZ(tx    , typ1 ,   4, bx         , byAtNorth , loadBzBack)];
-#endif
+#endif // D3G19
             }
             
-        }else if (tz == (BLOCK_NZ - 1)){ //f
+        }
+        if (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ){ //f
             if(bz == top){
                 gNode[ 6] = ghostInterfaceLambdaCopy.auxZ_0[g_idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
 #ifdef D3G19
@@ -173,7 +176,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 gNode[12] = ghostInterfaceLambdaCopy.auxZ_0[g_idxPopZ(tx    , typ1 ,   2, bx         , byAtNorth , 0)];
                 gNode[15] = ghostInterfaceLambdaCopy.auxZ_0[g_idxPopZ(txm1  , ty   ,   3, bxAtWest   , by        , 0)];
                 gNode[17] = ghostInterfaceLambdaCopy.auxZ_0[g_idxPopZ(tx    , tym1 ,   4, bx         , byAtSouth , 0)];
-#endif
+#endif // D3G19
             }else{
                 gNode[ 6] = loadGhostZFront[g_idxPopZ(tx    , ty   ,   0, bx         , by        , loadBzFront)];
 #ifdef D3G19
@@ -181,7 +184,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 gNode[12] = loadGhostZFront[g_idxPopZ(tx    , typ1 ,   2, bx         , byAtNorth , loadBzFront)];
                 gNode[15] = loadGhostZFront[g_idxPopZ(txm1  , ty   ,   3, bxAtWest   , by        , loadBzFront)];
                 gNode[17] = loadGhostZFront[g_idxPopZ(tx    , tym1 ,   4, bx         , byAtSouth , loadBzFront)];
-#endif
+#endif // D3G19
             }
             
         }

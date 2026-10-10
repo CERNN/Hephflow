@@ -342,7 +342,7 @@ void saveMacr(const SaveDataParams* params)
         #ifdef LAMBDA_DIST
         lambda[indexMacr] = h_fMom[momentBase + BLOCK_LBM_SIZE * M4_LAMBDA_INDEX] - LAMBDA_ZERO;
         #endif //LAMBDA_DIST
-        #if defined(CONFORMATION_TENSOR) && (defined(CONFORMATION_LOG) || defined(CONFORMATION_SQRT))
+        #if defined(CONFORMATION_TENSOR) && CONF_REPRESENTATION != CONF_REP_STANDARD
         {
             const Sym3 stored(
                 h_fMom[momentBase + BLOCK_LBM_SIZE * A_XX_C_INDEX],
@@ -1625,9 +1625,9 @@ std::string getSimInfoString(int step, dfloat MLUPS, const fluidPhaseProps& phas
     strSimInfo << "       Phi clamp on: " << PHI_CLAMP_ENABLED << "\n";
     strSimInfo << "--------------------------------------------------------------------------------\n";
     #endif// PHASE_MODEL
-    #if defined(FENE_P) || defined(OLDROYD_B)
+    #if defined(VISCOELASTIC_MODEL) || defined(OLDROYD_B)
     // Note: model details already covered by the CONFORMATION_TENSOR block above (runtime dispatch).
-    // Legacy compile-time constants printed here for reference.
+    // Compile-time constants are printed here for reference.
     strSimInfo << "\n------------------------------ VISCOELASTIC (compile-time) -------------------\n";
         strSimInfo << std::scientific << std::setprecision(4);
     strSimInfo << " Weissenberg Number: " << Weissenberg_number << "\n";
@@ -1635,7 +1635,7 @@ std::string getSimInfoString(int step, dfloat MLUPS, const fluidPhaseProps& phas
     strSimInfo << "    Viscosity Ratio: " << BETA << "\n";
     strSimInfo << "  Solvent Viscosity: " << VISC << "\n";
     strSimInfo << "--------------------------------------------------------------------------------\n";
-    #endif// FENE_P
+    #endif // defined(VISCOELASTIC_MODEL) || defined(OLDROYD_B)
     return strSimInfo.str();
 }
 

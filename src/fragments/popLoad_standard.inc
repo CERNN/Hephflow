@@ -3,7 +3,7 @@
 constexpr bool popLoadParity = false;
 #else
 const bool popLoadParity = stepParity;
-#endif
+#endif // STREAMING_AB
 // Face pointers are fixed; the selected parity determines the block index.
 const dfloat* loadGhostXWest  = ghostInterface.X_1; // Even: neighbor -x; Odd: own slot (swapped by non-shared path)
 const dfloat* loadGhostXEast  = ghostInterface.X_0; // Even: neighbor +x; Odd: own slot (swapped by non-shared path)
@@ -20,24 +20,32 @@ const int loadByNorth = (popLoadParity ? by : byp1);
 const int loadBzBack  = (popLoadParity ? bz : bzm1);
 const int loadBzFront = (popLoadParity ? bz : bzp1);
 
-const int top = NUM_BLOCK_Z_LOCAL - 1;
+const int top = params.numBlocksZ - 1;
+const bool cooperativePhysicalBlock =
+    (static_cast<size_t>(bx + 1) * BLOCK_NX <= NX) &&
+    (static_cast<size_t>(by + 1) * BLOCK_NY <= NY) &&
+    (static_cast<size_t>(bz + 1) * BLOCK_NZ <= localNZ);
 
-// Diagonal block indices â€” when a surface thread also sits at another block edge,
+// Diagonal block indices ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â when a surface thread also sits at another block edge,
 // these give the correct neighbor block index in that transverse direction.
 // Single point of change for all diagonal ghost accesses.
 const int bxAtWest  = (tx == 0)              ? bxm1 : bx;
-const int bxAtEast  = (tx == (BLOCK_NX - 1)) ? bxp1 : bx;
+const int bxAtEast  = (tx == (BLOCK_NX - 1) || x == NX - 1) ? bxp1 : bx;
 const int byAtSouth = (ty == 0)              ? bym1 : by;
-const int byAtNorth = (ty == (BLOCK_NY - 1)) ? byp1 : by;
+const int byAtNorth = (ty == (BLOCK_NY - 1) || y == NY - 1) ? byp1 : by;
 const int bzAtBack  = (tz == 0)              ? bzm1 : bz;
-const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
+const int bzAtFront = (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ) ? bzp1 : bz;
 
     #ifdef COOPERATIVE_GHOST_LOAD_MASK
+    if (cooperativePhysicalBlock) {
         #include "popLoad_cooperative.inc"
-    #endif
+    }
+#endif // COOPERATIVE_GHOST_LOAD_MASK
 
     if (popLoadParity){
-        #if !defined(COOPERATIVE_GHOST_LOAD_MASK) || !(COOPERATIVE_GHOST_LOAD_MASK & 1)
+        #if defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 1)
+        if (!cooperativePhysicalBlock) {
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 1)
         if (tx == 0)
         { // w
             pop[ 1] = loadGhostXEast[idxPopX(ty, tz, 0, loadBxWest, by, bz)];
@@ -52,7 +60,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             pop[26] = loadGhostXEast[idxPopX(ty, tz, 8, loadBxWest, by, bz)];
             #endif // D3Q27
         }
-        else if (tx == (BLOCK_NX - 1))
+        if (tx == (BLOCK_NX - 1) || x == NX - 1)
         { // e
             pop[ 2] = loadGhostXWest[idxPopX(ty, tz, 0, loadBxEast, by, bz)];
             pop[ 8] = loadGhostXWest[idxPopX(ty, tz, 1, loadBxEast, by, bz)];
@@ -66,9 +74,13 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             pop[25] = loadGhostXWest[idxPopX(ty, tz, 8, loadBxEast, by, bz)];
             #endif // D3Q27
         }
-        #endif // X direction
+        #if defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 1)
+        }
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 1)
 
-        #if !defined(COOPERATIVE_GHOST_LOAD_MASK) || !(COOPERATIVE_GHOST_LOAD_MASK & 2)
+        #if defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 2)
+        if (!cooperativePhysicalBlock) {
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 2)
 
         if (ty == 0)
         { // s
@@ -84,7 +96,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             pop[25] = loadGhostYNorth[idxPopY(tx, tz, 8, bx, loadBySouth, bz)];
             #endif // D3Q27
         }
-        else if (ty == (BLOCK_NY - 1))
+        if (ty == (BLOCK_NY - 1) || y == NY - 1)
         { // n
             pop[ 4] = loadGhostYSouth[idxPopY(tx, tz, 0, bx, loadByNorth, bz)];
             pop[ 8] = loadGhostYSouth[idxPopY(tx, tz, 1, bx, loadByNorth, bz)];
@@ -99,9 +111,13 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             #endif // D3Q27
         }
 
-        #endif // Y direction
+        #if defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 2)
+        }
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 2)
 
-        #if !defined(COOPERATIVE_GHOST_LOAD_MASK) || !(COOPERATIVE_GHOST_LOAD_MASK & 4)
+        #if defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 4)
+        if (!cooperativePhysicalBlock) {
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 4)
         if (tz == 0)
         { // b
             // Condition for reading the boundary from the neighboring GPU.
@@ -132,7 +148,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 #endif // D3Q27
             }
         }
-        else if (tz == (BLOCK_NZ - 1))
+        if (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ)
         { // f
             // Condition for reading the boundary from the neighboring GPU.
             if (bz == top) {
@@ -161,9 +177,13 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 #endif // D3Q27
             }
         }
-        #endif // Z direction
+        #if defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 4)
+        }
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 4)
     }else{
-        #if !defined(COOPERATIVE_GHOST_LOAD_MASK) || !(COOPERATIVE_GHOST_LOAD_MASK & 1)
+        #if defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 1)
+        if (!cooperativePhysicalBlock) {
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 1)
         if (tx == 0) { //w
             pop[ 1] = loadGhostXWest[idxPopX(ty    , tz   ,   0, loadBxWest , by        , bz        )];
             pop[ 7] = loadGhostXWest[idxPopX(tym1  , tz   ,   1, loadBxWest , byAtSouth , bz        )];
@@ -176,7 +196,8 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             pop[23] = loadGhostXWest[idxPopX(typ1  , tzm1 ,   7, loadBxWest , byAtNorth , bzAtBack  )];
             pop[26] = loadGhostXWest[idxPopX(typ1  , tzp1 ,   8, loadBxWest , byAtNorth , bzAtFront )];
             #endif //D3Q27
-        }else if (tx == (BLOCK_NX - 1)){ //e
+        }
+        if (tx == (BLOCK_NX - 1) || x == NX - 1){ //e
             pop[ 2] = loadGhostXEast[idxPopX(ty    , tz   ,   0, loadBxEast , by        , bz        )];
             pop[ 8] = loadGhostXEast[idxPopX(typ1  , tz   ,   1, loadBxEast , byAtNorth , bz        )];
             pop[10] = loadGhostXEast[idxPopX(ty    , tzp1 ,   2, loadBxEast , by        , bzAtFront )];
@@ -189,9 +210,13 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             pop[25] = loadGhostXEast[idxPopX(tym1  , tzm1 ,   8, loadBxEast , byAtSouth , bzAtBack  )];
             #endif //D3Q27
         }
-        #endif // X direction
+        #if defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 1)
+        }
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 1)
 
-        #if !defined(COOPERATIVE_GHOST_LOAD_MASK) || !(COOPERATIVE_GHOST_LOAD_MASK & 2)
+        #if defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 2)
+        if (!cooperativePhysicalBlock) {
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 2)
 
         if (ty == 0){ //s
             pop[ 3] = loadGhostYSouth[idxPopY(tx    , tz   ,   0, bx         , loadBySouth, bz        )];
@@ -205,7 +230,8 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             pop[24] = loadGhostYSouth[idxPopY(txp1  , tzp1 ,   7, bxAtEast   , loadBySouth, bzAtFront )];
             pop[25] = loadGhostYSouth[idxPopY(txp1  , tzm1 ,   8, bxAtEast   , loadBySouth, bzAtBack  )];
             #endif // D3Q27
-        }else if (ty == (BLOCK_NY - 1)){ //n
+        }
+        if (ty == (BLOCK_NY - 1) || y == NY - 1){ //n
             pop[ 4] = loadGhostYNorth[idxPopY(tx    , tz   ,   0, bx         , loadByNorth, bz        )];
             pop[ 8] = loadGhostYNorth[idxPopY(txp1  , tz   ,   1, bxAtEast   , loadByNorth, bz        )];
             pop[12] = loadGhostYNorth[idxPopY(tx    , tzp1 ,   2, bx         , loadByNorth, bzAtFront )];
@@ -219,9 +245,13 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             #endif //D3Q27
         }
 
-        #endif // Y direction
+        #if defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 2)
+        }
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 2)
 
-        #if !defined(COOPERATIVE_GHOST_LOAD_MASK) || !(COOPERATIVE_GHOST_LOAD_MASK & 4)
+        #if defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 4)
+        if (!cooperativePhysicalBlock) {
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 4)
         if (tz == 0){ //b
             //Condition for reading the boundary from the neighboring GPU.
             if(bz == 0){
@@ -249,7 +279,8 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
                 pop[25] = loadGhostZBack[idxPopZ(txp1  , tym1 ,   8, bxAtEast   , byAtSouth , loadBzBack)];
                 #endif //D3Q27
              }
-        }else if (tz == (BLOCK_NZ - 1)){ //f
+        }
+        if (tz == (BLOCK_NZ - 1) || z_local + 1 >= localNZ){ //f
             //Condition for reading the boundary from the neighboring GPU.
             if(bz == top){
                 pop[ 6] = ghostInterfaceCopy.auxZ_0[idxPopZ(tx    , ty   ,   0, bx         , by        , 0)];
@@ -278,5 +309,7 @@ const int bzAtFront = (tz == (BLOCK_NZ - 1)) ? bzp1 : bz;
             }
            
         }
-        #endif // Z direction
+        #if defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 4)
+        }
+#endif // defined(COOPERATIVE_GHOST_LOAD_MASK) && (COOPERATIVE_GHOST_LOAD_MASK & 4)
     }

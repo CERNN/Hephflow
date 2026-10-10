@@ -1,60 +1,63 @@
 // Fetch neighboring values for Cxx, Cxy, Cxz, Cyy, Cyz, Czz
+const int bxEastLog = (x == NX - 1 || tx == BLOCK_NX - 1) ? bxp1 : bx;
+const int byNorthLog = (y == NY - 1 || ty == BLOCK_NY - 1) ? byp1 : by;
+const int bzFrontLog = (z_local + 1 >= localNZ || tz == BLOCK_NZ - 1) ? bzp1 : bz;
 
 //store to be used in the next step
-if(step%2 == 0){
+if(!stepParity){
     dfloat Cxx_xm1 = fMom[idxMom(txm1, ty, tz, C_XX_2_INDEX, ((tx == 0) ? bxm1 : bx) , by, bz)];
-    dfloat Cxx_xp1 = fMom[idxMom(txp1, ty, tz, C_XX_2_INDEX, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx), by, bz)];
+    dfloat Cxx_xp1 = fMom[idxMom(txp1, ty, tz, C_XX_2_INDEX, bxEastLog, by, bz)];
     
     dfloat Cxy_ym1 = fMom[idxMom(tx, tym1, tz, C_XY_2_INDEX, bx, ((ty == 0) ? bym1 : by), bz)];
-    dfloat Cxy_yp1 = fMom[idxMom(tx, typ1, tz, C_XY_2_INDEX, bx, ((ty == (BLOCK_NY - 1)) ? byp1 : by) , bz)];
+    dfloat Cxy_yp1 = fMom[idxMom(tx, typ1, tz, C_XY_2_INDEX, bx, byNorthLog, bz)];
     
     dfloat Cxz_zm1 = fMom[idxMom(tx, ty, tzm1, C_XZ_2_INDEX, bx, by, ((tz == 0) ? bzm1 : bz))];
-    dfloat Cxz_zp1 = fMom[idxMom(tx, ty, tzp1, C_XZ_2_INDEX, bx, by, ((tz == (BLOCK_NZ - 1)) ? bzp1 : bz))];
+    dfloat Cxz_zp1 = fMom[idxMom(tx, ty, tzp1, C_XZ_2_INDEX, bx, by, bzFrontLog)];
     
     dfloat Cxy_xm1 = fMom[idxMom(txm1, ty, tz, C_XY_2_INDEX, ((tx == 0) ? bxm1 : bx) , by, bz)];
-    dfloat Cxy_xp1 = fMom[idxMom(txp1, ty, tz, C_XY_2_INDEX, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx), by, bz)];
+    dfloat Cxy_xp1 = fMom[idxMom(txp1, ty, tz, C_XY_2_INDEX, bxEastLog, by, bz)];
     
     dfloat Cyy_ym1 = fMom[idxMom(tx, tym1, tz, C_YY_2_INDEX, bx, ((ty == 0) ? bym1 : by), bz)];
-    dfloat Cyy_yp1 = fMom[idxMom(tx, typ1, tz, C_YY_2_INDEX, bx, ((ty == (BLOCK_NY - 1)) ? byp1 : by) , bz)];
+    dfloat Cyy_yp1 = fMom[idxMom(tx, typ1, tz, C_YY_2_INDEX, bx, byNorthLog, bz)];
     
     dfloat Cyz_zm1 = fMom[idxMom(tx, ty, tzm1, C_YZ_2_INDEX, bx, by, ((tz == 0) ? bzm1 : bz))];
-    dfloat Cyz_zp1 = fMom[idxMom(tx, ty, tzp1, C_YZ_2_INDEX, bx, by, ((tz == (BLOCK_NZ - 1)) ? bzp1 : bz))];
+    dfloat Cyz_zp1 = fMom[idxMom(tx, ty, tzp1, C_YZ_2_INDEX, bx, by, bzFrontLog)];
     
     dfloat Cxz_xm1 = fMom[idxMom(txm1, ty, tz, C_XZ_2_INDEX, ((tx == 0) ? bxm1 : bx) , by, bz)];
-    dfloat Cxz_xp1 = fMom[idxMom(txp1, ty, tz, C_XZ_2_INDEX, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx), by, bz)];
+    dfloat Cxz_xp1 = fMom[idxMom(txp1, ty, tz, C_XZ_2_INDEX, bxEastLog, by, bz)];
     
     dfloat Cyz_ym1 = fMom[idxMom(tx, tym1, tz, C_YZ_2_INDEX, bx, ((ty == 0) ? bym1 : by), bz)];
-    dfloat Cyz_yp1 = fMom[idxMom(tx, typ1, tz, C_YZ_2_INDEX, bx, ((ty == (BLOCK_NY - 1)) ? byp1 : by) , bz)];
+    dfloat Cyz_yp1 = fMom[idxMom(tx, typ1, tz, C_YZ_2_INDEX, bx, byNorthLog, bz)];
     
     dfloat Czz_zm1 = fMom[idxMom(tx, ty, tzm1, C_ZZ_2_INDEX, bx, by, ((tz == 0) ? bzm1 : bz))];
-    dfloat Czz_zp1 = fMom[idxMom(tx, ty, tzp1, C_ZZ_2_INDEX, bx, by, ((tz == (BLOCK_NZ - 1)) ? bzp1 : bz))];
+    dfloat Czz_zp1 = fMom[idxMom(tx, ty, tzp1, C_ZZ_2_INDEX, bx, by, bzFrontLog)];
 }else{
     dfloat Cxx_xm1 = fMom[idxMom(txm1, ty, tz, C_XX_1_INDEX, ((tx == 0) ? bxm1 : bx) , by, bz)];
-    dfloat Cxx_xp1 = fMom[idxMom(txp1, ty, tz, C_XX_1_INDEX, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx), by, bz)];
+    dfloat Cxx_xp1 = fMom[idxMom(txp1, ty, tz, C_XX_1_INDEX, bxEastLog, by, bz)];
     
     dfloat Cxy_ym1 = fMom[idxMom(tx, tym1, tz, C_XY_1_INDEX, bx, ((ty == 0) ? bym1 : by), bz)];
-    dfloat Cxy_yp1 = fMom[idxMom(tx, typ1, tz, C_XY_1_INDEX, bx, ((ty == (BLOCK_NY - 1)) ? byp1 : by) , bz)];
+    dfloat Cxy_yp1 = fMom[idxMom(tx, typ1, tz, C_XY_1_INDEX, bx, byNorthLog, bz)];
     
     dfloat Cxz_zm1 = fMom[idxMom(tx, ty, tzm1, C_XZ_1_INDEX, bx, by, ((tz == 0) ? bzm1 : bz))];
-    dfloat Cxz_zp1 = fMom[idxMom(tx, ty, tzp1, C_XZ_1_INDEX, bx, by, ((tz == (BLOCK_NZ - 1)) ? bzp1 : bz))];
+    dfloat Cxz_zp1 = fMom[idxMom(tx, ty, tzp1, C_XZ_1_INDEX, bx, by, bzFrontLog)];
     
     dfloat Cxy_xm1 = fMom[idxMom(txm1, ty, tz, C_XY_1_INDEX, ((tx == 0) ? bxm1 : bx) , by, bz)];
-    dfloat Cxy_xp1 = fMom[idxMom(txp1, ty, tz, C_XY_1_INDEX, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx), by, bz)];
+    dfloat Cxy_xp1 = fMom[idxMom(txp1, ty, tz, C_XY_1_INDEX, bxEastLog, by, bz)];
     
     dfloat Cyy_ym1 = fMom[idxMom(tx, tym1, tz, C_YY_1_INDEX, bx, ((ty == 0) ? bym1 : by), bz)];
-    dfloat Cyy_yp1 = fMom[idxMom(tx, typ1, tz, C_YY_1_INDEX, bx, ((ty == (BLOCK_NY - 1)) ? byp1 : by) , bz)];
+    dfloat Cyy_yp1 = fMom[idxMom(tx, typ1, tz, C_YY_1_INDEX, bx, byNorthLog, bz)];
     
     dfloat Cyz_zm1 = fMom[idxMom(tx, ty, tzm1, C_YZ_1_INDEX, bx, by, ((tz == 0) ? bzm1 : bz))];
-    dfloat Cyz_zp1 = fMom[idxMom(tx, ty, tzp1, C_YZ_1_INDEX, bx, by, ((tz == (BLOCK_NZ - 1)) ? bzp1 : bz))];
+    dfloat Cyz_zp1 = fMom[idxMom(tx, ty, tzp1, C_YZ_1_INDEX, bx, by, bzFrontLog)];
     
     dfloat Cxz_xm1 = fMom[idxMom(txm1, ty, tz, C_XZ_1_INDEX, ((tx == 0) ? bxm1 : bx) , by, bz)];
-    dfloat Cxz_xp1 = fMom[idxMom(txp1, ty, tz, C_XZ_1_INDEX, ((tx == (BLOCK_NX - 1)) ? bxp1 : bx), by, bz)];
+    dfloat Cxz_xp1 = fMom[idxMom(txp1, ty, tz, C_XZ_1_INDEX, bxEastLog, by, bz)];
     
     dfloat Cyz_ym1 = fMom[idxMom(tx, tym1, tz, C_YZ_1_INDEX, bx, ((ty == 0) ? bym1 : by), bz)];
-    dfloat Cyz_yp1 = fMom[idxMom(tx, typ1, tz, C_YZ_1_INDEX, bx, ((ty == (BLOCK_NY - 1)) ? byp1 : by) , bz)];
+    dfloat Cyz_yp1 = fMom[idxMom(tx, typ1, tz, C_YZ_1_INDEX, bx, byNorthLog, bz)];
     
     dfloat Czz_zm1 = fMom[idxMom(tx, ty, tzm1, C_ZZ_1_INDEX, bx, by, ((tz == 0) ? bzm1 : bz))];
-    dfloat Czz_zp1 = fMom[idxMom(tx, ty, tzp1, C_ZZ_1_INDEX, bx, by, ((tz == (BLOCK_NZ - 1)) ? bzp1 : bz))];
+    dfloat Czz_zp1 = fMom[idxMom(tx, ty, tzp1, C_ZZ_1_INDEX, bx, by, bzFrontLog)];
 }
 
 

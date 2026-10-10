@@ -24,6 +24,9 @@
 #include "non_newtonian/conformation_representation.cuh"
 #include "fragments/lambdaTransport/lambda_evolution.cuh"
 #include "non_newtonian/propertyInterpolation.cuh"
+#include "curvedConformationBC.cuh"
+#define CCCL_IGNORE_MSVC_TRADITIONAL_PREPROCESSOR_WARNING
+#include <cuda/barrier>
 
 
 /**
@@ -51,8 +54,7 @@ void gpuMomCollisionStream(DeviceKernelParams params);
  * @param halo Face buffers for the AB generation being reconstructed.
  * @param localNZ Number of lattice planes owned by this GPU.
  */
-__global__ void gpuFillPolymerStressHalo(
-    const dfloat* fMom, PolymerStressHaloPtrs halo, size_t localNZ);
+__global__ void gpuFillPolymerStressHalo( const dfloat* fMom, PolymerStressHaloPtrs halo, size_t localNZ);
 #endif // CONFORMATION_PHYSICAL_A_HALO
 
 #ifdef LOCAL_FORCES
@@ -65,8 +67,14 @@ void gpuResetMacroForces(dfloat *fMom);
 #endif //LOCAL_FORCES
 
 
-// Launch with a 1D plane grid and grid.y == 2 (bottom/top).
-__global__ void gpuPackMacroHalos(const dfloat *fMom,
-    macroInterfaceGPUData halos, size_t localNZ);
+/**
+ * @brief Packs bottom and top macroscopic Z halos for exchange.
+ *
+ * Launch with a 1D plane grid and @c grid.y equal to two (bottom/top).
+ * @param fMom Device moment storage for the local slab.
+ * @param halos Destination macroscopic halo buffers.
+ * @param localNZ Number of physical Z planes owned by this GPU.
+ */
+__global__ void gpuPackMacroHalos(const dfloat *fMom, macroInterfaceGPUData halos, size_t localNZ);
 
 #endif //__MLBM_H

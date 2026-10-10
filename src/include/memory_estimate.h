@@ -9,51 +9,42 @@
 struct CompileTimeMemoryEstimate {
     size_t hostPrimary = 0;
     size_t hostCheckpointInterfaces = 0;
-    size_t deviceMoments = 0;
-    size_t deviceNodeTypes = 0;
-    size_t devicePopulationInterfaces = 0;
-    size_t deviceMacroInterfaces = 0;
-    size_t deviceOptionalFields = 0;
 
     constexpr size_t hostTotal() const {
         return hostPrimary + hostCheckpointInterfaces;
     }
 
-    constexpr size_t devicePerPartition() const {
-        return deviceMoments + deviceNodeTypes + devicePopulationInterfaces
-            + deviceMacroInterfaces + deviceOptionalFields;
-    }
 };
 
 constexpr size_t enabledScalarDistributionCount() {
     size_t count = 0;
     #ifdef SECOND_DIST
     ++count;
-    #endif
+#endif // SECOND_DIST
     #ifdef PHI_DIST
     ++count;
-    #endif
+#endif // PHI_DIST
     #ifdef LAMBDA_DIST
     ++count;
-    #endif
+#endif // LAMBDA_DIST
     #ifdef A_XX_DIST
     ++count;
-    #endif
+#endif // A_XX_DIST
     #ifdef A_XY_DIST
     ++count;
-    #endif
+#endif // A_XY_DIST
     #ifdef A_XZ_DIST
     ++count;
-    #endif
+#endif // A_XZ_DIST
     #ifdef A_YY_DIST
     ++count;
-    #endif
+#endif // A_YY_DIST
     #ifdef A_YZ_DIST
     ++count;
-    #endif
+#endif // A_YZ_DIST
     #ifdef A_ZZ_DIST
     ++count;
-    #endif
+#endif // A_ZZ_DIST
     return count;
 }
 
@@ -61,22 +52,22 @@ constexpr size_t enabledConformationDistributionCount() {
     size_t count = 0;
     #ifdef A_XX_DIST
     ++count;
-    #endif
+#endif // A_XX_DIST
     #ifdef A_XY_DIST
     ++count;
-    #endif
+#endif // A_XY_DIST
     #ifdef A_XZ_DIST
     ++count;
-    #endif
+#endif // A_XZ_DIST
     #ifdef A_YY_DIST
     ++count;
-    #endif
+#endif // A_YY_DIST
     #ifdef A_YZ_DIST
     ++count;
-    #endif
+#endif // A_YZ_DIST
     #ifdef A_ZZ_DIST
     ++count;
-    #endif
+#endif // A_ZZ_DIST
     return count;
 }
 
@@ -85,31 +76,31 @@ constexpr size_t enabledMacroInterfaceFieldCount() {
     size_t count = 4;
     #ifdef SECOND_DIST
     ++count; // concentration
-    #endif
+#endif // SECOND_DIST
     #ifdef PHI_DIST
     count += 5; // phi, nx, ny, nz and mu
-    #endif
+#endif // PHI_DIST
     #ifdef LAMBDA_DIST
     ++count;
-    #endif
+#endif // LAMBDA_DIST
     #ifdef A_XX_DIST
     ++count;
-    #endif
+#endif // A_XX_DIST
     #ifdef A_XY_DIST
     ++count;
-    #endif
+#endif // A_XY_DIST
     #ifdef A_XZ_DIST
     ++count;
-    #endif
+#endif // A_XZ_DIST
     #ifdef A_YY_DIST
     ++count;
-    #endif
+#endif // A_YY_DIST
     #ifdef A_YZ_DIST
     ++count;
-    #endif
+#endif // A_YZ_DIST
     #ifdef A_ZZ_DIST
     ++count;
-    #endif
+#endif // A_ZZ_DIST
     return count;
 }
 
@@ -122,141 +113,78 @@ constexpr CompileTimeMemoryEstimate compileTimeMemoryEstimate() {
     estimate.hostPrimary = MEM_SIZE_MOM + 4 * scalarBytes + nodeTypeBytes;
     #ifdef OMEGA_FIELD
     estimate.hostPrimary += scalarBytes;
-    #endif
+#endif // OMEGA_FIELD
     #ifdef SECOND_DIST
     estimate.hostPrimary += scalarBytes;
-    #endif
+#endif // SECOND_DIST
     #ifdef PHI_DIST
     estimate.hostPrimary += scalarBytes;
-    #endif
+#endif // PHI_DIST
     #ifdef LAMBDA_DIST
     estimate.hostPrimary += scalarBytes;
-    #endif
+#endif // LAMBDA_DIST
     #ifdef A_XX_DIST
     estimate.hostPrimary += scalarBytes;
-    #endif
+#endif // A_XX_DIST
     #ifdef A_XY_DIST
     estimate.hostPrimary += scalarBytes;
-    #endif
+#endif // A_XY_DIST
     #ifdef A_XZ_DIST
     estimate.hostPrimary += scalarBytes;
-    #endif
+#endif // A_XZ_DIST
     #ifdef A_YY_DIST
     estimate.hostPrimary += scalarBytes;
-    #endif
+#endif // A_YY_DIST
     #ifdef A_YZ_DIST
     estimate.hostPrimary += scalarBytes;
-    #endif
+#endif // A_YZ_DIST
     #ifdef A_ZZ_DIST
     estimate.hostPrimary += scalarBytes;
-    #endif
+#endif // A_ZZ_DIST
     #if MEAN_FLOW
     estimate.hostPrimary += MEM_SIZE_MOM + 4 * scalarBytes;
         #ifdef SECOND_DIST
     estimate.hostPrimary += scalarBytes;
-        #endif
+#endif // SECOND_DIST
         #ifdef PHI_DIST
     estimate.hostPrimary += scalarBytes;
-        #endif
+#endif // PHI_DIST
         #ifdef LAMBDA_DIST
     estimate.hostPrimary += scalarBytes;
-        #endif
-    #endif
+#endif // LAMBDA_DIST
+#endif // MEAN_FLOW
     #if defined(BC_FORCES) && defined(SAVE_BC_FORCES)
     estimate.hostPrimary += 3 * scalarBytes;
-    #endif
+#endif // defined(BC_FORCES) && defined(SAVE_BC_FORCES)
     #ifdef SAVE_LOCAL_FORCES
     estimate.hostPrimary += 3 * scalarBytes;
         #ifdef SECOND_DIST
     estimate.hostPrimary += scalarBytes;
-        #endif
+#endif // SECOND_DIST
         #ifdef PHI_DIST
     estimate.hostPrimary += scalarBytes;
-        #endif
+#endif // PHI_DIST
         #ifdef LAMBDA_DIST
     estimate.hostPrimary += scalarBytes;
-        #endif
+#endif // LAMBDA_DIST
         #ifdef CONFORMATION_TENSOR
     estimate.hostPrimary += enabledConformationDistributionCount() * scalarBytes;
-        #endif
-    #endif
+#endif // CONFORMATION_TENSOR
+#endif // SAVE_LOCAL_FORCES
     #if NODE_TYPE_SAVE
     estimate.hostPrimary += nodeTypeBytes;
-    #endif
+#endif // NODE_TYPE_SAVE
     #ifdef DENSITY_CORRECTION
-    estimate.hostPrimary += sizeof(dfloat)
-        + N_GPUS * (sizeof(dfloat) + sizeof(unsigned long long));
-    #endif
-
-    const size_t xyzInterfaceFaces = NUMBER_GHOST_FACE_YZ
-        + NUMBER_GHOST_FACE_XZ + NUMBER_GHOST_FACE_XY_LOCAL;
-    if (LOAD_CHECKPOINT || CHECKPOINT_SAVE) {
-        size_t checkpointPerPartition = 2 * sizeof(dfloat)
-            * static_cast<size_t>(QF) * xyzInterfaceFaces;
-        #if defined(SECOND_DIST) || defined(PHI_DIST) || defined(LAMBDA_DIST) || \
-            defined(A_XX_DIST) || defined(A_XY_DIST) || defined(A_XZ_DIST) || \
-            defined(A_YY_DIST) || defined(A_YZ_DIST) || defined(A_ZZ_DIST)
-        checkpointPerPartition += 2 * sizeof(dfloat) * static_cast<size_t>(GF)
-            * enabledScalarDistributionCount() * xyzInterfaceFaces;
-        #endif
-        estimate.hostCheckpointInterfaces = N_GPUS * checkpointPerPartition;
-    }
-
-    // Fixed device allocations made once for every domain partition.
-    estimate.deviceMoments = MEM_SIZE_MOM_STORAGE_LOCAL;
-    estimate.deviceNodeTypes = sizeof(unsigned int) * NUMBER_LBM_NODES_LOCAL;
-
-    size_t hydroPopulationInterfaces = sizeof(dfloat) * static_cast<size_t>(QF)
-        * (2 * NUMBER_GHOST_FACE_YZ + 2 * NUMBER_GHOST_FACE_XZ
-           + 2 * NUMBER_GHOST_FACE_XY_LOCAL + 4 * NUMBER_GHOST_FACE_XY_AUX);
-    #ifdef STREAMING_AB
-    hydroPopulationInterfaces += 2 * sizeof(dfloat) * static_cast<size_t>(QF)
-        * xyzInterfaceFaces;
-    #endif
-    size_t scalarPopulationInterfaces = 0;
-    #if defined(SECOND_DIST) || defined(PHI_DIST) || defined(LAMBDA_DIST) || \
-        defined(A_XX_DIST) || defined(A_XY_DIST) || defined(A_XZ_DIST) || \
-        defined(A_YY_DIST) || defined(A_YZ_DIST) || defined(A_ZZ_DIST)
-    scalarPopulationInterfaces = sizeof(dfloat) * static_cast<size_t>(GF)
-        * enabledScalarDistributionCount()
-        * (2 * NUMBER_GHOST_FACE_YZ + 2 * NUMBER_GHOST_FACE_XZ
-           + 6 * NUMBER_GHOST_FACE_XY_LOCAL);
-    #endif
-    estimate.devicePopulationInterfaces = hydroPopulationInterfaces
-        + scalarPopulationInterfaces;
-
-    const size_t macroPlaneBytes = static_cast<size_t>(NX) * NY * sizeof(dfloat);
-    estimate.deviceMacroInterfaces = enabledMacroInterfaceFieldCount()
-        * 6 * macroPlaneBytes;
-
-    #ifdef BC_FORCES
-    estimate.deviceOptionalFields += 3 * scalarBytes;
-    #endif
-    #ifdef SAVE_LOCAL_FORCES
-    estimate.deviceOptionalFields += 3 * scalarBytes;
-        #ifdef SECOND_DIST
-    estimate.deviceOptionalFields += scalarBytes;
-        #endif
-        #ifdef PHI_DIST
-    estimate.deviceOptionalFields += scalarBytes;
-        #endif
-        #ifdef LAMBDA_DIST
-    estimate.deviceOptionalFields += scalarBytes;
-        #endif
-        #ifdef CONFORMATION_TENSOR
-    estimate.deviceOptionalFields += enabledConformationDistributionCount() * scalarBytes;
-        #endif
-    #endif
-    #ifdef DENSITY_CORRECTION
-    estimate.deviceOptionalFields += sizeof(dfloat)
-        + 2 * NUM_BLOCK_LOCAL
-            * (sizeof(dfloat) + sizeof(unsigned long long));
-    #endif
-    #ifdef CONFORMATION_PHYSICAL_A_HALO
-    estimate.deviceOptionalFields += MEM_SIZE_POLYMER_STRESS_HALO_TOTAL;
-    #endif // CONFORMATION_PHYSICAL_A_HALO
+    estimate.hostPrimary += sizeof(dfloat) + N_GPUS * (sizeof(dfloat) + sizeof(unsigned long long));
+#endif // DENSITY_CORRECTION
 
     return estimate;
+}
+
+inline size_t runtimeHostCheckpointInterfaceBytes(
+    const DomainDecomposition& decomposition) {
+    (void)decomposition;
+    return 0;
 }
 
 inline double bytesToMiB(size_t bytes) {
@@ -267,10 +195,53 @@ inline double bytesToGiB(size_t bytes) {
     return static_cast<double>(bytes) / (1024.0 * 1024.0 * 1024.0);
 }
 
+inline size_t runtimeDeviceBytes(const GpuDomainLayout& layout) {
+    size_t bytes = layout.momentStorageBytes + sizeof(unsigned int) * layout.paddedNodeCount;
+    size_t hydroInterfaces = sizeof(dfloat) * static_cast<size_t>(QF) * (2 * layout.ghostFaceYZCount + 2 * layout.ghostFaceXZCount + 2 * layout.ghostFaceXYCount + 4 * layout.exchangePlaneCount);
+    #ifdef STREAMING_AB
+    hydroInterfaces += 2 * sizeof(dfloat) * static_cast<size_t>(QF) * (layout.ghostFaceYZCount + layout.ghostFaceXZCount + layout.ghostFaceXYCount);
+#endif // STREAMING_AB
+    bytes += hydroInterfaces;
+
+    #ifdef CONVECTION_DIFFUSION_TRANSPORT
+    bytes += sizeof(dfloat) * static_cast<size_t>(GF) * enabledScalarDistributionCount() * (2 * layout.ghostFaceYZCount + 2 * layout.ghostFaceXZCount + 2 * layout.ghostFaceXYCount + 4 * layout.exchangePlaneCount);
+#endif // CONVECTION_DIFFUSION_TRANSPORT
+    bytes += enabledMacroInterfaceFieldCount() * 6 * static_cast<size_t>(NX) * NY * sizeof(dfloat);
+
+    size_t scalarFieldCount = 0;
+    #ifdef BC_FORCES
+    scalarFieldCount += 3;
+#endif // BC_FORCES
+    #ifdef SAVE_LOCAL_FORCES
+    scalarFieldCount += 3;
+        #ifdef SECOND_DIST
+    ++scalarFieldCount;
+#endif // SECOND_DIST
+        #ifdef PHI_DIST
+    ++scalarFieldCount;
+#endif // PHI_DIST
+        #ifdef LAMBDA_DIST
+    ++scalarFieldCount;
+#endif // LAMBDA_DIST
+        #ifdef CONFORMATION_TENSOR
+    scalarFieldCount += enabledConformationDistributionCount();
+#endif // CONFORMATION_TENSOR
+#endif // SAVE_LOCAL_FORCES
+    bytes += scalarFieldCount * layout.scalarBytes;
+    #ifdef DENSITY_CORRECTION
+    bytes += sizeof(dfloat) + 2 * layout.numBlocksX * layout.numBlocksY * layout.numBlocksZ * (sizeof(dfloat) + sizeof(unsigned long long));
+#endif // DENSITY_CORRECTION
+    #ifdef CONFORMATION_PHYSICAL_A_HALO
+    bytes += 4 * sizeof(dfloat) * 12 * (layout.ghostFaceYZCount + layout.ghostFaceXZCount + layout.ghostFaceXYCount + layout.exchangePlaneCount);
+#endif // CONFORMATION_PHYSICAL_A_HALO
+    return bytes;
+}
+
 inline void printCompileTimeMemoryEstimate() {
-    constexpr CompileTimeMemoryEstimate estimate = compileTimeMemoryEstimate();
-    const size_t devicePerPartition = estimate.devicePerPartition();
-    const size_t allDevicePartitions = devicePerPartition * N_GPUS;
+    const DomainDecomposition decomposition(N_GPUS);
+    CompileTimeMemoryEstimate estimate = compileTimeMemoryEstimate();
+    estimate.hostCheckpointInterfaces = runtimeHostCheckpointInterfaceBytes(decomposition);
+    size_t allDevicePartitions = 0;
 
     std::printf("\nCompile-time stationary memory estimate\n");
     std::printf("  Domain: %d x %d x %d, GPUs/partitions: %u\n", NX, NY, NZ, N_GPUS);
@@ -279,25 +250,28 @@ inline void printCompileTimeMemoryEstimate() {
     std::printf("  Host checkpoint interfaces:     %10.2f MiB\n", bytesToMiB(estimate.hostCheckpointInterfaces));
     std::printf("  Host stationary total:          %10.2f MiB  (%0.3f GiB)\n",
         bytesToMiB(estimate.hostTotal()), bytesToGiB(estimate.hostTotal()));
-    std::printf("  GPU moments per partition:      %10.2f MiB\n", bytesToMiB(estimate.deviceMoments));
-    std::printf("  GPU node types per partition:   %10.2f MiB\n", bytesToMiB(estimate.deviceNodeTypes));
-    std::printf("  GPU population interfaces:      %10.2f MiB\n", bytesToMiB(estimate.devicePopulationInterfaces));
-    std::printf("  GPU macro interfaces:           %10.2f MiB\n", bytesToMiB(estimate.deviceMacroInterfaces));
-    std::printf("  GPU optional stationary fields: %10.2f MiB\n", bytesToMiB(estimate.deviceOptionalFields));
-    std::printf("  GPU per partition:              %10.2f MiB  (%0.3f GiB)\n",
-        bytesToMiB(devicePerPartition), bytesToGiB(devicePerPartition));
+    for (unsigned int g = 0; g < N_GPUS; ++g) {
+        const size_t partitionBytes = runtimeDeviceBytes(decomposition[g]);
+        allDevicePartitions += partitionBytes;
+        std::printf("  Partition %u: z=[%zu,%zu), blocksZ=%zu: %10.2f MiB  (%0.3f GiB)\n",
+            g, decomposition[g].zStart,
+            decomposition[g].zStart + decomposition[g].localNZ,
+            decomposition[g].numBlocksZ, bytesToMiB(partitionBytes),
+            bytesToGiB(partitionBytes));
+    }
 
     for (unsigned int g = 0; g < N_GPUS; ++g) {
         bool firstPartitionForDevice = true;
+        size_t physicalDeviceBytes = 0;
         unsigned int partitionCount = 0;
         for (unsigned int other = 0; other < N_GPUS; ++other) {
             if (GPUS_TO_USE[other] == GPUS_TO_USE[g]) {
                 ++partitionCount;
+                physicalDeviceBytes += runtimeDeviceBytes(decomposition[other]);
                 if (other < g) firstPartitionForDevice = false;
             }
         }
         if (firstPartitionForDevice) {
-            const size_t physicalDeviceBytes = devicePerPartition * partitionCount;
             std::printf("  CUDA device %u (%u partition%s): %10.2f MiB  (%0.3f GiB)\n",
                 GPUS_TO_USE[g], partitionCount, partitionCount == 1 ? "" : "s",
                 bytesToMiB(physicalDeviceBytes), bytesToGiB(physicalDeviceBytes));
