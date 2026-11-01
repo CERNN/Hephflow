@@ -2,34 +2,56 @@
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPLv2-blue.svg)](./LICENSE.txt)
 
-This repository contains **Hephflow**, a moment-based implementation of the Lattice Boltzmann Method (LBM) for GPU acceleration using CUDA. Hephflow is the successor to the previous project **MR-LBM**, and builds upon its concepts and codebase, introducing new features and improvements for efficient computational fluid dynamics simulations on GPU hardware.
+Hephflow is a CUDA-accelerated, moments-based Lattice Boltzmann Method (LBM)
+solver for three-dimensional computational fluid dynamics. It is the successor
+to [MR-LBM](https://github.com/CERNN/MR-LBM) and builds on the earlier
+[VISCOPLASTIC-LBM](https://github.com/CERNN/VISCOPLASTIC-LBM) codebase.
 
-## Table of Contents
+The project provides compile-time simulation cases for Newtonian and
+non-Newtonian flows, scalar transport, thermal and multiphase models,
+viscoelastic flows, curved boundaries, and immersed particles. D3Q19 and D3Q27
+velocity sets are supported, and the domain can be decomposed across multiple
+NVIDIA GPUs in the Z direction.
 
-- [Project Overview](#project-overview)
-- [Quick Start](#quick-start)
-- [Installation Guide](#installation-guide)
-- [Simulation](#simulation)
-- [Post Processing](#post-processing)
-- [File Structure](#file-structure)
-- [Creating a Boundary Case](#creating-a-boundary-case)
-- [Using Voxels for Immersed Bodies](#using-voxels-for-immersed-bodies)
-- [Performance Benchmarks](#performance-benchmarks)
-- [Gallery](#gallery)
+> [!NOTE]
+> Hephflow is research software under active development. Case definitions and
+> numerical models should be validated for the intended application before
+> production use.
+
+## Contents
+
+- [Requirements](#requirements)
+- [Quick start](#quick-start)
+- [Configure a simulation](#configure-a-simulation)
+- [Build and run](#build-and-run)
+- [Outputs and visualization](#outputs-and-visualization)
+- [Create a case](#create-a-case)
+- [Tests and benchmarks](#tests-and-benchmarks)
+- [Repository layout](#repository-layout)
 - [Publications](#publications)
-- [Previous Version](#previous-version-mr-lbm)
-- [License](#license)
-- [Contact](#contact)
+- [Contributing](#contributing)
+- [License and support](#license-and-support)
 
-## Project Overview
+## Requirements
 
-**Hephflow** implements the moment-based Lattice Boltzmann Method, where the collision operator is formulated across moments from the 0th to the 2nd order (or higher). This approach provides improved stability and accuracy for a wide range of fluid dynamics problems, including Newtonian, non-Newtonian, and thermal flows.
+- An NVIDIA CUDA-capable GPU
+- A compatible NVIDIA driver and CUDA Toolkit (`nvcc` must be available)
+- A C++17 host compiler supported by the installed CUDA Toolkit
+- Bash on Linux, or Git Bash/MSYS2/Cygwin on Windows, for the provided build
+  script
+- [ParaView](https://www.paraview.org/) for viewing VTK output (optional)
+- Python 3 for the regression-test and parameter-sweep tools (optional)
 
-This project is intended primarily as a proof of concept, with many features still under development and optimization.
+Check the CUDA installation before building:
 
-Hephflow builds on the codebase of the previous project [VISCOPLASTIC-LBM](https://github.com/CERNN/VISCOPLASTIC-LBM) and shares similar licensing terms and design philosophy.
+```bash
+nvidia-smi
+nvcc --version
+```
 
-## Quick Start
+The CUDA Toolkit version reported by `nvcc` must be supported by the installed
+driver.
+
 
 1. **Install CUDA Toolkit**: Download from [Nvidia's website](https://developer.nvidia.com/cuda-toolkit)
 2. **Set active case**: Edit `src/var.h` and change `#define BC_PROBLEM` to your desired path below `src/cases/` (e.g., `Newtonian/Laminar/001_lidDrivenCavity_3D`)
@@ -39,20 +61,29 @@ Hephflow builds on the codebase of the previous project [VISCOPLASTIC-LBM](https
 5. **Visualize**: Open generated `.vtk` files directly in ParaView (no post-processing needed for VTK output)  
 
 
-## Installation Guide
+The selected case is compiled into the executable. The repository currently
+uses `000_benchmark` by default.
 
-### System Requirements
+```bash
+git clone https://github.com/CERNN/Hephflow.git
+cd Hephflow/src
+sh compile.sh D3Q19 000
+../bin/000sim_D3Q19_sm80
+```
 
-To compile and run Hephflow, you will need:
+Replace `sm80` with the compute capability detected for your GPU. On Windows,
+the generated program has an `.exe` suffix.
 
-- **C++ Compiler** (MSVC on Windows, GCC on Linux)
-- **NVIDIA GPU** with compute capability 3.5 or higher
-- **NVIDIA GPU Drivers** (latest version recommended)
-- **CUDA Toolkit** (includes both GPU drivers and necessary CUDA libraries)
+To run another case:
 
-**Note**: Hephflow is designed to run on a single GPU. Multi-GPU setups are not currently supported.
+1. Set `BC_PROBLEM` in [`src/var.h`](./src/var.h), for example:
 
-### Installation Steps
+   ```cpp
+   #define BC_PROBLEM 001_lidDrivenCavity_3D
+   ```
+
+2. Check the velocity set in that case's `model.inc`.
+3. Pass the same velocity set and a desired output prefix to `compile.sh`:
 
 1. **Install CUDA Toolkit**:
    - Download the CUDA toolkit from [NVIDIA's official website](https://developer.nvidia.com/cuda-toolkit)
@@ -65,205 +96,175 @@ To compile and run Hephflow, you will need:
    - Each case contains required `.inc` files defining the simulation parameters
 
 3. **Compile the Project**:
+
    ```bash
    cd src
-   sh compile.sh <VELOCITY_SET> <CASE_ID>
+   sh compile.sh D3Q19 001
+   ../bin/001sim_D3Q19_sm80
    ```
-   Example: `sh compile.sh D3Q19 001`
-   - The script automatically detects your GPU's compute capability via `nvidia-smi`
-   - Compiled executable will be saved to `bin/` directory
 
-4. **Verify Compilation**:
-   - Check for the compiled executable in the build directory
-   - Run a test case to ensure proper functionality
+The second argument names the executable; it does not select `BC_PROBLEM`.
 
-## Simulation
+## Configure a simulation
 
-### Output Files
+Global compile-time settings live in [`src/var.h`](./src/var.h):
 
-The simulation generates multiple output formats based on case configuration:
+- `BC_PROBLEM` selects a directory under `src/cases/`.
+- `N_GPUS` and `GPUS_TO_USE` select the CUDA devices.
+- `GPU_INDEX` is retained for code paths that use a single device index.
 
-- **VTK files** (`.vtk`): Direct ParaView-compatible output containing density, velocity, and other scalar/vector fields
-- **Binary files** (`.bin`): Raw binary output for each macroscopic variable (optional)
-- **Simulation info** (`.txt`): Contains simulation parameters, performance metrics (MLUPS), and case details
-- **Checkpoint files**: Complete simulation state for restart capabilities
+For multi-GPU runs, `NZ` must be exactly divisible by `N_GPUS`. Peer access
+must also be available between the selected devices.
 
-**Output configuration** is controlled per case via the `output.inc` file:
-- `VTK_SAVE (true)`: Enable direct VTK output (recommended)
-- `BIN_SAVE (true)`: Enable binary output for custom post-processing
-- `CHECKPOINT_SAVE (true)`: Enable simulation restart functionality 
+Each case separates configuration by responsibility:
 
-## Visualization and Post-Processing
+| File | Purpose |
+|---|---|
+| `model.inc` | Velocity set, collision operator, and optional physics models |
+| `constants.inc` | Domain size, time steps, material properties, forces, and boundary modes |
+| `output.inc` | Output directory, save intervals, VTK/binary output, and checkpoints |
+| `bc_initialization.inc` | Assigns node types to the geometry |
+| `bc_definition.inc` | Reconstructs hydrodynamic boundary conditions |
+| `flow_initialization.inc` | Initializes density, velocity, and optional fields |
 
-### Direct ParaView Visualization (Recommended)
+Additional files are enabled only by models that need them. Examples include
+`g_bc_definition.inc` for scalar or thermal transport,
+`phi_bc_definition.inc` for phase-field transport, `a*_bc_definition.inc` for
+conformation-tensor components, `particleCreation.inc` for immersed particles,
+and `force_field.inc` for spatially varying body forces.
 
-Hephflow generates **native VTK output** that can be directly opened in ParaView:
+### Precision and launch geometry
 
-1. **Enable VTK output**: Set `VTK_SAVE (true)` in your case's `output.inc` file
-2. **Run simulation**: VTK files are generated automatically during execution
-3. **Open in ParaView**: Load `.vtk` files directly - no conversion needed
+Floating-point precision is selected in
+[`src/include/var_types.h`](./src/include/var_types.h). The default is
+`SINGLE_PRECISION`; define only one of `SINGLE_PRECISION` or
+`DOUBLE_PRECISION`.
 
-### Binary Post-Processing (Advanced Users)
+CUDA block dimensions are set by `BLOCK_NX`, `BLOCK_NY`, and `BLOCK_NZ` in
+[`src/include/memory_layout.h`](./src/include/memory_layout.h). Domain dimensions
+must be at least as large as their corresponding block dimensions.
 
-For custom analysis of binary output files:
+## Build and run
 
-**Requirements:**
-- Python 3.6 or higher
-- Dependencies: `glob`, `numpy`, `os`, `pyevtk`, `matplotlib`
+From `src/`, run:
 
-**Usage:**
 ```bash
-cd post
-python bin2VTK.py "PATH_TO_OUTPUT/SIMULATION_ID"
+sh compile.sh <D3Q19|D3Q27> <output-prefix>
 ```
 
-**Note:** Direct VTK output is recommended for most users as it eliminates the need for post-processing.
+The script:
 
-## File Structure
+- detects the first GPU's compute capability with `nvidia-smi` unless `CC` is
+  already set;
+- invokes `nvcc` with optimization, relocatable device code, and the required
+  CUDA runtime libraries; and
+- writes the executable to `bin/` as
+  `<prefix>sim_<velocity-set>_sm<compute-capability>`.
 
-The following table provides an overview of key files and directories in the project:
+Override auto-detection when compiling for another architecture:
 
-| # | File/Folder | Description |
-|---|---|---|
-| 1 | `main.cu` | Main application entry point |
-| 2 | `mlbm.cu`/`mlbm.cuh` | Core kernel implementing streaming-collision operations |
-| 3 | `var.h` | Global simulation parameters and configuration |
-| 4 | `compile.sh` | Compilation script (edit for correct CUDA version and compute capability) |
-| 5 | `definitions.h` | LBM constants and macro definitions |
-| 6 | `arrayIndex.h` | Index calculation functions for moment ordering |
-| 7 | `auxFunctions.cu`/`auxFunctions.cuh` | Auxiliary GPU functions |
-| 8 | `cases/` | Physics-based simulation case definitions |
-| 9 | `cases/<CATEGORY>/<CASE_ID>/constants.inc` | Grid size, Reynolds number, physical parameters, forces |
-| 10 | `cases/<CATEGORY>/<CASE_ID>/model.inc` | Velocity set, collision model, physics models selection |
-| 11 | `cases/<CATEGORY>/<CASE_ID>/bc_initialization.inc` | Boundary condition node type assignment |
-| 12 | `cases/<CATEGORY>/<CASE_ID>/bc_definition.inc` | Mathematical boundary condition implementation |
-| 13 | `cases/<CATEGORY>/<CASE_ID>/flow_initialization.inc` | Initial velocity and density field setup |
-| 14 | `cases/<CATEGORY>/<CASE_ID>/output.inc` | Data saving configuration (VTK, binary, checkpoints) |
-| 15 | `collision_reconstruction/` | Collision and reconstruction implementations for various lattice models |
-| 16 | `includeFiles/popSave` | Kernel for loading populations from global memory |
-| 17 | `includeFiles/popLoad` | Kernel for saving populations to global memory |
-| 18 | `includeFiles/interface` | Boundary condition interface definitions (wall, periodic) |
-| 19 | `checkpoint.cu`/`checkpoint.cuh` | Checkpoint/restart functionality |
-| 20 | `errorDef.h` | Error handling and validation functions |
-| 21 | `globalFunctions.cu`/`globalFunctions.h` | Global utility and indexing functions |
-| 22 | `globalStructs.h` | CUDA device and host structures |
-| 23 | `lbmInitialization.cu`/`lbmInitialization.cuh` | Field and lattice initialization |
-| 24 | `nnf.h` | Non-Newtonian fluid model definitions |
-| 25 | `nodeTypeMap.h` | Node type mapping for boundary conditions |
-| 26 | `reduction.cu`/`reduction.cuh` | Parallel reduction kernels |
-| 27 | `saveData.cu`/`saveData.cuh` | Data serialization and output functions |
-| 28 | `post/` | Post-processing utilities for result visualization |
+```bash
+CC=89 sh compile.sh D3Q19 001
+```
 
-## Creating and Using Simulation Cases
+The velocity-set argument must match the `D3Q19` or `D3Q27` definition in the
+selected case's `model.inc`.
 
-Hephflow uses a **template-based case system** where each simulation is defined by a set of `.inc` files. The active case is selected at compile time via the `BC_PROBLEM` macro.
+## Outputs and visualization
 
-### Case Selection
+Outputs are written relative to the executable, under:
 
-1. **Choose a case**: Browse the physics categories in `src/cases/`
-2. **Set active case**: Edit `src/var.h` and modify:
-   ```cpp
-   #define BC_PROBLEM Newtonian/Laminar/001_lidDrivenCavity_3D
-   ```
-3. **Compile**: Run `sh compile.sh <VELOCITY_SET> <CASE_ID>`
+```text
+bin/<PATH_FILES>/<ID_SIM>/
+```
 
-### Available Case Categories
+Both values and the save controls are defined in the selected case's
+`output.inc`:
 
-- `Benchmarks/` - performance and IBM benchmarks
-- `Newtonian/Laminar/` and `Newtonian/Turbulent/` - single-phase Newtonian flows
-- `Viscoplastic/` - Bingham and Herschel-Bulkley flows
-- `Viscoelastic/` - constitutive-model and coupled IBM cases
-- `ScalarTransport/` - transported scalar fields
-- `Thermal/` - conduction, convection, and thermal-viscoplastic cases
-- `ImmersedBoundaries/` - fixed bodies, Couette configurations, and particle settling
-- `Multiphase/` - phase-field and complex-rheology cases
-- `Templates/` and `Experimental/` - case templates and incomplete work
+- `VTK_SAVE` writes legacy VTK files that can be opened directly in ParaView.
+- `BIN_SAVE` writes raw binary field data for custom processing.
+- `MACR_SAVE` controls periodic macroscopic-field saves.
+- `ONLY_FINAL_MACRO` restricts macroscopic output to the final step.
+- `CHECKPOINT_SAVE` and `LOAD_CHECKPOINT` control restart data.
+- `MEAN_FLOW`, particle output, and force output are available when their
+  corresponding models are enabled.
 
-See `src/cases/README.md` for the full organization.
+When a case defines physical VTK time, Hephflow also maintains a
+`.vtk.series` file for loading the time sequence in ParaView.
 
-### Required Case Files
+Binary output can be converted to a legacy VTK structured-points file with the
+dependency-free converter in `scripts/`. It discovers the saved fields and
+steps from the output directory:
 
-Each case directory must contain these 6 files:
+```bash
+python scripts/bin_to_vtk.py "PATH_TO_OUTPUT/SIMULATION_ID"
+```
 
-1. **`constants.inc`**: Physical and numerical parameters
-   ```cpp
-   constexpr int NX = 256;        // Grid size X
-   constexpr int NY = 256;        // Grid size Y  
-   constexpr int NZ = 256;        // Grid size Z
-   constexpr dfloat RE = 500;     // Reynolds number
-   constexpr dfloat U_MAX = 0.01; // Maximum velocity
-   constexpr dfloat TAU = 0.8;    // Relaxation time
-   // Sets boundary types for domain boundaries
-   #define BC_X_WALL    // X boundaries are walls
-   #define BC_Y_WALL    // Y boundaries are walls  
-   #define BC_Z_WALL    // Z boundaries are walls
-   // #define THERMAL_MODEL       // Enable thermal physics
-   // #define PARTICLE_MODEL      // Enable particles
-   ```
+The path may be an output directory or a path relative to `bin/`. Use
+`--step N` or `--field NAME` to limit the conversion; pass either option more
+than once to select multiple values. Run with `--help` for all options.
 
-2. **`model.inc`**: Physics model and velocity set selection
-   ```cpp
-   #define D3Q19                  // Velocity set
-   #define MR_LBM_2ND_ORDER               // Collision model
-   ```
+## Create a case
 
-3. **`bc_initialization.inc`**: Boundary condition node assignment
-   ```cpp
-   // Defines node type based on the lattice location
-   ```
+Start from the maintained template or from the closest validated case:
 
-4. **`bc_definition.inc`**: Mathematical boundary condition implementation
-   ```cpp
-   // Defines moment equations for each boundary type
-   // Complex file - usually copied from similar case
-   ```
+```bash
+cd src/cases
+cp -r _template 009_my_case
+```
 
-5. **`flow_initialization.inc`**: Initial conditions
-   ```cpp
-   // Set initial velocity and density fields
-   ```
+Then:
 
-6. **`output.inc`**: Data saving configuration  
-   ```cpp
-   #define VTK_SAVE (true)        // Enable VTK output
-   #define BIN_SAVE (false)       // Disable binary output
-   #define CHECKPOINT_SAVE (false) // Disable checkpoints
-   #define ID_SIM "001"           // Output file prefix
-   #define PATH_FILES "MyCase"     // Output directory name
-   ```
+1. Configure the lattice and physics in `model.inc`.
+2. Set the grid, run length, material properties, and boundary modes in
+   `constants.inc`.
+3. Implement geometry assignment in `bc_initialization.inc`.
+4. Implement the required boundary reconstruction files.
+5. Set the initial fields in `flow_initialization.inc`.
+6. Configure the output in `output.inc`.
+7. Set `BC_PROBLEM` in `src/var.h`, compile, and validate the case.
 
-### Creating a New Case
+The `src/cases/` directory contains examples ranging from lid-driven cavities,
+ducts, and Taylor-Green vortices to thermal convection, viscoelastic flows,
+phase-field simulations, and immersed-particle problems.
 
-1. Copy a similar case directory within the appropriate category. Example: `cp -r Newtonian/Laminar/001_lidDrivenCavity_3D Newtonian/Laminar/001_myNewCase`
-2. Modify the 6 `.inc` files for your specific problem
-3. Update `BC_PROBLEM` in `var.h` with the full path below `src/cases/`
+### Voxel geometries
+
+Voxel cases can load zero-based solid-node coordinates from CSV. Define
+`VOXEL_FILENAME` in the case configuration and use the voxel boundary logic as
+shown by `src/cases/Newtonian/Laminar/001_voxel`. The dependency-free
+`scripts/generate_voxels.py` utility generates cubes, mounted cubes, parallel
+plates, and spheres, and voxelizes closed binary or ASCII STL meshes. STL
+meshes are fitted into the domain while preserving their aspect ratio. Run the
+utility or a subcommand with `--help` for all parameters; for example:
+
+```bash
+python scripts/generate_voxels.py -o bin/sphere.csv sphere --domain 256 256 256 --diameter 32
+python scripts/generate_voxels.py -o bin/model.csv stl model.stl --domain 256 256 256 --padding 2
+```
 
 
-## Using Voxels for Immersed Bodies
+## Repository layout
 
-Voxelization enables efficient representation of complex immersed solid bodies in the lattice. To use voxels:
-
-### Setup Steps
-
-1. **Create a coordinate file**:
-   - Generate a CSV file listing all solid node coordinates
-   - Format: One coordinate per line (e.g., `x,y,z`)
-
-2. **Configure the simulation case**:
-   - Add `#define VOXEL_FILENAME "path/to/your/voxel/file.csv"` in the `constants.inc` file
-   - Specify the path to your voxel coordinate file
-
-3. **Enable voxel boundary conditions**:
-   - Include `#ifdef VOXEL_FILENAME` guard in your `bc_definition.inc` file
-   - Add voxel-specific boundary condition logic within the guard
-   - This enables proper handling of voxel nodes
-
-### Support Files
-
-Support files for voxel generation are provided in `aSupportFiles/`:
-- `VOXELISE.m`: MATLAB function for voxel mesh generation
-- `geometry.py`: Python utilities for geometry processing
-
+```text
+Hephflow/
+|-- src/
+|   |-- cases/                     # Compile-time simulation cases
+|   |-- collision_reconstruction/  # Hydrodynamic and scalar collision models
+|   |-- fragments/                 # Reusable kernel and output fragments
+|   |-- include/                   # Types, layouts, utilities, and configuration
+|   |-- non_newtonian/             # Rheology implementations
+|   |-- particles/                 # Immersed-boundary particle implementation
+|   |-- compile.sh                 # Cross-platform Bash build script
+|   |-- main.cu                    # Program entry point and time loop
+|   `-- mlbm.cu                    # Main LBM kernels
+|-- bin/                           # Executables and simulation output
+|-- tests/                         # Regression-test runner and standalone tests
+|-- scripts/                       # Geometry, post-processing, and performance tools
+|-- docs/                          # Technical notes and reports
+|-- sweep.py                       # Parameter-sweep runner
+`-- Doxyfile                       # API documentation configuration
+```
 ## Performance Benchmarks
 
 The following table summarizes performance benchmarks on various NVIDIA GPUs. Performance is measured in MLUPs (Million Lattice Updates Per Second) using the D3Q19 lattice with FP32 precision.
@@ -308,10 +309,6 @@ The following table summarizes performance benchmarks on various NVIDIA GPUs. Pe
 - **Dynamic Allocation**: The "D" designation indicates dynamic allocation of shared memory (48 KB per block)
 - Performance may be affected by system thermal conditions and power delivery limitations
 
-## Gallery
-
-*In progress*
-
 ## Publications
 
 - [DOI: 10.1063/5.0209802](https://doi.org/10.1063/5.0209802)
@@ -326,20 +323,17 @@ Hephflow is a direct successor to the **MR-LBM** project, incorporating improved
 
 If you're interested in the original MR-LBM implementation, visit: [MR-LBM on GitHub](https://github.com/CERNN/MR-LBM)
 
-## Development Notes
+## Contributing
 
-For a complete list of planned features, ongoing improvements, and known issues, refer to the [TODO.todo](./TODO.todo) file. This file tracks performance optimizations, feature enhancements, and potential extensions to the current implementation.
+Bug reports, feature proposals, numerical validation cases, and code
+contributions are welcome. Read [`CONTRIBUTING.md`](./CONTRIBUTING.md) before
+opening a pull request. Planned work and known issues are tracked in
+[`TODO.todo`](./TODO.todo).
 
-## License
+## License and support
 
-Hephflow is distributed under the [GNU General Public License v2 (GPLv2)](./LICENSE.txt). This ensures that the software remains free and open-source.
+Hephflow is distributed under the
+[GNU General Public License, version 2](./LICENSE.txt).
 
-## Contact & Support
-
-For bug reports, feature requests, or other issues:
-
-1. **GitHub Issues**: Please use the [GitHub issue tracker](https://github.com/CERNN/Hephflow/issues) for visibility and community discussion
-2. **Email**: You can also reach the maintainers at:
-   - e.marcoferrari@utfpr.edu.br
-
-Thank you for your interest in Hephflow!
+- Issues: [github.com/CERNN/Hephflow/issues](https://github.com/CERNN/Hephflow/issues)
+- Contact: e.marcoferrari@utfpr.edu.br
