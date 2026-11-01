@@ -4,6 +4,9 @@
 #include "var.h"
 #include "hostField.cuh"
 #include "ghostInterface.cuh"
+#ifdef CURVED_BOUNDARY_CONDITION
+    #include "curvedBC.cuh"
+#endif // CURVED_BOUNDARY_CONDITION
 #include "fragments/phiTransport/phase_kernels.cuh"
 #include <algorithm>
 #include <thread>
