@@ -1,90 +1,204 @@
-
 #include "pibm.cuh"
 
 #ifdef PARTICLE_MODEL
 
-__global__ 
-void spreadParticleForce(
-    ParticleCenter *pArray,
-    const ParticleMethod *methods,
-    dfloat *fMom,
-    unsigned int nParticles)
-{
-    int p_idx = threadIdx.x + blockDim.x * blockIdx.x;
-    if (p_idx >= nParticles || methods[p_idx] != PIBM)
-        return;
+namespace pibm_detail {
 
-    ParticleCenter *pc_i = &pArray[p_idx];
+// Interpolate density and force-corrected physical velocity at a particle.
+__device__ bool interpolatePibmField(
+    const PibmStencil& stencilData,
+    const dfloat *fMom,
+    dfloat *rhoInterpolated,
+    dfloat3 *velocityInterpolated){
+    // Accumulate stencil-weighted fluid properties at the particle center.
+    dfloat rho = 0.0_df;
+    dfloat3 velocity(0.0_df, 0.0_df, 0.0_df);
+    dfloat weightSum = 0.0_df;
 
-    dfloat px = pc_i->getPosX();
-    dfloat py = pc_i->getPosY();
-    dfloat pz = pc_i->getPosZ();
+    // Traverse the configured tensor-product stencil and map valid lattice nodes.
+    for (int zOffset = 0; zOffset < PIBM_STENCIL_WIDTH; ++zOffset) {
+        int z;
+        if (!mapPibmZ(stencilData.base[2] + zOffset, &z))
+            continue;
+        for (int yOffset = 0; yOffset < PIBM_STENCIL_WIDTH; ++yOffset) {
+            int y;
+            if (!mapPibmY(stencilData.base[1] + yOffset, &y))
+                continue;
+            const dfloat yzWeight = stencilData.weight[2][zOffset] * stencilData.weight[1][yOffset];
 
-    // Use a Lagrangian interpolator
-    dfloat ux_interpolated = mom_trilinear_interp(px, py, pz, M_UX_INDEX, fMom);
-    dfloat uy_interpolated = mom_trilinear_interp(px, py, pz, M_UY_INDEX, fMom);
-    dfloat uz_interpolated = mom_trilinear_interp(px, py, pz, M_UZ_INDEX, fMom);
-    dfloat3 fluid_velocity = {ux_interpolated, uy_interpolated, uz_interpolated};
+            for (int xOffset = 0; xOffset < PIBM_STENCIL_WIDTH; ++xOffset) {
+                int x;
+                if (!mapPibmX(stencilData.base[0] + xOffset, &x))
+                    continue;
+                if (!insidePibmDuct(x, y))
+                    continue;
 
-    dfloat particle_area = M_PI * pc_i->getDiameter() * pc_i->getDiameter() / 4;
-    dfloat3 drag_force = 2 * particle_area * (RHO_0 + mom_trilinear_interp(px, py, pz, M_RHO_INDEX, fMom)) * (fluid_velocity - pc_i->getVel());
+                const dfloat weight = yzWeight * stencilData.weight[0][xOffset];
+                const size_t momentBase = idxMom(x % BLOCK_NX, y % BLOCK_NY, z % BLOCK_NZ, M_RHO_INDEX, x / BLOCK_NX, y / BLOCK_NY, z / BLOCK_NZ);
 
-    accumulateForceAndTorque(pc_i, drag_force, {0, 0, 0});
+                // Recover density and physical velocity, including the current force correction.
+                const dfloat rhoNode = RHO_0 + fMom[momentBase];
+                if (!isfinite(rhoNode) || rhoNode <= 1.0e-6_df)
+                    return false;
 
-    // Stencil bounds (integer lattice range around particle position)
-    int stencil_start_x = (int)ceil(px) - FORCE_SPREAD_X_NODES;
-    int stencil_start_y = (int)ceil(py) - FORCE_SPREAD_Y_NODES;
-    int stencil_start_z = (int)ceil(pz) - FORCE_SPREAD_Z_NODES;
+                const dfloat ux = fMom[momentBase + M_UX_INDEX * BLOCK_LBM_SIZE] / F_M_I_SCALE + (fMom[momentBase + M_FX_INDEX * BLOCK_LBM_SIZE] - FX) / rhoNode;
+                const dfloat uy = fMom[momentBase + M_UY_INDEX * BLOCK_LBM_SIZE] / F_M_I_SCALE + (fMom[momentBase + M_FY_INDEX * BLOCK_LBM_SIZE] - FY) / rhoNode;
+                const dfloat uz = fMom[momentBase + M_UZ_INDEX * BLOCK_LBM_SIZE] / F_M_I_SCALE + (fMom[momentBase + M_FZ_INDEX * BLOCK_LBM_SIZE] - FZ) / rhoNode;
+                if (!isfinite(ux) || !isfinite(uy) || !isfinite(uz))
+                    return false;
 
-    int stencil_end_x = stencil_start_x + 2 * FORCE_SPREAD_X_NODES - 1;
-    int stencil_end_y = stencil_start_y + 2 * FORCE_SPREAD_Y_NODES - 1;
-    int stencil_end_z = stencil_start_z + 2 * FORCE_SPREAD_Z_NODES - 1;
-
-    // Use correct stencil with boundary handling
-    for (int zk = stencil_start_z; zk <= stencil_end_z; zk++) // z
-    {
-        int zz;
-        #ifdef BC_Z_WALL
-            if (zk < 0 || zk >= NZ) continue;
-            zz = zk;
-        #endif
-        #ifdef BC_Z_PERIODIC
-            zz = ((zk % NZ) + NZ) % NZ;
-        #endif
-
-        for (int yj = stencil_start_y; yj <= stencil_end_y; yj++) // y
-        {
-            int yy;
-            #ifdef BC_Y_WALL
-                if (yj < 0 || yj >= NY) continue;
-                yy = yj;
-            #endif
-            #ifdef BC_Y_PERIODIC
-                yy = ((yj % NY) + NY) % NY;
-            #endif
-
-            for (int xi = stencil_start_x; xi <= stencil_end_x; xi++) // x
-            {
-                int xx;
-                #ifdef BC_X_WALL
-                    if (xi < 0 || xi >= NX) continue;
-                    xx = xi;
-                #endif
-                #ifdef BC_X_PERIODIC
-                    xx = ((xi % NX) + NX) % NX;
-                #endif
-
-                dfloat spread_filter_x = (1.0_df + cos(M_PI * (dfloat(xi) - px) / 2.0_df)) / 4.0_df;
-                dfloat spread_filter_y = (1.0_df + cos(M_PI * (dfloat(yj) - py) / 2.0_df)) / 4.0_df;
-                dfloat spread_filter_z = (1.0_df + cos(M_PI * (dfloat(zk) - pz) / 2.0_df)) / 4.0_df;
-                dfloat spread_filter = spread_filter_x * spread_filter_y * spread_filter_z;
-
-                atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FX_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.x * spread_filter);
-                atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FY_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.y * spread_filter);
-                atomicAdd(&(fMom[idxMom(xx % BLOCK_NX, yy % BLOCK_NY, zz % BLOCK_NZ, M_FZ_INDEX, xx / BLOCK_NX, yy / BLOCK_NY, zz / BLOCK_NZ)]), -drag_force.z * spread_filter);
+                rho += weight * rhoNode;
+                velocity.x += weight * ux;
+                velocity.y += weight * uy;
+                velocity.z += weight * uz;
+                weightSum += weight;
             }
         }
     }
+
+    // Reject an invalid interpolation before exposing its result to the force kernel.
+    if (!isfinite(rho) || rho <= 1.0e-6_df || !isfinite(weightSum) || weightSum <= 0.0_df)
+        return false;
+
+    // Publish the interpolated field only after every contributing node is valid.
+    *rhoInterpolated = rho;
+    *velocityInterpolated = velocity;
+    return true;
+}
+
+
+} // namespace pibm_detail
+
+__global__
+void computePibmParticleForce(
+    ParticleCenter *pArray,
+    const ParticleMethod *methods,
+    const dfloat *fMom,
+    dfloat3 *accumulatedForces,
+    dfloat3 *forceCorrections,
+    unsigned int nParticles)
+{
+    // Assign one thread to each particle and ignore particles handled by other methods.
+    const unsigned int particle = threadIdx.x + blockDim.x * blockIdx.x;
+    if (particle >= nParticles || methods[particle] != PIBM) return;
+
+    // Validate the center before constructing integer stencil coordinates.
+    ParticleCenter *center = &pArray[particle];
+    const dfloat3 position = center->getPos();
+    if (!pibm_detail::validPibmParticlePosition(position.x, position.y, position.z)) {
+        forceCorrections[particle] = dfloat3(0.0_df, 0.0_df, 0.0_df);
+        return;
+    }
+
+    // Interpolate the force-corrected fluid state at the particle center.
+    const pibm_detail::PibmStencil stencilData = pibm_detail::makePibmStencil(position.x, position.y, position.z);
+    dfloat rho;
+    dfloat3 fluidVelocity;
+    const dfloat3 particleVelocity = center->getVel();
+    if (!pibm_detail::interpolatePibmField(stencilData, fMom, &rho, &fluidVelocity) ||
+        !isfinite(particleVelocity.x) || !isfinite(particleVelocity.y) || !isfinite(particleVelocity.z))
+    {
+        forceCorrections[particle] = dfloat3(0.0_df, 0.0_df, 0.0_df);
+        return;
+    }
+
+    // Evaluate the target drag and relax only the remaining force residual.
+    const dfloat diameter = center->getDiameter();
+    const dfloat area = M_PI * diameter * diameter / 4.0_df;
+    const dfloat3 targetForce = 2.0_df * area * rho * (fluidVelocity - particleVelocity);
+    const dfloat3 previousForce = accumulatedForces[particle];
+    const dfloat3 correction = static_cast<dfloat>(PIBM_FORCE_RELAXATION) * (targetForce - previousForce);
+    const dfloat3 updatedForce = previousForce + correction;
+
+    // Suppress invalid corrections before they reach either particle or fluid state.
+    if (!isfinite(targetForce.x) || !isfinite(targetForce.y) ||
+        !isfinite(targetForce.z) || !isfinite(correction.x) ||
+        !isfinite(correction.y) || !isfinite(correction.z) ||
+        !isfinite(updatedForce.x) || !isfinite(updatedForce.y) ||
+        !isfinite(updatedForce.z)) {
+        forceCorrections[particle] = dfloat3(0.0_df, 0.0_df, 0.0_df);
+        return;
+    }
+
+    // Retain the iteration state and apply this correction to the particle.
+    accumulatedForces[particle] = updatedForce;
+    forceCorrections[particle] = correction;
+    accumulateForceAndTorque(center, correction, dfloat3(0.0_df, 0.0_df, 0.0_df));
+}
+
+__global__
+void spreadPibmParticleForce(
+    const ParticleCenter *pArray,
+    const ParticleMethod *methods,
+    const dfloat3 *forceCorrections,
+    dfloat *fMom,
+    unsigned int nParticles)
+{
+    // Assign one thread to each PIBM particle.
+    const unsigned int particle = threadIdx.x + blockDim.x * blockIdx.x;
+    if (particle >= nParticles || methods[particle] != PIBM) return;
+
+    // Skip particles whose position or current iteration correction is unusable.
+    const dfloat3 position = pArray[particle].getPos();
+    const dfloat3 correction = forceCorrections[particle];
+    if (!pibm_detail::validPibmParticlePosition(position.x, position.y, position.z) ||
+        !isfinite(correction.x) || !isfinite(correction.y) ||
+        !isfinite(correction.z) ||
+        (correction.x == 0.0_df && correction.y == 0.0_df && correction.z == 0.0_df))
+        return;
+
+    // Rebuild the same stencil used for interpolation to preserve matched coupling.
+    const pibm_detail::PibmStencil stencilData = pibm_detail::makePibmStencil(position.x, position.y, position.z);
+
+    // Distribute the opposite correction over every admissible Eulerian node.
+    for (int zOffset = 0; zOffset < pibm_detail::PIBM_STENCIL_WIDTH; ++zOffset) {
+        int z;
+        if (!pibm_detail::mapPibmZ(stencilData.base[2] + zOffset, &z))
+            continue;
+        for (int yOffset = 0; yOffset < pibm_detail::PIBM_STENCIL_WIDTH; ++yOffset) {
+            int y;
+            if (!pibm_detail::mapPibmY(stencilData.base[1] + yOffset, &y))
+                continue;
+            const dfloat yzWeight = stencilData.weight[2][zOffset] * stencilData.weight[1][yOffset];
+
+            for (int xOffset = 0; xOffset < pibm_detail::PIBM_STENCIL_WIDTH; ++xOffset) {
+                int x;
+                if (!pibm_detail::mapPibmX(stencilData.base[0] + xOffset, &x))
+                    continue;
+                if (!pibm_detail::insidePibmDuct(x, y))
+                    continue;
+
+                const dfloat weight = yzWeight * stencilData.weight[0][xOffset];
+                const size_t momentBase = idxMom(x % BLOCK_NX, y % BLOCK_NY, z % BLOCK_NZ, M_RHO_INDEX, x / BLOCK_NX, y / BLOCK_NY, z / BLOCK_NZ);
+
+                // Atomics preserve contributions from particles with overlapping stencils.
+                atomicAdd(&fMom[momentBase + M_FX_INDEX * BLOCK_LBM_SIZE], -correction.x * weight);
+                atomicAdd(&fMom[momentBase + M_FY_INDEX * BLOCK_LBM_SIZE], -correction.y * weight);
+                atomicAdd(&fMom[momentBase + M_FZ_INDEX * BLOCK_LBM_SIZE], -correction.z * weight);
+            }
+        }
+    }
+}
+
+__host__ void pibmComputeParticleForces(
+    ParticlesSoA *particles,
+    const dfloat *fMom,
+    cudaStream_t streamParticles)
+{
+    computePibmParticleForce<<<pibm_detail::pibmBlocks(), pibm_detail::pibmThreads(), 0, streamParticles>>>(
+        particles->getPCenterArray(), particles->getPMethod(), fMom,
+        particles->getPibmForceArray(), particles->getPibmForceCorrectionArray(),
+        NUM_PARTICLES);
+}
+
+__host__ void pibmSpreadParticleForces(
+    ParticlesSoA *particles,
+    dfloat *fMom,
+    cudaStream_t streamParticles)
+{
+    spreadPibmParticleForce<<<pibm_detail::pibmBlocks(), pibm_detail::pibmThreads(), 0, streamParticles>>>(
+        particles->getPCenterArray(), particles->getPMethod(),
+        particles->getPibmForceCorrectionArray(), fMom, NUM_PARTICLES);
 }
 
 __host__ void pibmSimulation(
@@ -93,16 +207,15 @@ __host__ void pibmSimulation(
     cudaStream_t streamParticles,
     unsigned int step)
 {
-    constexpr unsigned int N_PARTICLES = NUM_PARTICLES;
+    (void)step;
+    checkCudaErrors(cudaMemsetAsync(
+        particles->getPibmForceArray(), 0,
+        sizeof(dfloat3) * NUM_PARTICLES, streamParticles));
 
-    const unsigned int THREADS_PARTICLES_PIBM = N_PARTICLES > 64 ? 64 : N_PARTICLES;
-    const unsigned int GRID_PARTICLES_PIBM = (N_PARTICLES % THREADS_PARTICLES_PIBM ? (N_PARTICLES / THREADS_PARTICLES_PIBM + 1) : (N_PARTICLES / THREADS_PARTICLES_PIBM));
-
-    ParticleCenter *pArray = particles->getPCenterArray();
-    const ParticleMethod *methods = particles->getPMethod();
-
-    spreadParticleForce<<<GRID_PARTICLES_PIBM, THREADS_PARTICLES_PIBM, 0, streamParticles>>>(
-        pArray, methods, fMom, N_PARTICLES);
+    for (int iteration = 0; iteration < PIBM_MAX_ITERATION; ++iteration) {
+        pibmComputeParticleForces(particles, fMom, streamParticles);
+        pibmSpreadParticleForces(particles, fMom, streamParticles);
+    }
 }
 
 #endif // PARTICLE_MODEL
