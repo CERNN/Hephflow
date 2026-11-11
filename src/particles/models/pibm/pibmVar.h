@@ -1,0 +1,64 @@
+/**
+ * @file pibmVar.h
+ * @brief Compile-time controls for point-particle immersed-boundary coupling.
+ */
+
+#ifndef __PIBM_VAR_H
+#define __PIBM_VAR_H
+
+#include "../../../var.h"
+
+#ifdef PARTICLE_MODEL
+
+// This function depends on the ordering of the following #define 
+#define GET_KERNEL_WIDTH(mode) (((mode) - 1) % 3 + 2)
+
+#define PIBM_TRILINEAR_2 1
+#define PIBM_TRILINEAR_3 2
+#define PIBM_TRILINEAR_4 3
+#define PIBM_STENCIL_2   4
+#define PIBM_STENCIL_3   5
+#define PIBM_STENCIL_4   6
+
+#ifndef PIBM_INTERPOLATION_KERNEL
+#define PIBM_INTERPOLATION_KERNEL PIBM_TRILINEAR_2
+#endif
+
+#ifndef PIBM_SPREAD_KERNEL
+#define PIBM_SPREAD_KERNEL PIBM_STENCIL_4
+#endif
+
+#ifndef PIBM_FORCE_RELAXATION
+#define PIBM_FORCE_RELAXATION 1.0_df
+#endif
+
+#ifndef PIBM_MAX_ITERATION
+#define PIBM_MAX_ITERATION 1
+#endif
+
+static_assert(
+    PIBM_SPREAD_KERNEL == PIBM_TRILINEAR_2 || 
+    PIBM_SPREAD_KERNEL == PIBM_TRILINEAR_3 || 
+    PIBM_SPREAD_KERNEL == PIBM_TRILINEAR_4 || 
+    PIBM_SPREAD_KERNEL == PIBM_STENCIL_2 || 
+    PIBM_SPREAD_KERNEL == PIBM_STENCIL_3 || 
+    PIBM_SPREAD_KERNEL == PIBM_STENCIL_4,
+    "PIBM_SPREAD_KERNEL must be PIBM_TRILINEAR_<WIDTH> or PIBM_STENCIL_<WIDTH>");
+static_assert(
+    PIBM_INTERPOLATION_KERNEL == PIBM_TRILINEAR_2 || 
+    PIBM_INTERPOLATION_KERNEL == PIBM_TRILINEAR_3 || 
+    PIBM_INTERPOLATION_KERNEL == PIBM_TRILINEAR_4 || 
+    PIBM_INTERPOLATION_KERNEL == PIBM_STENCIL_2 || 
+    PIBM_INTERPOLATION_KERNEL == PIBM_STENCIL_3 || 
+    PIBM_INTERPOLATION_KERNEL == PIBM_STENCIL_4,
+    "PIBM_INTERPOLATION_KERNEL must be PIBM_TRILINEAR_<WIDTH> or PIBM_STENCIL_<WIDTH>");
+static_assert(PIBM_FORCE_RELAXATION > 0.0_df && PIBM_FORCE_RELAXATION <= 1.0_df,
+    "PIBM_FORCE_RELAXATION must be in (0, 1]");
+static_assert(PIBM_MAX_ITERATION > 0,
+    "PIBM_MAX_ITERATION must be positive");
+
+constexpr int PIBM_INTERPOLATION_KERNEL_WIDTH = GET_KERNEL_WIDTH(PIBM_INTERPOLATION_KERNEL);
+constexpr int PIBM_SPREAD_KERNEL_WIDTH = GET_KERNEL_WIDTH(PIBM_SPREAD_KERNEL);
+
+#endif // PARTICLE_MODEL
+#endif // __PIBM_VAR_H
