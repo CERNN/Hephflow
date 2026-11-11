@@ -18,16 +18,46 @@
 
 namespace pibm_detail {
 
-#if PIBM_COUPLING_MODE == PIBM_COUPLING_TRILINEAR
-constexpr int PIBM_STENCIL_WIDTH = 2;
+enum class KernelType {
+    TRILINEAR,
+    STENCIL
+};
+
+constexpr KernelType PIBM_INTERPOLATION_KERNEL_TYPE =
+    (PIBM_INTERPOLATION_KERNEL <= PIBM_TRILINEAR_4) ? KernelType::TRILINEAR : KernelType::STENCIL;
+constexpr KernelType PIBM_SPREAD_KERNEL_TYPE =
+    (PIBM_SPREAD_KERNEL <= PIBM_TRILINEAR_4) ? KernelType::TRILINEAR : KernelType::STENCIL;
+
+#ifdef BC_X_WALL
+constexpr bool PIBM_WALL_X = true;
 #else
-constexpr int PIBM_STENCIL_WIDTH = 4;
+constexpr bool PIBM_WALL_X = false;
 #endif
 
+#ifdef BC_Y_WALL
+constexpr bool PIBM_WALL_Y = true;
+#else
+constexpr bool PIBM_WALL_Y = false;
+#endif
+
+#ifdef BC_Z_WALL
+constexpr bool PIBM_WALL_Z = true;
+#else
+constexpr bool PIBM_WALL_Z = false;
+#endif
+
+/**
+ * @brief Separable tensor-product stencil: lower lattice corner and 1D weights per axis.
+ * @tparam Width Number of lattice nodes per axis.
+ */
+template <int Width>
 struct PibmStencil {
     int base[3];
-    dfloat weight[3][4];
+    dfloat weight[3][Width];
 };
+
+using PibmInterpolationStencil = PibmStencil<PIBM_INTERPOLATION_KERNEL_WIDTH>;
+using PibmSpreadStencil        = PibmStencil<PIBM_SPREAD_KERNEL_WIDTH>;
 
 /**
  * @brief Validate that a particle center can be converted to a lattice stencil.
@@ -36,7 +66,7 @@ struct PibmStencil {
  * @param z Particle center z-coordinate.
  * @return True when all coordinates are finite and inside the local domain.
  */
-__device__ __forceinline__ bool validPibmParticlePosition(float x, dfloat y, dfloat z){
+__device__ __forceinline__ bool validPibmParticlePosition(dfloat x, dfloat y, dfloat z){
     return isfinite(x) && isfinite(y) && isfinite(z) &&
            x >= 0.0_df && x <= static_cast<dfloat>(NX - 1) &&
            y >= 0.0_df && y <= static_cast<dfloat>(NY - 1) &&
@@ -44,100 +74,130 @@ __device__ __forceinline__ bool validPibmParticlePosition(float x, dfloat y, dfl
 }
 
 /**
- * @brief Construct the configured interpolation/spreading stencil for a particle.
- * @param x Particle center x-coordinate.
- * @param y Particle center y-coordinate.
- * @param z Particle center z-coordinate.
- * @return The base coordinates and separable weights for the selected stencil.
+ * @brief Lowest lattice index covered by a 1D stencil of the given width.
+ * @tparam Width Number of lattice nodes per axis.
+ * @param coord Particle coordinate along the axis.
+ * @return Lower-bound lattice index of the 1D stencil.
  */
-__device__ __forceinline__ PibmStencil makePibmStencil(dfloat x, dfloat y, dfloat z){
-    PibmStencil stencilData = {};
-    const dfloat position[3] = {x, y, z};
-
-    #if PIBM_COUPLING_MODE == PIBM_COUPLING_TRILINEAR
-    for (int axis = 0; axis < 3; ++axis) {
-        stencilData.base[axis] = static_cast<int>(floor(position[axis]));
-        const dfloat fraction = position[axis] - stencilData.base[axis];
-        stencilData.weight[axis][0] = 1.0_df - fraction;
-        stencilData.weight[axis][1] = fraction;
+template <int Width>
+__device__ __forceinline__ int pibmStencilBase(dfloat coord){
+    if constexpr (Width % 2 == 0) {
+        return static_cast<int>(ceil(coord)) - Width / 2;
+    } else {
+        return static_cast<int>(round(coord)) - Width / 2;
     }
-    #else
-    for (int axis = 0; axis < 3; ++axis) {
-        stencilData.base[axis] = static_cast<int>(ceil(position[axis])) - 2;
-        for (int offset = 0; offset < PIBM_STENCIL_WIDTH; ++offset) {
-            const dfloat distance = static_cast<dfloat>(stencilData.base[axis] + offset) - position[axis];
-            stencilData.weight[axis][offset] = (1.0_df + cos(M_PI * distance / 2.0_df)) / 4.0_df;
+}
+
+/**
+ * @brief 1D kernel weight at a signed lattice distance from the particle.
+ * @tparam Width Number of lattice nodes per axis.
+ * @tparam KType Kernel shape (linear hat or raised cosine).
+ * @param distance Signed distance between lattice node and particle.
+ * @return Kernel weight for that node.
+ */
+template <int Width, KernelType KType>
+__device__ __forceinline__ dfloat pibmKernelWeight(dfloat distance){
+    const dfloat absR = fabs(distance);
+    if constexpr (KType == KernelType::TRILINEAR) {
+        constexpr dfloat halfWidth = 0.5_df * static_cast<dfloat>(Width);
+        const int target_index = halfWidth + distance;
+
+        double weight = 1.0;
+        for (int sweep_index = 0; sweep_index < Width; ++sweep_index) {
+            if (sweep_index == target_index) {
+                continue;
+            }
+            weight *= (1 + distance / (target_index - sweep_index));
+        }
+        return weight;
+    } else {
+        if constexpr (Width == 2) {
+            // Peskin 2-point stencil (only for PIBM_STENCIL_2)
+            return absR <= 1.0_df ? (1.0_df - absR) : 0.0_df;
+        } else if constexpr (Width == 3) {
+            // Peskin 3-point stencil (only for PIBM_STENCIL_3)
+            if (absR <= 0.5_df) {
+                return (1.0_df + sqrt(1.0_df - 3.0_df * absR * absR)) / 3.0_df;
+            } else if (absR <= 1.5_df) {
+                return (5.0_df - 3.0_df * absR - sqrt(-2.0_df + 6.0_df * absR - 3.0_df * absR * absR)) / 6.0_df;
+            } else {
+                return 0.0_df;
+            }
+        } else if constexpr (Width == 4) {
+            // Cosine stencil (only for PIBM_STENCIL_4)
+            if (absR <= 2.0_df) {
+                return (1.0_df + cos(M_PI * distance * 0.5_df)) * 0.25_df;
+            } else {
+                return 0.0_df;
+            }
         }
     }
-    #endif
-
-    return stencilData;
 }
 
 /**
- * @brief Map one x-axis stencil coordinate according to the boundary condition.
- * @param coordinate Unmapped lattice coordinate.
- * @param mapped Output coordinate after clamping or periodic wrapping.
- * @return False when the coordinate is outside a truncated wall stencil.
+ * @brief Construct a separable interpolation/spreading stencil for a particle.
+ * @tparam Width Number of lattice nodes per axis.
+ * @tparam KType Kernel shape.
+ * @param position Particle center.
+ * @return Lower lattice corner and per-axis weights.
  */
+template <int Width, KernelType KType>
+__device__ __forceinline__ PibmStencil<Width> makePibmStencil(const dfloat3& position){
+    PibmStencil<Width> stencil;
+    const dfloat coord[3] = {position.x, position.y, position.z};
+
+    #pragma unroll
+    for (int axis = 0; axis < 3; ++axis) {
+        stencil.base[axis] = pibmStencilBase<Width>(coord[axis]);
+        #pragma unroll
+        for (int offset = 0; offset < Width; ++offset) {
+            const dfloat distance = static_cast<dfloat>(stencil.base[axis] + offset) - coord[axis];
+            stencil.weight[axis][offset] = pibmKernelWeight<Width, KType>(distance);
+        }
+    }
+    return stencil;
+}
+
+/**
+ * @brief Map one stencil coordinate onto the lattice along an axis.
+ *
+ * Periodic axes wrap; wall axes clamp for the trilinear kernel and truncate
+ * (reject the node) for the cosine stencil.
+ * @tparam KType Kernel shape.
+ * @tparam IsWall True when the axis has wall boundaries.
+ * @tparam N Number of lattice nodes along the axis.
+ * @param coordinate Unmapped lattice coordinate.
+ * @param mapped Output mapped coordinate.
+ * @return False when the node falls outside a truncated wall stencil.
+ */
+template <KernelType KType, bool IsWall, int N>
+__device__ __forceinline__ bool mapPibmAxis(int coordinate, int* mapped){
+    if constexpr (!IsWall) {
+        *mapped = ((coordinate % N) + N) % N;
+        return true;
+    } else if constexpr (KType == KernelType::TRILINEAR) {
+        *mapped = coordinate < 0 ? 0 : (coordinate >= N ? N - 1 : coordinate);
+        return true;
+    } else {
+        if (coordinate < 0 || coordinate >= N) return false;
+        *mapped = coordinate;
+        return true;
+    }
+}
+
+template <KernelType KType>
 __device__ __forceinline__ bool mapPibmX(int coordinate, int* mapped){
-    #ifdef BC_X_WALL
-        #if PIBM_COUPLING_MODE == PIBM_COUPLING_TRILINEAR
-        *mapped = coordinate < 0 ? 0 : (coordinate >= NX ? NX - 1 : coordinate);
-        return true;
-        #else
-        if (coordinate < 0 || coordinate >= NX) return false;
-        *mapped = coordinate;
-        return true;
-        #endif
-    #else
-    *mapped = ((coordinate % NX) + NX) % NX;
-    return true;
-    #endif
+    return mapPibmAxis<KType, PIBM_WALL_X, NX>(coordinate, mapped);
 }
 
-/**
- * @brief Map one y-axis stencil coordinate according to the boundary condition.
- * @param coordinate Unmapped lattice coordinate.
- * @param mapped Output coordinate after clamping or periodic wrapping.
- * @return False when the coordinate is outside a truncated wall stencil.
- */
+template <KernelType KType>
 __device__ __forceinline__ bool mapPibmY(int coordinate, int* mapped){
-    #ifdef BC_Y_WALL
-        #if PIBM_COUPLING_MODE == PIBM_COUPLING_TRILINEAR
-        *mapped = coordinate < 0 ? 0 : (coordinate >= NY ? NY - 1 : coordinate);
-        return true;
-        #else
-        if (coordinate < 0 || coordinate >= NY) return false;
-        *mapped = coordinate;
-        return true;
-        #endif
-    #else
-    *mapped = ((coordinate % NY) + NY) % NY;
-    return true;
-    #endif
+    return mapPibmAxis<KType, PIBM_WALL_Y, NY>(coordinate, mapped);
 }
 
-/**
- * @brief Map one z-axis stencil coordinate according to the boundary condition.
- * @param coordinate Unmapped lattice coordinate.
- * @param mapped Output coordinate after clamping or periodic wrapping.
- * @return False when the coordinate is outside a truncated wall stencil.
- */
+template <KernelType KType>
 __device__ __forceinline__ bool mapPibmZ(int coordinate, int* mapped){
-    #ifdef BC_Z_WALL
-        #if PIBM_COUPLING_MODE == PIBM_COUPLING_TRILINEAR
-        *mapped = coordinate < 0 ? 0 : (coordinate >= NZ ? NZ - 1 : coordinate);
-        return true;
-        #else
-        if (coordinate < 0 || coordinate >= NZ) return false;
-        *mapped = coordinate;
-        return true;
-        #endif
-    #else
-    *mapped = ((coordinate % NZ) + NZ) % NZ;
-    return true;
-    #endif
+    return mapPibmAxis<KType, PIBM_WALL_Z, NZ>(coordinate, mapped);
 }
 
 /**
@@ -158,14 +218,14 @@ __device__ __forceinline__ bool insidePibmDuct(int x, int y){
 
 /**
  * @brief Interpolate density and force-corrected physical velocity at a particle.
- * @param stencil Stencil coordinates and separable weights.
+ * @param stencil Interpolation stencil coordinates and separable weights.
  * @param fMom Device macroscopic moment array.
  * @param rhoInterpolated Output interpolated density.
  * @param velocityInterpolated Output interpolated physical velocity.
  * @return False when a sampled Eulerian state is invalid.
  */
-__device__ bool interpolatePibmField(
-    const PibmStencil& stencil,
+__device__ __forceinline__ bool interpolatePibmField(
+    const PibmInterpolationStencil& stencil,
     const dfloat* fMom,
     dfloat* rhoInterpolated,
     dfloat3* velocityInterpolated);
@@ -216,9 +276,9 @@ void computePibmParticleForce(
 /**
  * @brief Spread the current PIBM force corrections to Eulerian force moments.
  *
- * The correction is applied with the same interpolation/spreading operator
- * selected by PIBM_COUPLING_MODE and with the opposite sign to the particle
- * force, preserving discrete action--reaction.
+ * The correction is applied with the stencil selected by PIBM_SPREAD_KERNEL and
+ * with the opposite sign to the particle force, preserving discrete
+ * action--reaction.
  * @param pArray Device particle-center array.
  * @param methods Device coupling-method array.
  * @param forceCorrections Per-particle correction for the current iteration.

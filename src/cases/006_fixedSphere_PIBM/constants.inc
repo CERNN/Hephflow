@@ -74,18 +74,15 @@ constexpr dfloat MACH_NUMBER = U_MAX/0.57735026918962; // Mach number
 #define NUM_PARTICLES 1                     // Number of particles
 
 /* --------------------- PARTICLE PIBM CONFIGURATION --------------------- */
-// Define Lagrangian lattice intervals, min of 2 nodes
-const int LAGRANGIAN_I_MAX = 2; // min 2
-const int LAGRANGIAN_J_MAX = 2; // min 2
-const int LAGRANGIAN_K_MAX = 2; // min 2
+#define PIBM_INTERPOLATION_KERNEL PIBM_TRILINEAR_2  
+#define PIBM_SPREAD_KERNEL PIBM_TRILINEAR_2        
 
-const int FORCE_SPREAD_X_NODES = 2; // min 1
-const int FORCE_SPREAD_Y_NODES = 2; // min 1
-const int FORCE_SPREAD_Z_NODES = 2; // min 1
+#define PIBM_MAX_ITERATION 1         // min 1
+#define PIBM_FORCE_RELAXATION 1.0_df // between 0 and 1
 
 /* --------------------- GRAVITY PARAMETERS --------------------- */
 constexpr dfloat GX = 0.0;                  // Gravity in X direction
-constexpr dfloat GY = 0.0;              // Gravity in Y direction (settling force)
+constexpr dfloat GY = 0.0;                  // Gravity in Y direction
 constexpr dfloat GZ = 0.0;                  // Gravity in Z direction
 
 /* --------------------- FLUID PROPERTIES FOR PARTICLES --------------------- */

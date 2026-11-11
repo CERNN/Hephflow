@@ -5,8 +5,8 @@
 namespace pibm_detail {
 
 // Interpolate density and force-corrected physical velocity at a particle.
-__device__ bool interpolatePibmField(
-    const PibmStencil& stencilData,
+__device__ __forceinline__ bool interpolatePibmField(
+    const PibmInterpolationStencil& stencilData,
     const dfloat *fMom,
     dfloat *rhoInterpolated,
     dfloat3 *velocityInterpolated){
@@ -15,20 +15,26 @@ __device__ bool interpolatePibmField(
     dfloat3 velocity(0.0_df, 0.0_df, 0.0_df);
     dfloat weightSum = 0.0_df;
 
+    constexpr int W = PIBM_INTERPOLATION_KERNEL_WIDTH;
+    constexpr KernelType K = PIBM_INTERPOLATION_KERNEL_TYPE;
+
     // Traverse the configured tensor-product stencil and map valid lattice nodes.
-    for (int zOffset = 0; zOffset < PIBM_STENCIL_WIDTH; ++zOffset) {
+    #pragma unroll
+    for (int zOffset = 0; zOffset < W; ++zOffset) {
         int z;
-        if (!mapPibmZ(stencilData.base[2] + zOffset, &z))
+        if (!mapPibmZ<K>(stencilData.base[2] + zOffset, &z))
             continue;
-        for (int yOffset = 0; yOffset < PIBM_STENCIL_WIDTH; ++yOffset) {
+        #pragma unroll
+        for (int yOffset = 0; yOffset < W; ++yOffset) {
             int y;
-            if (!mapPibmY(stencilData.base[1] + yOffset, &y))
+            if (!mapPibmY<K>(stencilData.base[1] + yOffset, &y))
                 continue;
             const dfloat yzWeight = stencilData.weight[2][zOffset] * stencilData.weight[1][yOffset];
 
-            for (int xOffset = 0; xOffset < PIBM_STENCIL_WIDTH; ++xOffset) {
+            #pragma unroll
+            for (int xOffset = 0; xOffset < W; ++xOffset) {
                 int x;
-                if (!mapPibmX(stencilData.base[0] + xOffset, &x))
+                if (!mapPibmX<K>(stencilData.base[0] + xOffset, &x))
                     continue;
                 if (!insidePibmDuct(x, y))
                     continue;
@@ -90,8 +96,9 @@ void computePibmParticleForce(
         return;
     }
 
-    // Interpolate the force-corrected fluid state at the particle center.
-    const pibm_detail::PibmStencil stencilData = pibm_detail::makePibmStencil(position.x, position.y, position.z);
+    // Interpolate the force-corrected fluid state at the particle center using the interpolation stencil.
+    const pibm_detail::PibmInterpolationStencil stencilData =
+        pibm_detail::makePibmStencil<PIBM_INTERPOLATION_KERNEL_WIDTH, pibm_detail::PIBM_INTERPOLATION_KERNEL_TYPE>(position);
     dfloat rho;
     dfloat3 fluidVelocity;
     const dfloat3 particleVelocity = center->getVel();
@@ -147,23 +154,29 @@ void spreadPibmParticleForce(
         (correction.x == 0.0_df && correction.y == 0.0_df && correction.z == 0.0_df))
         return;
 
-    // Rebuild the same stencil used for interpolation to preserve matched coupling.
-    const pibm_detail::PibmStencil stencilData = pibm_detail::makePibmStencil(position.x, position.y, position.z);
+    constexpr int W = PIBM_SPREAD_KERNEL_WIDTH;
+    constexpr pibm_detail::KernelType K = pibm_detail::PIBM_SPREAD_KERNEL_TYPE;
+
+    // Build the spreading stencil configured for the particle.
+    const pibm_detail::PibmSpreadStencil stencilData = pibm_detail::makePibmStencil<W, K>(position);
 
     // Distribute the opposite correction over every admissible Eulerian node.
-    for (int zOffset = 0; zOffset < pibm_detail::PIBM_STENCIL_WIDTH; ++zOffset) {
+    #pragma unroll
+    for (int zOffset = 0; zOffset < W; ++zOffset) {
         int z;
-        if (!pibm_detail::mapPibmZ(stencilData.base[2] + zOffset, &z))
+        if (!pibm_detail::mapPibmZ<K>(stencilData.base[2] + zOffset, &z))
             continue;
-        for (int yOffset = 0; yOffset < pibm_detail::PIBM_STENCIL_WIDTH; ++yOffset) {
+        #pragma unroll
+        for (int yOffset = 0; yOffset < W; ++yOffset) {
             int y;
-            if (!pibm_detail::mapPibmY(stencilData.base[1] + yOffset, &y))
+            if (!pibm_detail::mapPibmY<K>(stencilData.base[1] + yOffset, &y))
                 continue;
             const dfloat yzWeight = stencilData.weight[2][zOffset] * stencilData.weight[1][yOffset];
 
-            for (int xOffset = 0; xOffset < pibm_detail::PIBM_STENCIL_WIDTH; ++xOffset) {
+            #pragma unroll
+            for (int xOffset = 0; xOffset < W; ++xOffset) {
                 int x;
-                if (!pibm_detail::mapPibmX(stencilData.base[0] + xOffset, &x))
+                if (!pibm_detail::mapPibmX<K>(stencilData.base[0] + xOffset, &x))
                     continue;
                 if (!pibm_detail::insidePibmDuct(x, y))
                     continue;
